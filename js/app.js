@@ -69,14 +69,13 @@
   }
   const lesionesActivas = u => (st().injuries[u] || []).filter(i => i.active);
   // Perfil de entreno de cada uno (se guarda y se puede cambiar en Perfil). Lo usan el plan, el generador y la IA.
-  const PERFIL_BASE = { objetivo: 'musculo', nivel: 2, lugar: 'gym', minutos: 45, dias: 3, prioridades: [], material: [] };
-  const perfilEntreno = u => Object.assign({}, PERFIL_BASE, (st().bodyProfile[u] || {}).entreno || {});
+  const perfilEntreno = u => L.perfilEntreno(st(), u);
   function guardarPerfil(cambios) {
     const S = st(), u = U(); S.bodyProfile[u] = S.bodyProfile[u] || {};
     S.bodyProfile[u].entreno = Object.assign(perfilEntreno(u), cambios); Store.guardar(); ui.gen = null; ui.genResult = null; render();
   }
   const MAT_CASA = ['mancuernas', 'banda', 'botellas', 'banco', 'barra fija', 'paralelas', 'comba', 'rueda'];
-  const opPlan = (d, u) => ({ recuperacionHecha: rutinaDeHoy(d), objetivo: d && String(d.ref || '').startsWith('P:') ? perfilEntreno(u).objetivo : null });
+  const opPlan = (d, u) => ({ recuperacionHecha: rutinaDeHoy(d), objetivo: null }); // el plan semanal ya se genera con el objetivo del perfil (plan-perfil.js)
   const sesionesUsuario = u => Object.values(st().workouts).filter(w => w.user === u && w.completed);
 
   // ── Gráfica de línea simple ──
@@ -144,7 +143,7 @@
   function vHoy() {
     const u = U(), S = st();
     const p = window.PLAN[u];
-    const sug = window.DIA_SUGERIDO[new Date().getDay()];
+    const sug = L.diaSugerido(S, u);
     const hechoHoy = sesionesUsuario(u).find(w => new Date(w.completedAt || w.date).toDateString() === new Date().toDateString());
     let out = '';
     if (S.session && S.session.user === u) {
@@ -161,7 +160,8 @@
     const les = lesionesActivas(u);
     if (les.length) out += `<p class="faint" style="margin-top:8px">Con cuidado: ${les.map(i => h((ZONAS[i.zoneKey] || {}).name || i.zoneKey)).join(' · ')}. Antes de empezar te pregunto cómo estás y ajusto la sesión.</p>`;
 
-    out += '<div class="sec">Tu plan</div><div class="stack">' + Object.entries(p).map(([k, d]) => tarjetaDia('P:' + k, d)).join('') + '</div>';
+    const sinPerfil = !(S.bodyProfile[u] || {}).entreno;
+    out += `<div class="sec">Tu plan</div>${sinPerfil ? `<div class="note gold" style="margin-bottom:10px"><strong>Haz tu plan a medida</strong>Este plan sale de un perfil estándar. Elige tu objetivo, nivel, días y dónde entrenas y se rehace para ti. <a href="#perfil">Completar perfil</a></div>` : `<p class="faint" style="margin:-4px 0 10px">Hecho con tu perfil: ${h(L.OBJETIVOS[perfilEntreno(u).objetivo].nombre.toLowerCase())}, ${perfilEntreno(u).dias} días, ${h(window.LUGARES[perfilEntreno(u).lugar].toLowerCase())}. <a href="#perfil">Cambiar</a></p>`}<div class="stack">` + Object.entries(p).map(([k, d]) => tarjetaDia('P:' + k, d)).join('') + '</div>';
     out += `<div class="sec">Rutinas a medida</div><div class="stack"><button class="card tap dashed" data-act="ir" data-arg="generar"><span class="badge">${IC.spark}</span><span class="grow"><span class="card-title" style="display:block">Crear una rutina ahora</span><span class="card-sub">Lugar, tiempo y objetivo; respeta tus lesiones</span></span><span class="chev">›</span></button>`;
     out += S.routines[u].map(r => `<div class="row">${tarjetaDia('R:' + r.id, r, `<span class="faint" style="display:block">${r.fuente === 'ia' ? 'Hecha con IA' : 'Hecha con reglas'} · ${fecha(r.fecha)}</span>`)}<button class="icon-btn" data-act="borrarRutina" data-arg="${h(r.id)}" aria-label="Borrar ${h(r.nombre)}">${IC.trash}</button></div>`).join('') + '</div>';
 
@@ -477,7 +477,7 @@
     const chp = (act, k, l, on) => `<button class="chip" data-act="${act}" data-arg="${k}" aria-pressed="${on}">${h(l)}</button>`;
     const segp = (act, pares, val) => `<div class="seg" role="group">${pares.map(([k, l]) => `<button data-act="${act}" data-arg="${k}" aria-pressed="${String(val) === String(k)}">${h(l)}</button>`).join('')}</div>`;
     return `<div class="sec" style="margin-top:0">Mi entrenamiento · ${h(window.PERSONAS[u].nombre)}</div>
-      <p class="faint" style="margin-bottom:10px">Se guarda para ${h(window.PERSONAS[u].nombre)}. El plan, las rutinas a medida y la IA parten de aquí, con tu historial y tus lesiones. Puedes cambiarlo cuando quieras.</p>
+      <p class="faint" style="margin-bottom:10px">Se guarda para ${h(window.PERSONAS[u].nombre)}. Tu plan semanal se hace con estos datos y tus lesiones, y se rehace solo cuando cambias algo. Las rutinas a medida y la IA también parten de aquí.</p>
       <div class="card stack">
         <div><label class="f">Objetivo principal</label><div class="chips">${['perder', 'musculo', 'fuerza', 'tono', 'recuperacion'].map(k => chp('pfObj', k, L.OBJETIVOS[k].nombre, pf.objetivo === k)).join('')}</div></div>
         <div><label class="f">Nivel</label>${segp('pfNivel', [[1, 'Fácil'], [2, 'Medio'], [3, 'Avanzado']], pf.nivel)}</div>
