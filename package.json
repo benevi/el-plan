@@ -1,0 +1,11 @@
+{
+  "name": "el-plan",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "description": "App privada de entrenamiento de Víctor y Virginia",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0"
+  }
+}
