@@ -103,7 +103,7 @@ export default async function handler(req, res) {
     // Se registra en los logs de Vercel (Deployments → Logs) y se devuelve un motivo legible a la app.
     console.error('rutina: error de la API de Claude', e && e.status, e && e.message);
     const m = String((e && e.message) || '');
-    let error = 'la IA no responde ahora';
+    let error = 'la IA no responde ahora [' + ((e && e.status) || (e && e.name) || 'error') + ': ' + m.slice(0, 140) + ']';
     if (e instanceof Anthropic.AuthenticationError) error = 'la clave de la IA no es válida (revisa ANTHROPIC_API_KEY en Vercel)';
     else if (e instanceof Anthropic.PermissionDeniedError) error = 'la clave de la IA no tiene permiso para este modelo';
     else if (e instanceof Anthropic.RateLimitError) error = 'demasiadas peticiones, prueba en un minuto';
