@@ -100,7 +100,18 @@ export default async function handler(req, res) {
     rutina.ejercicios = (rutina.ejercicios || []).filter(e => ids.includes(e.id));
     return res.status(200).json({ rutina });
   } catch (e) {
-    const status = e && e.status ? (e.status === 429 ? 429 : 502) : 500;
-    return res.status(status).json({ error: status === 429 ? 'demasiadas peticiones, prueba en un minuto' : 'la IA no responde ahora' });
+    // Se registra en los logs de Vercel (Deployments → Logs) y se devuelve un motivo legible a la app.
+    console.error('rutina: error de la API de Claude', e && e.status, e && e.message);
+    const m = String((e && e.message) || '');
+    let error = 'la IA no responde ahora';
+    if (e instanceof Anthropic.AuthenticationError) error = 'la clave de la IA no es válida (revisa ANTHROPIC_API_KEY en Vercel)';
+    else if (e instanceof Anthropic.PermissionDeniedError) error = 'la clave de la IA no tiene permiso para este modelo';
+    else if (e instanceof Anthropic.RateLimitError) error = 'demasiadas peticiones, prueba en un minuto';
+    else if (/credit balance/i.test(m)) error = 'la cuenta de la API de Claude no tiene saldo';
+    else if (e instanceof Anthropic.BadRequestError) error = 'petición rechazada por la IA: ' + m.slice(0, 160);
+    else if (e instanceof Anthropic.APIConnectionError) error = 'el servidor no pudo conectar con la IA';
+    else if (e instanceof SyntaxError) error = 'la IA devolvió una respuesta que no se pudo leer';
+    const status = e instanceof Anthropic.RateLimitError ? 429 : 502;
+    return res.status(status).json({ error });
   }
 }
