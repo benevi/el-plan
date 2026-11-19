@@ -10,6 +10,7 @@
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamar, enLinea } from '../../nucleo/api.js';
+import { es } from '../../nucleo/ui.js';
 import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, preferencia, tendencias, leerComentario } from '../../reglas/contexto.js';
 import { acotarKg, sugerir, cargaMuscular, sesionesHechas, rango } from '../../reglas/progresion.js';
@@ -115,12 +116,12 @@ function cardioDelDia(S, lugar, pool, k, extra = 0) {
 export function ajustesPorTendencia(S) {
   const t = tendencias(S), out = { cardioExtra: 0, rehabExtra: false, notas: [] };
   if (tiene(S, 'perder') && t.cambioPeso4sem != null && t.cambioPeso4sem >= 0) {
-    out.cardioExtra = 5; out.notas.push(`Tu peso no ha bajado en 4 semanas (${t.cambioPeso4sem >= 0 ? '+' : ''}${t.cambioPeso4sem} kg): subo 5 minutos el cardio. Revisa también la nutrición.`);
+    out.cardioExtra = 5; out.notas.push(`Tu peso no ha bajado en 4 semanas (${t.cambioPeso4sem >= 0 ? '+' : ''}${es(t.cambioPeso4sem)} kg): subo 5 minutos el cardio. Revisa también la nutrición.`);
   }
-  if (tiene(S, 'perder') && t.cambioPeso4sem != null && t.cambioPeso4sem < -3) out.notas.push(`Has bajado ${-t.cambioPeso4sem} kg en 4 semanas: es rápido; prioriza la fuerza para no perder músculo.`);
+  if (tiene(S, 'perder') && t.cambioPeso4sem != null && t.cambioPeso4sem < -3) out.notas.push(`Has bajado ${es(-t.cambioPeso4sem)} kg en 4 semanas: es rápido; prioriza la fuerza para no perder músculo.`);
   const sube = t.dolor.filter(d => d.tendencia === 'sube');
   if (sube.length) { out.rehabExtra = true; out.notas.push(`El dolor de ${lista(sube.map(d => minus(d.nombre)))} ha subido estas dos semanas: más rehabilitación y menos carga en esa zona.`); }
-  if (t.constancia < 50 && sesionesHechas(S).length >= 4) out.notas.push(`Estas 4 semanas has hecho ${t.sesionesPorSemana} sesiones por semana de ${S.perfil.disponibilidad.dias} previstas: mejor un plan realista que uno que no se cumple.`);
+  if (t.constancia < 50 && sesionesHechas(S).length >= 4) out.notas.push(`Estas 4 semanas has hecho ${es(t.sesionesPorSemana)} sesiones por semana de ${S.perfil.disponibilidad.dias} previstas: mejor un plan realista que uno que no se cumple.`);
   return out;
 }
 
@@ -486,7 +487,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   ej = ej.map(x => {
     if (x.rol === 'cardio') return x;
     const sg = sugerir(S, x.id, { series: x.series, reps: x.reps }, { energia, niveles, carga });
-    if (sg.tipo === 'sube') subidas.push(`${ex(x.id).n.toLowerCase()}${sg.kg != null ? ' a ' + sg.kg + ' kg' : ' (' + sg.reps + ')'}`);
+    if (sg.tipo === 'sube') subidas.push(`${ex(x.id).n.toLowerCase()}${sg.kg != null ? ' a ' + es(sg.kg) + ' kg' : ' (' + sg.reps + ')'}`);
     if (sg.tipo === 'baja') bajadas.push(ex(x.id).n.toLowerCase());
     return { ...x, series: sg.series, reps: sg.reps, kg: sg.kg != null ? sg.kg : x.kg, motivo: sg.motivo };
   });
