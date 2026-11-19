@@ -4,6 +4,8 @@ Plan para llevar la rama `pipos-v2` desde el estado auditado (noviembre de 2026)
 
 `main` no se toca en ningún paso hasta el lanzamiento, y el lanzamiento solo se hace con tu OK explícito.
 
+Incluye un **rediseño completo de la interfaz**. Se diseña en paralelo a las fases 1-4 (fase D: estudio de uso, identidad, sistema de diseño y prototipos navegables que apruebas en el móvil) y se implementa después (fase 5). El rediseño solo cambia la capa de presentación: datos, entrenador, reglas y servidor se conservan.
+
 ---
 
 ## 1. Objetivo y criterios de «terminado»
@@ -20,7 +22,7 @@ La versión 2 está lista para producción cuando se cumplen **todos** estos cri
 | T6 | La progresión sube cuando toca | Historiales sintéticos: L-X-V sube en los tres días; 8-8-8 → 10-10-9 no es «estancado»; dolor 1-3 estable progresa |
 | T7 | El servidor no se puede usar sin código ni para gastar de más | Pruebas del handler: sin `APP_CODE` → 500; cuerpo > 150 KB → 413; campos recortados |
 | T8 | La IA cumple el contrato | 20 casos de referencia contra el endpoint real de preview: 100 % pasan el validador y ≥ 90 % aprueban la rúbrica del preparador |
-| T9 | Uso con una mano | Zonas táctiles ≥ 44 px, contraste AA en texto y controles, primera serie visible sin desplazarse en 360×640 |
+| T9 | Rediseño aprobado y usable con una mano | Prototipos aprobados por ti pantalla a pantalla; capturas de la app iguales al prototipo; zonas táctiles ≥ 48 px en la sesión y ≥ 44 px en el resto; contraste AA medido por script; primera serie visible sin desplazarse en 360×640; animaciones a 60 fps con CPU ×4 y alternativa con movimiento reducido |
 | T10 | Integración continua | `npm test` y lint en verde en cada PR; versión del service worker generada, no escrita a mano |
 
 ---
@@ -40,6 +42,8 @@ La versión 2 está lista para producción cuando se cumplen **todos** estos cri
 - **Sin paso de compilación.** Se mantiene HTML + módulos ES. Solo se añaden dependencias de desarrollo (pruebas y lint), que no llegan al móvil.
 - **Idioma:** código, textos y comentarios en español de España, como ahora.
 - **Trazabilidad:** cada PR lista los hallazgos de la auditoría que cierra. El anexo A los agrupa por PR.
+- **Diseño:** las entregas de la fase D (DIS 1-4) no tocan la app. Los prototipos viven en la rama `diseno-prototipos`, que se ve en su vista previa de Vercel y **no se fusiona nunca** en `pipos-v2`. Ninguna pantalla se implementa sin su prototipo aprobado.
+- **Frontera del rediseño:** los PR 13-16 no pueden modificar `js/nucleo/estado.js`, `js/nucleo/modelo.js`, `js/nucleo/api.js`, la lógica del entrenador (`dia.js`, `plan.js`, `checkin.js`, `ia.js`, `validar.js`), `js/reglas/`, `js/datos/` ni `api/`. Una prueba de CI (`tests/frontera-rediseno.js`) falla si lo hacen. Si una pantalla necesita un dato nuevo, se añade una función de solo lectura y se avisa al integrador; la forma de los datos guardados no cambia.
 
 ---
 
@@ -55,8 +59,8 @@ No dispongo de una valoración pública de skills. He elegido las más específi
 | IA | `agentic-council:Oracle` | `claude-api` (fuente de verdad de la API), `agentic-council:prompt-engineering`, `agentic-council:ai-evaluation` | Prompt, esquema, validación, streaming, casos de referencia |
 | Seguridad y casos límite | `agentic-council:Skeptic` | `security-review`, `agentic-council:threat-model`, `agentic-council:edge-case-enumeration` | Servidor, copia, CSP; revisión adversarial de los PR de datos |
 | PWA y despliegue | `agentic-council:Operator` | `vercel:vercel-functions`, `vercel:deployments-cicd`, `vercel:vercel-firewall`, `vercel:verification`, `agentic-council:deployment-plan` | Service worker, CI, Vercel, lanzamiento y marcha atrás |
-| Uso en el gimnasio | `agentic-council:Advocate` | `design:accessibility-review`, `vectorlab-ux-skills:ux-audit`, `vectorlab-ux-skills:forms`, `vectorlab-ux-skills:errors`, `vectorlab-ux-skills:loaders`, `design:ux-copy` | Pantalla de sesión, hojas, accesibilidad, textos |
-| Diseño visual | `agentic-council:Artisan` | `frontend-design`, `design:design-critique`, `vectorlab-ux-skills:reduced-motion` | Jerarquía de la tarjeta de ejercicio, tokens de color, movimiento |
+| Uso y accesibilidad | `agentic-council:Advocate` | `design:user-research`, `design:research-synthesis`, `agentic-council:journey-mapping`, `design:accessibility-review`, `design-skills:accessibility-audit`, `vectorlab-ux-skills:ux-audit`, `vectorlab-ux-skills:forms`, `vectorlab-ux-skills:errors`, `vectorlab-ux-skills:loaders`, `vectorlab-ux-skills:empty-states`, `vectorlab-ux-skills:keyboard`, `design:ux-copy` | Estudio de uso en el gimnasio (DIS 1); revisión de accesibilidad del sistema y de los prototipos (DIS 3-4); revisión de cada PR del rediseño con capturas y Playwright |
+| Diseño visual | `agentic-council:Artisan` | `frontend-design:frontend-design`, `design:design-system`, `design-skills:design-systems`, `agentic-council:design-system-architecture`, `agentic-council:motion-design`, `vectorlab-ux-skills:colour-palette`, `vectorlab-ux-skills:typography`, `vectorlab-ux-skills:spacing`, `vectorlab-ux-skills:surfaces`, `vectorlab-ux-skills:motion`, `vectorlab-ux-skills:reduced-motion`, `vectorlab-ux-skills:anti-slop`, `design:design-critique`, `dataviz` | Identidad (DIS 2), sistema de diseño (DIS 3), prototipos (DIS 4) e implementación del rediseño (PR 13-16) |
 | Privacidad | `agentic-council:Guardian` | `agentic-council:data-classification` | Solo en el PR de copia/migración y en el de prompt: qué datos de salud salen y cuáles sobran |
 
 **Orquestación.** Para las tareas en abanico (los 20 casos de referencia y la re-auditoría final con los siete agentes) propongo usar la herramienta Workflow. Lanza muchos agentes a la vez, así que solo la usaré si me lo confirmas (decisión D7). El resto se hace con agentes sueltos, en paralelo cuando no tocan los mismos archivos.
@@ -78,6 +82,10 @@ Llevan mi recomendación. Las marcadas con ★ bloquean su fase.
 | D7 | Orquestación con Workflow | Usarla en los casos de referencia y en la re-auditoría final | Sí; es donde aporta y el gasto está acotado |
 | D8 | Fuentes | Alojar Archivo y Outfit en el propio sitio (quita a Google de la app y arregla el bloqueo sin red) | Sí |
 | D9 | Vídeos de los ejercicios nuevos | Los ids de YouTube los elegís vosotros, o quedan sin vídeo; no los voy a inventar | Sin vídeo hasta que me paséis enlaces |
+| D10 | Tema | — | **Decidido: solo oscuro** |
+| D11 | Identidad | — | **Decidido: identidad nueva entera** (logo, colores por persona, tipografía e iconos). Doy por hecho que el nombre «Pipos Fitness» se mantiene; dime si no |
+| D12 | Ambición visual | — | **Decidido: expresiva**, con presupuesto de rendimiento y alternativa con movimiento reducido |
+| D13 | Revisión de prototipos | — | **Decidido: página navegable en la vista previa de Vercel** de la rama `diseno-prototipos` |
 
 ---
 
@@ -101,6 +109,70 @@ Cada PR indica: **qué** cambia, **dónde**, **cómo se acepta**, **quién** y *
 - Rescatar los scripts de la auditoría al repo como base de las pruebas. Siguen en el directorio temporal de esta sesión y se pierden si se cierra.
 
 **0.3** Respuestas a D1-D9.
+
+### Fase D — Diseño (en paralelo a las fases 1-4)
+
+Cuatro entregas en cadena, cada una con tu OK antes de pasar a la siguiente: DIS 1 → DIS 2 → DIS 3 → DIS 4. No tocan la app; se trabajan mientras avanzan las fases 1-4.
+
+**DIS 1 · Estudio de uso en el gimnasio**
+- **Dónde:** `docs/diseno/estudio.md`.
+- **Qué:**
+  - **Diario de uso real** de los dos: 3-4 sesiones cada uno con una plantilla corta (qué miras entre series, cuándo sacas el móvil, qué te sobra y qué te falta, luz, manos, auriculares, cobertura). Lo rellenáis vosotros; nada se inventa.
+  - **Recorrido de la semana y de la sesión** por momentos: en casa antes de salir, vestuario, entre series, descanso, máquina ocupada, cardio, estiramientos y después. Para cada momento: postura, atención disponible, mano libre, luz y qué necesita ver.
+  - **Jerarquía por pantalla:** qué debe leerse en 1 s, qué en 5 s y qué puede quedar a un toque.
+  - **Inventario de problemas:** los 20 hallazgos de uso de la auditoría, con sus capturas, como lista de cosas que el rediseño tiene que resolver.
+  - **Requisitos medibles** que heredan DIS 3 y la fase 5:
+    - zonas táctiles ≥ 48 px en la sesión y ≥ 44 px en el resto;
+    - contraste AA (texto 4,5:1, controles y bordes 3:1);
+    - primera serie visible sin desplazarse en 360×640;
+    - repetir una serie con los mismos kilos en 1 toque, cambiarlos en ≤ 3;
+    - cifras de la sesión legibles a un brazo (≥ 28 px);
+    - acciones principales al alcance del pulgar, en el tercio inferior;
+    - con movimiento reducido, la misma información sin animación.
+- **Quién:** Advocate con `design:user-research`, `agentic-council:journey-mapping`, `design:research-synthesis` y `vectorlab-ux-skills:ux-audit`.
+- **Se acepta si:** confirmas que describe lo que os pasa de verdad.
+
+**DIS 2 · Identidad nueva**
+- **Dónde:** `docs/diseno/identidad.md` y `prototipos/identidad/` en la rama `diseno-prototipos`.
+- **Qué:** tres direcciones claramente distintas. Cada una trae:
+  - logo propio en SVG e iconos de la app (SVG, maskable y PNG);
+  - paleta oscura con un color para cada persona, distinguibles entre sí también con daltonismo;
+  - tipografía con licencia libre, alojada en el sitio, con cifras tabulares y que quepa en 320 px; peso total de fuentes ≤ 150 KB;
+  - carácter del movimiento (cómo entran las pantallas, cómo se celebra);
+  - tres pantallas de muestra (Hoy, sesión y Progreso) con datos de ejemplo.
+- **Restricciones:** solo oscuro; sin recursos externos ni imágenes de bancos; nada que se parezca a una marca existente.
+- **Quién:** Artisan con `frontend-design:frontend-design`, `vectorlab-ux-skills:colour-palette`, `vectorlab-ux-skills:typography` y `vectorlab-ux-skills:anti-slop`; Advocate mide contraste y legibilidad de cada dirección.
+- **Se acepta si:** eliges una, o una mezcla, desde el móvil.
+
+**DIS 3 · Sistema de diseño**
+- **Dónde:** `prototipos/sistema/` (tokens, componentes y una página catálogo) y `docs/diseno/sistema.md`.
+- **Qué:**
+  - **Tokens:** superficies, texto en tres niveles, bordes, estados, acento por persona (con `data-persona`), escala tipográfica con cifras grandes para la sesión, espaciado sobre base 4, tres radios, profundidad, movimiento (duraciones y curvas) y tamaños táctiles.
+  - **Componentes con todos sus estados** (normal, pulsado, activo, desactivado, foco, error, cargando, vacío): botón, botón de icono, chip, segmento, selector ± para kilos y repeticiones, fila de serie, tarjeta de ejercicio, hoja inferior accesible, aviso, barra de descanso, alarma, contador a pantalla completa, tira de la semana, pestañas y gráficos (constancia, fuerza, medidas, dolor).
+  - **Movimiento expresivo con presupuesto:**
+    - transiciones entre pantallas, progreso animado y celebraciones al terminar la sesión y en récords personales;
+    - durante una serie no se mueve nada salvo el contador;
+    - 60 fps en un Android medio (CPU ×4);
+    - todo tiene alternativa con movimiento reducido.
+  - **Gráficos** según la skill `dataviz`.
+  - **Reglas de código** que heredará la implementación: sin manejadores `on*` en línea ni `<script>` en línea (para la CSP del PR 17), sin dependencias externas, sin compilación.
+  - **Página catálogo** con cada componente en cada estado y su contraste medido.
+- **Quién:** Artisan con `design:design-system`, `design-skills:design-systems`, `agentic-council:design-system-architecture`, `agentic-council:motion-design`, `vectorlab-ux-skills:spacing`, `vectorlab-ux-skills:surfaces`, `vectorlab-ux-skills:motion`, `vectorlab-ux-skills:reduced-motion` y `dataviz`. Advocate revisa con `design:accessibility-review`, `vectorlab-ux-skills:keyboard`, `vectorlab-ux-skills:forms`, `vectorlab-ux-skills:errors`, `vectorlab-ux-skills:loaders` y `vectorlab-ux-skills:empty-states`.
+- **Se acepta si:** un script confirma AA en todos los pares de color; cada componente tiene foco visible, nombre accesible y todos sus estados; y tú lo apruebas.
+
+**DIS 4 · Prototipos navegables**
+- **Dónde:** `prototipos/` en la rama `diseno-prototipos`, publicada en su vista previa de Vercel.
+- **Qué:** prototipos en HTML, CSS y JS sin compilación, construidos con el sistema de DIS 3, con datos de ejemplo realistas y un selector Víctor / Virginia. Las transiciones y celebraciones funcionan de verdad; nada se guarda. Pantallas y estados:
+  - **Hoy:** primera vez, con plan, día de descanso, sesión en marcha, sesión sin cerrar de ayer y sin conexión.
+  - **Check-in:** energía, dolor por zona, tiempo, lugar y petición, con vista previa en vivo; espera de la IA con progreso y «Cancelar»; fallo de la IA explicado.
+  - **Sesión:** modo uno a uno y lista; fila de serie con ± y kilos que pasan a la serie siguiente; ejercicio por tiempo y de cardio; cambiar ejercicio; terminar con series pendientes; cierre; sesión ya hecha en modo lectura.
+  - **Descanso:** barra de descanso, alarma de fin, vuelta tras bloquear el móvil y siguiente serie visible.
+  - **Progreso:** vacío, primera semana y un año de datos (constancia, fuerza, medidas y dolor).
+  - **Perfil:** objetivos, nivel, lesiones (alta y edición), días, lugares, material, ajustes, copia de seguridad y versión.
+  - Además, bienvenida y Ejercicios (lista y ficha), para que el rediseño cubra la app entera.
+- **Revisión:** los usáis en el móvil y comentáis en el PR de prototipos; hasta tres rondas de cambios.
+- **Quién:** Artisan construye; Advocate los prueba con Playwright (360×640, 390×844, 320×568, texto ×2, movimiento reducido y teclado) y entrega capturas y medidas en cada ronda.
+- **Se acepta si:** los apruebas pantalla a pantalla. Sin tu aprobación no se implementa nada de la fase 5.
 
 ### Fase 1 — Red de seguridad
 
@@ -301,67 +373,67 @@ Cada PR indica: **qué** cambia, **dónde**, **cómo se acepta**, **quién** y *
 - **Se acepta si:** pasan las pruebas e2e con servidor simulado lento, caído y con 401.
 - **Quién:** Oracle (servidor) y Advocate (pantallas).
 - **Depende de:** PR 11.
+- **Nota:** las pantallas de este PR se hacen funcionales y sencillas; su aspecto final llega con el rediseño (PR 14). La lógica (streaming, cancelación, errores, motivo guardado) se queda.
 
-### Fase 5 — Uso en el gimnasio con una mano
+### Fase 5 — Implementación del rediseño (después de las fases 1-4)
 
-**PR 13 · Pantalla de sesión**
-- **Dónde:** `js/areas/sesion/indice.js`, `temporizador.js`, `css/areas.css`.
+Sustituye a los antiguos PR 13-15. Cada PR implementa pantallas **ya aprobadas en DIS 4**, respeta la frontera del rediseño (sección 2) y se acepta comparando capturas de la app con las del prototipo, además de T9. Todas las pruebas de las fases 1-4 deben seguir en verde sin tocarlas.
+
+Implementa Artisan; Advocate revisa cada PR con capturas lado a lado, Playwright y `design:accessibility-review`; Craftsman entra donde haya lógica de pantalla (temporizador, arrastre de kilos). La revisión con `code-review` sigue siendo obligatoria.
+
+**PR 13 · Base del rediseño: sistema, identidad, marco y navegación**
+- **Dónde:** `css/` (tokens, componentes y un archivo por área), `index.html`, `js/nucleo/ui.js`, `js/nucleo/router.js`, `js/aspecto/`, `icons/`, `fonts/`, `manifest.webmanifest`, `sw.js` (solo la lista de archivos).
 - **Qué:**
-  - Kilos y repeticiones que pasan a las series siguientes vacías; botones − / + de 48 px.
-  - En «Uno a uno», las series justo debajo del título; nota y técnica plegadas; cabecera compacta con la sesión empezada.
-  - Alarma de fin de descanso legible, que recibe el foco y se cierra sola.
-  - Barra de descanso que no tapa la serie siguiente.
-  - Contador en minutos para el cardio.
-  - Ejercicio por tiempo con el móvil bloqueado: tope y confirmación.
-  - Protección contra el doble toque.
-  - Confirmar «Cambiar por otro» si hay series hechas.
-  - En «Terminar», decir cuántas series quedan; sesión hecha en modo lectura.
-  - Hoy enseña cualquier sesión sin cerrar, aunque sea de ayer.
-  - El dolor del cierre parte del último valor conocido.
-  - Reactivar el sonido con un toque tras recargar.
-- **Se acepta si:** T9 se cumple en esta pantalla, con capturas a 360×640 y 320×568.
-- **Quién:** Advocate y Artisan; Craftsman en el temporizador.
-- **Depende de:** PR 1. Puede ir en paralelo a la fase 3.
+  - El sistema de DIS 3 en producción; la identidad de DIS 2 (logo, iconos, colores y `theme_color`).
+  - Hojas accesibles: entran en el historial y el botón atrás las cierra, Escape, fondo `inert`, `aria-labelledby`, botón ✕, cierre al cambiar de ruta y opción de abrir sin foco en un campo.
+  - Foco al `h1` al cambiar de pantalla; hash mal formado dentro del `try`; Hoy se repinta al volver a la app si cambió el día.
+  - Capa de movimiento con su presupuesto y alternativa reducida; transiciones entre pantallas; componentes de aviso y de espera.
+  - Las pantallas aún no rediseñadas siguen funcionando con los tokens nuevos.
+- **Se acepta si:** pasan las e2e con botón atrás y solo teclado, el contraste por script y el presupuesto de rendimiento (arranque con el SW ≤ 0,6 s en mala cobertura con CPU ×4; fuentes ≤ 150 KB).
 
-**PR 14 · Hojas y navegación**
-- **Dónde:** `js/nucleo/ui.js`, `js/nucleo/router.js`, `js/areas/entrenador/indice.js`, `js/areas/perfil/indice.js`, `js/areas/ejercicios/indice.js`.
-- **Qué:**
-  - Las hojas entran en el historial, de modo que el botón atrás las cierra; también Escape. Fondo `inert`, `aria-labelledby` y botón ✕ de 44 px.
-  - Cerrar las hojas al cambiar de ruta; la hoja de cierre guarda el id de su sesión.
+**PR 14 · Hoy y check-in**
+- **Dónde:** `js/areas/hoy/indice.js`, `js/areas/entrenador/indice.js` (solo vistas) y su CSS.
+- **Qué:** las pantallas aprobadas de Hoy y del check-in, incluidas las del PR 12 (espera con progreso y «Cancelar», fallo de la IA explicado, nota de por qué la hizo la app).
   - El check-in se actualiza en su sitio, sin volver arriba.
-  - Los chips activos se desplazan a la vista.
-  - Foco al `h1` al cambiar de pantalla.
-  - Hash mal formado dentro del `try`.
-  - Repintar Hoy al volver a la app si cambió el día.
-- **Se acepta si:** pasan las pruebas e2e con el gesto atrás y solo con teclado.
-- **Quién:** Advocate.
-- **Depende de:** PR 12, porque comparten las hojas del entrenador.
+  - Hoy enseña cualquier sesión sin cerrar, aunque sea de un día anterior.
+  - Tira de la semana accesible (no solo por color).
+  - Minutos y número de días coherentes en todas partes.
+- **Depende de:** PR 13 y PR 12.
 
-**PR 15 · Accesibilidad, textos y coherencia**
-- **Dónde:** `css/base.css`, `css/componentes.css`, `css/areas.css`, varias áreas.
-- **Qué:**
-  - Tokens de contraste AA (`--txt-3`, bordes de controles, `--acc-2` de Virginia).
-  - Zonas táctiles ≥ 44 px.
-  - `aria-pressed` y grupos de radio; etiquetas y nombres accesibles completos.
-  - Textos: concordancias, «e isquios», un solo nombre para cada cosa.
-  - Una sola fuente para minutos y dosis; constancia con el denominador del plan.
-  - Confeti solo al guardar la sesión; sin brillo en el botón principal.
-- **Se acepta si:** auditoría con axe sin errores graves y contraste medido.
-- **Quién:** Advocate con `design:accessibility-review`; Artisan con `frontend-design`.
+**PR 15 · Sesión y descanso**
+- **Dónde:** `js/areas/sesion/indice.js`, `js/areas/sesion/temporizador.js` y su CSS.
+- **Qué:** las pantallas aprobadas de sesión y descanso, con todos los arreglos de uso de la auditoría:
+  - selector ± y kilos y repeticiones que pasan a las series siguientes vacías;
+  - en uno a uno, las series arriba;
+  - alarma legible, que recibe el foco y se cierra sola; la barra de descanso no tapa la serie siguiente;
+  - contador en minutos para el cardio; ejercicio por tiempo con el móvil bloqueado con tope y confirmación;
+  - protección contra el doble toque; confirmar «Cambiar por otro» con series hechas; «Terminar» dice cuántas quedan; sesión hecha en modo lectura;
+  - el dolor del cierre parte del último valor conocido; reactivar el sonido con un toque tras recargar.
+  - La lógica de tiempo del temporizador se conserva salvo esos arreglos.
+- **Se acepta si:** T9 en la sesión, en 360×640 y 320×568.
+- **Depende de:** PR 13. En paralelo al PR 14 y al PR 16.
 
-**PR 16 · CSP y cabeceras**
+**PR 16 · Progreso, Perfil, Ejercicios y bienvenida**
+- **Dónde:** `js/areas/progreso/indice.js`, `js/areas/perfil/`, `js/areas/ejercicios/indice.js` y su CSS.
+- **Qué:** las pantallas aprobadas.
+  - Gráficos según `dataviz`; constancia con el denominador del plan.
+  - Navegación de Perfil sin chips que se salen de la vista; ayuda del código de acceso; aviso de datos de salud en la copia; versión visible.
+  - `aria-pressed` y grupos de radio, etiquetas completas, textos revisados (concordancias, «e isquios», un nombre para cada cosa).
+- **Depende de:** PR 13. En paralelo al PR 14 y al PR 15.
+
+**PR 17 · CSP y cabeceras**
 - **Dónde:** `vercel.json`, `index.html`, las áreas con manejadores en línea.
 - **Qué:**
-  - Quitar los siete manejadores `on*` en línea y el `<script>` en línea.
+  - Comprobar que no queda ningún manejador `on*` ni `<script>` en línea (el rediseño ya no los usa).
   - CSP estricta (`script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`…), HSTS, `Permissions-Policy` y COOP.
   - `.vercelignore` para que `LEEME.md` y `docs/` no se sirvan.
 - **Se acepta si:** no hay ninguna violación de CSP en consola durante la e2e completa.
 - **Quién:** Skeptic implementa; Operator revisa con `vercel:verification`.
-- **Depende de:** PR 13, PR 14 y PR 15.
+- **Depende de:** PR 13, PR 14, PR 15 y PR 16.
 
 ### Fase 6 — Verificación integral y lanzamiento
 
-**PR 17 · Pruebas de extremo a extremo y re-auditoría**
+**PR 18 · Pruebas de extremo a extremo y re-auditoría**
 - Batería de Playwright con los recorridos completos de Víctor y Virginia: bienvenida, migración desde datos reales con la forma de `main`, perfil, plan, check-in, sesión, cierre, progreso, ejercicios, copia, modo avión y actualización.
 - **Re-auditoría** con los mismos siete agentes y los mismos encargos que la primera, comparando contra este plan.
 - **Se acepta si:** 0 críticos y 0 altos abiertos, y T1-T10 en verde.
@@ -382,7 +454,7 @@ Cada PR indica: **qué** cambia, **dónde**, **cómo se acepta**, **quién** y *
 6. Poner el código de acceso y generar una sesión con IA.
 7. Modo avión y reabrir.
 8. Guardar una copia fuera del teléfono.
-9. Solo entonces, si se quiere el icono nuevo en iPhone, reinstalar y cargar la copia.
+9. Solo entonces, para ver el icono nuevo en iPhone, reinstalar y cargar la copia (iOS no cambia el icono de una app ya instalada; Android lo hace solo, con retraso).
 
 **Marcha atrás**
 - **Cuándo:** pantalla en blanco que persiste con buena red, migración con 0 sesiones o errores 5xx sistemáticos de la IA.
@@ -393,23 +465,22 @@ Cada PR indica: **qué** cambia, **dónde**, **cómo se acepta**, **quién** y *
 ## 6. Orden y paralelismo
 
 ```
-Ola 1   PR 1 pruebas y CI ─────────────┐   PR 2 servidor (en paralelo)
-                                       │
-Ola 2   PR 3 guardado → PR 4 copia/migración
-        PR 5 service worker
-        PR 6 partir entrenador.js   ∥   PR 7 criterio (tu aprobación)
-        PR 13 pantalla de sesión
-                                       │
-Ola 3   PR 8 validador, dolor alto, cardio  (necesita 6 y 7)
-        PR 9 datos de lesiones  ∥  PR 10 progresión
-                                       │
-Ola 4   PR 11 prompt y casos de referencia → PR 12 espera y errores → PR 14 hojas
-        PR 15 accesibilidad y textos
-                                       │
-Ola 5   PR 16 CSP → PR 17 e2e y re-auditoría → pruebas en móviles → lanzamiento (tu OK)
+        Construcción                                          │ Diseño (fase D)
+Ola 1   PR 1 pruebas y CI  ∥  PR 2 servidor                   │ DIS 1 estudio de uso      (tu OK)
+Ola 2   PR 3 guardado → PR 4 copia/migración                  │ DIS 2 identidad           (eliges)
+        PR 5 service worker                                   │
+        PR 6 partir entrenador.js  ∥  PR 7 criterio (tu OK)   │
+Ola 3   PR 8 validador, dolor alto, cardio                    │ DIS 3 sistema de diseño   (tu OK)
+        PR 9 lesiones  ∥  PR 10 progresión                    │
+Ola 4   PR 11 prompt y casos de referencia → PR 12 espera     │ DIS 4 prototipos          (apruebas)
+──────────────────────────────────────────────────────────────┴──────────────────────────────
+Ola 5   PR 13 base del rediseño → PR 14 Hoy y check-in  ∥  PR 15 sesión y descanso  ∥  PR 16 Progreso, Perfil, Ejercicios
+Ola 6   PR 17 CSP → PR 18 e2e y re-auditoría → pruebas en móviles → lanzamiento (tu OK)
 ```
 
-En cada ola trabajan en paralelo solo los PR que no comparten archivos. Los que sí comparten van en serie: 12 → 14 por las hojas del entrenador, y 3 → 4 por `estado.js`.
+- En cada ola trabajan en paralelo solo los PR que no comparten archivos. Los que sí comparten van en serie: 3 → 4 por `estado.js`, y 12 → 14 por las pantallas del entrenador.
+- La ola 5 empieza cuando se cumplen las dos cosas: fases 1-4 fusionadas y DIS 4 aprobado. Si el diseño va por delante, espera; si va por detrás, la construcción no se para.
+- El rediseño llega después de arreglar la lógica a propósito: así se diseña sobre el comportamiento definitivo (validador, dolor alto, espera de la IA) y no hay que rehacer pantallas.
 
 ---
 
@@ -419,14 +490,15 @@ En cada ola trabajan en paralelo solo los PR que no comparten archivos. Los que 
 - Nutrición, que irá en otra app.
 - Pasar a un framework o añadir un paso de compilación.
 - Vídeos de los ejercicios nuevos (D9).
+- Tema claro (D10).
 
 ---
 
 ## 8. Coste y tiempo
 
-- **Agentes:** 17 PR con implementación y revisión, más los casos de referencia y la re-auditoría. Son unas 40-50 ejecuciones de agente; la auditoría fueron 7. Calcula un gasto de tokens del orden de 5 a 10 veces el de la auditoría.
+- **Agentes:** 18 PR y 4 entregas de diseño con implementación y revisión, más los casos de referencia y la re-auditoría. Son unas 55-70 ejecuciones de agente; la auditoría fueron 7. Calcula un gasto de tokens del orden de 8 a 12 veces el de la auditoría; la fase de diseño, con tres direcciones de identidad y hasta tres rondas de prototipos, es la parte más variable.
 - **API de Claude:** los 20 casos de referencia, repetidos 2-3 veces, cuestan unos 10-20 $ con la clave de la app.
-- **Tiempo:** depende sobre todo de tus revisiones en el móvil. Por agentes, cada ola cabe en una sesión de trabajo.
+- **Tiempo:** depende sobre todo de tus revisiones en el móvil: hay cuatro aprobaciones de diseño, además de las de cada PR. El diario de uso de DIS 1 necesita 3-4 sesiones reales de cada uno. Por agentes, cada ola cabe en una sesión de trabajo.
 
 ---
 
@@ -446,8 +518,10 @@ En cada ola trabajan en paralelo solo los PR que no comparten archivos. Los que 
 | 10 | Estancado sin repeticiones; recuperación de 72 h; freno por lesión permanente; redondeos; tope de kilos de la IA; progresión sin kilos; parón; falsas alarmas de molestia y tendencias; constancia de la primera semana; reparto de 5 días |
 | 11 | Prompt (alarma, edad, `l`, inyección); lugares como texto; datos que sobran; `stop_reason`; sin evaluación |
 | 12 | Espera sin salida; doble petición; errores crudos; caída a reglas que pasa desapercibida; petición perdida |
-| 13 | Kilos que no pasan a la serie siguiente; series fuera de pantalla; alarma ilegible; barra que tapa; contador de cardio; plancha bloqueada; doble toque; cambiar o terminar sin aviso; sesión tras medianoche; dolor 0 en el cierre; audio tras recargar |
-| 14 | Hojas y botón atrás; guardar falso; check-in que salta arriba; chips; foco; hash mal formado; Hoy sin refrescar |
-| 15 | Contraste; zonas táctiles; aria; textos; números incoherentes; animaciones |
-| 16 | Sin CSP ni cabeceras; manejadores en línea; archivos internos servidos |
-| 17 | Verificación de todo lo anterior y del paso a producción |
+| DIS 1-4 | Jerarquía de la tarjeta de ejercicio; adornos que recargan; radios y tamaños inconsistentes; deslizadores pequeños; estados solo por color (en el sistema de diseño) |
+| 13 | Hojas y botón atrás; guardar falso tras cerrar la hoja; foco perdido al repintar; hash mal formado; Hoy sin refrescar; contraste y bordes de controles; zonas táctiles; animaciones sin presupuesto |
+| 14 | Check-in que salta arriba; espera de la IA sin salida y errores crudos (pantallas); sesión sin cerrar tras medianoche; tira de la semana solo por color; minutos incoherentes |
+| 15 | Kilos que no pasan a la serie siguiente; series fuera de pantalla; alarma ilegible; barra que tapa; contador de cardio; plancha bloqueada; doble toque; cambiar o terminar sin aviso; sesión hecha editable; dolor 0 en el cierre; audio tras recargar |
+| 16 | Chips que se salen de la vista; textos y concordancias; constancia incoherente; `aria-pressed` y etiquetas; aviso de datos de salud en la copia |
+| 17 | Sin CSP ni cabeceras; manejadores en línea; archivos internos servidos |
+| 18 | Verificación de todo lo anterior y del paso a producción |
