@@ -1,0 +1,97 @@
+/* Estilos propios de cada área. Si un área crece, puede pasar a su propio archivo (css/<area>.css). */
+
+/* ── Bienvenida ── */
+.bienvenida { text-align: center; padding: 12vh 8px 0; }
+.logo-grande { width: 96px; height: 96px; margin: 0 auto 16px; border-radius: 26px; box-shadow: 0 12px 40px -10px color-mix(in srgb, var(--brand-2) 60%, transparent); }
+.bienvenida h1 { font-size: 34px; font-weight: 800; margin-bottom: 6px; }
+.dueños { display: grid; gap: 12px; margin-top: 18px; }
+.dueño { min-height: 64px; border-radius: 18px; border: 0; font-family: var(--f-head); font-stretch: 112%; font-size: 20px; font-weight: 800; color: #06121A; background: var(--c); cursor: pointer; }
+
+/* ── Hoy ── */
+.saludo { margin: 4px 0 10px; }
+.saludo .tenue { text-transform: capitalize; margin: 0; font-size: 14px; }
+.aviso-perfil { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); }
+.aviso-perfil span { display: block; color: var(--txt-2); font-size: 14.5px; }
+.tira-semana { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.tira-semana li { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0; border-radius: 12px; background: var(--surface); font-size: 13px; color: var(--txt-3); }
+.tira-semana li i { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-3); }
+.tira-semana li.toca i { background: transparent; box-shadow: inset 0 0 0 2px var(--acc); }
+.tira-semana li.hecha i { background: var(--acc); box-shadow: 0 0 10px var(--acc); }
+.tira-semana li.hoy { color: var(--txt); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--acc); font-weight: 700; }
+.semana { list-style: none; padding: 0; margin: 10px 0; }
+.semana li { display: flex; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.semana li b { width: 92px; flex-shrink: 0; }
+.semana li span { color: var(--txt-2); }
+.semana li.hoy b { color: var(--acc); }
+.semana li.pasado { opacity: .55; }
+.hecha .etiqueta { color: var(--ok); }
+
+/* ── Sesión ── */
+.cab-sesion { display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; padding: calc(env(safe-area-inset-top) + 8px) 0 8px; background: var(--bg); }
+.cab-sesion h1 { font-size: 20px; font-weight: 800; }
+.cab-sesion p { margin: 0; font-size: 13.5px; }
+.cab-sesion + .barra { margin-top: 0; }
+.porque summary { color: var(--txt); }
+.bloque > summary h2 { font-size: 17px; }
+.tareas { list-style: none; padding: 0; margin: 10px 0 0; }
+.tareas li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.tareas li p { margin: 2px 0 0; font-size: 14px; }
+.tareas li.hecho .grow { opacity: .5; text-decoration: line-through; }
+.marca { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--line-2); display: grid; place-items: center; cursor: pointer; color: #06121A; }
+.marca[aria-pressed="true"] { background: var(--acc-grad); box-shadow: none; }
+.ejercicio header { display: flex; align-items: flex-start; gap: 12px; }
+.ejercicio h3 { font-size: 17px; margin: 2px 0 2px; }
+.ejercicio header p { margin: 0; font-size: 14px; }
+.ejercicio .num { width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; background: var(--surface-3); font-weight: 700; font-family: var(--f-head); }
+.ejercicio .num svg { width: 18px; height: 18px; }
+.ejercicio.completo .num { background: var(--acc-grad); color: #06121A; }
+.ejercicio.completo { opacity: .8; }
+.motivo { font-size: 14px; color: var(--txt-2); border-left: 3px solid var(--acc); padding-left: 10px; margin: 10px 0; }
+.comentario { font-size: 14px; color: var(--txt-2); font-style: italic; }
+.series { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.serie { display: flex; align-items: center; gap: 8px; }
+.serie .n { width: 22px; text-align: center; color: var(--txt-3); font-weight: 600; }
+.serie .dato { flex: 1; position: relative; }
+.serie .dato input { text-align: center; font-size: 18px; font-weight: 600; padding-right: 36px; }
+.serie .dato small { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.serie.hecha .dato input { background: color-mix(in srgb, var(--acc) 12%, var(--surface-2)); }
+.icono.play { background: color-mix(in srgb, var(--acc) 20%, var(--surface-2)); color: var(--acc); }
+.ejercicio.grande h3 { font-size: 22px; }
+.ejercicio.grande .serie .dato input { min-height: 56px; font-size: 22px; }
+.ejercicio.grande .marca { width: 56px; height: 56px; }
+.gustos { display: flex; gap: 6px; flex-wrap: wrap; }
+.gustos button { flex: 1; min-height: 44px; border-radius: 12px; border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); cursor: pointer; font-size: 14px; white-space: nowrap; }
+.gustos button.on { box-shadow: inset 0 0 0 1.5px var(--acc); background: color-mix(in srgb, var(--acc) 18%, var(--surface-2)); font-weight: 600; }
+.gustos button.g-rechazo.on { box-shadow: inset 0 0 0 1.5px var(--bad); background: color-mix(in srgb, var(--bad) 18%, var(--surface-2)); }
+.pasos, .errores { padding-left: 20px; font-size: 15px; }
+.pasos li, .errores li { margin: 6px 0; }
+.errores { color: var(--txt-2); }
+
+/* Temporizador y alarma */
+.temporizador { position: fixed; left: 12px; right: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px); z-index: 50; max-width: 616px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-radius: 18px; background: var(--surface-3); box-shadow: var(--sombra), inset 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent); overflow: hidden; }
+body.sin-nav .temporizador { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+.t-progreso { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--acc) 16%, transparent); transition: width .25s linear; }
+.t-texto { position: relative; flex: 1; min-width: 0; }
+.t-texto small { display: block; color: var(--txt-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-texto b { font-family: var(--f-head); font-stretch: 112%; font-size: 30px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.temporizador.final b { color: var(--acc); }
+.t-botones { position: relative; display: flex; gap: 6px; }
+.t-botones button { min-width: 48px; height: 48px; border-radius: 12px; border: 0; background: var(--surface-2); font-weight: 600; cursor: pointer; display: grid; place-items: center; }
+.t-botones .t-fin { background: var(--acc-grad); color: #06121A; padding: 0 12px; }
+.alarma { position: fixed; inset: 0; z-index: 90; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #06121A; background: var(--acc); animation: destello .5s steps(2) 6; cursor: pointer; }
+.alarma b { font-family: var(--f-head); font-stretch: 118%; font-size: 34px; font-weight: 800; text-align: center; padding: 0 20px; }
+@keyframes destello { 50% { background: var(--bg); color: var(--acc); } }
+
+/* ── Progreso ── */
+.barras { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; height: 120px; align-items: end; margin: 14px 0 22px; }
+.barras div { position: relative; height: 100%; display: flex; align-items: flex-end; }
+.barras i { display: block; width: 100%; min-height: 3px; border-radius: 8px 8px 3px 3px; background: var(--surface-3); }
+.barras div.ok i { background: var(--acc-grad); }
+.barras span { position: absolute; bottom: -20px; width: 100%; text-align: center; font-size: 12px; color: var(--txt-3); }
+.barras hr { position: absolute; left: 0; right: 0; margin: 0; border: 0; border-top: 1.5px dashed color-mix(in srgb, var(--acc) 60%, transparent); }
+.puntos { display: flex; gap: 4px; }
+.puntos i { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 600; color: #06121A; background: color-mix(in srgb, var(--bad) calc(var(--v) * 10%), var(--ok)); }
+
+/* ── Ejercicios ── */
+.filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px; }
+.filtros input { grid-column: 1 / -1; }

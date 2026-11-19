@@ -1,0 +1,68 @@
+/* Pipos Fitness · base: colores, tipografía, estructura. El color de la persona llega en --acc / --acc-2
+   (lo pone main.js: Víctor turquesa, Virginia violeta). Área de «aspecto»: este archivo y componentes.css. */
+:root {
+  --brand-1: #4DD0E8; --brand-2: #C77DFF;
+  --brand-grad: linear-gradient(120deg, var(--brand-1), var(--brand-2));
+  --acc: #4DD0E8; --acc-2: #2A9BC2;
+  --acc-grad: linear-gradient(135deg, var(--acc), var(--acc-2));
+  --bg: #07080F; --surface: #121522; --surface-2: #1A1E2E; --surface-3: #252A3D;
+  --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.14);
+  --txt: #EEF0F7; --txt-2: #A3A8BD; --txt-3: #6E7389;
+  --ok: #5BD69A; --warn: #F5B94A; --bad: #FF6B7A;
+  --r: 18px; --r-s: 12px;
+  --nav-h: 68px;
+  --f-head: 'Archivo', system-ui, sans-serif;
+  --f-body: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sombra: 0 1px 2px rgba(0,0,0,.35), 0 10px 28px -12px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100dvh; font: 16px/1.45 var(--f-body); color: var(--txt);
+  background-color: var(--bg);
+  background-image: radial-gradient(60% 30% at 0% 0%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 70%);
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+}
+body.sin-nav { padding-bottom: calc(env(safe-area-inset-bottom) + 24px); }
+body.con-temporizador { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 96px); }
+body.sin-nav.con-temporizador { padding-bottom: calc(env(safe-area-inset-bottom) + 110px); }
+h1, h2, h3 { font-family: var(--f-head); font-stretch: 112%; margin: 0; line-height: 1.15; letter-spacing: -.01em; }
+p { margin: .4em 0; }
+a { color: var(--acc); }
+button, input, select, textarea { font: inherit; color: inherit; }
+img, svg { display: block; }
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+header.marca {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 var(--line);
+}
+body.sin-nav header.marca { display: none; }
+.logo { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--txt); font-family: var(--f-head); font-stretch: 118%; font-weight: 800; font-size: 15px; letter-spacing: .02em; }
+.logo img { border-radius: 9px; }
+.logo b { background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.red { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+
+main { max-width: 640px; margin: 0 auto; padding: 16px; outline: none; }
+
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: space-around;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 -1px 0 var(--line);
+}
+body.sin-nav .nav { display: none; }
+.nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--txt-3); text-decoration: none; font-size: 11.5px; font-weight: 500; }
+.nav a.activa { color: var(--acc); }
+.nav a.activa svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--acc) 60%, transparent)); }
+
+.titulo { font-size: 28px; font-weight: 800; margin: 6px 0 4px; }
+.tenue { color: var(--txt-2); }
+.centro { text-align: center; }
+small { color: var(--txt-3); font-weight: 400; font-size: .8em; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
