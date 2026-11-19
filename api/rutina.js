@@ -31,17 +31,19 @@ Progreso (sobrecarga progresiva). En "progreso" tienes, por ejercicio, las últi
 - "kg" es el peso por serie para hoy (por mancuerna si son mancuernas). Pon 0 si el ejercicio no lleva peso.
 - Recuperación muscular: en "recuperacion" tienes los músculos trabajados hace poco (horas, series y si están "sin recuperar" o "casi recuperados") y en "ultimasSesiones" los ejercicios de los últimos días. No pongas como músculo principal uno "sin recuperar" (grandes ~72 h, pequeños ~48 h, core ~24 h): elige otros músculos o, si la persona lo pide expresamente, baja una serie, no subas peso y avísalo en "notas". Con los "casi recuperados", no subas carga. Evita repetir los mismos ejercicios del día anterior. Di en "notas" qué músculos descansan hoy y por qué.
 - En la "nota" de cada ejercicio con historial di en una frase qué toca hoy y por qué (ej.: "Sube a 42,5 kg: la última vez hiciste 12 en las tres series").
+- "explicacion": de 3 a 6 puntos, una o dos frases cada uno, en segunda persona, que expliquen por qué la sesión está montada así. Cubre, con los datos concretos de esta persona: (1) cómo encaja con su objetivo de hoy y su objetivo principal; (2) por qué esos músculos y ese orden, y qué músculos descansan por recuperación; (3) por qué esas series, repeticiones y descansos; (4) de dónde salen los kilos de hoy (historial y propuesta de la app) y qué toca la próxima vez; (5) qué has cambiado por lesiones, dolor, energía o la petición libre, si aplica. Nada genérico: cada punto debe citar algo de sus datos.
 - Escribe en español de España, frases cortas y claras. "nota" de cada ejercicio: máximo una frase, solo si aporta algo.`;
 
 function esquema(ids) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['nombre', 'foco', 'notas', 'ejercicios'],
+    required: ['nombre', 'foco', 'notas', 'explicacion', 'ejercicios'],
     properties: {
       nombre: { type: 'string', description: 'Nombre corto de la sesión, máx. 40 caracteres' },
       foco: { type: 'string', description: 'Qué trabaja, máx. 60 caracteres' },
-      notas: { type: 'string', description: 'Por qué está montada así y avisos, 1-3 frases' },
+      notas: { type: 'string', description: 'Resumen y avisos, 1-3 frases' },
+      explicacion: { type: 'array', items: { type: 'string' }, description: 'De 3 a 6 puntos: por qué la sesión está montada así' },
       ejercicios: {
         type: 'array',
         items: {

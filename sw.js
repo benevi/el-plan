@@ -1,5 +1,5 @@
 // Funciona sin conexión: la app se guarda en caché; los vídeos y la IA necesitan internet.
-const VERSION = 'elplan-v3.3.0';
+const VERSION = 'elplan-v3.3.1';
 const APP = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'js/ejercicios.js', 'js/datos-base.js', 'js/plan.js', 'js/store.js', 'js/logic.js', 'js/progresion.js', 'js/app.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-32.png', 'icons/icon.svg'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP)).then(() => self.skipWaiting())); });

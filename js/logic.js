@@ -214,7 +214,7 @@
     const ej = r.ejercicios.filter(x => POR_ID[x.id] && POR_ID[x.id].l.includes(lugar))
       .map(x => [x.id, Math.max(1, Math.min(10, +x.series || 3)), String(x.reps || POR_ID[x.id].d[1]).slice(0, 20), Math.max(0, Math.min(240, +x.descanso || 60)), (x.nota || '').slice(0, 200), +x.kg > 0 && +x.kg < 400 ? Math.round(+x.kg * 4) / 4 : null]);
     if (!ej.length) throw new Error('Ningún ejercicio válido');
-    return { nombre: String(r.nombre || 'Rutina a medida').slice(0, 60), foco: String(r.foco || '').slice(0, 80), lugar, notas: String(r.notas || '').slice(0, 600), ej, fuente: 'ia' };
+    return { nombre: String(r.nombre || 'Rutina a medida').slice(0, 60), foco: String(r.foco || '').slice(0, 80), lugar, notas: String(r.notas || '').slice(0, 600), explicacion: (Array.isArray(r.explicacion) ? r.explicacion : []).map(x => String(x).slice(0, 400)).filter(Boolean).slice(0, 8), ej, fuente: 'ia' };
   }
 
   // ── Cuerpo ──
