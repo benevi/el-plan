@@ -1,6 +1,6 @@
 // Funciona sin conexión: la app se guarda en caché; los vídeos y la IA necesitan internet.
-const VERSION = 'elplan-v3.3.0';
-const APP = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'js/ejercicios.js', 'js/datos-base.js', 'js/plan.js', 'js/store.js', 'js/logic.js', 'js/progresion.js', 'js/app.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-32.png', 'icons/icon.svg'];
+const VERSION = 'elplan-v3.4.0';
+const APP = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'js/ejercicios.js', 'js/datos-base.js', 'js/plan.js', 'js/store.js', 'js/logic.js', 'js/progresion.js', 'js/plan-perfil.js', 'js/app.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-32.png', 'icons/icon.svg'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => !k.startsWith(VERSION)).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

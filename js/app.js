@@ -69,14 +69,13 @@
   }
   const lesionesActivas = u => (st().injuries[u] || []).filter(i => i.active);
   // Perfil de entreno de cada uno (se guarda y se puede cambiar en Perfil). Lo usan el plan, el generador y la IA.
-  const PERFIL_BASE = { objetivo: 'musculo', nivel: 2, lugar: 'gym', minutos: 45, dias: 3, prioridades: [], material: [] };
-  const perfilEntreno = u => Object.assign({}, PERFIL_BASE, (st().bodyProfile[u] || {}).entreno || {});
+  const perfilEntreno = u => L.perfilEntreno(st(), u);
   function guardarPerfil(cambios) {
     const S = st(), u = U(); S.bodyProfile[u] = S.bodyProfile[u] || {};
     S.bodyProfile[u].entreno = Object.assign(perfilEntreno(u), cambios); Store.guardar(); ui.gen = null; ui.genResult = null; render();
   }
   const MAT_CASA = ['mancuernas', 'banda', 'botellas', 'banco', 'barra fija', 'paralelas', 'comba', 'rueda'];
-  const opPlan = (d, u) => ({ recuperacionHecha: rutinaDeHoy(d), objetivo: d && String(d.ref || '').startsWith('P:') ? perfilEntreno(u).objetivo : null });
+  const opPlan = (d, u) => ({ recuperacionHecha: rutinaDeHoy(d), objetivo: null }); // el plan semanal ya se genera con el objetivo del perfil (plan-perfil.js)
   const sesionesUsuario = u => Object.values(st().workouts).filter(w => w.user === u && w.completed);
 
   // ── Gráfica de línea simple ──
@@ -144,7 +143,7 @@
   function vHoy() {
     const u = U(), S = st();
     const p = window.PLAN[u];
-    const sug = window.DIA_SUGERIDO[new Date().getDay()];
+    const sug = L.diaSugerido(S, u);
     const hechoHoy = sesionesUsuario(u).find(w => new Date(w.completedAt || w.date).toDateString() === new Date().toDateString());
     let out = '';
     if (S.session && S.session.user === u) {
@@ -161,7 +160,11 @@
     const les = lesionesActivas(u);
     if (les.length) out += `<p class="faint" style="margin-top:8px">Con cuidado: ${les.map(i => h((ZONAS[i.zoneKey] || {}).name || i.zoneKey)).join(' · ')}. Antes de empezar te pregunto cómo estás y ajusto la sesión.</p>`;
 
-    out += '<div class="sec">Tu plan</div><div class="stack">' + Object.entries(p).map(([k, d]) => tarjetaDia('P:' + k, d)).join('') + '</div>';
+    const pa = L.planActual(S, u), pfH = perfilEntreno(u);
+    const avisoPlan = pa.fuente === 'original' ? `<div class="note gold" style="margin-bottom:10px"><strong>Tu plan de siempre</strong>Rellena tu perfil (objetivo, nivel, días y dónde entrenas) y el entrenador te monta un plan a tu medida. <a href="#perfil">Completar perfil</a></div>`
+      : pa.fuente === 'ia' ? `<p class="faint" style="margin:-4px 0 10px">Plan del entrenador IA (${h(fecha(pa.creado))}) para ${h(L.OBJETIVOS[pfH.objetivo].nombre.toLowerCase())}, ${pfH.dias} días. <a href="#perfil">Ver criterios</a></p>`
+      : `<div class="note" style="margin-bottom:10px"><strong>Plan hecho con reglas</strong>${pa.iaCaducado ? 'Has cambiado el perfil o las lesiones desde el último plan del entrenador. ' : ''}Pide al entrenador IA un plan completo a tu medida. <a href="#perfil">Crear con el entrenador</a></div>`;
+    out += `<div class="sec">Tu plan</div>${avisoPlan}<div class="stack">` + Object.entries(p).map(([k, d]) => tarjetaDia('P:' + k, d)).join('') + '</div>';
     out += `<div class="sec">Rutinas a medida</div><div class="stack"><button class="card tap dashed" data-act="ir" data-arg="generar"><span class="badge">${IC.spark}</span><span class="grow"><span class="card-title" style="display:block">Crear una rutina ahora</span><span class="card-sub">Lugar, tiempo y objetivo; respeta tus lesiones</span></span><span class="chev">›</span></button>`;
     out += S.routines[u].map(r => `<div class="row">${tarjetaDia('R:' + r.id, r, `<span class="faint" style="display:block">${r.fuente === 'ia' ? 'Hecha con IA' : 'Hecha con reglas'} · ${fecha(r.fecha)}</span>`)}<button class="icon-btn" data-act="borrarRutina" data-arg="${h(r.id)}" aria-label="Borrar ${h(r.nombre)}">${IC.trash}</button></div>`).join('') + '</div>';
 
@@ -216,9 +219,10 @@
     const u = U(), S = st();
     const a = L.adaptar(S, u, d.lugar, d.ej, checkin, opPlan(d, u));
     const clave = { gym: 'gym', casa: 'Casa', calle: 'Calle', piscina: 'Piscina' }[d.lugar];
-    const calent = (window.WARMUPS[u][clave] || []).map(x => ({ n: x.name, d: x.detail, t: x.duration, ok: false }));
-    lesionesActivas(u).forEach(i => (ZONAS[i.zoneKey].warmup_rec || []).forEach(t => calent.push({ n: t, d: 'Recomendado por tu lesión de ' + L.ZONA_CORTA[i.zoneKey].toLowerCase(), t: '', ok: false })));
-    const vuelta = (window.COOLDOWNS[u][clave] || []).map(x => ({ n: x.name, d: x.detail, t: x.duration, ok: false }));
+    // El plan del entrenador y el de reglas traen su calentamiento y vuelta a la calma; si no, los de siempre por lugar.
+    const calent = d.calent && d.calent.length ? d.calent.map(x => ({ n: x.n, d: x.d, t: x.t, ok: false })) : (window.WARMUPS[u][clave] || []).map(x => ({ n: x.name, d: x.detail, t: x.duration, ok: false }));
+    if (!(d.calent && d.calent.length)) lesionesActivas(u).forEach(i => (ZONAS[i.zoneKey].warmup_rec || []).forEach(t => calent.push({ n: t, d: 'Recomendado por tu lesión de ' + L.ZONA_CORTA[i.zoneKey].toLowerCase(), t: '', ok: false })));
+    const vuelta = d.vuelta && d.vuelta.length ? d.vuelta.map(x => ({ n: x.n, d: x.d, t: x.t, ok: false })) : (window.COOLDOWNS[u][clave] || []).map(x => ({ n: x.name, d: x.detail, t: x.duration, ok: false }));
     S.session = {
       key: hoyISO() + '_' + u + '_' + Date.now(), user: u, ref: d.ref, day: d.ref.startsWith('P:') ? d.ref.slice(2) : d.ref, nombre: d.nombre, lugar: d.lugar,
       date: new Date().toISOString(), checkin: JSON.parse(JSON.stringify(checkin)), ajustes: a.ajustes, aviso: a.aviso, notas: d.notas || '',
@@ -477,7 +481,7 @@
     const chp = (act, k, l, on) => `<button class="chip" data-act="${act}" data-arg="${k}" aria-pressed="${on}">${h(l)}</button>`;
     const segp = (act, pares, val) => `<div class="seg" role="group">${pares.map(([k, l]) => `<button data-act="${act}" data-arg="${k}" aria-pressed="${String(val) === String(k)}">${h(l)}</button>`).join('')}</div>`;
     return `<div class="sec" style="margin-top:0">Mi entrenamiento · ${h(window.PERSONAS[u].nombre)}</div>
-      <p class="faint" style="margin-bottom:10px">Se guarda para ${h(window.PERSONAS[u].nombre)}. El plan, las rutinas a medida y la IA parten de aquí, con tu historial y tus lesiones. Puedes cambiarlo cuando quieras.</p>
+      <p class="faint" style="margin-bottom:10px">Se guarda para ${h(window.PERSONAS[u].nombre)}. Tu plan semanal se hace con estos datos y tus lesiones, y se rehace solo cuando cambias algo. Las rutinas a medida y la IA también parten de aquí.</p>
       <div class="card stack">
         <div><label class="f">Objetivo principal</label><div class="chips">${['perder', 'musculo', 'fuerza', 'tono', 'recuperacion'].map(k => chp('pfObj', k, L.OBJETIVOS[k].nombre, pf.objetivo === k)).join('')}</div></div>
         <div><label class="f">Nivel</label>${segp('pfNivel', [[1, 'Fácil'], [2, 'Medio'], [3, 'Avanzado']], pf.nivel)}</div>
@@ -487,6 +491,8 @@
         <div><label class="f">Músculos que quieres priorizar <span class="faint">opcional</span></label><div class="chips">${['gluteo', 'pecho', 'espalda', 'hombro', 'cuadriceps', 'isquios', 'core', 'biceps', 'triceps', 'gemelo'].map(m => chp('pfPrio', m, L.MUSCULOS[m], pf.prioridades.includes(m))).join('')}</div></div>
         <div><label class="f">Material que tienes en casa</label><div class="chips">${MAT_CASA.map(m => chp('pfMat', m, L.MATERIAL[m], pf.material.includes(m))).join('')}</div></div>
       </div>
+
+      ${tarjetaPlan(u)}
 
       <div class="sec">Lesiones y molestias</div>
       <p class="faint" style="margin-bottom:10px">La app usa esto para cambiar o quitar ejercicios que te puedan hacer daño, en el plan, en la biblioteca y en las rutinas a medida.</p>
@@ -511,6 +517,41 @@
       <div class="stack">${guia(u)}</div>
       <p class="faint" style="text-align:center;margin-top:24px">El Plan · versión 3</p>`;
   }
+  // Plan semanal: de dónde sale, con qué criterio y botón para que lo haga el entrenador IA.
+  function tarjetaPlan(u) {
+    const S = st(), pa = L.planActual(S, u);
+    const fuente = { ia: `Hecho por el entrenador IA el ${fecha(pa.creado, { day: 'numeric', month: 'long' })}`, reglas: 'Hecho con las reglas de la app', original: 'Tu plan de siempre (aún sin perfil)' }[pa.fuente];
+    const dias = Object.entries(pa.dias).filter(([k]) => !['Casa', 'Calle', 'Piscina'].includes(k));
+    const nd = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const cuando = k => Object.entries(pa.horario).filter(([, v]) => v === k).map(([wd]) => nd[wd]).join(', ');
+    return `<div class="sec">Tu plan semanal</div><div class="card stack">
+      <div><b>${h(fuente)}</b>${pa.iaCaducado ? '<span class="faint" style="display:block">Has cambiado el perfil o las lesiones: el plan del entrenador ya no encaja y se usa el de reglas hasta que lo rehagas.</span>' : ''}</div>
+      ${pa.resumen ? `<p style="font-size:14px">${h(pa.resumen)}</p>` : ''}
+      <ul style="padding-left:18px;font-size:14px" class="muted">${dias.map(([k, d]) => `<li><b>${h(d.nombre)}</b>${cuando(k) ? ` · ${h(cuando(k))}` : ''} · ${d.ej.length} ejercicios${d.calent ? ` + calentamiento y estiramientos` : ''}</li>`).join('')}</ul>
+      ${pa.criterios ? `<details><summary class="faint" style="cursor:pointer">Con qué criterio está hecho</summary><p style="font-size:14px;margin-top:6px">${h(pa.criterios)}</p>${pa.progresion ? `<p style="font-size:14px;margin-top:6px"><b>Progresión:</b> ${h(pa.progresion)}</p>` : ''}</details>` : ''}
+      ${L.tienePerfil(S, u) ? `<button class="btn" data-act="crearPlanIA" ${ui.planLoading ? 'disabled' : ''}>${ui.planLoading ? '<span class="spin"></span> El entrenador está montando tu plan… (hasta 2-3 min)' : IC.spark + (pa.fuente === 'ia' ? ' Rehacer con el entrenador IA' : ' Crear mi plan con el entrenador IA')}</button>
+        ${pa.fuente === 'ia' ? '<button class="btn-text block" data-act="planReglas">Usar el plan de reglas</button>' : ''}` : '<p class="faint">Elige arriba al menos tu objetivo y el plan se hace a tu medida.</p>'}
+      <p class="faint">Casa, Calistenia y Piscina siguen siempre en Hoy; la piscina se propone el fin de semana.</p></div>`;
+  }
+  async function crearPlanIA() {
+    const S = st(), u = U();
+    ui.planLoading = true; render();
+    try {
+      const url = (S.settings.apiUrl || '/api/rutina').replace(/rutina\/?$/, 'plan');
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 280000);
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-app-code': S.settings.code || '' }, body: JSON.stringify(L.datosParaEntrenador(S, u)), signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || ('error ' + r.status));
+      L.guardarPlanIA(S, u, d.plan || d); Store.guardar();
+      toast('Plan nuevo listo. Lo tienes en Hoy.', 3500);
+    } catch (e) {
+      const motivo = !navigator.onLine ? 'sin conexión' : e.name === 'AbortError' ? 'tardó demasiado' : e.message;
+      toast('El entrenador no pudo hacer el plan (' + motivo + '). Sigues con el plan de reglas.', 5000);
+    }
+    ui.planLoading = false; render();
+  }
+
   function guia(u) {
     const f = (t, html) => `<details class="fold"><summary>${t}</summary><div style="padding:0 14px 14px;font-size:15px" class="stack">${html}</div></details>`;
     const uso = f('Cómo usar la app', `<p>1. En <b>Hoy</b> elige la sesión. Te pregunto energía, tiempo y dolor, y ajusto la sesión: cambia ejercicios que no te convienen, quita series si estás cansado o recorta si vas con prisa. Ves cada cambio en «Ajustes de hoy».</p><p>2. Durante la sesión apunta kilos y repeticiones y marca cada serie. El descanso empieza solo.</p><p>3. En cada ejercicio, «Técnica y vídeo» te explica cómo se hace, y «Cambiar» te da alternativas seguras.</p><p>4. «Crear una rutina ahora» te hace una sesión a medida con lo que marques.</p>`);
@@ -713,6 +754,8 @@
     gLugar: l => { ui.gen.lugar = l; ui.gen.material = l === 'casa' || l === 'calle' ? perfilEntreno(U()).material.slice() : []; ui.gen.musculos = []; ui.genResult = null; render(); },
     gMin: m => { ui.gen.minutos = +m; render(); },
     gObj: o => { ui.gen.objetivo = o; render(); },
+    crearPlanIA,
+    planReglas: () => confirmar('¿Volver al plan de reglas?', 'Se borra el plan del entrenador IA. Puedes pedir otro cuando quieras.', 'Usar reglas', () => { L.borrarPlanIA(st(), U()); Store.guardar(); render(); }),
     pfObj: o => guardarPerfil({ objetivo: o }),
     pfNivel: n => guardarPerfil({ nivel: +n }),
     pfLugar: l => guardarPerfil({ lugar: l }),

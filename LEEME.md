@@ -5,11 +5,13 @@ App privada de entrenamiento para Víctor y Virginia. La versión anterior (`../
 ## Qué hay
 - `index.html`, `css/`, `js/`: la app (sin compilar, abre tal cual).
   - `js/ejercicios.js`: catálogo de 159 ejercicios (pasos, errores, vídeo, músculos, lugar, material, riesgo por lesión). Todo lo demás lee de aquí.
-  - `js/plan.js`: el plan semanal de cada uno. Para cambiar un día, cambia la lista `[id, series, reps, descanso]`.
+  - `js/plan-perfil.js`: el plan semanal de cada uno. Por orden: el que hizo el entrenador IA (si sigue valiendo para el perfil y las lesiones), uno hecho con reglas de entrenamiento a partir del perfil (reparto, volumen semanal por músculo, orden, rehabilitación de lesiones, calentamiento y estiramientos de cada día) o, sin perfil, el plan original. Casa, Calistenia y Piscina siempre están, y la piscina se propone el fin de semana.
+  - `js/plan.js`: el plan original (`PLAN_ANTERIOR`), nombres de personas y lugares, y los alias para importar el historial antiguo.
   - `js/logic.js`: ajuste por dolor, lesiones y cansancio; generador sin IA; cálculos corporales.
   - `js/progresion.js`: sobrecarga progresiva. Con lo apuntado (kilos, reps, tiempo, esfuerzo, dolor) propone el peso, las reps, el tiempo o las series de hoy. Lo usan el plan semanal, el generador sin IA y la IA (recibe el historial y esta propuesta como punto de partida).
     También mide la recuperación de cada músculo (grandes ~72 h, pequeños ~48 h, core ~24 h): en el plan quita una serie y no sube peso en los músculos sin recuperar y propone otro día si casi toda la sesión los carga; el generador sin IA los deja descansar; la IA recibe `recuperacion` y `ultimasSesiones`.
 - Perfil → «Mi entrenamiento»: perfil guardado de cada uno (objetivo principal, nivel, lugar, tiempo, días, músculos a priorizar, material de casa). El generador y la IA parten de él; en el plan semanal el objetivo ajusta descansos (y añade cardio al final si es perder peso).
+- `api/plan.js`: el entrenador IA (preparador físico y fisio) que monta el plan semanal completo desde Perfil → Tu plan semanal.
 - `api/rutina.js`: el agente de rutinas (función de Vercel con la API de Claude).
 - `manifest.webmanifest`, `sw.js`, `icons/`: instalable y funciona sin conexión.
 
