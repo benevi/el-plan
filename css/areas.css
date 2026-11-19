@@ -147,3 +147,45 @@ body:not(.sin-nav) .temporizador { bottom: calc(var(--nav-h) + env(safe-area-ins
 
 /* Ejercicios */
 main .filtros input:not([type=checkbox]):not([type=range]) { padding-left: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7389' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px 50%; background-size: 18px; }
+
+/* ── Entrenador: vista previa del check-in ── */
+.previa { position: relative; margin: 20px 0 4px; padding: 14px 16px 12px 18px; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 10%, var(--surface-2)), var(--surface-2));
+  box-shadow: var(--hi), inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent); }
+.previa::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--acc-grad); }
+.hoja .previa h3 { margin: 0 0 8px; font-size: 13px; font-family: var(--f-body); font-stretch: 100%; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--acc); }
+.previa ul { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+.previa li { position: relative; padding-left: 20px; font-size: 14.5px; line-height: 1.4; }
+.previa li::before { content: ''; position: absolute; left: 2px; top: .5em; width: 8px; height: 8px; border-radius: 50%; background: var(--acc-grad); box-shadow: 0 0 8px color-mix(in srgb, var(--acc) 60%, transparent); }
+.previa p { margin: 4px 0; font-size: 13.5px; }
+.previa p svg { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; color: var(--acc); }
+.previa .interruptor { margin: 10px 0 2px; font-size: 14px; }
+
+/* ── Perfil: medidor de nivel ── */
+.medidor { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.medidor > p.tenue { font-size: 13.5px; margin: 0 0 8px; }
+.criterios { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.criterios li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); box-shadow: var(--hi); font-size: 14.5px; color: var(--txt-2); line-height: 1.3; }
+.criterios li::first-letter { color: var(--txt-3); font-size: 16px; }
+.criterios li svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--ok); }
+.criterios li.ok { color: var(--txt); background: color-mix(in srgb, var(--ok) 10%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 28%, transparent); }
+.criterios li .tenue { margin-left: auto; font-size: 13px; white-space: nowrap; }
+.medidor .nota { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.medidor .nota .enlace { padding: 0; font-weight: 700; text-decoration: none; }
+.medidor > p.tenue + p.tenue { margin-top: 6px; font-size: 12.5px; }
+
+/* ── Perfil: partes del perfil (pestañas) ── */
+.chips.grupos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 14px -16px 4px; padding: 4px 16px 6px; gap: 6px; scroll-snap-type: x proximity; }
+.chips.grupos::-webkit-scrollbar { display: none; }
+.chips.grupos .chip { flex-shrink: 0; scroll-snap-align: start; font-weight: 600; }
+.chips.grupos .chip.on { background: var(--acc-grad); color: #06121A; box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--acc) 90%, transparent); }
+
+/* ── Lo que ve tu entrenador ── */
+.analisis { list-style: none; padding: 0; margin: 0; }
+.analisis li { position: relative; padding: 10px 0 10px 16px; font-size: 14.5px; line-height: 1.45; color: var(--txt-2); }
+.analisis li + li { border-top: 1px solid var(--line); }
+.analisis li::before { content: ''; position: absolute; left: 0; top: 17px; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); }
+.analisis li b { color: var(--txt); font-weight: 700; }
+.analisis li > .tenue:last-child { display: block; margin-top: 2px; font-size: 13.5px; color: var(--acc); }
+.hoja.checkin .chips:has([data-act="entrenador.ciZona"]) { flex-wrap: wrap; }
+.hoja.checkin .chips:has([data-act="entrenador.ciZona"]) .chip { flex: 0 0 auto; padding: 0 14px; }
