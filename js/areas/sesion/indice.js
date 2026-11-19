@@ -7,9 +7,9 @@ import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num } from '../../nucleo/ui.js';
 import { crearEjercicio } from '../../nucleo/modelo.js';
 import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
-import { rango } from '../../reglas/progresion.js';
+import { rango, registros } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
-import { abrirFicha, botonesGusto } from '../ejercicios/indice.js';
+import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio', principal: '' };
@@ -53,6 +53,25 @@ function filaSerie(x, i, j) {
     <button class="marca" data-act="sesion.serie" data-e="${i}" data-s="${j}" aria-pressed="${z.hecha}" aria-label="Serie hecha">${z.hecha ? ICONOS.check : ''}</button></li>`;
 }
 
+// Lo que la persona abre o cierra se respeta al repintar.
+const tecnicaAbierta = {};
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.tecnica')) tecnicaAbierta[d.dataset.id] = d.open; }, true);
+
+// Cómo se hace, dentro de la propia tarjeta: vídeo, pasos, errores a evitar y consejo.
+// Abierto si la persona aún no lo ha hecho nunca; plegado (un toque) si ya lo conoce.
+function tecnica(x) {
+  const e = ex(x.id); if (!e || !(e.p && e.p.length)) return '';
+  const nuevo = !registros(estado(), x.id).length;
+  const abierto = x.id in tecnicaAbierta ? tecnicaAbierta[x.id] : nuevo;
+  return `<details class="tecnica" data-id="${h(x.id)}" ${abierto ? 'open' : ''}>
+    <summary>${ICONOS.info} Cómo se hace${nuevo ? ' <span class="insignia">Nuevo para ti</span>' : ''}</summary>
+    ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver vídeo de ${h(e.n)}"><img src="${miniatura(e)}" alt="" loading="lazy" onerror="this.remove()"><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
+    <ol class="pasos">${e.p.map(t => `<li>${h(t)}</li>`).join('')}</ol>
+    ${e.e && e.e.length ? `<p class="evita">Evita</p><ul class="errores">${e.e.map(t => `<li>${h(t)}</li>`).join('')}</ul>` : ''}
+    ${e.c ? `<p class="consejo">${h(e.c)}</p>` : ''}
+  </details>`;
+}
+
 function tarjetaEjercicio(s, x, i, grande = false) {
   const e = ex(x.id) || { n: x.nombre || x.id, m: [] };
   const hechas = x.sets.filter(z => z.hecha).length;
@@ -65,6 +84,7 @@ function tarjetaEjercicio(s, x, i, grande = false) {
     </header>
     ${x.nota ? `<p class="nota">${h(x.nota)}</p>` : ''}
     ${x.motivo ? `<p class="motivo">${h(x.motivo)}</p>` : ''}
+    ${tecnica(x)}
     <ul class="series">${x.sets.map((_, j) => filaSerie(x, i, j)).join('')}</ul>
     ${x.comentario ? `<p class="comentario">«${h(x.comentario)}»</p>` : ''}
   </article>`;

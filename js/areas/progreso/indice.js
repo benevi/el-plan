@@ -7,6 +7,7 @@ import { h, ICONOS, abrirHoja, cerrarHoja, $, num, es, fechaCorta } from '../../
 import { sesionesHechas, resumen, registros } from '../../reglas/progresion.js';
 import { ex } from '../../reglas/catalogo.js';
 import { LUGARES, NIVELES } from '../../datos/constantes.js';
+import { medidorNivel } from '../../reglas/contexto.js';
 import { constancia, textoConstancia, fuerza, salud, lecturaPeso, dolor } from './analisis.js';
 
 const MEDIDAS = [['peso', 'Peso', 'kg', 1], ['cintura', 'Cintura', 'cm', 1], ['cadera', 'Cadera', 'cm', 0], ['cuello', 'Cuello', 'cm', 0], ['pecho', 'Pecho', 'cm', 0], ['brazo', 'Brazo', 'cm', 0], ['muslo', 'Muslo', 'cm', 0], ['grasa', '% grasa', '%', 0]];
@@ -55,6 +56,7 @@ function seccionConstancia(S) {
     </ul>
     <div class="nivel"><div class="fila-dato"><span class="grow">Tu nivel</span><b>${NIVELES[S.perfil.nivel || 1]}</b></div>
       <p class="tenue pie">${S.perfil.nivelAuto ? 'Tu entrenador lo sube o lo baja según tu constancia y tu progreso.' : 'Lo eliges tú en <a href="#perfil">Perfil</a>.'}</p>
+      ${(() => { const m = medidorNivel(S); return m.criterios.length ? `<p class="tenue pie">Para ${NIVELES[(S.perfil.nivel || 1) + 1]}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : '<i></i>'}<span class="grow">${h(c.que)}</span><span class="tenue">${h(c.valor)}</span></li>`).join('')}</ul>` : ''; })()}
     </div></section>`;
 }
 
