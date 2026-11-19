@@ -116,7 +116,7 @@ function errorIA(e) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Usa POST' });
   if (process.env.APP_CODE && req.headers['x-app-code'] !== process.env.APP_CODE) return res.status(401).json({ error: 'código de acceso incorrecto' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'falta la clave de la IA en el servidor' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: `falta configurar la clave de la IA (ANTHROPIC_API_KEY) en Vercel para el entorno ${process.env.VERCEL_ENV === 'preview' ? 'Preview' : process.env.VERCEL_ENV === 'production' ? 'Production' : 'de esta versión'}; márcalo y vuelve a desplegar`, codigo: 'sin_clave' });
 
   let body;
   try { body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}); } catch (e) { return res.status(400).json({ error: 'JSON no válido' }); }

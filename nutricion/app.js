@@ -51,7 +51,7 @@
   function tarjetaObjetivo(u) {
     const o = objetivos(u);
     if (o.faltan.length) return `<div class="note gold"><strong>Faltan datos de ${NOMBRES[u]}</strong>Para calcular sus cantidades necesito: ${o.faltan.join(', ')}. <a href="#" data-a="tab" data-v="ajustes">Añadirlos</a></div>`;
-    const t = (x, n) => `<div class="card" style="padding:12px"><div class="row"><span class="grow card-title" style="font-size:14px">${n}</span><span class="faint">${h(o.objetivo)}</span></div><div class="tgt"><div><b>${x.kcal}</b><span>kcal</span></div><div><b>${x.proteina}</b><span>prot g</span></div><div><b>${x.hidratos}</b><span>hidr g</span></div><div><b>${x.grasa}</b><span>grasa g</span></div></div></div>`;
+    const t = (x, n) => `<div class="card" style="padding:12px"><div class="card-title" style="font-size:14px">${n}</div><div class="faint" style="font-size:12px;line-height:1.35">${h(o.objetivo)}</div><div class="tgt"><div><b>${x.kcal}</b><span>kcal</span></div><div><b>${x.proteina}</b><span>prot g</span></div><div><b>${x.hidratos}</b><span>hidr g</span></div><div><b>${x.grasa}</b><span>grasa g</span></div></div></div>`;
     return `<div class="stack">${t(o.entreno, 'Día de entreno')}${t(o.descanso, 'Día de descanso')}</div><p class="faint" style="margin-top:6px">Agua: ${(o.agua.descanso / 1000).toString().replace('.', ',')} l en descanso, ${(o.agua.entreno / 1000).toString().replace('.', ',')} l si entrenas. <a href="#" data-a="como">Cómo se calcula</a></p>`;
   }
 
