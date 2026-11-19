@@ -28,8 +28,9 @@ Criterios:
 10. Piscina: series por largos o por tiempo, técnica de crol y espalda, aquajogging para cardio sin impacto si hay lesiones de carga.
 11. Nombre de la sesión: describe el trabajo ("Torso", "Pierna y glúteo", "Cuerpo completo", "Piscina: técnica y cardio"), nunca el objetivo.
 
-"explicacion": 3-6 puntos breves, en segunda persona, del PORQUÉ: reparto o músculos y recuperación, series/reps/descansos, kilos y progresión, lesiones, y qué has cambiado por su análisis o sus comentarios. Cita datos reales suyos.
-Formato: "reps" texto corto: "8-10", "12 c/pierna", "30-45s", "20 min", "25 m". "descanso" en segundos. Español de España, claro y cercano. Notas de una frase.`;
+"nota" de cada ejercicio: una o dos frases cortas con el PORQUÉ de ese ejercicio para esta persona, con sus datos: qué trabaja y para qué objetivo, a qué sustituye y por qué (estancado, le molestó, no le gusta), cómo va su progreso ("de 30 a 42,5 kg") o qué zona implica y con qué dolor ("tu cadera está en 4/10: carga moderada"). Nunca frases genéricas como "con cuidado por tu lesión" o "técnica limpia" sin dato. En rehabilitación: para qué zona, su dolor y qué fortalece.
+"explicacion": el primer punto es UNA frase que resume por qué este día es así (trabajo, objetivo y lo más importante que has decidido por sus datos); después 2-5 puntos breves, en segunda persona, del PORQUÉ: reparto o músculos y recuperación, series/reps/descansos, kilos y progresión, lesiones, y qué has cambiado por su análisis o sus comentarios. Cita datos reales suyos.
+Formato: "reps" texto corto: "8-10", "12 c/pierna", "30-45s", "20 min", "25 m". "descanso" en segundos. Español de España, claro y cercano. Notas cortas y concretas.`;
 
 const tarea = idsSuaves => ({
   type: 'object', additionalProperties: false, required: ['id', 'nombre', 'detalle', 'duracion'],
@@ -39,7 +40,7 @@ const ejercicio = ids => ({
   type: 'object', additionalProperties: false, required: ['id', 'rol', 'series', 'reps', 'descanso', 'kg', 'nota'],
   properties: {
     id: { type: 'string', enum: ids }, rol: { type: 'string', enum: ['principal', 'rehab', 'cardio'] },
-    series: { type: 'integer' }, reps: { type: 'string' }, descanso: { type: 'integer' }, kg: { type: 'number' }, nota: { type: 'string' },
+    series: { type: 'integer' }, reps: { type: 'string' }, descanso: { type: 'integer' }, kg: { type: 'number' }, nota: { type: 'string', description: 'Por qué este ejercicio para esta persona, con sus datos (1-2 frases cortas)' },
   },
 });
 const textos = { type: 'array', items: { type: 'string' } };

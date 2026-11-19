@@ -99,9 +99,10 @@ function cardioDelDia(S, lugar, pool, k, extra = 0) {
   const nivel = S.perfil.nivel || 1, an = analizarEjercicios(S);
   let reps = null, nota = '';
   const conFuerza = tiene(S, 'musculo') || tiene(S, 'fuerza');
-  if (tiene(S, 'perder')) { reps = `${(conFuerza ? 15 : 20) + extra} min`; nota = 'Ritmo de zona 2: puedes hablar con frases cortas. Es lo que más grasa quema sin robar recuperación a la fuerza.'; }
-  else if (tiene(S, 'resistencia')) { reps = `${15 + extra} min`; nota = nivel >= 2 ? 'Intervalos: 2 min fuerte y 1 min suave, repetido.' : 'Ritmo constante y cómodo; sube un poco cada semana.'; }
-  else if (tiene(S, 'salud')) { reps = `${10 + extra} min`; nota = 'Suave, para la salud del corazón.'; }
+  const mas = extra ? ` (+${extra} porque tu peso no ha bajado en 4 semanas)` : '';
+  if (tiene(S, 'perder')) { reps = `${(conFuerza ? 15 : 20) + extra} min`; nota = `${reps}${mas} porque buscas perder grasa${conFuerza ? ' sin quitar sitio a la fuerza' : ''}. Ritmo en el que puedas hablar con frases cortas.`; }
+  else if (tiene(S, 'resistencia')) { reps = `${15 + extra} min`; nota = `${reps}${mas} porque buscas resistencia. ` + (nivel >= 2 ? 'Intervalos: 2 min fuerte y 1 min suave.' : 'Ritmo constante y cómodo; sube un poco cada semana.'); }
+  else if (tiene(S, 'salud')) { reps = `${10 + extra} min`; nota = `${reps}${mas} suaves por la salud del corazón.`; }
   if (!reps) return null;
   const maq = e => (lugar === 'gym' && e.mat.includes('maquina') ? 2 : 0);
   const c = pool.filter(e => e.m[0] === 'cardio' && e.t === 'tiempo').sort((a, b) => (preferencia(an, b.id) + maq(b)) - (preferencia(an, a.id) + maq(a)) || a.niv - b.niv || a.id.localeCompare(b.id));
@@ -123,6 +124,55 @@ export function ajustesPorTendencia(S) {
   if (sube.length) { out.rehabExtra = true; out.notas.push(`El dolor de ${lista(sube.map(d => minus(d.nombre)))} ha subido estas dos semanas: más rehabilitación y menos carga en esa zona.`); }
   if (t.constancia < 50 && sesionesHechas(S).length >= 4) out.notas.push(`Estas 4 semanas has hecho ${es(t.sesionesPorSemana)} sesiones por semana de ${S.perfil.disponibilidad.dias} previstas: mejor un plan realista que uno que no se cumple.`);
   return out;
+}
+
+// ── Por qué de cada ejercicio: corto y con sus datos, nunca una frase genérica ──
+const frase = t => { t = String(t || '').trim(); return t ? t[0].toUpperCase() + t.slice(1) + (/[.!?»)]$/.test(t) ? '' : '.') : ''; };
+const POR_QUE_FUERA = { estancado: 'llevaba 3 sesiones sin mejorar', molesta: 'te ha molestado', rechazado: 'no lo quieres' };
+const OBJ_CORTO = { perder: 'perder grasa', musculo: 'ganar músculo', fuerza: 'ganar fuerza', resistencia: 'resistencia', salud: 'salud y movilidad', natacion: 'nadar mejor' };
+const objsTxt = S => lista(objetivosDe(S).map(o => OBJ_CORTO[o] || minus(OBJETIVOS[o] ? OBJETIVOS[o].nombre : o)));
+// Para qué sirve un accesorio según el objetivo principal.
+function paraQue(S, e) {
+  if (e.m[0] === 'natacion' || e.l.length === 1 && e.l[0] === 'piscina') return 'técnica y fondo en el agua, sin impacto';
+  if (e.m[0] === 'core') return 'estabilidad para proteger la espalda en el resto';
+  const o = objetivosDe(S)[0];
+  return { perder: 'conserva músculo mientras pierdes grasa', musculo: 'suma volumen para que crezca', fuerza: 'refuerza lo que limita tus básicos', resistencia: 'resistencia muscular con descansos cortos', salud: 'fuerza útil para el día a día' }[o] || 'completa el trabajo del día';
+}
+const motivoFuera = a => POR_QUE_FUERA[a.estado] || (a.gusto === 'nogusta' ? 'no te gusta' : null);
+function dolorDe(S, z, dolorHoy = {}) {
+  if (dolorHoy[z] != null && dolorHoy[z] !== '') return +dolorHoy[z];
+  const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z);
+  return l ? +l.dolor : null;
+}
+function zonaTxt(S, z, dolorHoy) {
+  const d = dolorDe(S, z, dolorHoy);
+  return `tu ${minus((ZONAS[z] || {}).corta || z)}${d != null ? ` (${d}/10)` : ''}`;
+}
+// c: { i, d, an, carga, niveles, dolorHoy, sustituye: { n, por } }
+function porQueEjercicio(S, e, c) {
+  const a = c.an[e.id];
+  const musc = [...new Set([e.m[0], ...(e.s || []).slice(0, 1)])].map(m => minus(MUSCULOS[m] || m)).filter(Boolean);
+  const out = [];
+  out.push(c.i === 0 && esCompuesto(e) && e.t === 'reps' && !e.l.every(l => l === 'piscina')
+    ? `Básico del día para ${lista(musc)}: ${c.d.series} × ${c.d.reps} con ${c.d.descanso} s porque buscas ${objsTxt(S)}`
+    : `${musc.length ? `${lista(musc).replace(/^./, x => x.toUpperCase())}: ` : ''}${paraQue(S, e)}`);
+  if (c.sustituye) out.push(`En lugar de ${c.sustituye.n}: ${c.sustituye.por}`);
+  else if (a && a.estado === 'progresa' && a.desde) out.push(`Vas subiendo (${a.desde}): lo mantengo`);
+  else if (a && a.gusto === 'gusta') out.push('Te gusta y te funciona');
+  if (riesgo(e, c.niveles) === 'precaucion') {
+    const zs = Object.keys(c.niveles).filter(z => (e.r || {})[z]);
+    if (zs.length) out.push(`Implica a ${lista(zs.map(z => zonaTxt(S, z, c.dolorHoy)))}: carga moderada y para si pasa de 3/10`);
+  }
+  if (a && a.problemas.includes('dificil')) out.push('La última vez te costó: empieza más ligero');
+  const k = c.carga[e.m[0]];
+  if (k && k.estado === 'casi') out.push(`Tu ${minus(MUSCULOS[e.m[0]])} aún se recupera: no apures al fallo`);
+  return out.slice(0, 3).map(frase).join(' ');
+}
+function porQueRehab(S, e, z, dolorHoy) {
+  const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z) || {};
+  const diag = l.nota && l.nota.length <= 40 ? `${l.nota.trim()}, ` : '';
+  const d = dolorDe(S, z, dolorHoy);
+  return frase(`Para tu ${minus((ZONAS[z] || {}).corta || z)} (${diag}${d != null ? d + '/10' : 'activa'}): fortalece ${minus(MUSCULOS[e.m[0]] || e.m[0])} sin cargar la zona`) + ' Lento; el dolor no debe pasar de 3/10.';
 }
 
 // ── Una sesión completa con reglas ──
@@ -149,7 +199,7 @@ export function montarDia(S, op) {
   });
   const ejercicios = rehab.map(r => {
     const e = ex(r.id);
-    return { id: e.id, rol: 'rehab', series: Math.min(3, e.d[0]), reps: e.d[1], descanso: 45, nota: `Rehabilitación de tu ${minus(ZONAS[r.zona].corta)}: lento y controlado, el dolor no debe pasar de 3/10.` };
+    return { id: e.id, rol: 'rehab', series: Math.min(3, e.d[0]), reps: e.d[1], descanso: 45, nota: porQueRehab(S, e, r.zona, op.dolorHoy || {}) };
   });
 
   // Principal: llena los huecos hasta los minutos que tiene.
@@ -174,20 +224,21 @@ export function montarDia(S, op) {
   }
   // Orden: multiarticulares primero, core al final.
   elegidos.sort((a, b) => (b.m[0] === 'core' ? -1 : 0) - (a.m[0] === 'core' ? -1 : 0) || (esCompuesto(b) - esCompuesto(a)) || (b.s || []).length - (a.s || []).length);
+  // Lo que dejo fuera por el análisis (estancado, molesta, no lo quiere): cada uno lo sustituye un elegido del mismo músculo.
+  const fuera = Object.values(an).filter(a => motivoFuera(a) && ex(a.id) && !elegidos.some(e => e.id === a.id));
   elegidos.forEach((e, i) => {
     usados[e.id] = (usados[e.id] || 0) + 1;
-    const d = dosis(S, e, i, lugar), a = an[e.id];
-    const notas = [];
-    if (riesgo(e, niveles) === 'precaucion') notas.push('Con cuidado por tu lesión: carga moderada y técnica limpia.');
-    if (a && a.gusto === 'gusta') notas.push('Te gusta.');
-    if (a && a.problemas.includes('dificil')) notas.push('La última vez te costó: empieza un poco más ligero.');
-    ejercicios.push({ id: e.id, rol: 'principal', ...d, nota: notas.join(' ') });
+    const d = dosis(S, e, i, lugar);
+    const j = fuera.findIndex(a => ex(a.id).m[0] === e.m[0]);
+    const sustituye = j >= 0 ? { n: minus(ex(fuera[j].id).n), por: motivoFuera(fuera[j]) } : null;
+    if (j >= 0) fuera.splice(j, 1);
+    ejercicios.push({ id: e.id, rol: 'principal', ...d, nota: porQueEjercicio(S, e, { i, d, an, carga, niveles, dolorHoy: op.dolorHoy || {}, sustituye }) });
   });
   if (cardio) {
     ejercicios.push(cardio);
     // Si los ejercicios mínimos no caben, el cardio se acorta (nunca menos de 10 min).
     const sobra = tiempoSesion({ ejercicios: [...ejercicios, ...elegidos.map((e, i) => ({ id: e.id, ...dosis(S, e, i, lugar) }))] }) - minutos;
-    if (sobra > 3) cardio.reps = `${Math.max(10, minDe(cardio.reps) - Math.round(sobra))} min`;
+    if (sobra > 3) { cardio.reps = `${Math.max(10, minDe(cardio.reps) - Math.round(sobra))} min`; cardio.nota = cardio.nota.replace(/^\d+ min( \([^)]*\))?/, `${cardio.reps} (lo que cabe en tu tiempo)`); }
   }
 
   // Calentamiento: cardio suave, movilidad de lo que se usa, activación de la lesión, aproximación.
@@ -230,7 +281,20 @@ export function montarDia(S, op) {
   const estancados = elegidos.length ? Object.values(an).filter(a => a.estado === 'estancado' && !elegidos.some(e => e.id === a.id)) : [];
   if (estancados.length) explicacion.push(`Cambio ${lista(estancados.slice(0, 2).map(a => ex(a.id).n.toLowerCase()))} por variantes: llevabas 3 sesiones sin mejorar.`);
 
+  explicacion.unshift(resumenDia(S, { plantilla, lugar, elegidos, rehab, cardio, an, carga, extraCardio: op.extraCardio || 0 }));
   return { fuente: 'reglas', lugar, minutos, nombre: plantilla.nombre, foco: [...new Set(elegidos.map(e => MUSCULOS[e.m[0]]))].slice(0, 4).join(', '), tipo: op.tipo, explicacion, calentamiento, ejercicios, vuelta };
+}
+
+// Una frase: por qué este día es así (lo primero que se lee en Hoy y en la sesión).
+function resumenDia(S, c) {
+  const musc = [...new Set(c.elegidos.map(e => minus(MUSCULOS[e.m[0]])))].slice(0, 3);
+  const partes = [`${c.plantilla.nombre}${musc.length ? ` (${lista(musc)})` : ''} porque buscas ${objsTxt(S)}`];
+  if (c.rehab.length) partes.push(`rehabilitación de ${lista([...new Set(c.rehab.map(r => zonaTxt(S, r.zona)))])}`);
+  if (c.cardio) partes.push(`${c.cardio.reps} de cardio${c.extraCardio ? ' (más que antes: tu peso no baja)' : ''}`);
+  const cambiados = Object.values(c.an).filter(a => motivoFuera(a) && ex(a.id) && !c.elegidos.some(e => e.id === a.id)).map(a => minus(ex(a.id).n));
+  let t = partes.length > 1 ? `${partes[0]}, con ${lista(partes.slice(1))}` : partes[0];
+  if (cambiados.length) t += `; dejo fuera ${lista(cambiados.slice(0, 2))} por cómo te ha ido`;
+  return frase(t);
 }
 
 // Minutos aproximados de un ejercicio con sus descansos.
@@ -435,10 +499,10 @@ export function ajustarAlCheckin(S, dia, ci) {
     const molesta = an[x.id] && (an[x.id].estado === 'molesta' || an[x.id].gusto === 'rechazo');
     if (!peligro && !molesta) return x;
     const alt = alternativas(e, ci.lugar, S.perfil, { excluir: ej.map(y => y.id), dolorHoy }).filter(a => !an[a.id] || an[a.id].estado !== 'molesta')[0];
-    const por = peligro ? `hoy te carga la zona que te duele` : an[x.id].gusto === 'rechazo' ? 'no lo quieres' : `te ha molestado («${(an[x.id].comentarios.slice(-1)[0] || {}).texto || 'dolor después'}»)`;
+    const por = peligro ? `carga la zona que hoy te duele` : an[x.id].gusto === 'rechazo' ? 'no lo quieres' : `te ha molestado («${(an[x.id].comentarios.slice(-1)[0] || {}).texto || 'dolor después'}»)`;
     if (!alt) { cambios.push(`Quito ${e.n.toLowerCase()}: ${por}.`); return null; }
     cambios.push(`Cambio ${e.n.toLowerCase()} por ${alt.n.toLowerCase()}: ${por}.`);
-    return { ...x, id: alt.id, nota: 'Cambiado hoy por tu check-in.' };
+    return { ...x, id: alt.id, nota: frase(`Hoy en lugar de ${e.n.toLowerCase()}: ${por}`) + ' Mismo trabajo, sin cargar esa zona.' };
   }).filter(Boolean);
   // Comentarios de «ocupado»: aviso con alternativa.
   ej.forEach(x => { const a = an[x.id]; if (a && a.problemas.includes('ocupado')) { const alt = alternativas(ex(x.id), ci.lugar, S.perfil, { excluir: ej.map(y => y.id), dolorHoy })[0]; if (alt) x.nota = [x.nota, `Si está ocupado otra vez, haz ${alt.n.toLowerCase()}.`].filter(Boolean).join(' '); } });
@@ -454,7 +518,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   // Energía.
   if (energia <= 2) {
     const antes = ej.filter(x => x.rol === 'principal').length;
-    ej.forEach(x => { if (x.rol === 'principal' && x.series > 2) x.series--; if (x.rol === 'cardio') x.reps = energia === 1 ? '10 min' : '12-15 min'; });
+    ej.forEach(x => { if (x.rol === 'principal' && x.series > 2) x.series--; if (x.rol === 'cardio') { x.reps = energia === 1 ? '10 min' : '12-15 min'; x.nota = `${x.reps} suaves: hoy tienes poca energía (${energia}/5) y mejor recuperar. Ritmo en el que puedas hablar.`; } });
     const prin = ej.filter(x => x.rol === 'principal');
     if (prin.length > 4) { const quitar = prin.slice(4).map(x => x.id); ej = ej.filter(x => !quitar.includes(x.id)); }
     cambios.push(`Energía ${energia === 1 ? 'muy baja' : 'baja'}: una serie menos${antes > 4 ? `, ${antes - 4} ejercicio${antes - 4 > 1 ? 's' : ''} menos` : ''}${ej.some(x => x.rol === 'cardio') ? ' y cardio más corto' : ''}, y sin subir peso.`);
@@ -472,7 +536,7 @@ export function ajustarAlCheckin(S, dia, ci) {
       quitados.push(ex(ej[idx].id).n.toLowerCase()); ej.splice(idx, 1); t = tiempoSesion({ ejercicios: ej });
     }
     const c = ej.find(x => x.rol === 'cardio');
-    if (t > ci.minutos + 5 && c) { c.reps = `${Math.max(8, minDe(c.reps) - (t - ci.minutos))} min`; t = tiempoSesion({ ejercicios: ej }); }
+    if (t > ci.minutos + 5 && c) { c.reps = `${Math.max(8, minDe(c.reps) - (t - ci.minutos))} min`; c.nota = String(c.nota || '').replace(/^\d+ min( \([^)]*\))?/, `${c.reps} (lo que cabe en tus ${ci.minutos} min de hoy)`); t = tiempoSesion({ ejercicios: ej }); }
     if (quitados.length) cambios.push(`Tienes ${ci.minutos} minutos: quito ${lista(quitados)}.`);
   } else if (t < ci.minutos - 15 && maxDolor < 7) {
     const extra = montarDia(S, { lugar: ci.lugar, minutos: ci.minutos, tipo: tipoDe(base), dolorHoy, k: diaSemana() + 1 }).ejercicios
@@ -497,7 +561,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   const datos = {
     ...base, fuente: dia && dia === base ? 'plan' : base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',
     lugar: ci.lugar, minutos: ci.minutos, ejercicios: ej,
-    explicacion: [...(cambios.length ? cambios.map(c => 'Por tu check-in: ' + c) : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(base.explicacion || [])].slice(0, 8),
+    explicacion: [...(base.explicacion || []).slice(0, 1), ...(cambios.length ? cambios.map(c => 'Por tu check-in: ' + c) : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(base.explicacion || []).slice(1)].slice(0, 8),
     checkin: { energia, dolor: dolorHoy, tiempo: ci.minutos },
   };
   return { datos, cambios };
@@ -556,9 +620,21 @@ function completarIA(S, d, { lugar, minutos, dolorHoy = {}, k = 0 }) {
     // Sin historial no hay referencia: un peso absurdo se descarta y la persona elige el de partida.
     x.kg = conHistorial ? acotarKg(S, x.id, +x.kg) : +x.kg <= 120 ? +x.kg : null;
   });
+  // Cada ejercicio con su porqué concreto: si la IA deja una nota vacía o genérica, la escribe la app con sus datos.
+  const an = analizarEjercicios(S), carga = d.futuro ? {} : cargaMuscular(S), niveles = nivelesZona(S.perfil, dolorHoy);
+  d.ejercicios.forEach((x, i) => {
+    const e = ex(x.id); if (!e || !notaGenerica(x.nota)) return;
+    if (x.rol === 'rehab') { const z = zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0]; if (z) x.nota = porQueRehab(S, e, z, dolorHoy); }
+    else if (x.rol === 'principal') x.nota = porQueEjercicio(S, e, { i, d: x, an, carga, niveles, dolorHoy });
+  });
+  if (!(d.explicacion || []).length) {
+    const rehabZ = d.ejercicios.filter(x => x.rol === 'rehab').map(x => ({ zona: zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0] })).filter(x => x.zona);
+    d.explicacion = [resumenDia(S, { plantilla: { nombre: d.nombre || 'Sesión' }, elegidos: d.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id)).filter(Boolean), rehab: rehabZ, cardio: d.ejercicios.find(x => x.rol === 'cardio'), an: {} })];
+  }
   if (añadidos.length) d.explicacion = [...(d.explicacion || []), `La app añadió ${lista(añadidos)}, que siempre van.`];
   return d;
 }
+const notaGenerica = t => !t || String(t).trim().length < 30 || /^(con cuidado|cuidado|técnica limpia|cambiado|sin dolor|controlad)/i.test(String(t).trim()) && !/\d/.test(t);
 
 // ── Sesión de hoy ──
 // Devuelve { sesion, aviso }. Sin IA (o si falla) usa el día del plan ajustado al check-in o una sesión de reglas.
@@ -579,7 +655,7 @@ export async function crearSesionHoy(ci) {
       const s = r.sesion;
       const d = completarIA(S, { ...s, vuelta: s.vueltaCalma, ejercicios: (s.ejercicios || []).filter(x => ex(x.id) && ex(x.id).l.includes(ci.lugar)) }, { lugar: ci.lugar, minutos: ci.minutos, dolorHoy: ci.dolorHoy });
       if (d.ejercicios.filter(x => x.rol !== 'rehab').length) {
-        datos = { ...d, explicacion: [...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...(d.explicacion || [])].slice(0, 8), fuente: 'ia', lugar: ci.lugar, minutos: ci.minutos, checkin: local.datos.checkin };
+        datos = { ...d, explicacion: [...(d.explicacion || []).slice(0, 1), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...(d.explicacion || []).slice(1)].slice(0, 8), fuente: 'ia', lugar: ci.lugar, minutos: ci.minutos, checkin: local.datos.checkin };
       } else aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
     } catch (e) {
       aviso = `Sesión ajustada por la app (${e.message}).`;
@@ -649,7 +725,7 @@ function normalizarPlan(S, p, lugares, dias, minutos) {
   }).filter(Boolean);
   // Días que la IA se dejó: los completa la app.
   const faltan = dias.filter(d => !vistos.has(d));
-  if (faltan.length) planReglas(S, { dias: faltan, minutos, lugares }).dias.forEach(d => out.push({ ...d, explicacion: ['Día completado por la app.', ...d.explicacion] }));
+  if (faltan.length) planReglas(S, { dias: faltan, minutos, lugares }).dias.forEach(d => out.push({ ...d, explicacion: [...d.explicacion.slice(0, 1), 'Día completado por la app.', ...d.explicacion.slice(1)] }));
   return {
     semana: semanaISO(), creado: new Date().toISOString(), fuente: 'ia',
     resumen: String(p.resumen || ''), criterios: String(p.criterios || ''), progresion: String(p.progresion || ''),
