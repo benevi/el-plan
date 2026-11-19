@@ -221,7 +221,7 @@
     const vuelta = (window.COOLDOWNS[u][clave] || []).map(x => ({ n: x.name, d: x.detail, t: x.duration, ok: false }));
     S.session = {
       key: hoyISO() + '_' + u + '_' + Date.now(), user: u, ref: d.ref, day: d.ref.startsWith('P:') ? d.ref.slice(2) : d.ref, nombre: d.nombre, lugar: d.lugar,
-      date: new Date().toISOString(), checkin: JSON.parse(JSON.stringify(checkin)), ajustes: a.ajustes, aviso: a.aviso, notas: d.notas || '',
+      date: new Date().toISOString(), checkin: JSON.parse(JSON.stringify(checkin)), ajustes: a.ajustes, aviso: a.aviso, notas: d.notas || '', explicacion: d.explicacion || [],
       calent, vuelta,
       exercises: a.lista.map(x => {
         const e = L.ex(x.id), sg = progresionHoy(S, u, x, checkin, a.niveles, d);
@@ -261,6 +261,7 @@
     if (s.aviso) out += `<div class="note warn" style="margin-top:12px"><strong>Ojo</strong>${h(s.aviso)}</div>`;
     if (s.ajustes.length) out += `<details class="fold" style="margin-top:12px"><summary>Ajustes de hoy (${s.ajustes.length})</summary><div style="padding:0 14px 14px"><ul style="padding-left:18px;font-size:14px" class="muted">${s.ajustes.map(a => `<li>${h(a)}</li>`).join('')}</ul></div></details>`;
     if (s.notas) out += `<div class="note" style="margin-top:12px"><strong>Notas de la rutina</strong>${h(s.notas)}</div>`;
+    out += porQue(s.explicacion, false);
     out += `<details class="fold" style="margin-top:12px"><summary>Calentamiento · ${s.calent.filter(t => t.ok).length}/${s.calent.length}</summary>${tarea(s.calent, 'c')}</details>`;
     out += '<div class="stack" style="margin-top:12px">' + s.exercises.map((x, i) => tarjetaEj(x, i, s)).join('') + '</div>';
     out += `<details class="fold" style="margin-top:12px"><summary>Vuelta a la calma · ${s.vuelta.filter(t => t.ok).length}/${s.vuelta.length}</summary>${tarea(s.vuelta, 'v')}</details>`;
@@ -558,9 +559,10 @@
   function resultadoGen() {
     const r = ui.genResult;
     return `<div class="card hero" style="margin-top:20px"><div class="card-title">${h(r.nombre)}</div><div class="card-sub">${h(r.foco)} · ${h(window.LUGARES[r.lugar])} · ${r.fuente === 'ia' ? 'Hecha con IA' : 'Hecha con reglas'}</div>${r.notas ? `<p style="font-size:14px;margin-top:8px">${h(r.notas)}</p>` : ''}</div>
-      <div class="stack" style="margin-top:10px">${r.ej.map(([id, se, re, de, no, kg], i) => { const e = L.ex(id); return `<button class="lib-item" data-act="tecnica" data-arg="${id}"><span class="ex-num">${i + 1}</span><span class="grow"><span class="lib-name" style="display:block">${h(e.n)}</span><span class="lib-meta">${se} × ${h(re)}${kg != null && e.t === 'reps' ? ` · <b style="color:var(--ok)">${fmt(kg, 2)} kg</b>` : ''}${de ? ` · descanso ${de} s` : ''}</span>${no ? `<span class="faint" style="display:block">${h(no)}</span>` : ''}</span><span class="chev">›</span></button>`; }).join('')}</div>
+      ${porQue(r.explicacion, true)}<div class="stack" style="margin-top:10px">${r.ej.map(([id, se, re, de, no, kg], i) => { const e = L.ex(id); return `<button class="lib-item" data-act="tecnica" data-arg="${id}"><span class="ex-num">${i + 1}</span><span class="grow"><span class="lib-name" style="display:block">${h(e.n)}</span><span class="lib-meta">${se} × ${h(re)}${kg != null && e.t === 'reps' ? ` · <b style="color:var(--ok)">${fmt(kg, 2)} kg</b>` : ''}${de ? ` · descanso ${de} s` : ''}</span>${no ? `<span class="faint" style="display:block">${h(no)}</span>` : ''}</span><span class="chev">›</span></button>`; }).join('')}</div>
       <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="genEmpezar">${IC.play} Empezar</button><button class="btn sec2" data-act="genGuardar">Guardar</button></div>`;
   }
+  function porQue(lista, abierto) { return Array.isArray(lista) && lista.length ? `<details class="fold" style="margin-top:12px"${abierto ? ' open' : ''}><summary>Por qué esta rutina</summary><div style="padding:0 14px 14px"><ul style="padding-left:18px;font-size:14px" class="muted">${lista.map(x => `<li style="margin-bottom:6px">${h(x)}</li>`).join('')}</ul></div></details>` : ''; }
   async function generarIA() {
     const u = U(), S = st(), g = ui.gen;
     ui.genLoading = true; render();
