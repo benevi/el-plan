@@ -13,9 +13,10 @@ export function comprobar(req, res) {
   catch (e) { res.status(400).json({ error: 'petición mal formada' }); return null; }
 }
 
-// Pide a Claude una respuesta JSON que cumple `esquema`.
+// Pide a Claude una respuesta JSON que cumple `esquema`. En streaming para que las respuestas largas
+// (el plan de la semana) no choquen con los límites de tiempo de una petición normal.
 export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 'low', maxTokens = 16000 }) {
-  const msg = await client.beta.messages.create({
+  const msg = await client.beta.messages.stream({
     model: MODELO,
     max_tokens: maxTokens,
     betas: ['server-side-fallback-2026-07-01'],
@@ -23,7 +24,8 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
     output_config: { effort: esfuerzo, format: { type: 'json_schema', schema: esquema } },
     system: sistema,
     messages: [{ role: 'user', content: usuario }],
-  });
+  }).finalMessage();
+  console.log('IA uso', JSON.stringify({ entrada: msg.usage && msg.usage.input_tokens, salida: msg.usage && msg.usage.output_tokens }));
   if (msg.stop_reason === 'refusal') { const e = new Error('la IA no ha querido responder a esto'); e.status = 422; throw e; }
   if (msg.stop_reason === 'max_tokens') { const e = new Error('respuesta incompleta de la IA'); e.status = 502; throw e; }
   return JSON.parse(msg.content.filter(b => b.type === 'text').map(b => b.text).join(''));

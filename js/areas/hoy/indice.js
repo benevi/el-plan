@@ -1,61 +1,89 @@
-// Área HOY (inicio): qué toca hoy, la sesión en marcha o hecha, la semana y el plan.
+// Área HOY (inicio). Un solo camino: perfil → semana → sesión de hoy.
+// - Sin perfil: completar el perfil.
+// - Sin plan esta semana: decir qué días puede entrenar (el entrenador monta la semana).
+// - Con plan: lo que toca hoy (o el descanso y lo siguiente), la sesión en marcha o hecha, y la semana.
 
 import { rutas, pestaña, acciones, ir } from '../../nucleo/router.js';
 import { estado, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, fechaLarga } from '../../nucleo/ui.js';
 import { sesionDeHoy, diaSemana } from '../../nucleo/modelo.js';
-import { PERSONAS, LUGARES, DIAS_CORTOS } from '../../datos/constantes.js';
-import { tarjetaPlan, planDeHoy, planDeLaSemana } from '../entrenador/indice.js';
-import { sesionesHechas } from '../../reglas/progresion.js';
+import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
+import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias } from '../entrenador/indice.js';
+import { siguientePendiente, tiempoSesion } from '../entrenador/entrenador.js';
+import * as progreso from '../progreso/indice.js';
 
-function semanaActual(S) {
-  const hoy = new Date(), d = diaSemana(hoy);
-  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - d + 1);
-  const hechas = new Set(sesionesHechas(S).map(s => s.fecha));
-  const plan = planDeLaSemana(S);
-  return [1, 2, 3, 4, 5, 6, 7].map(i => {
-    const f = new Date(lunes); f.setDate(lunes.getDate() + i - 1);
-    const iso = hoyISO(f);
-    return { i, iso, hecha: hechas.has(iso), toca: plan && plan.dias.some(x => x.diaSemana === i), hoy: i === d };
-  });
+const minus = t => String(t || '').toLowerCase();
+
+function tiraSemana(S) {
+  const dias = estadoDias(S), hoy = diaSemana();
+  return `<ol class="tira-semana" aria-label="Esta semana">${[1, 2, 3, 4, 5, 6, 7].map(i => {
+    const d = dias.find(x => x.diaSemana === i);
+    return `<li class="${i === hoy ? 'hoy' : ''} ${d ? 'toca ' + d.estado + (d.estado === 'hecho' ? ' hecha' : '') : ''}" title="${d ? h(d.nombre) : 'Descanso'}"><span>${DIAS_CORTOS[i]}</span><i></i></li>`;
+  }).join('')}</ol>`;
 }
 
 function tarjetaHoy(S) {
   const s = sesionDeHoy(S);
-  const plan = planDeHoy(S);
   if (s && s.estado === 'hecha') {
     const series = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
+    const sig = siguientePendiente(S);
     return `<section class="tarjeta destacada hecha">
       <span class="etiqueta">${ICONOS.check} Hecha</span>
       <h2>${h(s.nombre)}</h2><p class="tenue">${series} series · ${h(LUGARES[s.lugar] || '')}${s.cierre && s.cierre.esfuerzo ? ' · esfuerzo ' + s.cierre.esfuerzo + '/5' : ''}</p>
-      <div class="fila-botones"><a class="btn sec" href="#sesion/${s.id}">Ver sesión</a><button class="btn sec" data-act="entrenador.prepararHoy">Otra sesión</button></div></section>`;
+      ${sig ? `<p class="tenue">Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minus(sig.nombre))}.</p>` : ''}
+      <a class="btn sec" href="#sesion/${s.id}">Ver sesión</a></section>`;
   }
   if (s) {
     const total = s.ejercicios.reduce((a, x) => a + x.sets.length, 0), hechas = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
     return `<section class="tarjeta destacada">
-      <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.fuente === 'ia' ? 'entrenador IA' : s.fuente === 'plan' ? 'del plan' : 'reglas'}</span>
+      <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app'}</span>
       <h2>${h(s.nombre)}</h2>
       <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
       ${hechas ? `<div class="barra"><i style="width:${Math.round(hechas / total * 100)}%"></i></div>` : ''}
       <a class="btn grande" href="#sesion/${s.id}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
-      <button class="enlace" data-act="entrenador.prepararHoy">Prepararla de nuevo</button></section>`;
+      ${s.estado === 'pendiente' ? '<button class="enlace" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}</section>`;
   }
+  const dia = planDeHoy(S);
+  if (dia) {
+    return `<section class="tarjeta destacada">
+      <span class="etiqueta">Hoy toca</span>
+      <h2>${h(dia.nombre)}</h2>
+      <p class="tenue">${h(LUGARES[dia.lugar])} · ${dia.ejercicios.length} ejercicios · unos ${tiempoSesion(dia)} min${dia.foco ? ' · ' + h(dia.foco) : ''}</p>
+      <button class="btn grande" data-act="entrenador.prepararHoy">${ICONOS.play} Empezar</button>
+      <p class="tenue pie">Antes te pregunto cómo estás y lo ajusto.</p></section>`;
+  }
+  const sig = siguientePendiente(S);
   return `<section class="tarjeta destacada">
     <span class="etiqueta">Hoy</span>
-    <h2>${plan ? h(plan.nombre) : 'Sesión de hoy'}</h2>
-    <p class="tenue">${plan ? `${h(LUGARES[plan.lugar])}${plan.foco ? ' · ' + h(plan.foco) : ''}` : 'Cuéntale cómo estás y el entrenador te prepara la sesión: calentamiento, ejercicios, rehabilitación y estiramientos.'}</p>
-    <button class="btn grande" data-act="entrenador.prepararHoy">${ICONOS.ia} Preparar sesión</button></section>`;
+    <h2>Descanso</h2>
+    <p class="tenue">${sig ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minus(sig.nombre))}.` : 'Has hecho todo lo de esta semana.'} Descansar también es entrenar.</p>
+    <button class="btn sec" data-act="entrenador.prepararHoy">Entrenar igualmente</button></section>`;
+}
+
+function tarjetaSinPlan(S) {
+  const d = S.perfil.disponibilidad;
+  return `<section class="tarjeta destacada">
+    <span class="etiqueta">Esta semana</span>
+    <h2>¿Qué días puedes entrenar?</h2>
+    <p class="tenue">Dímelo y te monto la semana: calentamiento, ejercicios, rehabilitación y estiramientos de cada día. Cada día lo ajusto a cómo estés.</p>
+    ${d.diasSemana.length ? `<p class="tenue">La última vez: ${d.diasSemana.map(i => DIAS[i]).join(', ')}.</p>` : ''}
+    <button class="btn grande" data-act="entrenador.plan">${ICONOS.ia} Montar mi semana</button></section>`;
 }
 
 function vista() {
   const S = estado(), p = PERSONAS[S.dueño];
-  const falta = !S.perfil.objetivos.length;
+  const sinPerfil = !S.perfil.objetivos.length;
+  const plan = planDeLaSemana(S);
+  const dias = estadoDias(S);
+  const constancia = typeof progreso.tarjetaConstancia === 'function'
+    ? progreso.tarjetaConstancia(S, plan ? { planificados: dias.length, hechosPlan: dias.filter(d => d.estado === 'hecho').length } : {}) : '';
   return `
   <header class="saludo"><p class="tenue">${h(fechaLarga(hoyISO()))}</p><h1 class="titulo">Hola, ${h(p ? p.nombre : '')}</h1></header>
-  ${falta ? `<a class="tarjeta aviso-perfil" href="#perfil"><b>Completa tu perfil</b><span>Objetivos, lesiones y días: sin eso el entrenador va a ciegas.</span></a>` : ''}
-  <ol class="tira-semana" aria-label="Esta semana">${semanaActual(S).map(d => `<li class="${d.hoy ? 'hoy' : ''} ${d.hecha ? 'hecha' : ''} ${d.toca ? 'toca' : ''}"><span>${DIAS_CORTOS[d.i]}</span><i></i></li>`).join('')}</ol>
-  ${tarjetaHoy(S)}
-  ${tarjetaPlan(S)}`;
+  ${sinPerfil ? `<section class="tarjeta destacada"><span class="etiqueta">Primero</span><h2>Cuéntale a tu entrenador quién eres</h2>
+      <p class="tenue">Objetivos, nivel, lesiones, dónde entrenas y cuántos días puedes. Sin eso va a ciegas.</p>
+      <a class="btn grande" href="#perfil">Completar mi perfil</a></section>`
+    : plan ? `${tiraSemana(S)}${tarjetaHoy(S)}${constancia}${tarjetaPlan(S)}`
+      : `${sesionDeHoy(S) ? tarjetaHoy(S) : ''}${tarjetaSinPlan(S)}${constancia}`}`;
 }
 
 rutas({ hoy: { titulo: 'Hoy', vista } });
