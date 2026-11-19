@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pasar datos</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 24px 16px; font: 16px/1.5 system-ui, sans-serif; background: #06070D; color: #EEF0F7; }
+  main { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { color: #A9AFC3; }
+  button { width: 100%; min-height: 52px; border: 0; border-radius: 14px; background: #4DD0E8; color: #071018; font: 600 17px system-ui, sans-serif; margin-top: 12px; }
+  #out { margin-top: 16px; padding: 14px; border-radius: 14px; background: #11131D; display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pasar los datos a la versión nueva</h1>
+  <p>Esta página tiene que estar en el mismo sitio que la versión anterior de la app (junto a su index.html) y abrirse en el mismo navegador. Descarga una copia completa: sesiones, dolor, lesiones, peso y medidas, perfil y fotos.</p>
+  <p>Luego, en la versión nueva: Perfil → Copia de seguridad → Importar.</p>
+  <button id="go">Descargar</button>
+  <div id="out"></div>
+</main>
+<script>
+(function () {
+  const KEYS = ['workouts', 'painLog', 'currentUser', 'timeGoals', 'permanentSwaps', 'seenAchievements', 'streetLevel', 'injuries', 'bodyLog', 'bodyProfile', 'autoRest'];
+  const ls = k => { try { const v = localStorage.getItem(k); if (v === null) return undefined; try { return JSON.parse(v); } catch (e) { return v; } } catch (e) { return undefined; } };
+  function abrir() {
+    return new Promise(res => {
+      try {
+        const r = indexedDB.open('ElPlanDB');
+        r.onupgradeneeded = e => { e.target.transaction.abort(); res(null); }; // no existe: no la creamos
+        r.onsuccess = e => res(e.target.result); r.onerror = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  const leer = (db, store, fn) => new Promise(res => { try { if (!db || !db.objectStoreNames.contains(store)) return res(undefined); const q = fn(db.transaction(store, 'readonly').objectStore(store)); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); } catch (e) { res(undefined); } });
+
+  document.getElementById('go').onclick = async () => {
+    const out = document.getElementById('out'); out.style.display = 'block'; out.textContent = 'Leyendo…';
+    const d = { version: 2, completa: true, exported: new Date().toISOString() };
+    KEYS.forEach(k => { const v = ls(k); if (v !== undefined) d[k] = v; });
+    const db = await abrir();
+    const snap = await leer(db, 'estado', s => s.get('snapshot'));
+    if (snap) Object.keys(snap).forEach(k => { if (d[k] === undefined) d[k] = snap[k]; });
+    d.fotos = (await leer(db, 'fotos', s => s.getAll())) || [];
+    const n = Object.keys(d.workouts || {}).length;
+    if (!n && !(d.bodyLog && (d.bodyLog.him || []).concat(d.bodyLog.her || []).length)) {
+      out.textContent = 'No encuentro datos aquí. ¿Está esta página en el mismo sitio que la versión anterior y en el mismo navegador?'; return;
+    }
+    const b = new Blob([JSON.stringify(d)], { type: 'application/json' }), url = URL.createObjectURL(b), a = document.createElement('a');
+    a.href = url; a.download = 'ElPlan-anterior-completa-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const med = ((d.bodyLog || {}).him || []).length + ((d.bodyLog || {}).her || []).length;
+    const les = ((d.injuries || {}).him || []).length + ((d.injuries || {}).her || []).length;
+    out.textContent = `Descargado: ${n} sesiones, ${(d.painLog || []).length} registros de dolor, ${med} registros de peso y medidas, ${les} lesiones y ${d.fotos.length} fotos.`;
+  };
+})();
+</script>
+</body>
+</html>
