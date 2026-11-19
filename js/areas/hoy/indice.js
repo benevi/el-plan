@@ -13,6 +13,8 @@ import { siguientePendiente, tiempoSesion } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
 
 const minus = t => String(t || '').toLowerCase();
+// El porqué en una frase, siempre a la vista: lo primero de la explicación del entrenador.
+const porque = d => d && d.explicacion && d.explicacion[0] ? `<p class="nota porque-linea">${ICONOS.ia} ${h(d.explicacion[0])}</p>` : '';
 
 function tiraSemana(S) {
   const dias = estadoDias(S), hoy = diaSemana();
@@ -39,6 +41,7 @@ function tarjetaHoy(S) {
       <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app'}</span>
       <h2>${h(s.nombre)}</h2>
       <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
+      ${porque(s)}
       ${hechas ? `<div class="barra"><i style="width:${Math.round(hechas / total * 100)}%"></i></div>` : ''}
       <a class="btn grande" href="#sesion/${s.id}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
       ${s.estado === 'pendiente' ? '<button class="enlace" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}</section>`;
@@ -49,6 +52,7 @@ function tarjetaHoy(S) {
       <span class="etiqueta">Hoy toca</span>
       <h2>${h(dia.nombre)}</h2>
       <p class="tenue">${h(LUGARES[dia.lugar])} · ${dia.ejercicios.length} ejercicios · unos ${tiempoSesion(dia)} min${dia.foco ? ' · ' + h(dia.foco) : ''}</p>
+      ${porque(dia)}
       <button class="btn grande" data-act="entrenador.prepararHoy">${ICONOS.play} Empezar</button>
       <p class="tenue pie">Antes te pregunto cómo estás y lo ajusto.</p></section>`;
   }

@@ -127,10 +127,11 @@ function hojaDia(n) {
   const fila = x => { const e = ex(x.id); return e ? `<li><b>${h(e.n)}</b><span class="tenue"> · ${x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ' · rehabilitación' : x.rol === 'cardio' ? ' · cardio' : ''}</span>${x.nota ? `<br><small>${h(x.nota)}</small>` : ''}</li>` : ''; };
   abrirHoja(`<h2>${DIAS[n]} · ${h(d.nombre)}</h2>
     <p class="tenue">${h(LUGARES[d.lugar])} · unos ${tiempoSesion(d)} min${d.foco ? ' · ' + h(d.foco) : ''}</p>
+    ${d.explicacion.length ? `<p class="nota porque-linea">${ICONOS.ia} ${h(d.explicacion[0])}</p>` : ''}
     <h3>Calentamiento</h3><ul>${d.calentamiento.map(t => `<li>${h(t.nombre)} <span class="tenue">${h(t.duracion || '')}</span></li>`).join('')}</ul>
     <h3>Trabajo</h3><ul>${d.ejercicios.map(fila).join('')}</ul>
     <h3>Vuelta a la calma</h3><ul>${d.vuelta.map(t => `<li>${h(t.nombre)} <span class="tenue">${h(t.duracion || '')}</span></li>`).join('')}</ul>
-    ${d.explicacion.length ? `<details class="plegable"><summary>Por qué</summary><ul>${d.explicacion.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
+    ${d.explicacion.length > 1 ? `<details class="plegable"><summary>Más detalle</summary><ul>${d.explicacion.slice(1).map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
     ${d.estado === 'hecho' ? `<a class="btn sec" href="#sesion/${d.sesion}">Ver lo que hiciste</a>` : `<button class="btn grande" data-act="entrenador.hacerDia" data-v="${n}">${ICONOS.play} Hacer este día hoy</button>`}`);
 }
 
