@@ -59,6 +59,10 @@
 .tecnica .errores { margin: 0; }
 .tecnica .consejo { margin: 10px 0 0; font-size: 14px; color: var(--txt-2); border-left: 3px solid var(--acc); padding-left: 10px; }
 .plegada .tecnica { display: none; }
+.porque-resumen { display: flex; gap: 10px; align-items: flex-start; margin: 0; font-size: 15px; line-height: 1.4; }
+.porque-resumen svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--acc); margin-top: 1px; }
+.porque .plegable { margin-top: 8px; }
+.porque ul { margin: 6px 0 0; padding-left: 20px; font-size: 14.5px; color: var(--txt-2); }
 .porque summary { color: var(--txt); }
 .bloque > summary h2 { font-size: 17px; }
 .tareas { list-style: none; padding: 0; margin: 10px 0 0; }

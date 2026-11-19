@@ -114,7 +114,12 @@ function vista([id]) {
     ${abierta ? `<div class="segmentos modo-sesion" role="group" aria-label="Cómo ver la sesión">
       <button data-act="sesion.modo" data-v="foco" class="${modoFoco ? 'on' : ''}" aria-pressed="${modoFoco}">Uno a uno</button>
       <button data-act="sesion.modo" data-v="lista" class="${modoFoco ? '' : 'on'}" aria-pressed="${!modoFoco}">Toda la sesión</button></div>` : ''}`;
-  const porque = s.explicacion.length ? `<details class="tarjeta plegable porque"><summary>${ICONOS.ia} Por qué esta sesión</summary><ul>${s.explicacion.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : '';
+  // Por qué: la primera frase (resumen del día) siempre a la vista; el resto, plegado.
+  const [resumenDia, ...razones] = s.explicacion || [];
+  const porque = resumenDia ? `<section class="tarjeta porque">
+      <p class="porque-resumen">${ICONOS.ia}<span>${h(resumenDia)}</span></p>
+      ${razones.length ? `<details class="plegable"><summary>Por qué cada decisión</summary><ul>${razones.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
+    </section>` : '';
 
   if (modoFoco) {
     const P = pasos(s), k = Math.min(foco.i, P.length - 1), p = P[k];
