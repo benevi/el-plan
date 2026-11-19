@@ -1,12 +1,11 @@
 // Estado de la app y guardado en el móvil (localStorage).
-// Cada móvil guarda los datos de UNA persona (su dueño). Solo la nutrición se compartirá, y eso irá
-// por su propio backend (área nutricion), no por aquí.
+// Cada móvil guarda los datos de UNA persona (su dueño). No se comparte nada entre móviles.
 //
 // Reglas para todas las áreas:
 // - Leer con `estado()` (objeto vivo, no lo sustituyas).
 // - Cambiar con `cambiar(fn, motivo)`: aplica fn(estado), guarda y avisa a quien escuche.
 // - Escuchar con `escuchar(fn)`; fn(motivo) se llama tras cada cambio.
-// - Cada área guarda lo suyo bajo su clave (perfil, plan, sesiones, medidas, dolor, nutricion…).
+// - Cada área guarda lo suyo bajo su clave (perfil, plan, sesiones, medidas, dolor…).
 //   Si necesitas una clave nueva, añádela en `nuevo()` y, si hace falta, en `migrar()`.
 
 const CLAVE = 'pipos4';
@@ -43,7 +42,6 @@ export function nuevo() {
     sesiones: {},             // { id: sesión } (ver areas/sesion/modelo.js)
     medidas: [],              // { fecha, peso, cintura, cadera, cuello, pecho, brazo, muslo, grasa }
     dolor: [],                // { fecha, zona, dolor, momento: 'antes'|'despues'|'dia', sesion }
-    nutricion: {},            // reservado para el área de nutrición
     ajustes: { codigo: '', vibrar: true, sonido: true, apiUrl: '' },
   };
 }
@@ -69,6 +67,7 @@ export function cargar() {
     try { const viejo = JSON.parse(localStorage.getItem(CLAVE_VIEJA) || 'null'); if (viejo) x.viejo = viejo; } catch (e) { /* nada */ }
   }
   S = rellenar(nuevo(), x);
+  delete S.nutricion; // la nutrición irá en otra app
   return S;
 }
 

@@ -1,6 +1,6 @@
 # Pipos Fitness
 
-App privada de entrenamiento de Víctor y Virginia. Cada uno usa su móvil y ve solo lo suyo; solo la nutrición se compartirá.
+App privada de entrenamiento de Víctor y Virginia. Cada uno usa su móvil y ve solo lo suyo; no hay datos compartidos ni backend propio. La nutrición irá en otra app.
 PWA sin paso de compilación (HTML + módulos JS + CSS), alojada en Vercel. La IA va en funciones del servidor (`/api`), la clave nunca sale de Vercel.
 
 ## Variables en Vercel (Production y Preview)
@@ -18,7 +18,6 @@ PWA sin paso de compilación (HTML + módulos JS + CSS), alojada en Vercel. La I
 | **Progreso** | `js/areas/progreso/indice.js` | Constancia, fuerza, medidas, dolor, historial |
 | **Hoy** | `js/areas/hoy/indice.js` | Pantalla de inicio |
 | **Ejercicios** | `js/areas/ejercicios/indice.js` | Catálogo, ficha técnica, me gusta / no me gusta / no lo quiero |
-| **Nutrición** | `js/areas/nutricion/` (vacío con contrato), futuros `api/nutricion*.js` | Menús semanales compartidos (Supabase) |
 | **Aspecto** | `css/base.css`, `css/componentes.css`, `css/areas.css`, `icons/` | Colores, tipografía, componentes; color por persona en `--acc` |
 | **Datos y reglas** (compartido) | `js/datos/` (catálogo de 159 ejercicios, lesiones, constantes), `js/reglas/` (catálogo y seguridad, progresión, generador sin IA) | Barandillas que usan todas las áreas |
 

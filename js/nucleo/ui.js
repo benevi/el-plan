@@ -71,7 +71,6 @@ export const ICONOS = {
   progreso: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
   ejercicios: svg('<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>'),
   perfil: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
-  nutricion: svg('<path d="M12 21c-4 0-7-3-7-8 0-3 2-6 5-6 1 0 1.5.5 2 .5s1-.5 2-.5c3 0 5 3 5 6 0 5-3 8-7 8z"/><path d="M12 7c0-2 1-4 3-4"/>'),
   ia: svg('<path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>'),
   play: svg('<path d="M7 4v16l13-8z"/>'),
   pausa: svg('<path d="M8 4v16M16 4v16"/>'),
