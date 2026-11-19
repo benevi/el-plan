@@ -104,7 +104,9 @@ export function sugerir(S, id, base, ctx = {}) {
   const ult = regs[regs.length - 1], prev = regs[regs.length - 2];
   if (!ult) {
     out.tipo = 'nuevo';
-    if (e.t === 'reps' && !e.mat.includes('peso corporal') && r) out.motivo = `Primera vez: elige un peso con el que llegues a ${es(r.hi)} dejando 2 o 3 repeticiones de margen, y apúntalo.`;
+    const conCarga = e.mat.some(m => ['maquina', 'polea', 'mancuernas', 'barra', 'botellas'].includes(m));
+    if (e.t === 'reps' && r && conCarga) out.motivo = `Primera vez: elige un peso con el que llegues a ${es(r.hi)} dejando 2 o 3 repeticiones de margen, y apúntalo.`;
+    else if (e.t === 'reps' && r && e.mat.includes('banda')) out.motivo = `Primera vez: elige una banda con la que llegues a ${es(r.hi)} dejando 2 o 3 repeticiones de margen.`;
     return out;
   }
   out.ultima = resumen(ult);
