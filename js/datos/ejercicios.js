@@ -5,7 +5,7 @@
 // mat (material), niv (1 fácil · 2 medio · 3 avanzado), t (reps|tiempo|distancia),
 // d [series, reps, descanso en s], r (riesgo por zona), p (pasos), e (errores típicos),
 // v (vídeo de YouTube), c (consejo opcional). m[0] puede ser también 'movilidad' (calentar y estirar).
-window.EJERCICIOS = [
+export const EJERCICIOS = [
 // ───────────── PECHO ─────────────
 { id:'press-pecho-maquina', n:'Press de pecho en máquina', m:['pecho'], s:['triceps','hombro'], l:['gym'], mat:['maquina'], niv:1, t:'reps', d:[4,'8-12',90], r:{hombro:1, muñeca:1},
   p:['Ajusta el asiento para que las asas queden a la altura de la mitad del pecho.','Espalda pegada al respaldo, pies firmes en el suelo y escápulas juntas.','Empuja las asas al frente soltando el aire, sin llegar a bloquear los codos.','Vuelve despacio (2 segundos) hasta notar el pecho estirado, sin que las asas toquen el tope.'],
