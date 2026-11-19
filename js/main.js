@@ -14,6 +14,7 @@ import './areas/sesion/indice.js';
 import './areas/progreso/indice.js';
 import './areas/ejercicios/indice.js';
 import './areas/perfil/indice.js';
+import './aspecto/vida.js';
 
 function colorPersona() {
   const p = PERSONAS[estado().dueño];

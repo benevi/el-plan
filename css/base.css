@@ -93,3 +93,27 @@ header.marca { padding-top: calc(env(safe-area-inset-top) + 12px); padding-botto
 
 .titulo { font-size: 30px; letter-spacing: -.02em; }
 ::selection { background: color-mix(in srgb, var(--acc) 40%, transparent); }
+
+/* ════ Vida: ambiente de fondo, entrada al navegar ════ */
+/* Dos luces suaves con el color de la persona y el de la marca que se mueven muy despacio detrás de todo. */
+body::before, body::after { content: ''; position: fixed; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(60px); opacity: .55; will-change: transform; }
+body::before { width: 70vmax; height: 70vmax; left: -30vmax; top: -38vmax; background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 34%, transparent), transparent); animation: deriva-a 38s ease-in-out infinite alternate; }
+body::after { width: 60vmax; height: 60vmax; right: -32vmax; top: 18vh; background: radial-gradient(closest-side, color-mix(in srgb, var(--brand-2) 20%, transparent), transparent); animation: deriva-b 46s ease-in-out infinite alternate; }
+body[data-persona="virginia"]::after { background: radial-gradient(closest-side, color-mix(in srgb, var(--brand-1) 16%, transparent), transparent); }
+@keyframes deriva-a { to { transform: translate(14vmax, 10vmax) scale(1.1); } }
+@keyframes deriva-b { to { transform: translate(-12vmax, 16vmax) scale(.92); } }
+body { background-image: none; }
+
+/* Las tarjetas entran escalonadas solo al cambiar de pantalla (la clase la pone js/aspecto/vida.js). */
+#vista.entra > * { animation: entra .5s cubic-bezier(.2,.8,.2,1) both; }
+#vista.entra > *:nth-child(2) { animation-delay: .05s; }
+#vista.entra > *:nth-child(3) { animation-delay: .1s; }
+#vista.entra > *:nth-child(4) { animation-delay: .15s; }
+#vista.entra > *:nth-child(5) { animation-delay: .2s; }
+#vista.entra > *:nth-child(n+6) { animation-delay: .24s; }
+@keyframes entra { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+.nav.entra a.activa svg { animation: salto .45s cubic-bezier(.3,1.6,.5,1); }
+@keyframes salto { 40% { transform: translateY(-4px) scale(1.12); } }
+
+/* Nombre de la persona con su degradado */
+.saludo .titulo { background: linear-gradient(100deg, var(--txt) 0 45%, var(--acc) 75%, var(--acc-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }

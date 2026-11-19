@@ -307,3 +307,54 @@ main .filtros input:not([type=checkbox]):not([type=range]) { padding-left: 40px;
 .analisis li > .tenue:last-child { display: block; margin-top: 2px; font-size: 13.5px; color: var(--acc); }
 .hoja.checkin .chips:has([data-act="entrenador.ciZona"]) { flex-wrap: wrap; }
 .hoja.checkin .chips:has([data-act="entrenador.ciZona"]) .chip { flex: 0 0 auto; padding: 0 14px; }
+
+/* ════ Vida por pantallas ════ */
+/* Hoy: la semana con días hechos que brillan y hoy en relieve */
+.tira-semana li.hoy { background: var(--acc-grad); color: #06121A; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--acc) 80%, transparent); }
+.tira-semana li.hoy i { background: #06121A; box-shadow: none; opacity: .35; }
+.tira-semana li.hoy.toca i { background: transparent; box-shadow: inset 0 0 0 2px #06121A; opacity: .6; }
+.tira-semana li.hecha i { width: 16px; height: 16px; background: var(--acc-grad) center/10px no-repeat; box-shadow: 0 0 12px color-mix(in srgb, var(--acc) 80%, transparent); }
+.tira-semana li.hoy.hecha i { background: #06121A; opacity: 1; box-shadow: none; }
+
+/* Racha: llama viva */
+.racha { position: relative; background: linear-gradient(160deg, color-mix(in srgb, var(--warn) 22%, var(--surface-2)), color-mix(in srgb, var(--acc) 10%, var(--surface-2))); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--warn) 80%, transparent); }
+.racha b { background: linear-gradient(180deg, #FFD36E, var(--warn) 60%, #FF7A59); -webkit-background-clip: text; background-clip: text; color: transparent; animation: llama 2.4s ease-in-out infinite; }
+@keyframes llama { 50% { filter: brightness(1.25) drop-shadow(0 0 6px color-mix(in srgb, var(--warn) 70%, transparent)); } }
+.puntos-semana i.on { box-shadow: 0 0 10px -2px color-mix(in srgb, var(--acc) 80%, transparent); }
+
+/* Sesión: tareas hechas sin tachar (más limpio), paso actual que late, ejercicio completado que brilla */
+.tareas li.hecho .grow { text-decoration: none; opacity: .45; }
+.pasos-sesion button { transition: transform .15s, background .2s; }
+.pasos-sesion button.actual { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 50%, transparent); animation: late 2.2s ease-out infinite; }
+.pasos-sesion button.hecho { background: color-mix(in srgb, var(--acc) 14%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 35%, transparent); }
+@keyframes late { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
+.ejercicio.completo { opacity: 1; box-shadow: var(--sombra), inset 0 0 0 1px color-mix(in srgb, var(--ok) 35%, transparent); }
+.ejercicio.completo .num { background: linear-gradient(135deg, var(--ok), color-mix(in srgb, var(--ok) 60%, var(--acc))); }
+.ejercicio.celebra { animation: celebra .9s ease-out; }
+@keyframes celebra { 0% { box-shadow: var(--sombra), 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 100% { box-shadow: var(--sombra), 0 0 0 18px transparent; } }
+.cab-sesion .barra { height: 6px; }
+
+/* Temporizador: número con luz, últimos segundos que laten */
+.t-texto b, .c-num { text-shadow: 0 0 24px color-mix(in srgb, var(--acc) 35%, transparent); }
+.temporizador.final b { animation: ultimo 1s ease-in-out infinite; }
+@keyframes ultimo { 50% { transform: scale(1.08); } }
+.t-progreso { background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 10%, transparent), color-mix(in srgb, var(--acc) 26%, transparent)); }
+.cuenta .c-barra i { box-shadow: 0 0 16px color-mix(in srgb, var(--acc) 70%, transparent); }
+
+/* Ejercicios: miniatura con el color de la persona mientras carga */
+.mini { background: linear-gradient(135deg, color-mix(in srgb, var(--acc) 22%, var(--surface-3)), var(--surface-3) 70%); color: color-mix(in srgb, var(--acc) 70%, var(--txt-3)); }
+.lista.ejercicios .fila:active .mini { transform: scale(.96); }
+.video-ficha { box-shadow: var(--sombra); }
+
+/* Progreso: líneas y datos con brillo */
+.linea path { filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--acc) 50%, transparent)); }
+.destacado > b { background: var(--acc-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.destacado > b.bien { background: linear-gradient(135deg, var(--ok), color-mix(in srgb, var(--ok) 60%, var(--acc))); -webkit-background-clip: text; background-clip: text; }
+
+/* Bienvenida: logo que flota */
+.logo-grande { animation: flota-logo 5s ease-in-out infinite alternate; }
+@keyframes flota-logo { to { transform: translateY(-6px); box-shadow: 0 22px 50px -12px color-mix(in srgb, var(--brand-2) 70%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .racha b, .pasos-sesion button.actual, .temporizador.final b, .logo-grande { animation: none !important; }
+}

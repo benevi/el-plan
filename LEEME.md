@@ -18,7 +18,7 @@ PWA sin paso de compilación (HTML + módulos JS + CSS), alojada en Vercel. La I
 | **Progreso** | `js/areas/progreso/indice.js` | Constancia, fuerza, medidas, dolor, historial |
 | **Hoy** | `js/areas/hoy/indice.js` | Pantalla de inicio |
 | **Ejercicios** | `js/areas/ejercicios/indice.js` | Catálogo, ficha técnica, me gusta / no me gusta / no lo quiero |
-| **Aspecto** | `css/base.css`, `css/componentes.css`, `css/areas.css`, `icons/` | Colores, tipografía, componentes; color por persona en `--acc` |
+| **Aspecto** | `css/base.css`, `css/componentes.css`, `css/areas.css`, `icons/`, `js/aspecto/` | Colores, tipografía, componentes, movimiento y confeti; color por persona en `--acc` |
 | **Datos y reglas** (compartido) | `js/datos/` (catálogo de 159 ejercicios, lesiones, constantes), `js/reglas/` (catálogo y seguridad, progresión, generador sin IA) | Barandillas que usan todas las áreas |
 
 ## Cómo se añade algo
