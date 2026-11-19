@@ -1,4 +1,4 @@
-// Interfaz de «El Plan». Una sola escucha de clics con data-act, rutas con # y textos siempre escapados.
+// Interfaz de «Pipos Fitness». Una sola escucha de clics con data-act, rutas con # y textos siempre escapados.
 (function () {
   'use strict';
   const $ = s => document.querySelector(s);
@@ -113,7 +113,7 @@
     document.body.classList.toggle('in-session', r === 'sesion' || r === 'checkin');
     const atras = ['checkin', 'sesion', 'generar'].includes(r);
     $('#top').innerHTML = `${atras ? `<button class="icon-btn" data-act="atras" aria-label="Volver">${IC.back}</button>` : ''}
-      <h1>${h(TITULOS[r])}</h1>
+      ${r === 'hoy' ? '<h1 class="brand"><img class="brand-mark" src="icons/icon.svg" alt=""><span class="brand-name">PIPOS <b>FITNESS</b></span><span class="sr"> · Hoy</span></h1>' : `<h1>${h(TITULOS[r])}</h1>`}
       <div class="who" role="group" aria-label="Persona">${Object.entries(window.PERSONAS).map(([k, p]) => `<button data-act="usuario" data-arg="${k}" aria-pressed="${k === u}">${h(p.nombre)}</button>`).join('')}</div>`;
     document.querySelectorAll('nav.bottom a').forEach(a => { if (a.dataset.r === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     const V = { hoy: vHoy, biblioteca: vBiblioteca, progreso: vProgreso, perfil: vPerfil, checkin: vCheckin, sesion: vSesion, generar: vGenerar };
@@ -122,7 +122,7 @@
     if (r === 'biblioteca') pintarLista();
     if (r === 'progreso' && ui.prog === 'cuerpo') pintarFotos();
     if (r === 'checkin') pintarPrevia();
-    document.title = `${TITULOS[r]} · El Plan`;
+    document.title = r === 'hoy' ? 'Pipos Fitness' : `${TITULOS[r]} · Pipos Fitness`;
   }
 
   // ── Hoy ──
@@ -152,7 +152,8 @@
       out += `<button class="card tap hero" data-act="ir" data-arg="sesion"><span class="badge">${IC.play}</span><span class="grow"><span class="card-title" style="display:block">${h(s.nombre)}</span><span class="card-sub">Sesión en curso · ${hechos} de ${s.exercises.length} ejercicios</span></span><span class="cta">Continuar</span></button>`;
     }
     const hoyTxt = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    out += `<p class="h-sub" style="margin:${out ? 24 : 0}px 0 8px">${h(hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1))}</p>${semana(u)}`;
+    const hora = new Date().getHours(), saludo = hora < 6 ? 'Buenas noches' : hora < 14 ? 'Buenos días' : hora < 21 ? 'Buenas tardes' : 'Buenas noches';
+    out += `<div class="hola" style="margin-top:${out ? 24 : 0}px"><p class="hola-k">${h(hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1))}</p><p class="hola-t">${saludo}, <span>${h((window.PERSONAS[u] || {}).nombre || '')}</span></p></div>${semana(u)}`;
     out += '<div class="sec">Hoy toca</div>';
     if (hechoHoy) out += `<div class="note ok"><strong>Hecho hoy ✓</strong>${h(hechoHoy.nombre || (p[hechoHoy.day] || {}).nombre || 'Sesión')}. Descansa bien.</div>`;
     else if (sug && p[sug]) out += tarjetaDia('P:' + sug, p[sug], '', true);
@@ -509,7 +510,7 @@
 
       <div class="sec">Guía</div>
       <div class="stack">${guia(u)}</div>
-      <p class="faint" style="text-align:center;margin-top:24px">El Plan · versión 3</p>`;
+      <p class="faint" style="text-align:center;margin-top:24px">Pipos Fitness · versión 3</p>`;
   }
   function guia(u) {
     const f = (t, html) => `<details class="fold"><summary>${t}</summary><div style="padding:0 14px 14px;font-size:15px" class="stack">${html}</div></details>`;
@@ -768,7 +769,7 @@
           const n = Store.importar(d);
           toast(`Importado: ${n.sesiones} sesiones, ${n.cuerpo} medidas, ${n.dolor} registros de dolor${n.lesiones ? `, ${n.lesiones} lesiones` : ''}.`, 5000);
           render();
-        } catch (e) { toast('No se pudo leer el archivo. ¿Es una copia de El Plan?', 4000); }
+        } catch (e) { toast('No se pudo leer el archivo. ¿Es una copia de Pipos Fitness?', 4000); }
       };
       r.readAsText(file); el.value = '';
     },

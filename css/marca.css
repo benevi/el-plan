@@ -1,0 +1,188 @@
+/* ════════════════════════════════════════════════════════════
+   Pipos Fitness · capa visual de marca
+   Se carga después de app.css y solo cambia el aspecto:
+   ninguna regla altera la lógica ni el contenido.
+   ════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Marca */
+  --brand-1: #4DD0E8;            /* Víctor */
+  --brand-2: #C77DFF;            /* Virginia */
+  --brand-grad: linear-gradient(120deg, var(--brand-1), var(--brand-2));
+
+  /* Superficies con más profundidad */
+  --bg: #07080F; --bg-2: #0D0F1A;
+  --surface: #121522; --surface-2: #1A1E2E; --surface-3: #252A3D;
+  --line: rgba(255,255,255,0.07); --line-2: rgba(255,255,255,0.14);
+  --hi: inset 0 1px 0 rgba(255,255,255,0.06);
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 28px -12px rgba(0,0,0,.6);
+
+  /* Tipografía: Archivo expandida para titulares, Outfit para texto */
+  --f-head: 'Archivo', 'Sora', system-ui, sans-serif;
+  --r: 20px;
+  --nav-h: 72px;
+}
+/* El degradado se calcula en body para que siga el color de la persona activa */
+body { --acc-2: #2A9BC2; --acc-grad: linear-gradient(135deg, var(--acc), var(--acc-2)); }
+body.her { --acc-2: #9D4EDD; }
+
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60% 34% at 0% 0%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 70%),
+    radial-gradient(50% 30% at 100% 0%, color-mix(in srgb, var(--brand-2) 9%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+.h-title, .card-title, .sheet h2, .sec, .badge, .btn, .who button, .ex-name, .ex-num,
+.stat .v, .timer .t, details.fold > summary, .week b, .scale button b {
+  font-stretch: 112%;
+}
+.h-title { font-size: 26px; font-weight: 800; letter-spacing: -0.015em; }
+.sheet h2 { font-weight: 800; letter-spacing: -0.01em; }
+.card-title, .ex-name { font-weight: 700; letter-spacing: -0.005em; }
+
+/* ── Cabecera con marca ── */
+header.top {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom-color: transparent;
+  box-shadow: 0 1px 0 var(--line);
+}
+header.top h1 { font-size: 19px; font-weight: 800; font-stretch: 112%; letter-spacing: -0.01em; }
+header.top h1.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--brand-2) 55%, transparent); }
+.brand-name { font-stretch: 118%; font-weight: 800; font-size: 14.5px; letter-spacing: .03em; white-space: nowrap; line-height: 1.05; }
+.brand-name b { display: block; }
+.brand-name b { font-weight: 800; background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.icon-btn { border-radius: 14px; background: var(--surface-2); box-shadow: var(--hi); }
+
+.who { border-radius: 14px; background: var(--surface); box-shadow: var(--hi); }
+.who button { border-radius: 11px; transition: background .2s, color .2s, box-shadow .2s; }
+.who button[aria-pressed="true"] { background: var(--acc-grad); color: #06101A; box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--acc) 70%, transparent); }
+
+/* ── Navegación inferior: barra flotante ── */
+nav.bottom {
+  left: 12px; right: 12px; bottom: calc(10px + var(--safe-b));
+  max-width: 616px; margin: 0 auto; padding: 6px;
+  height: var(--nav-h);
+  gap: 4px;
+  border: 1px solid var(--line-2); border-radius: 24px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 18px 40px -12px rgba(0,0,0,.75), var(--hi);
+}
+nav.bottom a { border-radius: 18px; transition: color .2s, background .2s; }
+nav.bottom a[aria-current="page"] { color: var(--acc); background: color-mix(in srgb, var(--acc) 13%, transparent); }
+nav.bottom a[aria-current="page"] svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--acc) 60%, transparent)); }
+main { padding-bottom: calc(var(--nav-h) + var(--safe-b) + 44px); }
+.timer { bottom: calc(var(--nav-h) + 22px + var(--safe-b)); }
+
+/* ── Títulos de sección con acento ── */
+.sec { color: var(--text-dim); font-size: 12px; font-weight: 700; letter-spacing: .12em; margin: 30px 0 12px; justify-content: flex-start; }
+.sec::before { content: ''; width: 14px; height: 3px; border-radius: 3px; background: var(--acc-grad); flex-shrink: 0; }
+.sec > .link, .sec > .faint { margin-left: auto; }
+
+/* ── Tarjetas ── */
+.card, .ex, details.fold, .lib-item, .stat {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 2%), var(--surface));
+  border-color: var(--line);
+  box-shadow: var(--shadow), var(--hi);
+}
+.card.tap { transition: transform .15s ease, border-color .2s, box-shadow .2s; }
+.card.tap:hover { border-color: color-mix(in srgb, var(--acc) 30%, var(--line-2)); }
+.badge { width: 48px; height: 48px; border-radius: 14px; font-size: 18px; font-weight: 800; background: var(--surface-3); box-shadow: var(--hi); }
+.card.tap:not(.hero):not(.dashed) .badge { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 22%, transparent); }
+.chev { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); font-size: 20px; }
+
+/* Tarjeta principal (“Hoy toca”) */
+.card.hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--acc) 30%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--acc) 12%, var(--surface-2)), var(--surface));
+  border-color: color-mix(in srgb, var(--acc) 38%, transparent);
+  box-shadow: 0 20px 44px -18px color-mix(in srgb, var(--acc) 45%, transparent), var(--hi);
+}
+.card.hero::after {
+  content: ''; position: absolute; z-index: -1; right: -40px; top: -30px; width: 190px; height: 190px;
+  background: url("../icons/marca-fondo.svg") center/contain no-repeat; opacity: .07; transform: rotate(-12deg);
+}
+.hero .badge, .card.dashed .badge { background: var(--acc-grad); color: #06101A; box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--acc) 70%, transparent); }
+.hero .card-title { font-size: 21px; font-weight: 800; }
+.hero .cta { min-height: 52px; border-radius: 15px; background: var(--acc-grad); color: #06101A; font-weight: 700; box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--acc) 80%, transparent); }
+.card.dashed { background: color-mix(in srgb, var(--acc) 4%, transparent); box-shadow: none; }
+
+/* ── Botones ── */
+.btn { border-radius: 16px; font-weight: 700; transition: transform .12s, filter .2s; }
+.btn:not(.sec2):not(.ghost):not(.danger) { background: var(--acc-grad); color: #06101A; box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--acc) 85%, transparent); }
+.btn:active, .card.tap:active, .chip:active { transform: scale(.98); }
+.btn.sec2 { background: var(--surface-2); box-shadow: var(--hi); }
+.btn.sm { border-radius: 12px; }
+
+/* ── Chips y selectores ── */
+.chip { background: var(--surface); transition: background .2s, border-color .2s, color .2s; }
+.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--acc) 18%, var(--surface)); border-color: color-mix(in srgb, var(--acc) 70%, transparent); color: var(--text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 10%, transparent); }
+.seg { border-radius: 15px; background: var(--surface); box-shadow: var(--hi); }
+.seg button { border-radius: 12px; }
+.seg button[aria-pressed="true"] { background: var(--surface-3); box-shadow: 0 2px 8px rgba(0,0,0,.35), var(--hi); color: var(--text); }
+.scale button { border-radius: 14px; background: var(--surface); }
+.scale button[aria-pressed="true"] { background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 22%, var(--surface)), var(--surface)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 12%, transparent); }
+.scale button[aria-pressed="true"] b { color: var(--acc); }
+.input, select.input, textarea.input { background: var(--surface); border-radius: 14px; box-shadow: var(--hi); }
+.input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 18%, transparent); }
+
+/* ── Semana ── */
+.week { gap: 6px; }
+.week div { border-radius: 14px; padding: 9px 0 8px; }
+.week .today { background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 16%, var(--surface-2)), var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 45%, transparent); color: var(--text); }
+.week .today.done b, .week .done b { background: var(--acc-grad); box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--acc) 80%, transparent); }
+
+/* ── Avisos ── */
+.note { border-radius: 16px; border-left-width: 0; position: relative; padding-left: 18px; box-shadow: var(--hi); overflow: hidden; }
+.note::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--acc-grad); }
+.note.warn::before { background: var(--warn); }
+.note.ok::before { background: var(--ok); }
+.note.gold::before { background: var(--gold); }
+.note strong { font-weight: 700; }
+.pill { font-weight: 700; letter-spacing: .01em; }
+
+/* ── Sesión ── */
+.progress { height: 8px; background: var(--surface-2); }
+.progress > i { background: var(--acc-grad); box-shadow: 0 0 12px color-mix(in srgb, var(--acc) 60%, transparent); }
+.ex-num { width: 34px; height: 34px; border-radius: 11px; font-weight: 800; background: var(--surface-3); box-shadow: var(--hi); }
+.ex.open { border-color: color-mix(in srgb, var(--acc) 35%, var(--line-2)); }
+.ex.open .ex-num { background: var(--acc-grad); color: #06101A; }
+.ex.done .ex-num { background: var(--ok); }
+.set input { background: var(--surface-2); border-radius: 14px; box-shadow: var(--hi); }
+.set input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 18%, transparent); }
+.set .chk { border-radius: 14px; transition: background .15s, border-color .15s; }
+.set .chk[aria-pressed="true"] { box-shadow: 0 6px 16px -6px rgba(46,224,138,.7); }
+.session-bar { left: 12px; right: 12px; bottom: calc(10px + var(--safe-b)); padding: 10px; border: 1px solid var(--line-2); border-radius: 24px; background: color-mix(in srgb, var(--surface) 86%, transparent); box-shadow: 0 18px 40px -12px rgba(0,0,0,.75), var(--hi); max-width: 616px; margin: 0 auto; }
+body.in-session .timer { bottom: calc(100px + var(--safe-b)); }
+
+.timer { border-radius: 20px; padding: 8px 8px 8px 18px; background: color-mix(in srgb, var(--surface-2) 92%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 18px 44px -10px rgba(0,0,0,.7), 0 0 0 1px color-mix(in srgb, var(--acc) 35%, transparent); border: 0; }
+.timer .t { font-size: 30px; font-weight: 800; }
+
+/* ── Biblioteca ── */
+.lib-item { border-radius: 18px; padding: 8px 12px 8px 8px; }
+.lib-thumb { width: 84px; height: 60px; border-radius: 12px; }
+
+/* ── Hoja inferior ── */
+.sheet-bg { background: rgba(3,4,9,.66); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.sheet { border-radius: 28px 28px 0 0; background: linear-gradient(180deg, var(--surface), var(--bg-2) 40%); }
+ol.steps li::before { background: var(--acc-grad); color: #06101A; }
+
+/* ── Progreso ── */
+.stat { border-radius: 18px; }
+.stat .v { font-weight: 800; }
+
+.toast { border-radius: 16px; background: color-mix(in srgb, var(--surface-3) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+::selection { background: color-mix(in srgb, var(--acc) 40%, transparent); }
+
+/* ── Saludo en Hoy ── */
+.hola { margin-bottom: 16px; }
+.hola-k { font-size: 13px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .1em; }
+.hola-t { font-family: var(--f-head); font-stretch: 112%; font-size: 28px; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-top: 4px; }
+.hola-t span { background: var(--acc-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.week { padding: 6px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow), var(--hi); }
