@@ -1,20 +1,65 @@
-// Funciona sin conexión: la app se guarda en caché; los vídeos y la IA necesitan internet.
-const VERSION = 'elplan-v3.3.0';
-const APP = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'js/ejercicios.js', 'js/datos-base.js', 'js/plan.js', 'js/store.js', 'js/logic.js', 'js/progresion.js', 'js/app.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-32.png', 'icons/icon.svg'];
+// Modo sin conexión de Pipos Fitness.
+// - Guarda la app al instalarse (lista de abajo) y todo lo demás del mismo sitio la primera vez que se pide.
+// - Sirve primero lo guardado y lo actualiza por detrás, así una sesión ya creada funciona en el gimnasio sin red.
+// - /api/* nunca se guarda: la IA siempre va a la red.
+// Al cambiar archivos, sube VERSION para que los móviles descarguen la versión nueva.
+const VERSION = 'pipos-5.1.0';
+const APP = [
+  './',
+  './css/areas.css',
+  './css/base.css',
+  './css/componentes.css',
+  './icons/icon-180.png',
+  './icons/icon-192.png',
+  './icons/icon-32.png',
+  './icons/icon-512.png',
+  './icons/icon.svg',
+  './icons/marca-fondo.svg',
+  './icons/maskable-512.png',
+  './index.html',
+  './js/areas/ejercicios/indice.js',
+  './js/areas/entrenador/entrenador.js',
+  './js/areas/entrenador/indice.js',
+  './js/areas/hoy/indice.js',
+  './js/areas/nutricion/calculo.js',
+  './js/areas/nutricion/indice.js',
+  './js/areas/perfil/bienvenida.js',
+  './js/areas/perfil/indice.js',
+  './js/areas/progreso/indice.js',
+  './js/areas/sesion/indice.js',
+  './js/areas/sesion/temporizador.js',
+  './js/datos/constantes.js',
+  './js/datos/ejercicios.js',
+  './js/datos/lesiones.js',
+  './js/main.js',
+  './js/nucleo/api.js',
+  './js/nucleo/estado.js',
+  './js/nucleo/modelo.js',
+  './js/nucleo/router.js',
+  './js/nucleo/ui.js',
+  './js/reglas/catalogo.js',
+  './js/reglas/contexto.js',
+  './js/reglas/generador.js',
+  './js/reglas/progresion.js',
+  './manifest.webmanifest',
+];
 
-self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => !k.startsWith(VERSION)).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
-
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
 self.addEventListener('fetch', e => {
-  const req = e.request, url = new URL(req.url);
-  if (req.method !== 'GET' || url.pathname.startsWith('/api/')) return;
-  // Archivos de la app: primero la red (para coger cambios), si no hay, la caché.
-  if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(r => { const c = r.clone(); caches.open(VERSION).then(x => x.put(req, c)); return r; }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('index.html'))));
-    return;
-  }
-  // Fuentes y miniaturas: caché primero.
-  if (/fonts\.(googleapis|gstatic)\.com|i\.ytimg\.com/.test(url.host)) {
-    e.respondWith(caches.match(req).then(r => r || fetch(req).then(n => { const c = n.clone(); caches.open(VERSION + '-ext').then(x => x.put(req, c)); return n; })));
-  }
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
+  const mismo = url.origin === location.origin;
+  const fuentes = /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
+  if (!mismo && !fuentes) return;
+  e.respondWith(caches.open(VERSION).then(async c => {
+    const clave = e.request.mode === 'navigate' ? './index.html' : e.request;
+    const guardado = await c.match(clave, { ignoreSearch: mismo });
+    const red = fetch(e.request).then(r => { if (r.ok && e.request.mode !== 'navigate') c.put(e.request, r.clone()); else if (r.ok) c.put('./index.html', r.clone()); return r; }).catch(() => guardado);
+    return guardado || red;
+  }));
 });

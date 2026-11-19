@@ -2,11 +2,12 @@
 // recetas con cantidades y pasos, tuppers para las semanas de turno de tarde y cambio de un plato suelto.
 // Las calorías y macros objetivo NO las decide el agente: llegan calculadas por la app (nutricion/core.js)
 // a partir del peso, altura, edad, % de grasa, entreno de la semana y objetivo de cada uno.
-// Variables de entorno en Vercel: ANTHROPIC_API_KEY (obligatoria), APP_CODE (opcional), NUTRI_MODEL (opcional).
-import Anthropic from '@anthropic-ai/sdk';
+// Variables de entorno en Vercel: ANTHROPIC_API_KEY (obligatoria), APP_CODE (opcional), NUTRI_MODEL (opcional, otro modelo).
+// Las claves de persona son las del dueño de cada móvil: 'victor' y 'virginia'.
+import { Anthropic, MODELO as MODELO_APP, responderError } from './_comun.js';
 
 const client = new Anthropic();
-const MODELO = process.env.NUTRI_MODEL || 'claude-opus-5-5';
+const MODELO = process.env.NUTRI_MODEL || MODELO_APP;
 
 const SECCIONES = ['frutas y verduras', 'carnes', 'pescados', 'huevos y lácteos', 'panadería y cereales', 'legumbres', 'despensa', 'aceites y especias', 'congelados', 'conservas', 'frutos secos', 'bebidas', 'otros'];
 
@@ -15,7 +16,7 @@ const SISTEMA = `Eres dietista-nutricionista colegiado en España, especializado
 Datos que recibes: para cada persona, sus objetivos diarios YA CALCULADOS (kcal, proteína, grasa, hidratos y fibra) para días de entreno y de descanso, qué días entrena, cuántos minutos, qué comidas hace al día y el reparto orientativo por comida; el turno de trabajo y qué comidas hace en el trabajo esa semana; alergias, lo que no les gusta, lo que les gusta, lo que hay en casa y las recetas de las semanas anteriores.
 
 Cómo trabajas:
-1. Cantidades: cada ingrediente lleva la cantidad para UNA ración de cada persona ("him" y "her"), en crudo y en g, ml o unidades (huevos, piezas de fruta, latas). Pon 0 si esa persona no come ese plato. Ajusta las raciones para que cada persona llegue a su objetivo del día (±5 % de kcal, proteína al menos el 95 %), con el objetivo de entreno los días que entrena y el de descanso los demás. Usa valores de composición de alimentos españoles (BEDCA) y calcula en "nutricion" lo que aporta la ración de cada uno.
+1. Cantidades: cada ingrediente lleva la cantidad para UNA ración de cada persona ("victor" y "virginia"), en crudo y en g, ml o unidades (huevos, piezas de fruta, latas). Pon 0 si esa persona no come ese plato. Ajusta las raciones para que cada persona llegue a su objetivo del día (±5 % de kcal, proteína al menos el 95 %), con el objetivo de entreno los días que entrena y el de descanso los demás. Usa valores de composición de alimentos españoles (BEDCA) y calcula en "nutricion" lo que aporta la ración de cada uno.
 2. Dieta mediterránea: aceite de oliva virgen extra, verdura y hortaliza en comida y cena, fruta a diario, legumbre 3-4 veces por semana, pescado 3-4 (2 azul), carne blanca 2-3, carne roja como mucho 1, huevos, cereales integrales, frutos secos y lácteos. Hasta "platosDelMundo" recetas por semana de otras cocinas, adaptadas y con ingredientes que se encuentran en cualquier supermercado español (Mercadona, Lidl, Carrefour). Nada de ingredientes raros.
 3. Objetivo de cada uno: en déficit, platos saciantes (volumen de verdura, proteína en cada comida, fibra); para ganar músculo o fuerza, proteína repartida en 3-5 tomas de 0,3-0,4 g/kg y más hidratos alrededor del entreno. Los días de entreno pon hidratos y algo de proteína en la comida previa y proteína con hidratos después.
 4. Práctico: un día laborable no se cocina más de "minutosEntreSemana" minutos; si "batchDomingo" es true, deja preparado el domingo lo que se pueda (legumbre, cereal cocido, salsas, verdura asada) y planifica sobras (cocinar doble y reutilizar al día siguiente con el mismo id de receta). Reutiliza ingredientes durante la semana para no desperdiciar y aprovecha primero lo que hay en casa ("enCasa"). Desayunos y meriendas sencillos; pueden repetirse.
@@ -24,10 +25,10 @@ Cómo trabajas:
 7. Vídeo: NO inventes enlaces. En "videoBusqueda" pon la búsqueda en español con la que se encuentra en YouTube un vídeo de esa receta (nombre del plato y la técnica principal, 3-6 palabras, p. ej. "lentejas estofadas con verduras receta"). La app busca el vídeo real.
 8. "pasos": cortos, numerables, con tiempos y temperaturas.
 
-Formato: "momento" de cada comida es uno de los que hace esa persona (desayuno, media mañana, comida, merienda, cena, post-entreno). "dia": 1 lunes … 7 domingo. En cada comida marca quién la come ("him", "her"). Español de España, cercano y claro.`;
+Formato: "momento" de cada comida es uno de los que hace esa persona (desayuno, media mañana, comida, merienda, cena, post-entreno). "dia": 1 lunes … 7 domingo. En cada comida marca quién la come ("victor", "virginia"); si una persona no está en los datos, pon false y 0 para ella. Español de España, cercano y claro.`;
 
 const num = { type: 'number' };
-const porPersona = props => ({ type: 'object', additionalProperties: false, required: ['him', 'her'], properties: { him: props, her: props } });
+const porPersona = props => ({ type: 'object', additionalProperties: false, required: ['victor', 'virginia'], properties: { victor: props, virginia: props } });
 const macros = { type: 'object', additionalProperties: false, required: ['kcal', 'proteina', 'hidratos', 'grasa'], properties: { kcal: num, proteina: num, hidratos: num, grasa: num } };
 const RECETA = {
   type: 'object', additionalProperties: false,
@@ -44,8 +45,8 @@ const RECETA = {
     ingredientes: {
       type: 'array',
       items: {
-        type: 'object', additionalProperties: false, required: ['nombre', 'seccion', 'unidad', 'him', 'her'],
-        properties: { nombre: { type: 'string', description: 'nombre de supermercado, en singular' }, seccion: { type: 'string', enum: SECCIONES }, unidad: { type: 'string', enum: ['g', 'ml', 'ud'] }, him: num, her: num },
+        type: 'object', additionalProperties: false, required: ['nombre', 'seccion', 'unidad', 'victor', 'virginia'],
+        properties: { nombre: { type: 'string', description: 'nombre de supermercado, en singular' }, seccion: { type: 'string', enum: SECCIONES }, unidad: { type: 'string', enum: ['g', 'ml', 'ud'] }, victor: num, virginia: num },
       },
     },
     pasos: { type: 'array', items: { type: 'string' } },
@@ -70,11 +71,11 @@ const MENU = {
           comidas: {
             type: 'array',
             items: {
-              type: 'object', additionalProperties: false, required: ['momento', 'recetaId', 'him', 'her', 'enTrabajo', 'nota'],
+              type: 'object', additionalProperties: false, required: ['momento', 'recetaId', 'victor', 'virginia', 'enTrabajo', 'nota'],
               properties: {
                 momento: { type: 'string' }, recetaId: { type: 'string' },
-                him: { type: 'boolean' }, her: { type: 'boolean' },
-                enTrabajo: { type: 'array', items: { type: 'string', enum: ['him', 'her'] }, description: 'quién se lo lleva al trabajo' },
+                victor: { type: 'boolean' }, virginia: { type: 'boolean' },
+                enTrabajo: { type: 'array', items: { type: 'string', enum: ['victor', 'virginia'] }, description: 'quién se lo lleva al trabajo' },
                 nota: { type: 'string' },
               },
             },
@@ -95,22 +96,10 @@ function limpiarMenu(menu, quien) {
   const ids = new Set((menu.recetas || []).map(r => r.id));
   (menu.dias || []).forEach(d => {
     d.comidas = (d.comidas || []).filter(c => ids.has(c.recetaId));
-    d.comidas.forEach(c => { if (!quien.includes('him')) c.him = false; if (!quien.includes('her')) c.her = false; });
+    d.comidas.forEach(c => { ['victor', 'virginia'].forEach(u => { if (!quien.includes(u)) c[u] = false; }); c.enTrabajo = (c.enTrabajo || []).filter(u => quien.includes(u)); });
   });
   menu.dias = (menu.dias || []).filter(d => d.dia >= 1 && d.dia <= 7).sort((a, b) => a.dia - b.dia);
   return menu;
-}
-
-function errorIA(e) {
-  const m = String((e && e.message) || '');
-  if (e instanceof Anthropic.AuthenticationError) return 'la clave de la IA no es válida (revisa ANTHROPIC_API_KEY en Vercel)';
-  if (e instanceof Anthropic.PermissionDeniedError) return 'la clave de la IA no tiene permiso para este modelo';
-  if (e instanceof Anthropic.RateLimitError) return 'demasiadas peticiones, prueba en un minuto';
-  if (/credit balance/i.test(m)) return 'la cuenta de la API de Claude no tiene saldo';
-  if (e instanceof Anthropic.BadRequestError) return 'petición rechazada por la IA: ' + m.slice(0, 160);
-  if (e instanceof Anthropic.APIConnectionError) return 'el servidor no pudo conectar con la IA';
-  if (e instanceof SyntaxError) return 'la IA devolvió una respuesta que no se pudo leer';
-  return 'la IA no responde ahora [' + ((e && e.status) || (e && e.name) || 'error') + ': ' + m.slice(0, 140) + ']';
 }
 
 export default async function handler(req, res) {
@@ -156,7 +145,6 @@ export default async function handler(req, res) {
     if (modo === 'menu') return res.status(200).json({ menu: limpiarMenu(datos, quien), uso });
     return res.status(200).json({ receta: datos.receta, motivo: datos.motivo, uso });
   } catch (e) {
-    console.error('nutricion: error de la API de Claude', e && e.status, e && e.message);
-    return res.status(e instanceof Anthropic.RateLimitError ? 429 : 502).json({ error: errorIA(e) });
+    return responderError(res, e, 'nutricion');
   }
 }

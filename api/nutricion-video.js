@@ -1,5 +1,5 @@
 // Busca en YouTube un vídeo real de una receta y lo devuelve ya comprobado.
-// GET /api/video?q=lentejas+estofadas+con+verduras+receta
+// GET /api/nutricion-video?q=lentejas+estofadas+con+verduras+receta  (o POST { q })
 // Respuesta: { videos: [{ id, titulo, canal, duracion, url }], buscar } — "buscar" es el enlace a la búsqueda,
 // por si no se encuentra ninguno o se quiere ver otro. No usa clave: lee la página pública de resultados.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
@@ -27,7 +27,8 @@ const segundos = d => (d || '').split(':').reduce((a, b) => a * 60 + (+b || 0), 
 
 export default async function handler(req, res) {
   if (process.env.APP_CODE && req.headers['x-app-code'] !== process.env.APP_CODE) return res.status(401).json({ error: 'código de acceso incorrecto' });
-  const q = String((req.query && req.query.q) || '').trim().slice(0, 120);
+  let cuerpo = req.body || {}; if (typeof cuerpo === 'string') { try { cuerpo = JSON.parse(cuerpo); } catch (e) { cuerpo = {}; } }
+  const q = String((req.query && req.query.q) || cuerpo.q || '').trim().slice(0, 120);
   if (!q) return res.status(400).json({ error: 'falta la búsqueda' });
   const busqueda = /receta/i.test(q) ? q : q + ' receta';
   const buscar = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(busqueda);
