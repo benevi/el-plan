@@ -106,7 +106,7 @@ body.sin-nav.con-temporizador .aviso { bottom: calc(env(safe-area-inset-bottom) 
     linear-gradient(160deg, color-mix(in srgb, var(--acc) 10%, var(--surface-2)), var(--surface));
   box-shadow: 0 22px 44px -20px color-mix(in srgb, var(--acc) 50%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--acc) 34%, transparent);
 }
-.tarjeta.destacada::after { content: ''; position: absolute; z-index: -1; right: -36px; top: -26px; width: 170px; height: 170px; background: url("../icons/marca-fondo.svg") center/contain no-repeat; opacity: .07; transform: rotate(-12deg); pointer-events: none; }
+.tarjeta.destacada::after { content: ''; position: absolute; z-index: -1; right: -36px; top: -26px; width: 170px; height: 170px; background: url("../icons/marca-fondo.svg") center/contain no-repeat; opacity: .07; pointer-events: none; }
 .tarjeta.destacada h2 { font-size: 26px; letter-spacing: -.015em; }
 .tarjeta.destacada .enlace { text-decoration: none; font-weight: 600; font-size: 14.5px; margin: 4px auto 0; color: var(--txt-2); }
 a.tarjeta.aviso-perfil { box-shadow: var(--sombra), inset 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }
