@@ -75,3 +75,7 @@ window.ALIAS = {
   'Flexiones (banco o suelo)':'flexiones-inclinadas', 'Press de hombro con botellas/mochila':'press-hombro-botellas', 'Curl bíceps con botellas/mochila':'curl-botellas',
   'Abducción de pie en barra':'abduccion-pie',
 };
+
+// Modelo de máquina BH de vuestro gimnasio para cada ejercicio (sale de los nombres de la versión anterior).
+window.MAQUINA_BH = {};
+Object.entries(window.ALIAS).forEach(([nombre, id]) => { const m = nombre.match(/BH \(([^)]+)\)/); if (m) window.MAQUINA_BH[id] = 'BH ' + m[1]; });

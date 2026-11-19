@@ -121,6 +121,8 @@
       rt.forEach(r => { if (!S.routines[u].some(x => x.id === r.id)) { S.routines[u].push(r); n.rutinas++; } });
       if (d.bodyProfile && d.bodyProfile[u]) S.bodyProfile[u] = Object.assign({}, S.bodyProfile[u], d.bodyProfile[u]);
     });
+    // Fotos (la herramienta pasar-datos.html las incluye desde la versión anterior)
+    if (Array.isArray(d.fotos) && d.fotos.length) n.fotosP = fotos.all().then(ya => { const ids = new Set(ya.map(f => f.id)); const nuevas = d.fotos.filter(f => f && f.id && f.data && !ids.has(f.id)); return Promise.all(nuevas.map(f => fotos.put(f))).then(() => nuevas.length); });
     if (d.settings) S.settings = Object.assign(S.settings, { autoRest: d.settings.autoRest, apiUrl: d.settings.apiUrl || S.settings.apiUrl });
     guardar();
     return n;
