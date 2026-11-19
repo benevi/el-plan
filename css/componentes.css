@@ -94,3 +94,59 @@ body.con-hoja { overflow: hidden; }
 body.con-temporizador .aviso { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 100px); }
 body.sin-nav .aviso { bottom: calc(env(safe-area-inset-bottom) + 16px); }
 body.sin-nav.con-temporizador .aviso { bottom: calc(env(safe-area-inset-bottom) + 100px); }
+
+/* ── Pulido (diseño) ── */
+.tarjeta { box-shadow: var(--sombra), var(--hi), inset 0 0 0 1px var(--line); padding: 18px; }
+.tarjeta > h2 { font-size: 18px; font-weight: 800; }
+.tarjeta > h2 small { font-family: var(--f-body); font-stretch: 100%; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.tarjeta.destacada {
+  position: relative; overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--acc) 10%, var(--surface-2)), var(--surface));
+  box-shadow: 0 22px 44px -20px color-mix(in srgb, var(--acc) 50%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--acc) 34%, transparent);
+}
+.tarjeta.destacada::after { content: ''; position: absolute; z-index: -1; right: -36px; top: -26px; width: 170px; height: 170px; background: url("../icons/marca-fondo.svg") center/contain no-repeat; opacity: .07; transform: rotate(-12deg); pointer-events: none; }
+.tarjeta.destacada h2 { font-size: 26px; letter-spacing: -.015em; }
+.tarjeta.destacada .enlace { text-decoration: none; font-weight: 600; font-size: 14.5px; margin: 4px auto 0; color: var(--txt-2); }
+a.tarjeta.aviso-perfil { box-shadow: var(--sombra), inset 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }
+
+.btn { font-weight: 700; transition: transform .12s, filter .2s; box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--acc) 85%, transparent); }
+.btn.sec, .btn.peligro, .btn.sec.peligro { box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn.grande { border-radius: 16px; }
+.btn:active, .chip:active, .dueño:active, .lista .fila:active { transform: scale(.98); }
+.icono { box-shadow: var(--hi), inset 0 0 0 1px var(--line); }
+
+.chip { transition: background .15s, box-shadow .15s, color .15s; }
+.chips.dias { flex-wrap: nowrap; gap: 6px; }
+.chips.dias .chip { flex: 1; width: auto; min-width: 0; }
+.hoja.checkin .chips { flex-wrap: nowrap; gap: 6px; }
+.hoja.checkin .chips .chip { flex: 1; padding: 0 4px; font-size: 14px; white-space: nowrap; }
+.segmentos { box-shadow: var(--hi); }
+.segmentos button { font-weight: 600; transition: background .15s; }
+.segmentos button.on { box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--acc) 90%, transparent); }
+input:not([type=checkbox]):not([type=range]):focus, select:focus, textarea:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--acc), 0 0 0 4px color-mix(in srgb, var(--acc) 15%, transparent); }
+::placeholder { color: var(--txt-3); }
+.campo > span { font-weight: 500; }
+
+/* Listas con aire y flecha */
+.lista .fila { min-height: 60px; }
+.lista .fila b { font-weight: 600; }
+.lista .fila > svg { color: var(--txt-3); flex-shrink: 0; }
+button.fila[data-act="ejercicios.ficha"]::after { content: '›'; font-size: 22px; color: var(--txt-3); padding-left: 6px; }
+
+.insignia { letter-spacing: .01em; }
+.nota { box-shadow: var(--hi); border-left: 3px solid var(--acc); }
+.nota.aviso-nota { border-left-color: var(--warn); }
+.nota.peligro { border-left-color: var(--bad); }
+.barra { height: 8px; background: var(--surface-2); }
+.barra i { box-shadow: 0 0 12px color-mix(in srgb, var(--acc) 55%, transparent); }
+
+/* Hoja inferior: más respiración y jerarquía */
+.hoja-fondo { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.hoja { border-radius: 28px 28px 0 0; padding-left: 20px; padding-right: 20px; background: linear-gradient(180deg, var(--surface-2), var(--surface) 30%); box-shadow: 0 -1px 0 var(--line-2); }
+.hoja h2 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.hoja h2 + p { margin-top: 0; }
+.hoja h3 { font-size: 15px; font-weight: 700; margin: 22px 0 8px; color: var(--txt); }
+.hoja .gustos { margin-top: 8px; }
+.aviso { border-radius: 16px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--sombra), inset 0 0 0 1px var(--line-2); }

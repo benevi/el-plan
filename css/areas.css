@@ -9,7 +9,7 @@
 
 /* ── Hoy ── */
 .saludo { margin: 4px 0 10px; }
-.saludo .tenue { text-transform: capitalize; margin: 0; font-size: 14px; }
+.saludo .tenue { margin: 0; font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--txt-3); }
 .aviso-perfil { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); }
 .aviso-perfil span { display: block; color: var(--txt-2); font-size: 14.5px; }
 .tira-semana { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -37,8 +37,8 @@
 .tareas li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .tareas li p { margin: 2px 0 0; font-size: 14px; }
 .tareas li.hecho .grow { opacity: .5; text-decoration: line-through; }
-.marca { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--line-2); display: grid; place-items: center; cursor: pointer; color: #06121A; }
-.marca[aria-pressed="true"] { background: var(--acc-grad); box-shadow: none; }
+button.marca { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--line-2); display: grid; place-items: center; cursor: pointer; color: #06121A; }
+button.marca[aria-pressed="true"] { background: var(--acc-grad); box-shadow: none; }
 .ejercicio header { display: flex; align-items: flex-start; gap: 12px; }
 .ejercicio h3 { font-size: 17px; margin: 2px 0 2px; }
 .ejercicio header p { margin: 0; font-size: 14px; }
@@ -58,7 +58,7 @@
 .icono.play { background: color-mix(in srgb, var(--acc) 20%, var(--surface-2)); color: var(--acc); }
 .ejercicio.grande h3 { font-size: 22px; }
 .ejercicio.grande .serie .dato input { min-height: 56px; font-size: 22px; }
-.ejercicio.grande .marca { width: 56px; height: 56px; }
+.ejercicio.grande button.marca { width: 56px; height: 56px; }
 .gustos { display: flex; gap: 6px; flex-wrap: wrap; }
 .gustos button { flex: 1; min-height: 44px; border-radius: 12px; border: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); cursor: pointer; font-size: 14px; white-space: nowrap; }
 .gustos button.on { box-shadow: inset 0 0 0 1.5px var(--acc); background: color-mix(in srgb, var(--acc) 18%, var(--surface-2)); font-weight: 600; }
@@ -95,3 +95,55 @@ body.sin-nav .temporizador { bottom: calc(env(safe-area-inset-bottom) + 12px); }
 /* ── Ejercicios ── */
 .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px; }
 .filtros input { grid-column: 1 / -1; }
+
+/* ════ Pulido de diseño por pantallas ════ */
+
+/* Bienvenida */
+.bienvenida { padding-top: 14vh; }
+.bienvenida::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(60% 40% at 50% 22%, color-mix(in srgb, var(--brand-2) 18%, transparent), transparent 70%), radial-gradient(50% 30% at 30% 10%, color-mix(in srgb, var(--brand-1) 16%, transparent), transparent 70%); }
+.logo-grande { width: 112px; height: 112px; border-radius: 30px; }
+.bienvenida h1 { font-size: 36px; letter-spacing: -.02em; }
+.bienvenida > p.tenue { max-width: 300px; margin: 6px auto 28px; }
+.dueño { background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 70%, #000)); box-shadow: 0 14px 30px -14px var(--c); transition: transform .12s; }
+
+/* Hoy: semana como una sola pieza */
+.tira-semana { gap: 4px; padding: 6px; border-radius: 20px; background: var(--surface); box-shadow: var(--sombra), var(--hi), inset 0 0 0 1px var(--line); }
+.tira-semana li { background: transparent; padding: 10px 0 9px; border-radius: 14px; font-weight: 600; }
+.tira-semana li.hoy { background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 20%, var(--surface-2)), var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 50%, transparent); }
+.tira-semana li.hecha i { background: var(--acc-grad); }
+.semana li { padding: 10px 0; align-items: baseline; }
+.semana li.hoy { font-weight: 600; }
+.hecha .etiqueta { color: var(--ok); }
+
+/* Sesión */
+.cab-sesion { background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+.cab-sesion h1 { font-size: 21px; letter-spacing: -.015em; }
+.bloque > summary h2 { font-size: 17px; font-weight: 800; }
+.tareas li { align-items: center; }
+.tareas button.marca { width: 36px; height: 36px; border-radius: 50%; }
+.tareas button.marca svg { width: 18px; height: 18px; }
+.tareas li .grow b, .tareas li .grow strong { font-weight: 600; }
+.ejercicio .num { width: 34px; height: 34px; border-radius: 11px; background: color-mix(in srgb, var(--acc) 14%, var(--surface-3)); color: var(--acc); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 25%, transparent); }
+.ejercicio.completo .num { box-shadow: none; }
+.ejercicio h3 { font-size: 18px; font-weight: 800; }
+.motivo { border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--acc) 6%, transparent); padding: 8px 10px; }
+.serie .n { font-family: var(--f-head); font-stretch: 112%; }
+.serie .dato input { font-family: var(--f-head); font-stretch: 108%; font-weight: 700; }
+.serie button.marca { width: 48px; height: 48px; border-radius: 14px; }
+.serie.hecha button.marca { box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--acc) 80%, transparent); }
+.gustos button { font-weight: 500; transition: background .15s, box-shadow .15s; }
+.pasos li::marker { color: var(--acc); font-weight: 700; }
+.errores li::marker { color: var(--bad); }
+
+/* Temporizador */
+.temporizador { border-radius: 22px; background: color-mix(in srgb, var(--surface-3) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 18px 44px -10px rgba(0,0,0,.7), inset 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent); }
+body:not(.sin-nav) .temporizador { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 20px); }
+.t-texto b { font-size: 32px; font-weight: 800; }
+.t-botones button { border-radius: 14px; }
+
+/* Progreso */
+.barras i { border-radius: 9px 9px 4px 4px; }
+.barras div.ok i { box-shadow: 0 0 14px -2px color-mix(in srgb, var(--acc) 70%, transparent); }
+
+/* Ejercicios */
+main .filtros input:not([type=checkbox]):not([type=range]) { padding-left: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7389' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px 50%; background-size: 18px; }
