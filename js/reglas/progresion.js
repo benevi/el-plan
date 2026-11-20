@@ -315,7 +315,9 @@ export function semanaDescarga(S, ahora = new Date()) {
 }
 // Series en descarga: −50 % redondeando hacia abajo; mínimo 2 en compuestos y 1 en accesorios.
 const RE_AISLADO = /aperturas|cruces|elevacion|curl|extension|patada|abduc|face-pull|pajaros|crunch|talones|plancha/;
-export const esCompuestoDe = e => !!e && (e.tipo ? e.tipo === 'compuesto' : (e.s || []).length > 0 && !RE_AISLADO.test(e.id));
+// Compuesto: `tipo` del catálogo (PR 9); el peso corporal multiarticular (flexiones, remo australiano) cuenta igual.
+const multiarticular = e => (e.s || []).length > 0 && !RE_AISLADO.test(e.id);
+export const esCompuestoDe = e => !!e && (e.tipo === 'compuesto' || ((!e.tipo || e.tipo === 'corporal') && multiarticular(e)));
 export const seriesDescarga = (e, series) => Math.min(series, Math.max(esCompuestoDe(e) ? 2 : 1, Math.floor(series / 2)));
 
 // ── C-PARON-1 · Vuelta tras un parón: tramo según los días sin hacer el ejercicio ──

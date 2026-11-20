@@ -104,6 +104,9 @@ function lesion(l, avisos, vistos) {
     nota: texto(l.nota, 300), activa: bool(l.activa, true),
   };
   const tipo = enLista(l.tipo, TIPOS_LESION); if (tipo) out.tipo = tipo;
+  // Detalle opcional (esguince, fascitis…): solo si es una opción de esa zona; si no, se usa el de por defecto.
+  const opciones = (ZONAS[z].detalles || {}).opciones;
+  if (typeof l.detalle === 'string' && opciones && Object.prototype.hasOwnProperty.call(opciones, l.detalle)) out.detalle = l.detalle;
   if (l.dolorRevisar === true) out.dolorRevisar = true;
   if (typeof l.vid === 'string' && l.vid.length <= 200) out.vid = texto(l.vid, 200);
   return out;

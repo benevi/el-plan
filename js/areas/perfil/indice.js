@@ -87,7 +87,7 @@ function grupoLesiones(S) {
     ${lesiones.some(l => l.activa && l.dolorRevisar) ? '<p class="nota aviso-nota">El dolor de las lesiones traídas de la app anterior es una estimación. Toca cada una y pon cuánto te duele ahora.</p>' : ''}
     ${lesiones.length ? `<ul class="lista">${lesiones.map(l => `<li class="${l.activa ? '' : 'apagada'}">
       <button class="fila" data-act="perfil.lesion" data-id="${h(l.id)}">
-        <span class="grow"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span class="tenue">${l.activa ? `Dolor ${+l.dolor}/10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada'}${l.tipo ? ' · ' + h(TIPOS_LESION[l.tipo]) : ''}${l.desde ? ' · desde ' + h(l.desde) : ''}${l.nota ? ' · ' + h(l.nota) : ''}</span></span>
+        <span class="grow"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span class="tenue">${l.activa ? `Dolor ${+l.dolor}/10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada'}${l.tipo ? ' · ' + h(TIPOS_LESION[l.tipo]) : ''}${l.detalle && ZONAS[l.zona] && ZONAS[l.zona].detalles && ZONAS[l.zona].detalles.opciones[l.detalle] ? ' · ' + h(ZONAS[l.zona].detalles.opciones[l.detalle].nombre.toLowerCase()) : ''}${l.desde ? ' · desde ' + h(l.desde) : ''}${l.nota ? ' · ' + h(l.nota) : ''}</span></span>
         ${ICONOS.editar}</button></li>`).join('')}</ul>` : '<p class="tenue">Sin lesiones apuntadas.</p>'}
     <button class="btn sec" data-act="perfil.lesion">${ICONOS.mas} Añadir lesión o dolor</button>
   </section>`;
@@ -248,11 +248,27 @@ async function cargarCopia(txt, opciones = {}) {
 }
 function esCopiaVieja(txt) { try { return esViejo(JSON.parse(txt)); } catch { return false; } }
 
+// Detalle opcional de la zona (esguince, fascitis…): un desplegable por zona y solo se ve el de la elegida.
+// Sin detalle, el entrenador aplica lo más prudente.
+function detallesLesion(l) {
+  return Object.entries(ZONAS).filter(([, z]) => z.detalles).map(([k, z]) => {
+    const irradia = l.zona === k && l.detalle && (z.detalles.opciones[l.detalle] || {}).irradiado;
+    return `<label class="campo col" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
+      <span>Detalle <small>opcional; si no lo sabes, la app elige lo más prudente</small></span>
+      <select id="l-detalle-${h(k)}" data-cambio="perfil.lesionDetalle"><option value="">No lo sé</option>${Object.entries(z.detalles.opciones).map(([o, d]) => `<option value="${h(o)}" data-irradia="${d.irradiado ? '1' : ''}" ${l.zona === k && l.detalle === o ? 'selected' : ''}>${h(d.nombre)}</option>`).join('')}</select>
+      ${z.detalles.ayuda ? `<small class="tenue">${h(z.detalles.ayuda)}</small>` : ''}
+      <p class="nota aviso-nota" data-a4="${h(k)}" ${irradia ? '' : 'style="display:none"'}>${h(AVISO_IRRADIADO)}</p></label>`;
+  }).join('');
+}
+// Dolor que baja por el brazo o la pierna (A4 de docs/criterio.md).
+const AVISO_IRRADIADO = 'Si es nuevo o va a más, no entrenes y consulta.';
+
 function hojaLesion(l) {
   const nueva = !l;
   l = l || { zona: Object.keys(ZONAS)[0], dolor: 3, desde: hoyISO(), nota: '', activa: true };
   abrirHoja(`<h2>${nueva ? 'Nueva lesión o dolor' : 'Editar lesión'}</h2>
-    <label class="campo col"><span>Zona</span><select id="l-zona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></label>
+    <label class="campo col"><span>Zona</span><select id="l-zona" data-cambio="perfil.lesionZona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></label>
+    ${detallesLesion(l)}
     <label class="campo col"><span>Dolor habitual: <b id="l-dolor-v">${+l.dolor}</b>/10</span><input type="range" id="l-dolor" min="0" max="10" value="${+l.dolor}" oninput="document.getElementById('l-dolor-v').textContent=this.value"></label>
     <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo">${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${h(n)}</button>`).join('')}</div></div>
     <label class="campo col"><span>Desde</span><input type="date" id="l-desde" value="${h(l.desde || '')}"></label>
@@ -281,12 +297,19 @@ acciones({
   'perfil.notas': el => cambiar(S => { S.perfil.notas = el.value.trim(); }, 'perfil-silencio'),
   'perfil.codigo': el => { cambiar(S => { S.ajustes.codigo = el.value.trim(); }, 'perfil-silencio'); aviso('Código guardado'); },
   'perfil.ajuste': el => cambiar(S => { S.ajustes[el.dataset.k] = el.checked; }, 'perfil-silencio'),
+  'perfil.lesionDetalle': el => {
+    const a4 = document.querySelector(`[data-a4="${el.id.replace('l-detalle-', '')}"]`);
+    if (a4) a4.style.display = el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia ? '' : 'none';
+  },
+  'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.style.display = c.dataset.detalle === el.value ? '' : 'none'; }),
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),
   'perfil.guardarLesion': el => {
     const datos = { tipo: ($('#l-tipo .chip.on') || { dataset: { v: 'lesion' } }).dataset.v, zona: $('#l-zona').value, dolor: +$('#l-dolor').value, desde: $('#l-desde').value, nota: $('#l-nota').value.trim(), activa: $('#l-activa') ? $('#l-activa').checked : true };
+    const detalle = $(`#l-detalle-${datos.zona}`);
+    if (detalle && detalle.value) datos.detalle = detalle.value;
     cambiar(S => {
       const l = el.dataset.id && S.perfil.lesiones.find(x => x.id === el.dataset.id);
-      if (l) { Object.assign(l, datos); delete l.dolorRevisar; } else S.perfil.lesiones.push({ id: uid(), ...datos });
+      if (l) { Object.assign(l, datos); delete l.dolorRevisar; if (!datos.detalle) delete l.detalle; } else S.perfil.lesiones.push({ id: uid(), ...datos });
       S.dolor.push({ fecha: hoyISO(), zona: datos.zona, dolor: datos.dolor, momento: 'perfil' });
     }, 'perfil');
     cerrarHoja();
