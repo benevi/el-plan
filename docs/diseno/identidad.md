@@ -2,7 +2,7 @@
 
 Segunda entrega de la fase D. Tres direcciones de identidad **claramente distintas** para Pipos Fitness, solo en tema oscuro, para que Víctor elija una (o una mezcla) desde el móvil. El nombre se mantiene; todo lo demás es nuevo: logo, iconos, colores, letra y movimiento.
 
-**Estado:** Víctor aprueba **Carril 2**. Logos: la primera ronda (Giro, Marea, Trazo, Dúo y Nivel) no le gusta; elige la dirección «símbolo de pareja». La ronda nueva está en `/prototipos/identidad/logos-2/`, con «Arco» aplicado en Carril 2, pendiente de su elección.
+**Estado:** Víctor aprueba **Carril 2**. **Logo: Trenza, elegido por Víctor el 20-11-2026.** Identidad cerrada: Carril 2 + Trenza; el sistema de diseño (DIS 3) se construye sobre ella.
 **Dónde verlo:** en la vista previa de Vercel de la rama `diseno-prototipos`, ruta **`/prototipos/identidad/`** (con la barra final). La página índice permite comparar la misma pantalla en las tres direcciones, con Víctor o Virginia, a 360 × 640 o 390 × 844.
 
 ---
@@ -112,14 +112,21 @@ En `/prototipos/identidad/logos/`: cada propuesta a 16, 24, 32, 48, 64 y 128 px,
 
 | Propuesta | Idea | Valoración |
 |---|---|---|
-| **Arco** (finalista 1, aplicada en Carril 2) | Dos trazos que suben y se inclinan el uno hacia el otro hasta casi tocarse | Dos personas que se apoyan sin fundirse (el hueco las separa) y juntas forman un arco que sube. Dos trazos y un hueco: la más sencilla y abstracta. Se entiende a 16 px y en un tono, y usa el mismo trazo redondo que los botones de Carril 2. Riesgo: en un tono y muy pequeña puede leerse como «n» o «Λ» |
+| **Arco** (finalista 1 propuesta) | Dos trazos que suben y se inclinan el uno hacia el otro hasta casi tocarse | Dos personas que se apoyan sin fundirse (el hueco las separa) y juntas forman un arco que sube. Dos trazos y un hueco: la más sencilla y abstracta. Se entiende a 16 px y en un tono, y usa el mismo trazo redondo que los botones de Carril 2. Riesgo: en un tono y muy pequeña puede leerse como «n» o «Λ» |
 | **Escalón** (finalista 2) | Dos «p» minúsculas, la segunda un paso más arriba | Pipos en plural, dos personas y el progreso en una sola forma. La más propia y legible. Riesgo: son letras, no un símbolo abstracto, y la diferencia de altura puede leerse como jerarquía (se pueden igualar) |
 | Paralelo | Dos trazos que avanzan a la par | Limpia, pero «//» es demasiado común y no se recuerda |
 | Ondas | Dos ondas con el mismo ritmo | Muy de Carril, pero es el signo de Acuario y el «≈» |
 | Órbita | Dos puntos en la misma órbita con su estela | Pequeña se confunde con el icono de «sincronizar» |
-| Trenza | Dos trazos que se cruzan por encima y por debajo | Se lee «XX» y recuerda al ADN |
+| **Trenza (elegida por Víctor)** | Dos trazos que se cruzan por encima y por debajo | En la primera versión se leía «XX» y recordaba al ADN; pulida (ver abajo) |
 
-**Aplicado en Carril 2:** `carril-2/logo.svg` (cabecera), `icono.svg`, `icono-maskable.svg` y los PNG (192: 6,6 KB; 512: 21,7 KB; maskable: 13,4 KB). No cambia nada más de Carril 2. Para pasar a Escalón basta con copiar sus archivos de `logos-2/escalon/`.
+**Logo: Trenza, elegido por Víctor el 20-11-2026.** Se ha pulido sin cambiar la idea (dos trazos, lima de Víctor y rosa de Virginia, que se cruzan dos veces: una vez pasa por encima uno y otra vez el otro):
+
+- **En vertical:** en horizontal los dos cruces forman «XX»; de pie se lee como un solo símbolo, una cinta que sube.
+- **Colas cortas:** los trazos acaban poco después de cada cruce (de t = 0,30 a 1,20 del ciclo), así queda un solo ojo central y no una cadena.
+- **Cruces más suaves:** amplitud 60 y trazo 46 (sobre 512), con un hueco de 24 en el cruce de «por debajo», visible hasta 32 px; a 16 px queda una forma de «S» doble limpia, también en un tono.
+- Variantes estudiadas en `logos-2/trenza/variantes/`: **vertical** (elegida), **en marcha** (inclinada 18°; pequeña recuerda a «§»/«$») y **horizontal** (sigue leyéndose «XX»). Parámetros en `herramientas/logos2.py` (`TRENZA_VARIANTES`, `TRENZA_ELEGIDA`).
+
+**Aplicado en Carril 2:** `carril-2/logo.svg` (cabecera), `icono.svg`, `icono-maskable.svg`, `simbolo.svg` y los PNG (192: 9,0 KB; 512: 29,4 KB; maskable: 18,5 KB).
 
 Generación: `python3 prototipos/identidad/herramientas/logos2.py` y `node prototipos/identidad/herramientas/iconos.mjs`.
 
@@ -137,7 +144,7 @@ _Generado con `node prototipos/identidad/contraste.mjs --escribir`. No editar a 
 | Tiza | 24 de 24 | 3,09:1 | 0,18 | 73,6 KB | 8,2 KB, 26,2 KB, 17,1 KB |
 | Carril | 24 de 24 | 3,20:1 | 0,21 | 96,6 KB | 4,9 KB, 16,6 KB, 9,4 KB |
 | Hierro | 24 de 24 | 3,07:1 | 0,16 | 72,5 KB | 8,9 KB, 27,3 KB, 17,8 KB |
-| Carril 2 | 29 de 29 | 3,40:1 | 0,15 | 56,0 KB | 6,6 KB, 21,7 KB, 13,4 KB |
+| Carril 2 | 29 de 29 | 3,40:1 | 0,15 | 56,0 KB | 9,0 KB, 29,4 KB, 18,5 KB |
 
 #### Tiza
 
@@ -302,7 +309,7 @@ Colores de persona con daltonismo (simulación de Machado et al., 2009; ΔE OKLa
 | Deuteranopia | `#eedb84` / `#b9bbc0` | 0,15 | 9,45:1 | Sí |
 | Tritanopia | `#d1dece` / `#fe98a9` | 0,17 | 8,88:1 | Sí |
 
-Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 6,6 KB, icono-512.png 21,7 KB, icono-maskable-512.png 13,4 KB.
+Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 9,0 KB, icono-512.png 29,4 KB, icono-maskable-512.png 18,5 KB.
 
 #### Propuestas de logo, primera ronda (PNG 192, 512 y maskable 512; máximo 50 KB)
 
@@ -323,7 +330,7 @@ Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 6,6 K
 | ondas | 7,9 KB, 25,6 KB, 16,2 KB |
 | orbita | 7,2 KB, 23,5 KB, 14,1 KB |
 | paralelo | 6,8 KB, 23,3 KB, 13,6 KB |
-| trenza | 8,7 KB, 27,7 KB, 17,7 KB |
+| trenza | 9,0 KB, 29,4 KB, 18,5 KB |
 <!-- contraste:fin -->
 
 ### Otras comprobaciones (Playwright)

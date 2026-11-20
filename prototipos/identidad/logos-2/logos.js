@@ -1,18 +1,18 @@
 // Página de logos (símbolo de pareja): misma propuesta a varios tamaños, sobre fondo oscuro o claro, y en una pantalla de inicio simulada.
 const PROPUESTAS = [
+  { id: 'trenza', nombre: 'Trenza', idea: 'Dos trazos que se cruzan por encima y por debajo: entrenar juntos, cada uno a su paso.', elegida: true },
   { id: 'arco', nombre: 'Arco', idea: 'Dos trazos que se inclinan el uno hacia el otro: apoyo, sin fundirse.', finalista: true },
   { id: 'escalon', nombre: 'Escalón', idea: 'Dos «p», la segunda un paso más arriba: Pipos, dos y progreso.', finalista: true },
   { id: 'paralelo', nombre: 'Paralelo', idea: 'Dos trazos que avanzan a la par.' },
   { id: 'ondas', nombre: 'Ondas', idea: 'Dos ondas con el mismo ritmo.' },
   { id: 'orbita', nombre: 'Órbita', idea: 'Dos puntos en la misma órbita.' },
-  { id: 'trenza', nombre: 'Trenza', idea: 'Dos trazos que se cruzan por encima y por debajo.' },
 ];
 const TAMANOS = [16, 24, 32, 48, 64, 128];
 
 const tabla = document.getElementById('tabla');
 tabla.innerHTML = PROPUESTAS.map(p => `
   <article class="fila${p.finalista ? ' es-finalista' : ''}">
-    <div class="fila-cab"><h3>${p.nombre}</h3>${p.finalista ? '<span class="marca-fin">Finalista</span>' : ''}<p>${p.idea}</p></div>
+    <div class="fila-cab"><h3>${p.nombre}</h3>${p.elegida ? '<span class="marca-fin">Elegida</span>' : p.finalista ? '<span class="marca-fin">Finalista</span>' : ''}<p>${p.idea}</p></div>
     <div class="tamanos">${TAMANOS.map(t => `<figure><img src="${p.id}/icono.svg" width="${t}" height="${t}" alt=""><figcaption>${t}</figcaption></figure>`).join('')}
       <figure><img class="redondo" src="${p.id}/icono-maskable.svg" width="96" height="96" alt=""><figcaption>maskable</figcaption></figure><figure><img src="${p.id}/icono-un-tono.svg" width="32" height="32" alt=""><figcaption>un tono</figcaption></figure><figure><img src="${p.id}/icono-un-tono.svg" width="16" height="16" alt=""><figcaption>un tono</figcaption></figure></div>
     <div class="logo-fila"><img src="${p.id}/logo.svg" height="36" alt="Logo ${p.nombre} con el nombre Pipos Fitness"></div>

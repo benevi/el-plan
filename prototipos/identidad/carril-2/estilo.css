@@ -36,7 +36,7 @@ h1 { font: 500 30px/1.12 var(--f-titulo); letter-spacing: -.02em; }
 .num, .reloj, .titular b, .cierre-datos dd { font-family: var(--f-titulo); font-stretch: 75%; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 
 .cab { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 28px; }
-.cab img { height: 24px; width: auto; }
+.cab img { height: 28px; width: auto; }
 .cab-fecha { font-size: 14px; color: var(--texto-2); }
 
 .boton-principal {
