@@ -95,7 +95,8 @@ for (const caso of conIA) {
       assert.match(l.banda, /^B[0-2]$/, `${l.zona}: banda`);
       assert.ok(l.techo >= 3 && l.techo <= 5, `${l.zona}: techo`);
       assert.ok([1, 2, 3].includes(l.faseRehab), `${l.zona}: fase`);
-      assert.ok(l.rehabilitacionSugerida.every(id => typeof id === 'string'));
+      const enCatalogo = new Set(c.catalogo.map(e => e.id));
+      assert.deepEqual(l.rehabilitacionSugerida.filter(id => !enCatalogo.has(id)), [], `${l.zona}: rehabilitación fuera del catálogo enviado`);
     });
   });
 }
@@ -261,4 +262,48 @@ test('juez de plan: más de 4 días de fuerza siendo principiante o días que fa
   const corto = juzgar(p, { ...r, dias: r.dias.slice(0, 3) });
   assert.equal(corto.aprueba, false);
   assert.match(corto.avisos[0], /faltan los días/);
+});
+
+// ── Revisión del PR 11: lo que el juez no puede dejar pasar ──
+const principalCon = (p, zona, tipo = 'compuesto') => p.cuerpo.catalogo.filter(e => (e.prec || '').split(',').includes(zona) && e.tipo === tipo && !e.m[0].startsWith('core'));
+test('juez (C-DOSIS-4): un ejercicio con riesgo en una zona B0-B1 pesado, el primero o el tercero de la zona suspende', async () => {
+  const p = await preparar(CASOS.find(c => c.id === 'CR-05')); // hombro B1
+  const base = buena(p);
+  const usados = new Set(base.ejercicios.map(x => x.id));
+  const conRiesgo = principalCon(p, 'hombro').filter(e => !usados.has(e.id));
+  assert.ok(conRiesgo.length >= 3, conRiesgo.map(e => e.id).join(', '));
+  const sinHombro = r => { r.ejercicios = r.ejercicios.filter(x => x.rol !== 'principal' || !(p.cuerpo.catalogo.find(e => e.id === x.id).prec || '').includes('hombro')); };
+  // Pesado y el primero.
+  let j = juzgar(p, mutar(base, r => { sinHombro(r); r.ejercicios.unshift({ id: conRiesgo[0].id, rol: 'principal', series: 4, reps: '4-6', descanso: 150, kg: null, nota: 'Tu hombro en 2/10.' }); }));
+  assert.equal(j.aprueba, false);
+  assert.ok(j.seguridad.some(t => /C-DOSIS-4/.test(t) && /10 repeticiones/.test(t)), j.seguridad.join(' | '));
+  assert.ok(j.seguridad.some(t => /C-DOSIS-4/.test(t) && /primero/.test(t)), j.seguridad.join(' | '));
+  // Bien dosificado pero tres en la misma zona.
+  j = juzgar(p, mutar(base, r => { sinHombro(r); const i = r.ejercicios.findIndex(x => x.rol === 'principal'); r.ejercicios.splice(i + 1, 0, ...conRiesgo.slice(0, 3).map(e => ({ id: e.id, rol: 'principal', series: 2, reps: '12-15', descanso: 60, kg: null, nota: 'Tu hombro está en 2/10: carga moderada.' }))); }));
+  assert.ok(j.seguridad.some(t => /C-DOSIS-4/.test(t) && /3 ejercicios/.test(t)), j.seguridad.join(' | '));
+});
+test('juez (C-DOLOR-1): subir kilos en un ejercicio que implica una zona en B2 suspende', async () => {
+  const p = await preparar(CASOS.find(c => c.id === 'CR-26')); // rodilla y lumbar a 5, con historia de prensa a 80 kg
+  const j = juzgar(p, mutar(buena(p), r => { r.ejercicios.push({ id: 'prensa-piernas', rol: 'principal', series: 3, reps: '10-12', descanso: 90, kg: 82.5, nota: 'De 80 a 82,5 kg.' }); }));
+  assert.equal(j.aprueba, false);
+  assert.ok(j.seguridad.some(t => /prensa-piernas/.test(t) && /B2/.test(t)), j.seguridad.join(' | '));
+});
+test('juez de plan (C-REP-2): una semana de 6 días suaves para CR-11 no aprueba', async () => {
+  const p = await preparar(CASOS.find(c => c.id === 'CR-11'));
+  const r = buena(p);
+  const suave = r.dias.find(d => /^Día suave/.test(d.explicacion[0] || ''));
+  assert.ok(suave);
+  const j = juzgar(p, { ...r, dias: r.dias.map(d => ({ ...copia(suave), diaSemana: d.diaSemana })) });
+  assert.equal(j.aprueba, false);
+  assert.ok(j.seguridad.some(t => /días suaves/.test(t)), j.seguridad.join(' | '));
+  assert.ok(j.seguridad.some(t => /días de fuerza/.test(t)), j.seguridad.join(' | '));
+});
+test('juez de plan (C-REP-2, C-REP-4): un cuerpo completo sin dominante de cadera no aprueba', async () => {
+  const p = await preparar(CASOS.find(c => c.id === 'CR-11'));
+  const r = buena(p);
+  const cadera = x => ['gluteo', 'isquios'].includes((p.cuerpo.catalogo.find(e => e.id === x.id) || { m: [''] }).m[0]);
+  const d = r.dias.find(d => d.ejercicios.some(x => x.rol === 'principal' && cadera(x)));
+  const j = juzgar(p, mutar(r, x => { const dd = x.dias.find(y => y.diaSemana === d.diaSemana); dd.ejercicios = dd.ejercicios.filter(e => !(e.rol === 'principal' && cadera(e))); }));
+  assert.equal(j.aprueba, false);
+  assert.ok(j.seguridad.some(t => /cadera/.test(t) && /C-REP-4/.test(t)), j.seguridad.join(' | '));
 });
