@@ -64,12 +64,17 @@ export function volumenSemana(dias) {
 }
 // Series directas de un músculo en un día.
 const directas = (d, m) => (d.ejercicios || []).filter(x => x.rol === 'principal' && ex(x.id) && ex(x.id).m.includes(m)).reduce((t, x) => t + x.series, 0);
+// Días seguidos en el calendario, también domingo → lunes (el plan se repite cada semana).
+const seguido = (a, b) => b === (a % 7) + 1;
 // Días del plan que caen justo antes o justo después (en el calendario) de d.
-const vecinos = (dias, d) => dias.filter(o => Math.abs(o.diaSemana - d.diaSemana) === 1);
-// C-REP-1 · Músculos grandes con ≥ 4 series directas en dos días seguidos.
+const vecinos = (dias, d) => dias.filter(o => seguido(o.diaSemana, d.diaSemana) || seguido(d.diaSemana, o.diaSemana));
+// C-REP-1 · Músculos grandes con ≥ 4 series directas en dos días seguidos. `dias[1]` es el día que se recorta:
+// el segundo del par o, en domingo → lunes, el domingo (para no tocar el primer día de la semana).
 export function choquesSeguidos(dias) {
   const out = [];
-  dias.forEach(a => dias.filter(b => b.diaSemana === a.diaSemana + 1).forEach(b => GRANDES.forEach(m => { if (directas(a, m) >= 4 && directas(b, m) >= 4) out.push({ m, dias: [a.diaSemana, b.diaSemana] }); })));
+  dias.forEach(a => dias.filter(b => seguido(a.diaSemana, b.diaSemana)).forEach(b => GRANDES.forEach(m => {
+    if (directas(a, m) >= 4 && directas(b, m) >= 4) out.push({ m, dias: b.diaSemana === 1 ? [b.diaSemana, a.diaSemana] : [a.diaSemana, b.diaSemana] });
+  })));
   return out;
 }
 
@@ -121,7 +126,13 @@ function repartirSinSeguidos(dias, k) {
 function reparto(S, dias) {
   const n = dias.length, nivel = +S.perfil.nivel || 1;
   const soloSalud = objetivosDe(S).every(o => o === 'salud' || o === 'natacion');
-  if (soloSalud) return Array.from({ length: n }, (_, i) => (i % 2 ? 'fullA' : 'salud'));
+  if (soloSalud) {
+    if (nivel === 1 && n > 4) { // principiante: como mucho 4 días de fuerza
+      const sel = repartirSinSeguidos(dias, 4); let j = 0;
+      return dias.map((_, i) => (sel.includes(i) ? (j++ % 2 ? 'fullA' : 'salud') : 'suave'));
+    }
+    return Array.from({ length: n }, (_, i) => (i % 2 ? 'fullA' : 'salud'));
+  }
   const full = ['fullA', 'fullB', 'fullC'];
   if (n <= 3) return full.slice(0, n); // C-REP-3: con 3 días, cuerpo completo × 3 para todos los niveles
   if (nivel === 1) {
@@ -248,8 +259,17 @@ function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
       }));
       // Primero lo que más aporta y solo a este músculo (así no se quita volumen a otro que va justo).
       const c = cand.sort((a, b) => b.peso - a.peso || a.otros - b.otros || b.x.series - a.x.series)[0];
-      if (!c) break;
-      c.x.series--; vol = volumenSemana(out);
+      if (c) { c.x.series--; vol = volumenSemana(out); continue; }
+      // Sin series que quitar: fuera el ejercicio que más aporta a este músculo y menos a los demás
+      // (C-VOL-2: el techo no se supera nunca).
+      const quitar = [];
+      out.slice().reverse().forEach(d => d.ejercicios.forEach(x => {
+        const e = x.rol === 'principal' && ex(x.id);
+        if (e && (e.m.includes(m) || (e.s || []).includes(m))) quitar.push({ d, x, peso: e.m.includes(m) ? 1 : 0.5, otros: e.m.filter(mm => mm !== m).length });
+      }));
+      const q = quitar.sort((a, b) => a.otros - b.otros || b.peso - a.peso || b.x.series - a.x.series)[0];
+      if (!q) break;
+      q.d.ejercicios.splice(q.d.ejercicios.indexOf(q.x), 1); vol = volumenSemana(out);
     }
   });
   return vol;
@@ -372,7 +392,13 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
   if (!libres.length) return pendientes.length ? 'No queda ningún día libre esta semana: dejo el plan como está.' : 'Ya has hecho todos los días de esta semana.';
   let nuevos, nota;
   if (pendientes.length <= libres.length) {
-    nuevos = pendientes.map((d, i) => ({ ...d, diaSemana: libres[i] }));
+    nuevos = pendientes.map((d, i) => ({ ...d, diaSemana: libres[i], ejercicios: d.ejercicios.map(x => ({ ...x })) }));
+    // C-REP-1 también al mover días: el que queda detrás no repite el músculo cargado.
+    for (let g = 0; g < 20; g++) {
+      const ch = choquesSeguidos([...hechos, ...nuevos])[0]; if (!ch) break;
+      const d = nuevos.find(x => x.diaSemana === ch.dias[1]) || nuevos.find(x => x.diaSemana === ch.dias[0]); if (!d) break;
+      recortarDia(d, ch.m, 3);
+    }
     const mov = pendientes.map((d, i) => [d, libres[i]]).filter(([d, n]) => d.diaSemana !== n);
     nota = mov.length ? `Muevo ${lista(mov.map(([d, n]) => `${minus(DIAS[d.diaSemana])} (${minus(d.nombre)}) al ${minus(DIAS[n])}`))}.` : 'Todo sigue en su día.';
   } else {
@@ -387,7 +413,7 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
       return { diaSemana: d, nombre: libres.length === 1 ? 'Cuerpo completo (resumen de la semana)' : dia.nombre, foco: dia.foco, lugar, minutos: dia.minutos, tipo: 'fullA', explicacion: [`Rehecho al reorganizar la semana: prioriza ${lista(faltan.map(m => minus(MUSCULOS[m])))}, que aún no has trabajado.`, ...dia.explicacion], calentamiento: dia.calentamiento, ejercicios: dia.ejercicios, vuelta: dia.vuelta };
     });
     // C-REP-1 también al rehacer: el día siguiente no repite el músculo cargado.
-    for (let g = 0; g < 20; g++) { const ch = choquesSeguidos([...hechos, ...nuevos])[0]; if (!ch) break; const d = nuevos.find(x => x.diaSemana === ch.dias[1]); if (!d) break; recortarDia(d, ch.m, 3); }
+    for (let g = 0; g < 20; g++) { const ch = choquesSeguidos([...hechos, ...nuevos])[0]; if (!ch) break; const d = nuevos.find(x => x.diaSemana === ch.dias[1]) || nuevos.find(x => x.diaSemana === ch.dias[0]); if (!d) break; recortarDia(d, ch.m, 3); }
     nota = `Quedaban ${pendientes.length} días y puedes ${libres.length}: lo junto en ${libres.length === 1 ? 'una sesión de cuerpo completo' : 'sesiones de cuerpo completo'} priorizando ${lista(faltan.map(m => minus(MUSCULOS[m]))) || 'lo más importante'}.`;
   }
   cambiar(S2 => {

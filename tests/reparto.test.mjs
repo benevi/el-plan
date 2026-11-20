@@ -124,3 +124,66 @@ test('el texto del plan cita 48 h y 4 sesiones para «estancado»', () => {
   assert.match(p.criterios, /48 h/);
   assert.match(p.progresion, /4 sesiones/);
 });
+
+// ── Revisión independiente del PR 10 (scripts rev-pr10/p3, p4 y p5 convertidos en pruebas) ──
+
+test('fuzz de planes con semilla (revisión): techo semanal, C-REP-1 (también domingo → lunes) y principiante ≤ 4 días de fuerza', () => {
+  let seed = 11;
+  const az = () => (seed = (seed * 16807) % 2147483647) / 2147483647, el = a => a[Math.floor(az() * a.length)];
+  const malos = [];
+  const N = +process.env.FUZZ_PLANES || 400;
+  for (let i = 0; i < N; i++) {
+    const nivel = el([1, 2, 3]);
+    const objetivos = el([['musculo'], ['fuerza'], ['perder'], ['salud'], ['resistencia'], ['musculo', 'perder'], ['natacion', 'musculo'], ['salud', 'natacion'], ['fuerza', 'resistencia']]);
+    const lugares = el([['gym'], ['casa'], ['gym', 'piscina'], ['casa', 'piscina'], ['calle']]);
+    const lesiones = az() < 0.4 ? [{ id: 'l', zona: el(['hombro', 'rodilla', 'lumbar', 'cadera_lateral', 'codo', 'tobillo_pie']), dolor: el([0, 1, 2, 3, 5, 6]), activa: true, desde: el(['', '2026-11-01', '2025-01-01']) }] : [];
+    const k = el([1, 2, 3, 4, 5, 6, 7]);
+    const dias = az() < 0.5 ? ent.diasPorDefecto(nuevoS({ nivel, disponibilidad: { dias: k, minutos: 60, diasSemana: [] } })) : [1, 2, 3, 4, 5, 6, 7].sort(() => az() - 0.5).slice(0, k).sort((a, b) => a - b);
+    const S = nuevoS({ nivel, objetivos, lugares, lesiones, disponibilidad: { dias: dias.length, minutos: 60, diasSemana: [] } });
+    const tag = `#${i} nivel ${nivel} ${objetivos} ${lugares} ${lesiones.map(l => l.zona + l.dolor)} días ${dias}`;
+    let p;
+    try { p = ent.planReglas(S, { dias, minutos: el([30, 45, 60, 90]), lugares }); } catch (e) { malos.push(`${tag}: ${e.message}`); continue; }
+    const obj = P.volumenObjetivo(S), vol = P.volumenSemana(p.dias);
+    for (const m of Object.keys(obj.musculos)) if ((vol[m] || 0) > obj.musculos[m].techo + 1e-9) malos.push(`${tag}: ${m} ${vol[m]} > ${obj.musculos[m].techo}`);
+    const ch = P.choquesSeguidos(p.dias); if (ch.length) malos.push(`${tag}: C-REP-1 ${JSON.stringify(ch[0])}`);
+    if (nivel === 1) { const f = p.dias.filter(d => d.ejercicios.some(x => x.rol === 'principal') && d.lugar !== 'piscina').length; if (f > 4) malos.push(`${tag}: ${f} días de fuerza`); }
+  }
+  assert.deepEqual(malos.slice(0, 5), []);
+});
+
+test('C-VOL-2 (revisión): con los días por defecto ninguna combinación supera el techo', () => {
+  const malos = [];
+  for (const nivel of [1, 2, 3]) for (const objetivos of [['musculo'], ['fuerza'], ['perder'], ['salud'], ['resistencia']]) for (const k of [1, 2, 3, 4, 5, 6]) for (const lugares of [['gym'], ['casa']]) {
+    for (const lesiones of [[], [{ id: 'l', zona: 'hombro', dolor: 5, activa: true, desde: '2025-01-01' }], [{ id: 'l', zona: 'rodilla', dolor: 2, activa: true, desde: '' }]]) {
+      const S = nuevoS({ nivel, objetivos, lugares, lesiones, disponibilidad: { dias: k, minutos: 60, diasSemana: [] } });
+      for (const minutos of [45, 90]) {
+        const p = ent.planReglas(S, { dias: ent.diasPorDefecto(S), minutos, lugares });
+        const obj = P.volumenObjetivo(S), vol = P.volumenSemana(p.dias);
+        for (const m of GRANDES) if ((vol[m] || 0) > obj.musculos[m].techo) malos.push(`nivel ${nivel} ${objetivos} ${k} días ${lugares} ${lesiones.map(l => l.zona)} ${minutos} min: ${m} ${vol[m]}/${obj.musculos[m].techo}`);
+      }
+    }
+  }
+  assert.deepEqual(malos.slice(0, 5), []);
+});
+
+test('C-REP-1 (revisión): domingo → lunes también cuenta', () => {
+  const { p } = plan({ objetivos: ['musculo'], nivel: 2 }, [1, 3, 5, 7]);
+  const dir = (d, m) => d.ejercicios.filter(x => x.rol === 'principal' && cat.ex(x.id).m.includes(m)).reduce((t, x) => t + x.series, 0);
+  const dom = p.dias.find(d => d.diaSemana === 7), lun = p.dias.find(d => d.diaSemana === 1);
+  for (const m of GRANDES) assert.ok(!(dir(dom, m) >= 4 && dir(lun, m) >= 4), m);
+});
+
+test('C-REP-1 (revisión): reorganizar moviendo días tampoco deja dos días seguidos cargando lo mismo', async () => {
+  const { est } = await import('./ayuda/node.mjs');
+  nuevoS({ objetivos: ['musculo'], lugares: ['gym'], nivel: 2 });
+  await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] }, { conIA: false });
+  ent.reorganizar([5, 6]);
+  const dias = est.estado().plan.dias;
+  assert.deepEqual(dias.map(d => d.diaSemana), [5, 6]);
+  assert.deepEqual(P.choquesSeguidos(dias), []);
+});
+
+test('Principiante con salud y 6 días: como mucho 4 días de fuerza', () => {
+  const { p } = plan({ objetivos: ['salud'], nivel: 1 }, [1, 2, 3, 4, 5, 6]);
+  assert.ok(p.dias.filter(fuerza).length <= 4, p.dias.map(d => d.tipo).join());
+});
