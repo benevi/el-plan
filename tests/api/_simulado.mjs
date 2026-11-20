@@ -18,6 +18,10 @@ export class Respuesta extends EventEmitter {
     this.emit('finish'); this.emit('close');
     return this;
   }
+  // Respuesta en vivo (text/event-stream): cada write() se guarda; eventos() los devuelve ya leídos.
+  write(trozo) { if (this.writableEnded || this.destroyed) throw new Error('escritura tras cerrar'); (this.trozos ||= []).push(String(trozo)); return true; }
+  flushHeaders() { this.cabecerasEnviadas = true; }
+  eventos() { return (this.trozos || []).join('').split('\n\n').filter(Boolean).map(b => JSON.parse(b.replace(/^data: /, ''))); }
   // El móvil se va antes de que respondamos.
   cortar() { this.destroyed = true; this.emit('close'); }
 }
@@ -55,3 +59,26 @@ export function clienteSimulado(responder) {
     } } },
   };
 }
+
+// Cliente simulado con stream de verdad: guion(emitir, signal) recibe una función para mandar eventos del
+// stream de Claude (como «streamEvent» del SDK) y devuelve el mensaje final (o lanza). Si la señal se aborta,
+// finalMessage rechaza como el SDK (APIUserAbortError), aunque el guion siga colgado.
+export function clienteEnVivo(guion, ErrorAborto) {
+  const llamadas = [];
+  return {
+    llamadas,
+    beta: { messages: { stream(params, opciones = {}) {
+      const oyentes = {};
+      llamadas.push({ params, opciones });
+      const emitir = ev => (oyentes.streamEvent || []).forEach(f => f(ev, {}));
+      const resultado = new Promise((resolver, rechazar) => {
+        const s = opciones.signal;
+        if (s) s.addEventListener('abort', () => rechazar(new ErrorAborto()), { once: true });
+        Promise.resolve().then(() => { (oyentes.connect || []).forEach(f => f()); return guion(emitir, s); }).then(resolver, rechazar);
+      });
+      return { on(ev, f) { (oyentes[ev] ||= []).push(f); return this; }, finalMessage: () => resultado };
+    } } },
+  };
+}
+export const espera = ms => new Promise(r => setTimeout(r, ms));
+export const delta = text => ({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } });

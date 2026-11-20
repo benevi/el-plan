@@ -5,8 +5,8 @@
 // las señales de alarma y el «desde cuándo» de las lesiones que no lo tienen (C-ALAR-1, C-ALAR-4, C-LES-6).
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
-import { llamar, enLinea } from '../../nucleo/api.js';
-import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
+import { llamarEnVivo, enLinea, textoError } from '../../nucleo/api.js';
+import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
@@ -99,7 +99,12 @@ const principalesValidos = (lista0, lugar) => (lista0 || []).filter(x => x && x.
 // Devuelve { sesion, aviso, motivo } o, si antes hay que preguntar algo, { sesion: null, pregunta } y, con una
 // señal de alarma, { sesion: null, alarma: [T2] }. Sin IA (o si falla) usa el día del plan ajustado al
 // check-in o una sesión de reglas. ci: { …, alarma (casilla), alarmaRespuesta 'si'|'no', alarmaFrase, desde }
-export async function crearSesionHoy(ci) {
+// op: { signal (cancelar la espera: la sesión sale de las reglas al momento), alProgreso (progreso en vivo),
+//       reintento (id de la sesión hecha por la app que se quiere rehacer con la IA) }.
+// Si la IA no se usa o falla, la sesión lleva `iaFallo` { motivo, peticion, diaPlan, reintentable } para la
+// nota fija de la tarjeta (PR 12). Una respuesta que llega cuando ya hay otra sesión de hoy en marcha, hecha o
+// creada después de empezar a esperar no pisa nada: se descarta ({ descartada: true }).
+export async function crearSesionHoy(ci, op = {}) {
   let S = estado();
   // Señal de alarma marcada o confirmada: hoy no se entrena, ni reglas ni IA (C-ALAR-1, C-ALAR-5).
   if (ci.alarma || ci.alarmaRespuesta === 'si') {
@@ -127,10 +132,16 @@ export async function crearSesionHoy(ci) {
   const dia = diaElegido(S, ci.diaPlan);
   const local = ajustarAlCheckin(S, dia, ci);
   const decide = motivoIA(S, ci, dia);
-  let datos = local.datos, aviso = '';
+  let datos = local.datos, aviso = '', fallo = '';
+  const inicio = new Date().toISOString();
+  // Reintento: solo si la sesión de la app sigue sin tocar; si cambia mientras se espera, no se pisa.
+  const viejaAntes = op.reintento ? S.sesiones[op.reintento] : null;
+  if (op.reintento && sesionTocada(viejaAntes)) return { sesion: viejaAntes || null, descartada: true, aviso: '', motivo: '' };
+  const huellaAntes = viejaAntes ? huellaSesion(viejaAntes) : '';
+  const peticion = recortarIA(ci.peticion, 300).trim();
   if (decide.usar) {
     try {
-      const r = await llamar('entrenador', {
+      const r = await llamarEnVivo('entrenador', {
         modo: 'sesion', ...peticionBase(S, [ci.lugar], ci.dolorHoy || {}),
         checkin: {
           lugar: ci.lugar, minutos, energia: ci.energia, dolorHoy: ci.dolorHoy || {}, peticion: recortarIA(ci.peticion, LARGO_IA.peticion),
@@ -138,16 +149,16 @@ export async function crearSesionHoy(ci) {
         },
         planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, tipo: dia.tipo || null, lugar: dia.lugar, ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
         ajusteReglas: local.cambios,
-      });
-      const s = r.sesion;
+      }, { signal: op.signal, alProgreso: op.alProgreso });
+      const s = (r && r.sesion) || {};
       // Día suave del plan (C-REP-2): sin fuerza; basta con su cardio. Si la IA pone fuerza, es un día normal.
       const suave = !!dia && dia.tipo === 'suave' && !(s.ejercicios || []).some(x => x && x.rol === 'principal');
       const util = suave ? (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id)) : principalesValidos(s.ejercicios, ci.lugar) > 0;
-      if (!util) aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
+      if (!util) { aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.'; fallo = 'la IA no propuso ejercicios válidos'; }
       else {
         const d = completarIA(S, { ...s, vuelta: s.vueltaCalma || s.vuelta, ejercicios: (s.ejercicios || []).filter(x => x && ex(x.id)), ...(suave ? { tipo: 'suave' } : {}) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
-        if (suave && d.sesion.ejercicios.some(x => x.rol === 'principal')) aviso = 'La IA no propuso un día suave válido: sesión ajustada por la app.';
-        else if (!d.valida) aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.';
+        if (suave && d.sesion.ejercicios.some(x => x.rol === 'principal')) { aviso = 'La IA no propuso un día suave válido: sesión ajustada por la app.'; fallo = 'la IA no propuso un día suave válido'; }
+        else if (!d.valida) { aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.'; fallo = 'la sesión de la IA no cumplía las reglas de seguridad'; }
         else {
           const ex0 = d.sesion.explicacion || [];
           datos = {
@@ -158,11 +169,33 @@ export async function crearSesionHoy(ci) {
         }
       }
     } catch (e) {
-      aviso = `Sesión ajustada por la app (${e.message}).`;
+      fallo = textoError(e);
+      aviso = `La ha hecho la app porque ${fallo}.`;
     }
   }
-  const sesion = crearSesion(datos);
+  // Lo que se escribió en el check-in sin que la IA lo leyera: se guarda y se dice (PR 12).
+  const sinAtender = peticion.length > 3 && (!decide.usar || !!fallo);
+  const porqueNo = { red: 'no había conexión', ahorro: 'tienes el modo ahorro (la IA solo hace el plan)', dolor: 'con dolor de 7 o más la prepara la app', salud: 'por tus datos de salud hoy la prepara la app' };
+  const iaFallo = fallo || sinAtender ? {
+    motivo: fallo || porqueNo[decide.por] || 'no se usó la IA', ...(sinAtender ? { peticion } : {}),
+    diaPlan: dia ? dia.diaSemana : null, reintentable: !['dolor', 'salud'].includes(decide.por),
+  } : null;
+  const S1 = estado();
+  // Nada pisa una sesión de hoy que se haya creado, empezado o terminado mientras se esperaba.
+  const otra = Object.values(S1.sesiones).find(x => x.fecha === hoyISO() && x.id !== op.reintento && ((x.creada || '') > inicio || (x.empezada || '') > inicio || (x.terminada || '') > inicio));
+  const vieja = op.reintento ? S1.sesiones[op.reintento] : null;
+  if (otra || (op.reintento && (!vieja || vieja.estado !== 'pendiente' || huellaSesion(vieja) !== huellaAntes))) return { sesion: otra || vieja || null, descartada: true, aviso: '', motivo: '' };
+  // Reintento que vuelve a fallar: se queda la sesión de la app que ya había, con el motivo nuevo.
+  if (vieja && fallo) {
+    cambiar(S2 => { const v = S2.sesiones[vieja.id]; if (v) v.iaFallo = { ...(v.iaFallo || {}), ...iaFallo, peticion: (v.iaFallo || {}).peticion || iaFallo.peticion }; }, 'sesion');
+    return { sesion: estado().sesiones[vieja.id], aviso, motivo: '' };
+  }
+  const sesion = crearSesion({ ...datos, ...(iaFallo ? { iaFallo } : {}) });
   cambiar(S2 => {
+    if (vieja) {
+      delete S2.sesiones[vieja.id];
+      if (S2.plan && S2.plan.hechos) Object.keys(S2.plan.hechos).forEach(d => { if (S2.plan.hechos[d] === vieja.id) delete S2.plan.hechos[d]; });
+    }
     S2.sesiones[sesion.id] = sesion;
     if (dia && S2.plan) { S2.plan.hechos = S2.plan.hechos || {}; S2.plan.hechos[dia.diaSemana] = sesion.id; }
   }, 'sesion');
@@ -170,9 +203,13 @@ export async function crearSesionHoy(ci) {
 }
 
 // ── Plan de la semana ──
-// semana: { dias: [1..7], minutos, lugares }, conIA
-export async function crearPlanSemana(semana, { conIA = true } = {}) {
+// semana: { dias: [1..7], minutos, lugares }, conIA. signal y alProgreso como en crearSesionHoy: cancelar
+// la espera deja el plan de las reglas al momento. Si la IA falla, el plan lleva `iaFallo` { motivo, semana }
+// para la nota fija y «Reintentar con IA». Si el plan cambia mientras se espera, la respuesta se descarta.
+export async function crearPlanSemana(semana, { conIA = true, signal, alProgreso } = {}) {
   const S = estado();
+  const creadoAntes = (S.plan && S.plan.creado) || '';
+  const cambiadoMientras = () => ((estado().plan && estado().plan.creado) || '') !== creadoAntes;
   const lugares = semana.lugares && semana.lugares.length ? semana.lugares : S.perfil.lugares;
   const hoy = diaSemana();
   const est = estadoDias(S);
@@ -185,24 +222,29 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
   // Con una alarma pendiente o confirmada hoy, la IA no recibe nada (C-ALAR-5): el plan lo hacen las reglas.
   if (conIA && enLinea() && !sinEntrenarHoy(S) && !alarmaPendiente(S, {})) {
     try {
-      const r = await llamar('entrenador', {
+      const r = await llamarEnVivo('entrenador', {
         modo: 'plan', ...peticionBase(S, lugares, {}, { plan: true }),
         semana: {
           dias, minutos: semana.minutos, lugares: lugares.map(l => ({ id: l, nombre: LUGARES[l] })),
           pautas: Object.fromEntries(lugares.map(l => [l, pautasDia(S, { lugar: l, minutos: semana.minutos, futuro: true })])),
           hechas: hechas.map(d => ({ dia: DIAS[d.diaSemana], nombre: d.nombre, musculos: [...new Set(d.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id) && ex(x.id).m[0]).filter(Boolean))] })),
         },
-      }, { espera: 240000 });
+      }, { signal, alProgreso });
+      if (cambiadoMientras()) return { plan: planDeLaSemana(estado()), aviso: '', descartada: true };
       // Cuántos días suaves pone el reparto (C-REP-2): la IA no puede poner más.
       const maxSuaves = planReglas(S, { ...semana, dias, lugares }, { hechas }).dias.filter(d => d.tipo === 'suave').length;
+      if (!r || !r.plan || typeof r.plan !== 'object') throw new Error('respuesta sin plan');
       const plan = normalizarPlan(S, r.plan, lugares, dias, semana.minutos, maxSuaves);
       if (!plan.dias.length) throw new Error('plan vacío');
       cambiar(S2 => { S2.plan = unir(plan); }, 'plan');
       return { plan, aviso: '' };
     } catch (e) {
+      if (cambiadoMientras()) return { plan: planDeLaSemana(estado()), aviso: '', descartada: true };
+      const motivo = e && e.message === 'plan vacío' ? 'la IA no propuso días válidos' : textoError(e);
       const plan = unir(planReglas(S, { ...semana, dias, lugares }, { hechas }));
+      plan.iaFallo = { motivo, semana: { dias: semana.dias.slice(), minutos: semana.minutos, lugares: lugares.slice() } };
       cambiar(S2 => { S2.plan = plan; }, 'plan');
-      return { plan, aviso: `Plan hecho por la app (${e.message}).` };
+      return { plan, aviso: `La semana la ha hecho la app porque ${motivo}.` };
     }
   }
   const plan = unir(planReglas(S, { ...semana, dias, lugares }, { hechas }));

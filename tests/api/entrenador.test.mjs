@@ -276,7 +276,8 @@ const casosError = [
   ['petición rechazada', () => errorApi(400, 'invalid_request_error'), 502, 'petición rechazada por la IA'],
   ['sin conexión', () => new Anthropic.APIConnectionError({ message: CRUDO }), 502, 'el servidor no pudo conectar con la IA'],
   ['tiempo agotado', () => new Anthropic.APIConnectionTimeoutError({ message: CRUDO }), 502, 'el servidor no pudo conectar con la IA'],
-  ['saturada (529)', () => errorApi(529, 'overloaded_error'), 502, 'la IA no responde ahora, prueba en un rato (error 529)'],
+  ['saturada (529)', () => errorApi(529, 'overloaded_error'), 529, 'la IA está saturada ahora mismo, prueba en unos minutos'],
+  ['saturada a mitad del stream', () => new Anthropic.APIError(undefined, { type: 'error', error: { type: 'overloaded_error', message: CRUDO } }, CRUDO, h, 'overloaded_error'), 529, 'la IA está saturada ahora mismo, prueba en unos minutos'],
   ['error raro', () => new TypeError(CRUDO), 502, 'la IA no responde ahora, prueba en un rato'],
 ];
 for (const [nombre, hacer, status, error] of casosError) {

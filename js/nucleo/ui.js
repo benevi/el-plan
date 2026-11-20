@@ -61,12 +61,13 @@ export function quitarAvisoFijo() {
 
 // ── Hoja inferior ──
 // abrirHoja(html) muestra un panel; cerrarHoja() lo quita. Los botones dentro usan data-act como siempre.
-export function abrirHoja(html, { clase = '' } = {}) {
+// Con { fija: true } tocar fuera no la cierra (la espera de la IA: solo se sale con su botón).
+export function abrirHoja(html, { clase = '', fija = false } = {}) {
   cerrarHoja();
   const fondo = document.createElement('div');
   fondo.className = 'hoja-fondo';
   fondo.innerHTML = `<div class="hoja ${clase}" role="dialog" aria-modal="true"><div class="hoja-asa"></div>${html}</div>`;
-  fondo.addEventListener('click', e => { if (e.target === fondo) cerrarHoja(); });
+  if (!fija) fondo.addEventListener('click', e => { if (e.target === fondo) cerrarHoja(); });
   document.body.appendChild(fondo);
   document.body.classList.add('con-hoja');
   requestAnimationFrame(() => fondo.classList.add('ver'));
