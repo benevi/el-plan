@@ -15,12 +15,17 @@ export class Respuesta extends EventEmitter {
   cortar() { this.destroyed = true; this.emit('close'); }
 }
 
+// Como en Node: complete = cuerpo leído entero; socket.destroyed = el móvil se ha ido.
+export class Peticion extends EventEmitter {
+  constructor(method, headers, body) { super(); this.method = method; this.headers = headers; this.body = body; this.complete = true; this.socket = { destroyed: false }; }
+}
+
 export function peticion({ metodo = 'POST', codigo = 'secreto', tipo = 'application/json', cuerpo = {}, cabeceras = {} } = {}) {
   const h = { ...cabeceras };
   if (tipo) h['content-type'] = tipo;
   if (codigo != null) h['x-app-code'] = codigo;
   if (cuerpo !== undefined && h['content-length'] == null) h['content-length'] = String(Buffer.byteLength(typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo)));
-  return { method: metodo, headers: h, body: cuerpo };
+  return new Peticion(metodo, h, cuerpo);
 }
 
 export function mensaje(datos, extra = {}) {

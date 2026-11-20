@@ -98,7 +98,16 @@ export default async function handler(req, res) {
 
   // Una línea JSON por llamada a la IA, sin datos personales ni el cuerpo.
   const registro = { modo, esfuerzo: modo === 'plan' ? 'medium' : body.planDeHoy ? 'low' : 'medium', ids: ids.length, catalogoDescartados };
-  const corte = cancelarAlCerrar(res);
+  // La línea se escribe una sola vez: al cancelar (con supportsCancellation Vercel puede terminar la
+  // función sin llegar al finally) o al acabar.
+  let escrito = false;
+  const escribirRegistro = () => {
+    if (escrito) return;
+    escrito = true;
+    registro.ms = Date.now() - inicio;
+    console.log(JSON.stringify({ entrenador: registro }));
+  };
+  const corte = cancelarAlCerrar(req, res, () => { registro.resultado = 'cancelada'; escribirRegistro(); });
   try {
     if (modo === 'plan') {
       const plan = await pedirJSON(clienteIA(), {
@@ -127,10 +136,10 @@ export default async function handler(req, res) {
     registro.resultado = 'ok';
     return res.status(200).json({ sesion });
   } catch (e) {
-    registro.resultado = responderError(res, e, 'entrenador');
+    const r = responderError(res, e, 'entrenador', corte.signal);
+    if (!escrito) registro.resultado = r;
   } finally {
     corte.soltar();
-    registro.ms = Date.now() - inicio;
-    console.log(JSON.stringify({ entrenador: registro }));
+    escribirRegistro();
   }
 }

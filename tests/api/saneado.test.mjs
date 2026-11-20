@@ -34,7 +34,7 @@ test('todos los ids del catálogo de la app pasan el filtro de ids', () => {
 });
 
 test('recorta textos largos según la clave', () => {
-  const largo = 'x'.repeat(5000);
+  const largo = 'x'.repeat(10000);
   const { cuerpo } = sanear({
     perfil: { notas: largo, nombre: largo },
     lesiones: [{ zona: 'Cadera', nota: largo }],
@@ -44,21 +44,38 @@ test('recorta textos largos según la clave', () => {
     ajusteReglas: [largo],
     catalogo: [{ id: 'remo', m: ['espalda'], t: largo, prec: largo, gusto: largo }],
   });
-  assert.equal(cuerpo.perfil.notas.length, 1000);
+  assert.equal(cuerpo.perfil.notas.length, 4000);
   assert.equal(cuerpo.perfil.nombre.length, 500);
-  assert.equal(cuerpo.lesiones[0].nota.length, 1000);
-  assert.equal(cuerpo.checkin.peticion.length, 300);
-  assert.equal(cuerpo.historial.sesionesUltimos14dias[0].comentario.length, 300);
-  assert.equal(cuerpo.historial.sesionesUltimos14dias[0].comentariosEjercicios[0].length, 360);
-  assert.deepEqual(cuerpo.analisis.ejercicios[0].comentarios.map(c => c.length), [300, 5]);
+  assert.equal(cuerpo.lesiones[0].nota.length, 4000);
+  assert.equal(cuerpo.checkin.peticion.length, 2000);
+  assert.equal(cuerpo.historial.sesionesUltimos14dias[0].comentario.length, 2000);
+  assert.equal(cuerpo.historial.sesionesUltimos14dias[0].comentariosEjercicios[0].length, 2400);
+  assert.deepEqual(cuerpo.analisis.ejercicios[0].comentarios.map(c => c.length), [2000, 5]);
   assert.equal(cuerpo.analisis.ejercicios[0].accion.length, 500);
   assert.equal(cuerpo.ajusteReglas[0].length, 500);
   assert.deepEqual([cuerpo.catalogo[0].t.length, cuerpo.catalogo[0].prec.length, cuerpo.catalogo[0].gusto.length], [20, 200, 30]);
 });
 
+test('textos de seguridad largos pero reales pasan enteros', () => {
+  const dolor = 'Me duele la cadera derecha al subir escaleras y por la noche, sobre todo de lado. '.repeat(20); // ~1700
+  const nota = 'Tendinopatía del glúteo medio diagnosticada en marzo; la fisio dice que evite cruzar la pierna. '.repeat(35); // ~3400
+  const crudo = { checkin: { peticion: dolor }, perfil: { notas: nota }, historial: { sesionesUltimos14dias: [{ comentario: dolor, comentariosEjercicios: ['Prensa: ' + dolor] }] } };
+  assert.deepEqual(sanear(crudo).cuerpo, { ...crudo, catalogo: [] });
+});
+
 test('no parte un emoji al recortar', () => {
-  const { cuerpo } = sanear({ checkin: { peticion: 'a'.repeat(299) + '💪💪' } });
-  assert.equal(cuerpo.checkin.peticion, 'a'.repeat(299));
+  const { cuerpo } = sanear({ checkin: { peticion: 'a'.repeat(1999) + '💪💪' } });
+  assert.equal(cuerpo.checkin.peticion, 'a'.repeat(1999));
+});
+
+test('claves heredadas como valueOf o toString usan el límite normal', () => {
+  const { cuerpo } = sanear({ perfil: { valueOf: 'v'.repeat(600), toString: 'corto', hasOwnProperty: 'h'.repeat(600) } });
+  assert.deepEqual([cuerpo.perfil.valueOf.length, cuerpo.perfil.toString, cuerpo.perfil.hasOwnProperty.length], [500, 'corto', 500]);
+});
+
+test('catálogo: t, prec y gusto solo si son texto', () => {
+  const { cuerpo } = sanear({ catalogo: [{ id: 'remo', m: ['espalda'], t: null, prec: 7, gusto: { a: 1 } }, { id: 'press', t: 'reps', prec: 'Cadera', gusto: 'le gusta' }] });
+  assert.deepEqual(cuerpo.catalogo, [{ id: 'remo', m: ['espalda'] }, { id: 'press', t: 'reps', prec: 'Cadera', gusto: 'le gusta' }]);
 });
 
 test('catálogo: fuera ids raros, claves extra y lo que pase de 200', () => {

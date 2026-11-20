@@ -2,6 +2,7 @@
 // saneado de extremo a extremo, cancelación, errores sin texto crudo, stop_reason y registro.
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { Respuesta, peticion, mensaje, clienteSimulado } from './_simulado.mjs';
 import { cuerpoSesion, cuerpoPlan } from './_cuerpo-real.mjs';
 import handler from '../../api/entrenador.js';
@@ -127,10 +128,10 @@ test('con un cuerpo real del móvil, a la IA le llega exactamente lo mismo que s
 });
 
 test('los textos largos llegan recortados a la IA', async () => {
-  const { cliente } = await llamar({ cuerpo: { ...cuerpoMinimo, perfil: { notas: 'N'.repeat(3000) }, checkin: { peticion: 'P'.repeat(3000) } } });
+  const { cliente } = await llamar({ cuerpo: { ...cuerpoMinimo, perfil: { notas: 'N'.repeat(10000) }, checkin: { peticion: 'P'.repeat(10000) } } });
   const enviado = JSON.parse(cliente.llamadas[0].params.messages[0].content.split('\n\n').slice(1).join('\n\n'));
-  assert.equal(enviado.perfil.notas.length, 1000);
-  assert.equal(enviado.checkin.peticion.length, 300);
+  assert.equal(enviado.perfil.notas.length, 4000);
+  assert.equal(enviado.checkin.peticion.length, 2000);
 });
 
 test('ids raros del catálogo no llegan ni al esquema ni al texto', async () => {
@@ -158,6 +159,88 @@ test('si el móvil cierra la conexión, se aborta la llamada a Claude y no se re
   assert.equal(señal.aborted, true);
   assert.equal(res.codigo, null, 'no se escribe nada en una conexión cerrada');
   assert.equal(lineaRegistro()[0].resultado, 'cancelada');
+});
+
+// Cliente que solo responde si no le abortan; si le abortan, rechaza como el SDK.
+const clienteQueEspera = (ms = 50) => clienteSimulado((params, { signal }) => new Promise((resolver, rechazar) => {
+  const t = setTimeout(() => resolver(mensaje(sesionIA)), ms);
+  signal.addEventListener('abort', () => { clearTimeout(t); rechazar(new Anthropic.APIUserAbortError()); });
+}));
+async function conEvento(provocar) {
+  const cliente = clienteQueEspera(1000);
+  ponerClienteIA(cliente);
+  const req = peticion({ cuerpo: cuerpoMinimo }), res = new Respuesta();
+  const enCurso = handler(req, res);
+  await new Promise(r => setImmediate(r));
+  provocar(req, res);
+  await enCurso;
+  return { res, señal: cliente.llamadas[0].opciones.signal };
+}
+test('req «aborted» y req «error» abortan la llamada', async () => {
+  for (const provocar of [req => req.emit('aborted'), req => req.emit('error', new Error('ECONNRESET'))]) {
+    registros.length = 0;
+    const { res, señal } = await conEvento(provocar);
+    assert.equal(señal.aborted, true);
+    assert.equal(res.codigo, null);
+    assert.equal(lineaRegistro().length, 1);
+  }
+});
+test('req «close» solo aborta si el socket se ha cerrado o el cuerpo quedó a medias', async () => {
+  let r = await conEvento(req => req.emit('close')); // Node 18+: llega nada más leer el cuerpo
+  assert.equal(r.señal.aborted, false);
+  assert.equal(r.res.codigo, 200);
+  r = await conEvento(req => { req.socket.destroyed = true; req.emit('close'); });
+  assert.equal(r.señal.aborted, true);
+  r = await conEvento(req => { req.complete = false; req.emit('close'); });
+  assert.equal(r.señal.aborted, true);
+});
+test('al cancelar se escribe la línea de registro en el momento, aunque la función no llegue al finally', async () => {
+  ponerClienteIA(clienteSimulado(() => new Promise(() => {}))); // no termina nunca, como si Vercel matara la función
+  const res = new Respuesta();
+  handler(peticion({ cuerpo: cuerpoMinimo }), res);
+  await new Promise(r => setImmediate(r));
+  assert.equal(lineaRegistro().length, 0);
+  res.cortar();
+  assert.equal(lineaRegistro().length, 1);
+  assert.equal(lineaRegistro()[0].resultado, 'cancelada');
+  res.cortar();
+  assert.equal(lineaRegistro().length, 1, 'una sola vez');
+});
+test('con un servidor http de verdad: esperar no aborta y cortar sí', async () => {
+  const cliente = clienteQueEspera(150);
+  ponerClienteIA(cliente);
+  const srv = http.createServer((req, res) => {
+    // Lo mínimo de los ayudantes de Vercel: body ya leído, status() y json().
+    let b = ''; req.on('data', d => { b += d; });
+    req.on('end', () => {
+      req.body = JSON.parse(b);
+      res.status = c => { res.statusCode = c; return res; };
+      res.json = o => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); return res; };
+      handler(req, res);
+    });
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${srv.address().port}/`;
+  const opciones = { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-app-code': 'secreto' }, body: JSON.stringify(cuerpoMinimo) };
+  try {
+    const r = await fetch(url, { ...opciones, signal: AbortSignal.timeout(3000) }); // si se abortara por error, fallar rápido en vez de colgarse
+    assert.equal(r.status, 200);
+    assert.equal(cliente.llamadas[0].opciones.signal.aborted, false);
+    const ctrl = new AbortController();
+    const p = fetch(url, { ...opciones, signal: ctrl.signal }).catch(() => null);
+    await new Promise(r => setTimeout(r, 50));
+    ctrl.abort();
+    await p;
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(cliente.llamadas[1].opciones.signal.aborted, true);
+  } finally { srv.closeAllConnections(); srv.close(); }
+});
+test('un aborto que no es nuestro sí responde, con el mensaje genérico', async () => {
+  for (const e of [new Anthropic.APIUserAbortError(), Object.assign(new Error('x'), { name: 'AbortError' })]) {
+    const { res } = await llamar({ cuerpo: cuerpoMinimo }, () => { throw e; });
+    assert.equal(res.codigo, 502);
+    assert.deepEqual(res.cuerpo, { error: 'la IA no responde ahora, prueba en un rato' });
+  }
 });
 
 test('terminar bien no aborta la señal', async () => {
@@ -207,6 +290,40 @@ for (const [nombre, msg, status, error] of casosRespuesta) {
     assert.deepEqual(res.cuerpo, { error });
   });
 }
+
+// ── Fallback a mitad del stream ──
+test('fallback que continúa el texto: vale la unión y se registra', async () => {
+  const json = JSON.stringify(sesionIA), corte = 40;
+  const msg = mensaje('', { content: [
+    { type: 'text', text: json.slice(0, corte) },
+    { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-5' } },
+    { type: 'text', text: json.slice(corte) },
+  ] });
+  const { res } = await llamar({ cuerpo: cuerpoMinimo }, () => msg);
+  assert.equal(res.codigo, 200);
+  assert.equal(res.cuerpo.sesion.nombre, 'Torso');
+  assert.equal(lineaRegistro()[0].fallback, true);
+});
+test('fallback que empieza el JSON de nuevo: vale lo de después del último fallback', async () => {
+  const json = JSON.stringify(sesionIA);
+  const msg = mensaje('', { content: [
+    { type: 'text', text: '{"nombre": "Pierna", "foco": "Cuádr' },
+    { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-5' } },
+    { type: 'text', text: '{"nombre": "Pi' },
+    { type: 'fallback', from: { model: 'claude-opus-5' }, to: { model: 'claude-opus-4-8' } },
+    { type: 'text', text: json },
+  ] });
+  const { res } = await llamar({ cuerpo: cuerpoMinimo }, () => msg);
+  assert.equal(res.codigo, 200);
+  assert.equal(res.cuerpo.sesion.nombre, 'Torso');
+  assert.equal(lineaRegistro()[0].fallback, true);
+});
+test('sin fallback el registro no lo marca y un JSON roto sigue siendo ilegible', async () => {
+  await llamar({ cuerpo: cuerpoMinimo });
+  assert.equal(lineaRegistro()[0].fallback, undefined);
+  const { res } = await llamar({ cuerpo: cuerpoMinimo }, () => mensaje('', { content: [{ type: 'text', text: '{"a":' }, { type: 'fallback' }, { type: 'text', text: '{"b":' }] }));
+  assert.deepEqual(res.cuerpo, { error: 'la IA devolvió una respuesta que no se pudo leer' });
+});
 
 // ── Registro ──
 test('una línea JSON por llamada, con métricas y sin datos personales', async () => {

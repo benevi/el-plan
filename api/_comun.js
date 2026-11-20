@@ -59,8 +59,10 @@ export function comprobar(req, res) {
 // arma el móvil (js/reglas/contexto.js y peticionBase en js/areas/entrenador/entrenador.js) no cambia nada:
 // lo comprueba tests/api/saneado.test.mjs.
 export const CLAVES = ['modo', 'perfil', 'lesiones', 'historial', 'analisis', 'hoy', 'diaSemana', 'catalogo', 'checkin', 'planDeHoy', 'ajusteReglas', 'semana'];
-// «comentariosEjercicios» lleva «Nombre del ejercicio: comentario», de ahí el margen sobre 300.
-const LARGO_POR_CLAVE = { nota: 1000, notas: 1000, comentario: 300, comentarios: 300, peticion: 300, texto: 300, comentariosEjercicios: 360 };
+// Los textos libres pueden contar algo de seguridad (dolor, molestias): límites holgados, el tope de
+// 150 KB del cuerpo es la barrera. «comentariosEjercicios» lleva «Nombre del ejercicio: comentario».
+// Es un Map para que claves como «valueOf» o «toString» no encuentren nada heredado.
+const LARGO_POR_CLAVE = new Map([['nota', 4000], ['notas', 4000], ['comentario', 2000], ['comentarios', 2000], ['peticion', 2000], ['texto', 2000], ['comentariosEjercicios', 2400]]);
 const LARGO = 500, MAX_LISTA = 60, MAX_CLAVES = 80, MAX_PROFUNDIDAD = 8, MAX_CATALOGO = 200;
 const ID = /^[\w-]{1,60}$/;
 const PROHIBIDAS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -75,7 +77,7 @@ function recortar(s, max) {
 function limpiar(v, clave, prof) {
   if (v === null || typeof v === 'boolean') return v;
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
-  if (typeof v === 'string') return recortar(v, LARGO_POR_CLAVE[clave] || LARGO);
+  if (typeof v === 'string') return recortar(v, LARGO_POR_CLAVE.get(clave) || LARGO);
   if (prof >= MAX_PROFUNDIDAD || typeof v !== 'object') return undefined;
   if (Array.isArray(v)) return v.slice(0, MAX_LISTA).map(x => limpiar(x, clave, prof + 1)).filter(x => x !== undefined);
   const out = {};
@@ -93,9 +95,9 @@ function limpiarEjercicio(e) {
   if ('m' in e) x.m = textos(e.m, 20, 60);
   if ('l' in e) x.l = textos(e.l, 10, 30);
   if ('niv' in e) x.niv = Number.isFinite(e.niv) ? e.niv : null;
-  if ('t' in e) x.t = recortar(String(e.t), 20);
-  if ('prec' in e) x.prec = recortar(String(e.prec), 200);
-  if ('gusto' in e) x.gusto = recortar(String(e.gusto), 30);
+  if (typeof e.t === 'string') x.t = recortar(e.t, 20);
+  if (typeof e.prec === 'string') x.prec = recortar(e.prec, 200);
+  if (typeof e.gusto === 'string') x.gusto = recortar(e.gusto, 30);
   return x;
 }
 
@@ -133,21 +135,40 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
   if (msg.stop_reason === 'refusal') throw new ErrorIA('negativa');
   if (msg.stop_reason === 'max_tokens') throw new ErrorIA('incompleta', 'stop_reason max_tokens');
   if (msg.stop_reason !== 'end_turn') throw new ErrorIA('incompleta', 'stop_reason ' + msg.stop_reason);
-  const texto = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  if (!texto.trim()) throw new ErrorIA('ilegible', 'contenido vacío');
-  let datos;
-  try { datos = JSON.parse(texto); } catch (e) { throw new ErrorIA('ilegible', 'JSON no válido'); }
-  if (!datos || typeof datos !== 'object' || Array.isArray(datos)) throw new ErrorIA('ilegible', 'no es un objeto');
-  return datos;
+  const bloques = Array.isArray(msg.content) ? msg.content : [];
+  const textoDe = lista => lista.filter(b => b && b.type === 'text').map(b => b.text).join('');
+  const ultimoFallback = bloques.map(b => b && b.type).lastIndexOf('fallback');
+  if (ultimoFallback >= 0) registro.fallback = true;
+  // Con fallbacks:'default' el modelo de respaldo puede seguir el texto del primero (la unión es el JSON)
+  // o empezarlo de nuevo (vale solo lo que hay tras el último bloque «fallback»).
+  const candidatos = [textoDe(bloques)];
+  if (ultimoFallback >= 0) candidatos.push(textoDe(bloques.slice(ultimoFallback + 1)));
+  if (!candidatos[0].trim()) throw new ErrorIA('ilegible', 'contenido vacío');
+  for (const texto of candidatos) {
+    let datos;
+    try { datos = JSON.parse(texto); } catch (e) { continue; }
+    if (datos && typeof datos === 'object' && !Array.isArray(datos)) return datos;
+  }
+  throw new ErrorIA('ilegible', 'JSON no válido');
 }
 
 // ── Cancelación ──
-// Si el móvil cierra la conexión antes de que respondamos, se aborta la llamada a Claude (deja de generar y de cobrar).
-export function cancelarAlCerrar(res) {
+// Si el móvil cierra la conexión antes de que respondamos, se aborta la llamada a Claude (deja de generar y de cobrar)
+// y se llama a alCancelar una sola vez.
+// Ojo: en Node 18+ req emite «close» en cuanto se ha leído el cuerpo aunque el móvil siga esperando
+// (probado en Node 22), así que ese «close» solo cuenta si el cuerpo quedó a medias o el socket está cerrado.
+export function cancelarAlCerrar(req, res, alCancelar = () => {}) {
   const ctrl = new AbortController();
-  const alCerrar = () => { if (!res.writableFinished) ctrl.abort(); };
-  res.on('close', alCerrar);
-  return { signal: ctrl.signal, soltar: () => res.off('close', alCerrar) };
+  const cancelar = () => {
+    if (ctrl.signal.aborted || res.writableFinished) return;
+    ctrl.abort();
+    try { alCancelar(); } catch (e) { console.error('cancelación', e); }
+  };
+  const alCerrarPeticion = () => { if (!req.complete || (req.socket && req.socket.destroyed)) cancelar(); };
+  const oyentes = [[res, 'close', cancelar], [req, 'aborted', cancelar], [req, 'error', cancelar], [req, 'close', alCerrarPeticion]]
+    .filter(([em]) => em && typeof em.on === 'function');
+  oyentes.forEach(([em, ev, fn]) => em.on(ev, fn));
+  return { signal: ctrl.signal, soltar: () => oyentes.forEach(([em, ev, fn]) => em.off(ev, fn)) };
 }
 
 // ── Errores ──
@@ -176,10 +197,13 @@ export function categoria(e) {
   if (e instanceof SyntaxError) return 'ilegible';
   return 'otro';
 }
-export function responderError(res, e, quien) {
-  const cat = categoria(e);
+// signal: la de cancelarAlCerrar. Solo se calla si la cancelación es nuestra o la respuesta ya no se puede escribir;
+// un aborto que no sea nuestro es un error más y se responde con el mensaje genérico.
+export function responderError(res, e, quien, signal) {
+  let cat = categoria(e);
   console.error(quien + ': error de la IA', JSON.stringify({ categoria: cat, status: e && e.status, tipo: e && (e.type || e.name), peticion: e && e.requestID }), String((e && e.message) || '').slice(0, 2000));
-  if (cat === 'cancelada' || res.writableEnded || res.destroyed) return cat;
+  if ((signal && signal.aborted) || res.writableEnded || res.destroyed) return 'cancelada';
+  if (cat === 'cancelada') cat = 'otro';
   const [status, error] = MENSAJES[cat] || MENSAJES.otro;
   res.status(status).json({ error: cat === 'otro' && Number.isInteger(e && e.status) ? `${error} (error ${e.status})` : error });
   return cat;
