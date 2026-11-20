@@ -77,9 +77,15 @@ export function dosis(S, e, i, lugar = 'gym') {
 }
 
 // ── Cardio: la regla de cuándo va y cuánto ──
-// Única definición de la regla de cardio: la usan cardioDelDia (aquí), completarIA (ia.js) y el día de
-// dolor alto (checkin.js). Devuelve null si no toca cardio; si toca, { objetivo que lo pide, minutos de base,
-// obligatorio }. «obligatorio»: la app lo añade aunque la IA no lo proponga.
+// Única definición de la regla de cardio. Devuelve null si no toca cardio; si toca, { objetivo que lo pide,
+// minutos de base, obligatorio }. «obligatorio»: la app lo añade aunque la IA no lo proponga.
+// Quién la usa hoy, y cómo:
+// - cardioDelDia (aquí) la llama sin dolorMax: montarDia pone cardio aunque haya dolor ≥ 7.
+// - completarIA (ia.js) la llama sin dolorMax: añade cardio a la sesión de la IA (perder, resistencia)
+//   también con dolor ≥ 7.
+// - ajustarAlCheckin (checkin.js), solo en su rama de dolor ≥ 7, la llama con dolorMax: siempre da null,
+//   así que quita el cardio de la «Sesión suave» de reglas.
+// Unificar el criterio (D3, y el día de dolor alto según D2) es del PR 8.
 export function reglaCardio(S, lugar, { dolorMax = 0 } = {}) {
   if (lugar === 'piscina' || dolorMax >= 7) return null;
   const conFuerza = tiene(S, 'musculo') || tiene(S, 'fuerza');
