@@ -18,7 +18,7 @@ async function reiniciar(datos) {
 }
 
 test('con datos ilegibles, pasar la app a segundo plano no los pisa', { todo: 'PR 3: JSON ilegible pisado' }, async () => {
-  await a.espera(30);
+  await a.esperar(() => a.doc.title);
   await a.ocultar(true);
   await a.ocultar(false);
   const ahora = a.w.localStorage.getItem('pipos4');
@@ -55,7 +55,7 @@ test('si el almacenamiento está lleno, la persona ve un aviso persistente', { t
   try {
     await a.ir('sesion/s1');
     a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]');
-    await a.espera(400);
+    await a.esperar(() => a.errores.some(e => /No se pudo guardar/.test(e)), { que: 'el intento de guardado' });
     assert.equal(a.estado.estado().sesiones.s1.ejercicios[0].sets[0].hecha, true, 'en memoria sí se marcó');
     assert.equal(a.guardado().sesiones.s1.ejercicios[0].sets[0].hecha, false, 'en disco no se guardó');
     const aviso = a.doc.querySelector('#aviso');

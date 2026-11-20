@@ -11,6 +11,23 @@ import { ruta, modulo } from './comun.mjs';
 
 const setTimeoutNode = globalThis.setTimeout;
 export const espera = ms => new Promise(r => setTimeoutNode(r, ms));
+// Deja correr lo pendiente (eventos, microtareas y temporizadores de 0 ms). Los clics del router son síncronos.
+export const tic = async () => { await espera(0); await espera(0); };
+// Sondea hasta que condicion() devuelva algo verdadero (y lo devuelve). Si no llega en `max` ms, lanza
+// (o devuelve null con { lanzar: false }, para cuando lo correcto puede ser que no pase nada).
+export async function esperar(condicion, { max = 2000, cada = 5, lanzar = true, que = '' } = {}) {
+  const fin = performance.now() + max; // no Date: las pruebas pueden falsear el reloj
+  for (;;) {
+    let v;
+    try { v = condicion(); } catch { v = null; }
+    if (v) return v;
+    if (performance.now() > fin) {
+      if (lanzar) throw new Error(`Esperando ${que || condicion.toString().slice(0, 80)}: no llegó en ${max} ms`);
+      return null;
+    }
+    await espera(cada);
+  }
+}
 
 export async function montar({ ls = {}, hash = '', cargarApp = true, antes = null } = {}) {
   const html = fs.readFileSync(ruta('index.html'), 'utf8').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<link[^>]*>/g, '');
@@ -51,11 +68,18 @@ export async function montar({ ls = {}, hash = '', cargarApp = true, antes = nul
     if (!el) throw new Error('No existe ' + sel);
     el.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
   };
-  const ir = async h => { w.location.hash = h; await espera(20); };
+  // Cambia de ruta y espera a que el router la pinte (su oyente de hashchange va antes que este).
+  const ir = async h => {
+    if (w.location.hash === '#' + h) { await tic(); return; }
+    const pintada = new Promise(r => w.addEventListener('hashchange', r, { once: true }));
+    w.location.hash = h;
+    await pintada;
+    await tic();
+  };
   const ocultar = async (oculto = true) => {
     Object.defineProperty(doc, 'hidden', { get: () => oculto, configurable: true });
     doc.dispatchEvent(new w.Event('visibilitychange'));
-    await espera(5);
+    await tic();
   };
   const vista = () => doc.querySelector('#vista');
   const pantallaRota = () => /Algo ha fallado/.test(vista().textContent);
@@ -66,7 +90,7 @@ export async function montar({ ls = {}, hash = '', cargarApp = true, antes = nul
     try { w.close(); } catch { /* nada */ }
   };
   return {
-    dom, w, doc, estado, espera, clic, ir, ocultar, vista, pantallaRota, errores, cerrar,
+    dom, w, doc, estado, espera, tic, esperar, clic, ir, ocultar, vista, pantallaRota, errores, cerrar,
     guardado: () => JSON.parse(w.localStorage.getItem('pipos4') || 'null'),
   };
 }

@@ -12,7 +12,7 @@ after(() => { reloj.restaurar(); a.cerrar(); });
 const fecha = () => (a.doc.querySelector('.saludo p') || {}).textContent || '';
 
 test('a las 23:40 Hoy muestra la sesión en marcha', async () => {
-  await a.espera(20);
+  await a.esperar(() => fecha());
   assert.match(fecha(), /jueves, 19 de noviembre/);
   assert.ok(a.doc.querySelector('a[href="#sesion/s1"]'));
 });
@@ -20,7 +20,6 @@ test('a las 23:40 Hoy muestra la sesión en marcha', async () => {
 test('al volver a la app pasada la medianoche, Hoy se repinta con el día nuevo', { todo: 'PR 13: Hoy sin refrescar al volver a la app' }, async () => {
   reloj.avanzar(30 * 60 * 1000); // 00:10
   await a.ocultar(false);
-  await a.espera(20);
   assert.match(fecha(), /viernes, 20 de noviembre/);
 });
 

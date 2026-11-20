@@ -8,7 +8,7 @@ const a = await montar({ ls: { pipos4: estadoBase({ sesiones: { s1: sesionDemo()
 after(() => a.cerrar());
 
 test('abre una sesión guardada con sus series', async () => {
-  await a.espera(50);
+  await a.esperar(() => a.doc.querySelector('h1') && a.doc.querySelector('h1').textContent === 'Demo');
   assert.equal(a.doc.title, 'Sesión · Pipos Fitness');
   assert.equal(a.doc.querySelector('h1').textContent, 'Demo');
   assert.ok(a.doc.querySelectorAll('[data-act="sesion.serie"]').length >= 3);
@@ -29,7 +29,7 @@ test('los grupos del perfil se abren sin fallos', async () => {
   await a.ir('perfil');
   for (const g of ['objetivos', 'lesiones', 'entreno', 'datos', 'ajustes']) {
     a.clic(`[data-act="perfil.grupo"][data-v="${g}"]`);
-    await a.espera(10);
+    await a.tic();
     assert.ok(!a.pantallaRota(), g);
   }
 });
@@ -37,7 +37,8 @@ test('los grupos del perfil se abren sin fallos', async () => {
 test('marcar una serie la guarda como hecha y arranca el descanso', async () => {
   await a.ir('sesion/s1');
   a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]');
-  await a.espera(300);
+  await a.esperar(() => a.doc.querySelector('#temporizador'));
+  await a.esperar(() => a.guardado().sesiones.s1.ejercicios[0].sets[0].hecha, { que: 'el guardado diferido' });
   assert.equal(a.estado.estado().sesiones.s1.ejercicios[0].sets[0].hecha, true);
   assert.ok(a.doc.querySelector('#temporizador'));
   assert.equal(a.guardado().sesiones.s1.ejercicios[0].sets[0].hecha, true);

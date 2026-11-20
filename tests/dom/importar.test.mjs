@@ -39,7 +39,7 @@ test('tras una copia mala sigue a mano el botón «Cargar copia»', { todo: 'PR 
   try { a.estado.importar(JSON.stringify({ version: 4, perfil: {}, sesiones: null })); } catch { /* rechazada: vale */ }
   await a.ir('perfil');
   const aj = a.doc.querySelector('[data-act="perfil.grupo"][data-v="ajustes"]');
-  if (aj) { a.clic(aj); await a.espera(10); }
+  if (aj) { a.clic(aj); await a.tic(); }
   assert.ok(a.doc.querySelector('[data-act="perfil.importar"]'));
 });
 
@@ -58,7 +58,7 @@ test('una copia con HTML en sus datos no inyecta nada en las pantallas', { todo:
   const inyectados = [];
   for (const [ruta, grupo] of [['hoy'], ['progreso'], ['sesion/s1'], ['perfil', 'lesiones'], ['perfil', 'entreno']]) {
     await a.ir(ruta);
-    if (grupo) { a.clic(`[data-act="perfil.grupo"][data-v="${grupo}"]`); await a.espera(10); }
+    if (grupo) { a.clic(`[data-act="perfil.grupo"][data-v="${grupo}"]`); await a.tic(); }
     const n = a.doc.querySelectorAll('img[onerror]').length;
     if (n) inyectados.push(`${ruta}${grupo ? '/' + grupo : ''}: ${n}`);
   }

@@ -2,7 +2,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { estadoBase } from '../ayuda/comun.mjs';
-import { montar, espera } from '../ayuda/dom.mjs';
+import { montar, tic } from '../ayuda/dom.mjs';
 
 let fallo = null;
 let a = null;
@@ -11,7 +11,7 @@ after(() => a && a.cerrar());
 
 test('un hash mal formado no deja la pantalla en blanco', { todo: 'PR 13: hash mal formado fuera del try' }, async () => {
   assert.equal(fallo, null, fallo && fallo.message);
-  await espera(20);
+  await tic();
   assert.ok(a.vista().textContent.trim().length > 0);
 });
 
