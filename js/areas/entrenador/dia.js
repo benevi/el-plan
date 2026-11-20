@@ -71,14 +71,16 @@ export const minDe = txt => { const r = rango(txt); return !r ? 0 : r.u === 'min
 export const lista = a => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1];
 export const minus = t => String(t || '').toLowerCase();
 export const nombreZona = z => minus((ZONAS[z] || {}).corta || String(z).replace(/_/g, ' '));
-export const esEstiramiento = t => /estir|postura|flotaci/i.test(t.nombre || '') || !!(t.id && /estiramiento|postura-nino|flotacion/.test(t.id));
+export const esEstiramiento = t => !!t && ((typeof t.nombre === 'string' && /estir|postura|flotaci/i.test(t.nombre)) || (typeof t.id === 'string' && /estiramiento|postura-nino|flotacion/.test(t.id)));
 // Edad en años a partir del año de nacimiento (null si no lo sabemos).
 export function edadDe(S) {
   const a = +String((S.perfil.datos || {}).nacimiento || '').slice(0, 4);
   return a > 1900 ? new Date().getFullYear() - a : null;
 }
-// Minutos de la sesión: el check-in ofrece 30-90; menos de 30 se trata como 30 (criterio §0).
-export const minutosSesion = m => Math.max(30, Math.round(+m || 60));
+// Minutos de la sesión: el check-in y el perfil solo ofrecen 30, 45, 60, 75 y 90 (criterio §0). Menos de 30 se
+// trata como 30; lo demás se lleva a la opción más cercana (así nadie recibe un día de 240 minutos).
+const OPCIONES_MIN = [30, 45, 60, 75, 90];
+export const minutosSesion = m => { const n = +m || 60; return OPCIONES_MIN.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a)); };
 
 // ── Tipo de ejercicio (C-DOSIS-1). Con el campo `tipo` del catálogo (PR 9) manda él. ──
 const PROPIA = /plancha|dead-bug|bird-dog|pallof/;

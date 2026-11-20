@@ -12,7 +12,7 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, SEÑALES, T2, DESDE,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, T2, DESDE,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -84,6 +84,8 @@ function dolorInicial(S, l) {
 
 export function abrirCheckin(diaPlan = null) {
   const S = estado();
+  // Alarma confirmada hoy: no hay check-in ni sesión (C-ALAR-1).
+  if (sinEntrenarHoy(S)) { hojaAlarma(); return; }
   const p = diaElegido(S, diaPlan);
   ci = { diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: '', forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
@@ -232,7 +234,9 @@ acciones({
   'entrenador.ciRespAlarma': el => {
     const p = preguntaAntes(estado(), ci);
     if (el.dataset.v === 'si') { ci.alarmaRespuesta = 'si'; ci.alarmaFrase = p && p.frase; crearConAlarma(); return; }
-    ci.alarmaRespuesta = 'no'; ci.alarmaFrase = p && p.frase; hojaCheckin();
+    // «No»: se apunta esa frase y, si hay otra, se pregunta por ella (sin volver a la misma).
+    if (p) ci.alarmasNo = [...(ci.alarmasNo || []), p.frase];
+    hojaCheckin();
   },
   'entrenador.ciDesde': el => { ci.desde = { ...(ci.desde || {}), [el.dataset.z]: el.dataset.v }; hojaCheckin(); },
   'entrenador.cerrarAlarma': () => { cerrarHoja(); ir('hoy'); },

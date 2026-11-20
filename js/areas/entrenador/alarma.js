@@ -80,6 +80,9 @@ export function fraseAlarma(texto) {
 export function textosLibres(S, ci = {}) {
   const out = [];
   if (ci.peticion) out.push({ de: 'peticion', texto: String(ci.peticion) });
+  // Notas del perfil y de las lesiones activas (C-ALAR-4: «notas nuevas»; lo respondido no se vuelve a preguntar).
+  if (S.perfil && S.perfil.notas) out.push({ de: 'notas', texto: String(S.perfil.notas) });
+  ((S.perfil || {}).lesiones || []).filter(l => l.activa && l.nota).forEach(l => out.push({ de: 'lesion', texto: String(l.nota) }));
   const ult = sesionesHechas(S).slice(-1)[0];
   if (ult) {
     if (ult.cierre && ult.cierre.comentario) out.push({ de: 'sesion', sesion: ult.id, texto: ult.cierre.comentario });
@@ -87,16 +90,18 @@ export function textosLibres(S, ci = {}) {
   }
   return out;
 }
-// Alarma por responder: { frase, de } o null. Las respondidas con «no» (S.alarmas) no se vuelven a preguntar.
+// Frases ya respondidas con «no» en este check-in (ci.alarmasNo; ci.alarmaFrase por compatibilidad).
+export const respondidasNo = (ci = {}) => [...(ci.alarmasNo || []), ...(ci.alarmaRespuesta === 'no' && ci.alarmaFrase ? [ci.alarmaFrase] : [])];
+// Alarma por responder: { frase, de } o null. Las respondidas con «no» (S.alarmas o este check-in) no se repiten.
 export function alarmaPendiente(S, ci = {}) {
-  const vistas = new Set((S.alarmas || []).filter(a => a.respuesta === 'no').map(a => a.frase));
+  const vistas = new Set([...(S.alarmas || []).filter(a => a.respuesta === 'no').map(a => a.frase), ...respondidasNo(ci)]);
   for (const x of textosLibres(S, ci)) {
     const f = fraseAlarma(x.texto);
-    if (f && !vistas.has(f) && !(ci.alarmaRespuesta === 'no' && ci.alarmaFrase === f)) return { frase: f, de: x.de };
+    if (f && !vistas.has(f)) return { frase: f, de: x.de };
   }
   return null;
 }
-export const preguntaAlarma = frase => `En tu comentario dices «${frase}». ¿Notas algo de esto hoy?`;
+export const preguntaAlarma = (frase, de = 'sesion') => `${{ peticion: 'En lo que pides', notas: 'En tus notas', lesion: 'En la nota de tu lesión' }[de] || 'En tu comentario'} dices «${frase}». ¿Notas algo de esto hoy?`;
 
 // ── Avisos de consulta no urgente (C-ALAR-2, C-DOLOR-5) ──
 // Dolor de hoy ≥ 7 en tres check-ins seguidos de la misma zona (sin más de 7 días entre dos), o ≥ 7 en una

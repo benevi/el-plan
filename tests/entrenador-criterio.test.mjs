@@ -232,8 +232,10 @@ test('C-CARDIO-4, CR-25: sin intervalos con la tensión alta en las notas; ni ca
 
 test('CR-24: 63 años, salud, intermedio, 45 min: calentamiento de 9 min, sin intervalos ni cabeza abajo', () => {
   const { S, s, c } = sesionReglas({ objetivos: ['salud'], nivel: 2, datos: { sexo: 'm', altura: 160, nacimiento: '1963' } }, { minutos: 45 });
-  const cal = s.calentamiento.reduce((t, x) => t + parseFloat(x.duracion), 0);
+  const cal = s.calentamiento.filter(t => t.id !== 'equilibrio-una-pierna').reduce((t, x) => t + parseFloat(x.duracion), 0);
   assert.equal(cal, 9);
+  assert.ok(s.calentamiento.some(t => t.id === 'equilibrio-una-pierna'), 'ejercicio de equilibrio (C-EDAD-1)');
+  assert.ok(s.explicacion.some(t => /al menos 2 repeticiones de margen/.test(t)), 'margen ≥ 2 (C-EDAD-1)');
   assert.equal(ent.reglaCardio(S, 'gym').intervalos, false);
   assert.deepEqual(nunca(s, ['pike-pushup']), []);
   sinProblemas(S, s, c);
@@ -514,4 +516,134 @@ test('C-REP-2: un día suave del plan sigue suave al hacer el check-in (cardio, 
   assert.deepEqual(prin(s), []);
   assert.ok(cardioMin(s) >= 8);
   sinProblemas(S, s, c);
+});
+
+// ── Revisión del PR 8 ──
+
+test('C-ALAR-4 (revisión B1): con dos frases de alarma, responder «no» a ambas no cicla y luego se entrena', async () => {
+  const S = nuevoS({ objetivos: ['musculo'] });
+  hecha(S, 2, [{ id: 'jalon-pecho', sets: [[40, 10]], comentario: 'tuve fiebre el domingo' }], { cierre: { esfuerzo: 3, dolor: {}, comentario: 'me mareé al acabar la cinta' } });
+  const c = ci({ alarmasNo: [] });
+  const vistas = [];
+  for (let i = 0; i < 4; i++) {
+    const p = ent.preguntaAntes(est.estado(), c);
+    if (!p) break;
+    assert.ok(!vistas.includes(p.frase), `vuelve a preguntar «${p.frase}»`);
+    vistas.push(p.frase); c.alarmasNo.push(p.frase);
+  }
+  assert.equal(vistas.length, 2);
+  const r = await ent.crearSesionHoy(c);
+  assert.ok(r.sesion);
+  assert.equal(est.estado().alarmas.filter(a => a.respuesta === 'no').length, 2);
+});
+
+test('C-ALAR-1 (revisión B2): tras una alarma confirmada no se entrena por ningún camino y la sesión pendiente se cancela', async () => {
+  nuevoS({ objetivos: ['musculo'] });
+  const { sesion } = await ent.crearSesionHoy(ci());
+  assert.ok(sesion);
+  const r = await ent.crearSesionHoy(ci({ alarma: true }));
+  assert.deepEqual(r.alarma, ent.T2);
+  assert.equal(est.estado().sesiones[sesion.id], undefined, 'la sesión pendiente de hoy se cancela');
+  const r2 = await ent.crearSesionHoy(ci({ diaPlan: 3 }));
+  assert.equal(r2.sesion, null);
+  assert.deepEqual(r2.alarma, ent.T2);
+});
+
+test('C-ALAR-5 (revisión M1): con una alarma pendiente, el plan de la semana no se pide a la IA', async () => {
+  const S = nuevoS({ objetivos: ['musculo'] });
+  hecha(S, 2, [{ id: 'jalon-pecho', sets: [[40, 10]], comentario: 'noté palpitaciones' }]);
+  const { plan } = await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] });
+  assert.equal(peticiones, 0);
+  assert.equal(plan.fuente, 'reglas');
+});
+
+test('C-ALAR-4 (revisión M2): también las notas del perfil y de la lesión', () => {
+  const S = nuevoS({ objetivos: ['musculo'], notas: 'a veces se me duerme el brazo izquierdo' });
+  const p = ent.preguntaAntes(S, ci());
+  assert.equal(p.tipo, 'alarma');
+  assert.match(p.texto, /^En tus notas dices/);
+  const S2 = nuevoS({ objetivos: ['musculo'], lesiones: [L('rodilla', 3, { nota: 'no pude apoyar el pie ayer' })] });
+  assert.match(ent.preguntaAntes(S2, ci()).texto, /^En la nota de tu lesión/);
+});
+
+const vIA = (perfil, sesion, c = {}) => { const S = nuevoS(perfil); return { S, v: ent.validarSesion(S, sesion, { lugar: 'gym', minutos: 60, origen: 'ia', ...c }) }; };
+const IA3 = [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')];
+
+test('C-EST-4 (revisión B3): las tareas sin id de la IA se casan por nombre con el catálogo y se comprueban', () => {
+  // Rodilla en B2: «Postura del niño» (r en rodilla) llega sin id; no puede quedarse.
+  const { v } = vIA({ objetivos: ['musculo'], lesiones: [L('rodilla', 3)] }, { ejercicios: IA3, calentamiento: [T('Bici'), T('Movilidad')], vuelta: [T('Postura del niño'), T('Estiramiento raro inventado')] }, { dolorHoy: { rodilla: 5 } });
+  assert.ok(!v.sesion.vuelta.some(t => /postura del ni/i.test(t.nombre)), v.sesion.vuelta.map(t => t.nombre).join(', '));
+  assert.ok(v.sesion.vuelta.some(t => /estir/i.test(t.nombre)) && v.sesion.vuelta.length >= 2);
+  assert.ok(v.sesion.calentamiento.length >= 2);
+  // Sin zonas activas, una tarea de texto que no casa se queda.
+  const sano = vIA({ objetivos: ['musculo'] }, { ejercicios: IA3, calentamiento: [T('Bici suave'), T('Movilidad general')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] });
+  assert.deepEqual(sano.v.sesion.calentamiento.map(t => t.nombre), ['Bici suave', 'Movilidad general']);
+});
+
+test('C-CARDIO-4 (revisión B4): la nota de cardio de la IA con intervalos se cambia si no están permitidos', () => {
+  for (const perfil of [{ objetivos: ['perder'], nivel: 2, salud: { cardiopatia: true, vistoBueno: { cardiopatia: true } } }, { objetivos: ['musculo'] }]) {
+    const { v } = vIA(perfil, { ejercicios: [...IA3, E('bici-estatica', 'cardio', { reps: '15 min', nota: 'Intervalos: 10 × 30 s a RPE 9 y 30 s suave.' })] });
+    const c = v.sesion.ejercicios.find(x => x.rol === 'cardio');
+    assert.doesNotMatch(c.nota, /RPE 9|10 × 30 s/);
+  }
+});
+
+test('B5 y M4: dosis absurdas de la IA se acotan (cardio 300 min, plancha 10 min, reps 1-50, «al fallo», 1000 m)', () => {
+  const { v } = vIA({ objetivos: ['musculo'], lugares: ['gym'] }, { ejercicios: [E('press-pecho-maquina', 'principal', { reps: '1-50' }), E('jalon-pecho', 'principal', { reps: '10 al fallo' }), E('prensa-piernas'), E('plancha', 'principal', { reps: '10 min' }), E('bici-estatica', 'cardio', { reps: '300' })] });
+  const x = id => v.sesion.ejercicios.find(y => y.id === id);
+  assert.ok(parseFloat(x('bici-estatica').reps) <= 30, x('bici-estatica').reps);
+  assert.match(x('bici-estatica').reps, /^\d+ min$/);
+  assert.notEqual(x('press-pecho-maquina').reps, '1-50');
+  assert.doesNotMatch(x('jalon-pecho').reps, /fallo/);
+  if (x('plancha')) assert.ok(prog_seg(x('plancha').reps) <= 90, x('plancha').reps);
+  const p = vIA({ objetivos: ['natacion'], lugares: ['piscina'], nadar25: true, nivel: 2 }, { ejercicios: [E('crol', 'principal', { reps: '1000 m' }), E('espalda'), E('patada-espalda-tabla', 'principal', { reps: '4 × 25 m' })] }, { lugar: 'piscina' }).v;
+  assert.ok(!p.sesion.ejercicios.some(y => /1000 m/.test(y.reps)));
+  // Cardio sin unidad son minutos.
+  const m = vIA({ objetivos: ['musculo'] }, { ejercicios: [...IA3, E('bici-estatica', 'cardio', { reps: '9' })] }).v;
+  assert.equal(m.sesion.ejercicios.find(y => y.rol === 'cardio').reps, '9 min');
+});
+const prog_seg = r => { const m = String(r).match(/(\d+)(?:-(\d+))?\s*(s|min)/); return m ? +(m[2] || m[1]) * (m[3] === 'min' ? 60 : 1) : 0; };
+
+test('C-SALUD-0 (revisión B7): tensión alta: isométricos ≤ 45 s, descanso ≥ 60 s y sus notas en la explicación', () => {
+  const { v } = vIA({ objetivos: ['musculo'], salud: { hipertension: 'controlada' } }, { ejercicios: [...IA3, E('plancha', 'principal', { reps: '60-90 s', descanso: 30 }), E('curl-mancuernas', 'principal', { descanso: 20 })] });
+  const pl = v.sesion.ejercicios.find(y => y.id === 'plancha');
+  if (pl) assert.ok(prog_seg(pl.reps) <= 45, pl.reps);
+  assert.ok(v.sesion.ejercicios.filter(y => y.rol === 'principal').every(y => y.descanso >= 60));
+  assert.ok(v.sesion.explicacion.some(t => /^Tensión alta/.test(t)));
+  assert.ok(v.sesion.explicacion.some(t => /2 repeticiones de margen/.test(t)));
+  // También en el día de dolor alto.
+  const S = nuevoS({ objetivos: ['musculo'], salud: { asma: true }, lesiones: [L('rodilla', 3)] });
+  const d = ent.ajustarAlCheckin(S, null, ci({ dolorHoy: { rodilla: 8 } })).datos;
+  assert.ok(d.explicacion.some(t => /^Asma/.test(t)));
+});
+
+test('C-SALUD-0 (revisión B7): equilibrio por salud añade su ejercicio con apoyo', () => {
+  const { s } = sesionReglas({ objetivos: ['musculo'], salud: { equilibrio: true } }, {});
+  assert.ok([...s.calentamiento, ...s.ejercicios].some(t => t.id === 'equilibrio-una-pierna'));
+});
+
+test('B6: días de plan de la IA con 240 minutos usan los minutos pedidos; minutos fuera de las opciones se ajustan', async () => {
+  nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
+  ponerRed(true, async () => ({ ok: true, status: 200, json: async () => ({ plan: { dias: [{ diaSemana: 3, lugar: 'gym', minutos: 240, nombre: 'Largo', ejercicios: IA3, calentamiento: [T('a'), T('b')], vueltaCalma: [T('Estirar'), T('Respirar')] }] } }) }));
+  await ent.crearPlanSemana({ dias: [3], minutos: 60, lugares: ['gym'] });
+  const d = est.estado().plan.dias[0];
+  assert.equal(d.minutos, 60);
+  assert.ok(ent.tiempoSesion(d) <= 66);
+  const S = nuevoS({ objetivos: ['musculo'] });
+  assert.equal(ent.validarSesion(S, { ejercicios: IA3 }, { lugar: 'gym', minutos: 240 }).sesion.minutos, 90);
+});
+
+test('M5: el validador se defiende de sesiones rotas', () => {
+  const S = nuevoS({ objetivos: ['musculo'] });
+  for (const malo of [null, {}, { ejercicios: 'x' }, { ejercicios: [null, 3, { id: 'press-pecho-maquina' }], calentamiento: [null, { nombre: 5 }], vuelta: 'nada' }]) {
+    const v = ent.validarSesion(S, malo, { lugar: 'gym', minutos: 45 });
+    assert.ok(v.sesion.ejercicios.filter(x => x.rol === 'principal').length >= 3);
+    assert.ok(v.sesion.vuelta.some(t => /estir/i.test(t.nombre)));
+  }
+});
+
+test('N3: lo que se quita por riesgo no vuelve como rehabilitación de la misma zona', () => {
+  const { v } = vIA({ objetivos: ['musculo'], lesiones: [L('rodilla', 3)] }, { ejercicios: [E('sentadilla-goblet'), E('jalon-pecho'), E('press-pecho-maquina')] }, { dolorHoy: { rodilla: 5 } });
+  const quitados = v.cambios.filter(c => /goblet/i.test(c));
+  if (quitados.length) assert.ok(!v.sesion.ejercicios.some(x => x.id === 'sentadilla-goblet'));
 });

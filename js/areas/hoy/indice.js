@@ -27,7 +27,7 @@ function tiraSemana(S) {
 
 function tarjetaHoy(S) {
   // Señal de alarma de hoy: día sin entrenar por precaución (C-ALAR-1).
-  if (sinEntrenarHoy(S) && !sesionDeHoy(S)) {
+  if (sinEntrenarHoy(S) && !(sesionDeHoy(S) && sesionDeHoy(S).estado === 'hecha')) {
     return `<section class="tarjeta destacada alarma"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}</section>`;
   }
   const s = sesionDeHoy(S);

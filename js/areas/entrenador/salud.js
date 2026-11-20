@@ -41,7 +41,7 @@ export const tieneSalud = s => !!s && Object.entries(s).some(([k, v]) => k !== '
 //   sinIntervalos, sinImpacto, rpeMax, calentamientoExtra, calentamientoMin, vueltaMin, equilibrio, notas: [texto] }
 export function restriccionesSalud(S) {
   const p = S.perfil || {}, s = p.salud || {}, vb = s.vistoBueno || {};
-  const r = { excluir: new Set(), soloSuave: null, sinIntervalos: false, sinImpacto: false, rpeMax: null, calentamientoExtra: 0, calentamientoMin: 0, vueltaMin: 0, equilibrio: false, margenMin: 0, notas: [] };
+  const r = { excluir: new Set(), soloSuave: null, sinIntervalos: false, sinImpacto: false, rpeMax: null, calentamientoExtra: 0, calentamientoMin: 0, vueltaMin: 0, equilibrio: false, margenMin: 0, isoMax: null, descansoMin: 0, notas: [] };
   const fuera = ids => ids.forEach(id => r.excluir.add(id));
   const rpe = n => { r.rpeMax = r.rpeMax ? Math.min(r.rpeMax, n) : n; };
   const suave = m => { r.soloSuave = r.soloSuave || m; };
@@ -55,7 +55,7 @@ export function restriccionesSalud(S) {
   }
   if (s.hipertension) {
     if (s.hipertension === 'sin_controlar') suave('Tu tensión no está controlada: hoy solo caminar suave y movilidad, sin fuerza, hasta que lo esté.');
-    r.margenMin = 2; r.sinIntervalos = true; fuera(CABEZA_ABAJO);
+    r.margenMin = 2; r.sinIntervalos = true; fuera(CABEZA_ABAJO); r.isoMax = 45; r.descansoMin = 60;
     r.notas.push('Tensión alta: suelta el aire al empujar, sin aguantar la respiración, y deja 2 repeticiones de margen.');
   }
   if (+s.embarazo > 0) {
