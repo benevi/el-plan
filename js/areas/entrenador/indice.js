@@ -1,5 +1,5 @@
 // Área ENTRENADOR · interfaz: la semana (crear, ver, reorganizar), el check-in que ajusta la sesión de hoy
-// y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js.
+// y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js (fachada de dia, plan, checkin e ia).
 
 import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
@@ -12,10 +12,10 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, asegurarPlan, tiempoSesion,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido,
 } from './entrenador.js';
 
-export { planDeLaSemana, planDeHoy, estadoDias, asegurarPlan };
+export { planDeLaSemana, planDeHoy, estadoDias };
 
 const ENERGIA = ['', 'Muy baja', 'Baja', 'Normal', 'Buena', 'A tope'];
 const minus = t => String(t || '').toLowerCase();
@@ -25,23 +25,24 @@ let ci = null;
 
 function hojaCheckin() {
   const S = estado();
-  const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])];
+  // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
+  const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   const otras = Object.keys(ZONAS).filter(z => !zonas.includes(z));
   const pv = previaCheckin(ci);
   const dia = pv.dia;
   abrirHoja(`<h2>Antes de empezar</h2>
     ${dia ? `<p class="tenue">Toca <b>${h(dia.nombre)}</b> en ${h(minus(LUGARES[dia.lugar]))}. Dime cómo estás y lo ajusto.</p>` : '<p class="tenue">Hoy no hay día en tu plan. Te preparo una sesión con lo que te falta esta semana.</p>'}
-    <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${l}">${h(LUGARES[l])}</button>`).join('')}</div></div>
+    <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
-    ${zonas.map(z => `<label class="campo col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${z}">${ci.dolorHoy[z] || 0}</b>/10</span>
-      <input type="range" min="0" max="10" value="${ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${z}" oninput="document.getElementById('ci-${z}').textContent=this.value"></label>`).join('')}
+    ${zonas.map(z => `<label class="campo col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
+      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>`).join('')}
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
     <label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>
     <section class="previa" aria-live="polite">
       <h3>Con lo que me dices</h3>
       ${pv.cambios.length ? `<ul>${pv.cambios.map(c => `<li>${h(c)}</li>`).join('')}</ul>` : '<p class="tenue">Nada cambia: haces el día tal como estaba previsto.</p>'}
-      <p class="tenue">${pv.datos.ejercicios.length} ejercicios · unos ${pv.minutos} min con calentamiento y estiramientos.</p>
+      <p class="tenue">${+pv.datos.ejercicios.length} ejercicios · unos ${+pv.minutos} min con calentamiento y estiramientos.</p>
       <p class="tenue">${ICONOS.ia} ${h(ci.forzarIA ? 'Se lo pides al entrenador IA.' : pv.ia.motivo)}</p>
       ${enLinea() && !pv.ia.usar ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
     </section>
@@ -52,7 +53,7 @@ function hojaCheckin() {
 
 export function abrirCheckin(diaPlan = null) {
   const S = estado();
-  const p = diaPlan != null ? (planDeLaSemana(S) || { dias: [] }).dias.find(d => d.diaSemana === diaPlan) : planDeHoy(S);
+  const p = diaElegido(S, diaPlan);
   ci = { diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: '', forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
@@ -73,7 +74,7 @@ function hojaPlan() {
     <p class="tenue">Marca los días que puedes entrenar <b>esta semana</b>. Si cambia algo a mitad de semana, vuelve aquí y lo reorganizo.</p>
     <div class="chips dias">${[1, 2, 3, 4, 5, 6, 7].map(i => `<button class="chip ${ps.dias.includes(i) ? 'on' : ''} ${i < hoy ? 'pasado' : ''}" data-act="entrenador.psDia" data-v="${i}" ${hechos.includes(i) ? 'disabled' : ''}>${DIAS_CORTOS[i]}</button>`).join('')}</div>
     <div class="campo col"><span>Minutos por sesión</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ps.minutos === m ? 'on' : ''}" data-act="entrenador.psMin" data-v="${m}">${m} min</button>`).join('')}</div></div>
-    <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ps.lugares.includes(l) ? 'on' : ''}" data-act="entrenador.psLugar" data-v="${l}">${h(LUGARES[l])}</button>`).join('')}</div></div>
+    <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ps.lugares.includes(l) ? 'on' : ''}" data-act="entrenador.psLugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     ${libres.length ? `<button class="btn grande" data-act="entrenador.crearPlan" data-ia="1" ${enLinea() ? '' : 'disabled'}>${ICONOS.ia} Que me la monte el entrenador IA</button>
       <button class="btn sec" data-act="entrenador.crearPlan" data-ia="0">Hacerla con la app (sin gastar IA)</button>
       <p class="tenue pie">${libres.length} día${libres.length > 1 ? 's' : ''} por planificar${hechos.length ? `; lo que ya has hecho se queda` : ''}.</p>`
@@ -111,8 +112,8 @@ export function tarjetaPlan(S) {
     ${saltados.length ? `<p class="nota aviso-nota">No hiciste ${saltados.map(d => `${h(minus(DIAS[d.diaSemana]))} (${h(minus(d.nombre))})`).join(' ni ')}. <button class="enlace" data-act="entrenador.reorg">Reorganizar lo que queda</button></p>` : ''}
     ${ultimoCambio ? `<p class="tenue">${h(ultimoCambio.texto)}</p>` : ''}
     <ul class="lista">${dias.map(d => `<li class="${d.estado === 'saltado' || d.estado === 'hecho' ? 'apagada' : ''}">
-      <button class="fila" data-act="entrenador.verDia" data-v="${d.diaSemana}">
-        <span class="grow"><b>${DIAS[d.diaSemana]} · ${h(d.nombre)}</b><span class="tenue">${h(LUGARES[d.lugar])} · ${d.ejercicios.length} ejercicios · unos ${tiempoSesion(d)} min</span></span>
+      <button class="fila" data-act="entrenador.verDia" data-v="${+d.diaSemana}">
+        <span class="grow"><b>${h(DIAS[d.diaSemana])} · ${h(d.nombre)}</b><span class="tenue">${h(LUGARES[d.lugar])} · ${+d.ejercicios.length} ejercicios · unos ${+tiempoSesion(d)} min</span></span>
         ${ETIQUETA[d.estado] ? `<span class="etiqueta">${d.estado === 'hecho' ? ICONOS.check + ' ' : ''}${ETIQUETA[d.estado]}</span>` : ICONOS.sig}</button></li>`).join('')}</ul>
     <details class="plegable"><summary>Por qué esta semana</summary>
       ${p.criterios ? `<p>${h(p.criterios)}</p>` : ''}${p.progresion ? `<p><b>Progresión:</b> ${h(p.progresion)}</p>` : ''}
@@ -124,15 +125,15 @@ export function tarjetaPlan(S) {
 // Ver un día del plan con sus ejercicios.
 function hojaDia(n) {
   const S = estado(), d = estadoDias(S).find(x => x.diaSemana === n); if (!d) return;
-  const fila = x => { const e = ex(x.id); return e ? `<li><b>${h(e.n)}</b><span class="tenue"> · ${x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ' · rehabilitación' : x.rol === 'cardio' ? ' · cardio' : ''}</span>${x.nota ? `<br><small>${h(x.nota)}</small>` : ''}</li>` : ''; };
-  abrirHoja(`<h2>${DIAS[n]} · ${h(d.nombre)}</h2>
-    <p class="tenue">${h(LUGARES[d.lugar])} · unos ${tiempoSesion(d)} min${d.foco ? ' · ' + h(d.foco) : ''}</p>
+  const fila = x => { const e = ex(x.id); return e ? `<li><b>${h(e.n)}</b><span class="tenue"> · ${+x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ' · rehabilitación' : x.rol === 'cardio' ? ' · cardio' : ''}</span>${x.nota ? `<br><small>${h(x.nota)}</small>` : ''}</li>` : ''; };
+  abrirHoja(`<h2>${h(DIAS[n])} · ${h(d.nombre)}</h2>
+    <p class="tenue">${h(LUGARES[d.lugar])} · unos ${+tiempoSesion(d)} min${d.foco ? ' · ' + h(d.foco) : ''}</p>
     ${d.explicacion.length ? `<p class="nota porque-linea">${ICONOS.ia} ${h(d.explicacion[0])}</p>` : ''}
     <h3>Calentamiento</h3><ul>${d.calentamiento.map(t => `<li>${h(t.nombre)} <span class="tenue">${h(t.duracion || '')}</span></li>`).join('')}</ul>
     <h3>Trabajo</h3><ul>${d.ejercicios.map(fila).join('')}</ul>
     <h3>Vuelta a la calma</h3><ul>${d.vuelta.map(t => `<li>${h(t.nombre)} <span class="tenue">${h(t.duracion || '')}</span></li>`).join('')}</ul>
     ${d.explicacion.length > 1 ? `<details class="plegable"><summary>Más detalle</summary><ul>${d.explicacion.slice(1).map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
-    ${d.estado === 'hecho' ? `<a class="btn sec" href="#sesion/${d.sesion}">Ver lo que hiciste</a>` : `<button class="btn grande" data-act="entrenador.hacerDia" data-v="${n}">${ICONOS.play} Hacer este día hoy</button>`}`);
+    ${d.estado === 'hecho' ? `<a class="btn sec" href="#sesion/${h(d.sesion)}">Ver lo que hiciste</a>` : `<button class="btn grande" data-act="entrenador.hacerDia" data-v="${+n}">${ICONOS.play} Hacer este día hoy</button>`}`);
 }
 
 // ── Lo que ve tu entrenador (análisis del progreso con su consecuencia) ──
@@ -140,12 +141,12 @@ export function tarjetaAnalisis(S) {
   const an = Object.values(analizarEjercicios(S));
   if (!sesionesHechas(S).length) return '';
   const t = tendencias(S);
-  const grupo = (est, titulo) => { const l = an.filter(a => a.estado === est); return l.length ? `<li><b>${titulo}:</b> ${l.slice(0, 4).map(a => h(ex(a.id).n) + (a.desde ? ` <span class="tenue">(${h(a.desde)})</span>` : a.cambio ? ` <span class="tenue">(${a.cambio > 0 ? '+' : ''}${a.cambio} %)</span>` : '')).join(', ')}. <span class="tenue">${h(l[0].accion)}</span></li>` : ''; };
+  const grupo = (est, titulo) => { const l = an.filter(a => a.estado === est); return l.length ? `<li><b>${titulo}:</b> ${l.slice(0, 4).map(a => h(ex(a.id).n) + (a.desde ? ` <span class="tenue">(${h(a.desde)})</span>` : a.cambio ? ` <span class="tenue">(${a.cambio > 0 ? '+' : ''}${+a.cambio} %)</span>` : '')).join(', ')}. <span class="tenue">${h(l[0].accion)}</span></li>` : ''; };
   return `<section class="tarjeta">
     <h2>Lo que ve tu entrenador</h2>
     <ul class="analisis">
       ${grupo('progresa', 'Progresan')}${grupo('estancado', 'Estancados')}${grupo('molesta', 'Te molestan')}
-      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} sesiones por semana (${t.constancia} % de lo previsto)${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
+      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} sesiones por semana (${+t.constancia} % de lo previsto)${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
       ${t.cambioPeso4sem != null ? `<li><b>Peso:</b> ${t.cambioPeso4sem > 0 ? '+' : ''}${es(t.cambioPeso4sem)} kg en 4 semanas.</li>` : ''}
       ${t.dolor.map(d => `<li><b>Dolor de ${h(minus(d.nombre))}:</b> ${es(d.media14)}/10 de media${d.tendencia === 'sube' ? ' (sube: más rehabilitación)' : d.tendencia === 'baja' ? ' (baja)' : ''}.</li>`).join('')}
     </ul></section>`;

@@ -27,7 +27,7 @@ test('las cuatro pestañas se pintan sin «Algo ha fallado»', async () => {
 
 test('los grupos del perfil se abren sin fallos', async () => {
   await a.ir('perfil');
-  for (const g of ['objetivos', 'lesiones', 'entreno', 'datos', 'ajustes']) {
+  for (const g of ['objetivos', 'lesiones', 'entreno', 'datos', 'copias', 'ajustes']) {
     a.clic(`[data-act="perfil.grupo"][data-v="${g}"]`);
     await a.tic();
     assert.ok(!a.pantallaRota(), g);

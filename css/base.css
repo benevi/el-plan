@@ -1,5 +1,12 @@
 /* Pipos Fitness · base: colores, tipografía, estructura. El color de la persona llega en --acc / --acc-2
    (lo pone main.js: Víctor turquesa, Virginia violeta). Área de «aspecto»: este archivo y componentes.css. */
+/* Fuentes alojadas en el sitio (fonts/, licencia OFL): subconjunto latino. Archivo variable con
+   anchura 100-125 % y peso 600-800; Outfit 400, 500 y 600. Sin red, el service worker las sirve. */
+@font-face { font-family: 'Archivo'; font-style: normal; font-display: swap; font-weight: 600 800; font-stretch: 100% 125%;
+  src: url(../fonts/archivo-latin-var.woff2) format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-display: swap; font-weight: 400; src: url(../fonts/outfit-latin-400.woff2) format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-display: swap; font-weight: 500; src: url(../fonts/outfit-latin-500.woff2) format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-display: swap; font-weight: 600; src: url(../fonts/outfit-latin-600.woff2) format('woff2'); }
 :root {
   --brand-1: #4DD0E8; --brand-2: #C77DFF;
   --brand-grad: linear-gradient(120deg, var(--brand-1), var(--brand-2));

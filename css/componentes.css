@@ -91,6 +91,20 @@ body.con-hoja { overflow: hidden; }
 .aviso.ver { opacity: 1; transform: translate(-50%, 0); }
 .aviso.error { background: color-mix(in srgb, var(--bad) 30%, var(--surface-3)); }
 .aviso.info { background: color-mix(in srgb, var(--warn) 20%, var(--surface-3)); }
+/* Aviso fijo de versión nueva (js/nucleo/version.js): no se va solo, se toca «Actualizar». Abajo, encima
+   de la barra (arriba taparía «Terminar» en la sesión); el aviso breve sube por encima si coinciden. */
+.aviso-version { position: fixed; z-index: 79; left: 12px; right: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 16px; background: var(--surface-3); box-shadow: var(--sombra), inset 0 0 0 1.5px var(--line-2); font-size: 15px; }
+body.sin-nav .aviso-version { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+body.con-temporizador .aviso-version { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 96px); }
+body.sin-nav.con-temporizador .aviso-version { bottom: calc(env(safe-area-inset-bottom) + 96px); }
+body.con-hoja .aviso-version { display: none; } /* con una hoja abierta, sus botones mandan */
+body.con-aviso-version { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 96px); }
+body.sin-nav.con-aviso-version { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
+body.con-temporizador.con-aviso-version { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 176px); }
+.aviso-version .btn { flex-shrink: 0; min-height: 40px; margin-top: 0; }
+.aviso.fijo { pointer-events: auto; width: auto; }
+.aviso.fijo p { margin: 0 0 8px; }
+.aviso.fijo .btn { margin-top: 2px; }
 body.con-temporizador .aviso { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 100px); }
 body.sin-nav .aviso { bottom: calc(env(safe-area-inset-bottom) + 16px); }
 body.sin-nav.con-temporizador .aviso { bottom: calc(env(safe-area-inset-bottom) + 100px); }

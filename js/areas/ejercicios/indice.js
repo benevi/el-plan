@@ -14,7 +14,7 @@ export const miniatura = e => e && e.v ? `https://i.ytimg.com/vi/${encodeURIComp
 
 export function botonesGusto(id, act = 'ejercicios.gusto') {
   const g = estado().perfil.gustos[id];
-  return `<div class="gustos" role="group" aria-label="¿Qué te parece?">${Object.entries(GUSTOS).map(([k, x]) => `<button class="${g === k ? 'on' : ''} g-${k}" data-act="${act}" data-id="${id}" data-v="${k}" aria-pressed="${g === k}">${x.icono} ${h(x.nombre)}</button>`).join('')}</div>`;
+  return `<div class="gustos" role="group" aria-label="¿Qué te parece?">${Object.entries(GUSTOS).map(([k, x]) => `<button class="${g === k ? 'on' : ''} g-${k}" data-act="${act}" data-id="${h(id)}" data-v="${k}" aria-pressed="${g === k}">${x.icono} ${h(x.nombre)}</button>`).join('')}</div>`;
 }
 
 // Ficha técnica en hoja inferior: pasos, errores típicos, vídeo, riesgo por lesión y últimas marcas.
@@ -61,7 +61,7 @@ function vista() {
     <p class="tenue">${lista.length} ejercicio${lista.length === 1 ? '' : 's'}</p>
     ${lista.length ? `<ul class="lista ejercicios">${lista.map(e => {
       const g = gustos[e.id], rg = riesgo(e, niveles), img = miniatura(e);
-      return `<li class="${g === 'rechazo' ? 'apagada' : ''}"><button class="fila" data-act="ejercicios.ficha" data-id="${e.id}">
+      return `<li class="${g === 'rechazo' ? 'apagada' : ''}"><button class="fila" data-act="ejercicios.ficha" data-id="${h(e.id)}">
         <span class="mini">${img ? `<img src="${img}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ''}${ICONOS.ejercicios}${e.v ? `<i>${ICONOS.play}</i>` : ''}</span>
         <span class="grow"><b>${h(e.n)}</b><span class="tenue">${e.m.map(m => MUSCULOS[m]).join(', ')} · ${e.mat.map(m => MATERIAL[m] || m).join(', ')}</span>
           ${rg !== 'ok' || g ? `<span class="marcas">${rg === 'evitar' ? '<span class="insignia peligro">Evitar por tu lesión</span>' : rg === 'precaucion' ? '<span class="insignia cuidado">Con cuidado</span>' : ''}${g ? `<span class="insignia g-${g}">${GUSTOS[g].icono} ${h(GUSTOS[g].nombre)}</span>` : ''}</span>` : ''}</span>
