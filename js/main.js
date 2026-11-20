@@ -6,6 +6,7 @@ import { cargar, estado, escuchar } from './nucleo/estado.js';
 import { arrancar, pintar } from './nucleo/router.js';
 import { cerrarHoja } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
+import { iniciarVersiones } from './nucleo/version.js';
 
 import './areas/perfil/bienvenida.js';
 import './areas/hoy/indice.js';
@@ -33,7 +34,9 @@ escuchar(motivo => {
   if (!/silencio$/.test(motivo)) pintar();
 });
 arrancar();
+// Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).
+document.documentElement.setAttribute('data-arrancado', '');
+window.dispatchEvent(new Event('pipos:arrancado'));
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(e => console.warn('Sin modo sin conexión', e));
-}
+// Service worker y aviso de versión nueva (js/nucleo/version.js).
+iniciarVersiones();

@@ -2,9 +2,9 @@
 // y, con el service worker instalado, sigue pintando sin red.
 import { test, expect } from '@playwright/test';
 
-// Las fuentes de Google no forman parte de la prueba: se sirven vacías para no depender de la red.
-async function sinFuentesExternas(context) {
-  await context.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+// Las miniaturas de YouTube (Ejercicios) no forman parte de la prueba: se sirven vacías para no depender de la red.
+async function sinMiniaturas(context) {
+  await context.route(/i\.ytimg\.com/, r => r.fulfill({ status: 204, body: '' }));
 }
 
 function vigilarErrores(page) {
@@ -15,7 +15,7 @@ function vigilarErrores(page) {
 }
 
 test('arranca, elige dueño y recorre las 4 pestañas sin errores', async ({ page, context }) => {
-  await sinFuentesExternas(context);
+  await sinMiniaturas(context);
   const errores = vigilarErrores(page);
   await page.goto('/');
   await expect(page).toHaveTitle(/Bienvenida/);
@@ -33,7 +33,7 @@ test('arranca, elige dueño y recorre las 4 pestañas sin errores', async ({ pag
 });
 
 test('con el service worker instalado, recarga sin red y sigue pintando', async ({ page, context }) => {
-  await sinFuentesExternas(context);
+  await sinMiniaturas(context);
   const errores = [];
   page.on('pageerror', e => errores.push(e.message));
   await page.goto('/');
