@@ -1,15 +1,66 @@
 // Modo sin conexión de Pipos Fitness: caché inmutable por versión.
-// - Cada VERSION tiene su propia caché y solo se llena en `install` con addAll (todo o nada):
-//   si un archivo falla, la versión nueva no se instala y sigue la anterior entera.
+// - Cada VERSION tiene su propia caché y solo se llena en `install`, todo o nada: se descarga APP
+//   entera, cada archivo se comprueba contra su huella (HUELLAS) y solo entonces se guarda. Si un
+//   archivo falla o es de otro despliegue, la versión nueva no se instala y sigue la anterior entera.
 // - En `fetch` se sirve desde la caché de la versión activa y NUNCA se reescribe: así no se mezclan
 //   módulos viejos y nuevos. Lo que no está precargado va a la red sin guardarse. /api/* nunca se guarda.
 // - Navegación: solo ./ y ./index.html reciben el index.html de la caché; cualquier otra URL del sitio
 //   (p. ej. /LEEME.md o una ruta inventada) va a la red y no toca la caché.
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
-// VERSION la escribe `npm run version` (scripts/version.mjs) con el hash de APP: no la cambies a mano.
-const VERSION = 'pipos-app-2ce37c419650';
+// VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
+const VERSION = 'pipos-app-e5b638cf5a60';
 const PREFIJO = 'pipos-app-';
+// Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
+const HUELLAS = {
+  './': 'sha256-sz3/TY9VsB9QLJVbCQ7+bCVAsJdyt+KOhUw9nr5oXo0=',
+  './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
+  './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
+  './css/componentes.css': 'sha256-xpi0hJXk5TYEe0x+ORKYziU4JSNlxLm39B6cHVkWa5g=',
+  './fonts/archivo-latin-var.woff2': 'sha256-igMZE3lrXQl0FyWcAdsDT4ylrAXkBnpr2qdXeeoMjtg=',
+  './fonts/outfit-latin-400.woff2': 'sha256-cfAo/SNJmQs/iqZDq+dn6C4PWWvkB65m8ABP8WQSG9s=',
+  './fonts/outfit-latin-500.woff2': 'sha256-/Jv/lB3vbZJKcWMr2KkxkFKIcurmQUhE88Nn/5SNkv0=',
+  './fonts/outfit-latin-600.woff2': 'sha256-jP4Vwsbebvjv/z7tvVKjg6ye8j1sI/bNn5uDj1833DY=',
+  './icons/icon-180.png': 'sha256-nOzi3KiKABC62kNnhiFdsh3mX6gelREfbvHRhGep3O4=',
+  './icons/icon-192.png': 'sha256-foQTx5VM5ySe+6Qi13MJHTODZXTTGX/iVnYscHXqzJo=',
+  './icons/icon-32.png': 'sha256-oTrPliRoG579txJvPRyUKq+qASRJzSWmY5hnXahC8R4=',
+  './icons/icon-512.png': 'sha256-XjFSSSOrZYGSPoT+3glRmdGVlvkHHoExMZmE6B+EeXc=',
+  './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
+  './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
+  './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
+  './index.html': 'sha256-sz3/TY9VsB9QLJVbCQ7+bCVAsJdyt+KOhUw9nr5oXo0=',
+  './js/arranque.js': 'sha256-Y+wo7mgETmoZVY2B5y4EaVCBSAzq3DMYSTkwpiIuEJY=',
+  './js/areas/ejercicios/indice.js': 'sha256-uTRWT8hDPOXYUn9+fRLQ+mOqc5g4vgFLbww55sdtmiI=',
+  './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
+  './js/areas/entrenador/dia.js': 'sha256-YfkZAhTpuP3GcKDdwMoJjXIDM04XOIoCMpAP14bNMQQ=',
+  './js/areas/entrenador/entrenador.js': 'sha256-jBhBRsqQWIN0Zy672D7Ty1G8EB1l/E5UqY2ilj3tnoc=',
+  './js/areas/entrenador/ia.js': 'sha256-p5dIPKVzx8wCXEXg9b9AKYiJ+5MywZvD/N9hoRHiFjw=',
+  './js/areas/entrenador/indice.js': 'sha256-yvc9o0bo3WKoFNaRjwsSLNT561L8Kdrmm8UBS+Zcgqw=',
+  './js/areas/entrenador/plan.js': 'sha256-Fp9qGwQO3l0X4gcZFojFUfYYFwNNAaPlfnMCpKAHc8o=',
+  './js/areas/entrenador/validar.js': 'sha256-+waeNOcaEYnWSKcgF7vzj6IlrvUNYgSFkzBXPnCWUag=',
+  './js/areas/hoy/indice.js': 'sha256-ye2hF6BgRT5fSRnBx0ejnth1/Ho+wZmhabSc9f1XQUc=',
+  './js/areas/perfil/bienvenida.js': 'sha256-XPPS50dmSZsCWTt39+ySMzSW7XrmjM3pp7Kg5G1VG9U=',
+  './js/areas/perfil/indice.js': 'sha256-iwSU2HvrHV/XBU6WJchlSKoY0/+dPe2LLPi26vEjUog=',
+  './js/areas/progreso/analisis.js': 'sha256-ERUbRDIg94+Mk5E6y/GcWb4ksCLP5CW1snvghmIv5Gc=',
+  './js/areas/progreso/indice.js': 'sha256-scpOueTs/SQUpPn4SiAWlxY5t6BlGpEuuo9pbNOnxU0=',
+  './js/areas/sesion/indice.js': 'sha256-U/NDK6SUJ9FrbXyTCBaYj6vxG10cvpvy6LVGXNc+WvE=',
+  './js/areas/sesion/temporizador.js': 'sha256-YIkvTD96PCmz3EcQEps19vXzU6QPXxwVs45YqoV1J/s=',
+  './js/aspecto/vida.js': 'sha256-/74osN4/qqoNl5u68jwOdl+bDD9Akhk8tropIhhRyT8=',
+  './js/datos/constantes.js': 'sha256-8n0nnc8b2TB4qI1A0Idi2e8dcPyVl+8nEL1iiyS7nGg=',
+  './js/datos/ejercicios.js': 'sha256-CT+AS9GUwXOvS7hvcjwwVGgf+pskLngV2eoutzDYvbk=',
+  './js/datos/lesiones.js': 'sha256-JecIpuwLmKw05yIXyhdLZEJyXxR+H4XWiwjwWcHSFCk=',
+  './js/main.js': 'sha256-34Qp6wJkXSxy8IwoZcj1QPyrx6DGOCoV1T92iNdUJnE=',
+  './js/nucleo/api.js': 'sha256-ublEKn9V9Xv6ebdJJby9Vg3+EGWlbES4lH/p4hYr+xY=',
+  './js/nucleo/estado.js': 'sha256-CyjPcwbRPa0IOTngAYfcVuNDroZOhCUYgneIwCiwcPY=',
+  './js/nucleo/modelo.js': 'sha256-80TG9nhKN3LoYAdGpiiceodtJUL0nBgNa3bu2WmgFXI=',
+  './js/nucleo/router.js': 'sha256-f5SpiBMjhVb0fKhi/oq2fyEHKV3BVDGzxWgf1/OjEmM=',
+  './js/nucleo/ui.js': 'sha256-CawMKmdFNlS5EZeOEAggwoTroUHS1NGD56hshvVtWPc=',
+  './js/nucleo/version.js': 'sha256-31EowLLTP8OG20u6Tq4i65lDO8jy0Y6o+CdFVVe1s80=',
+  './js/reglas/catalogo.js': 'sha256-h+tmDslS2iqHrvlYMthQH4b8jxfiACjC5KrhK+aWRGw=',
+  './js/reglas/contexto.js': 'sha256-CN6N1hA9J1o1NrAa7bpg+XaADWQ0yeDc8wkylSJZh5g=',
+  './js/reglas/progresion.js': 'sha256-INGcRYa5QoEeZ77v00ScJqD6rO3UFFkhvIepWfkr2GA=',
+  './manifest.webmanifest': 'sha256-OmIi8iwSpWN8kvG0ZzJf0w9au0bwrlMnVTMsxQltZPA=',
+};
 const APP = [
   './',
   './css/areas.css',
@@ -60,16 +111,40 @@ const APP = [
   './manifest.webmanifest',
 ];
 
+// Huella SHA-256 (base64) de un cuerpo, en el formato de HUELLAS ('sha256-…').
+async function huella(cuerpo) {
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', cuerpo));
+  let txt = '';
+  for (const x of b) txt += String.fromCharCode(x);
+  return 'sha256-' + btoa(txt);
+}
+
+// Descarga APP entera y comprueba cada archivo contra HUELLAS antes de guardar nada. Si un archivo no
+// llega o no es el de esta versión (p. ej. un despliegue nuevo a mitad de la descarga), falla todo.
+async function precargar() {
+  const descargas = await Promise.all(APP.map(async u => {
+    // `no-cache`: revalida con el servidor (ETag) para no meter un archivo viejo de la caché HTTP.
+    const r = await fetch(new Request(u, { cache: 'no-cache' }));
+    if (!r.ok) throw new Error(`Precarga: ${u} respondió ${r.status}`);
+    const cuerpo = await r.clone().arrayBuffer();
+    let bueno = (await huella(cuerpo)) === HUELLAS[u];
+    // index.html: vale también si lleva la meta de esta VERSION (Vercel inyecta su barra en las vistas previas).
+    if (!bueno && (u === './' || u === './index.html')) bueno = new TextDecoder().decode(cuerpo).includes(`<meta name="pipos-version" content="${VERSION}">`);
+    if (!bueno) throw new Error(`Precarga: ${u} no es el de ${VERSION}`);
+    return [u, r];
+  }));
+  const c = await caches.open(VERSION);
+  try {
+    for (const [u, r] of descargas) await c.put(u, r);
+  } catch (err) {
+    await caches.delete(VERSION); // no deja una caché a medias
+    throw err;
+  }
+}
+
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
-    const c = await caches.open(VERSION);
-    // `no-cache`: revalida con el servidor (ETag) para no meter en la versión nueva un archivo viejo de la caché HTTP.
-    try {
-      await c.addAll(APP.map(u => new Request(u, { cache: 'no-cache' })));
-    } catch (err) {
-      await caches.delete(VERSION); // instalación fallida: no deja una caché a medias
-      throw err;
-    }
+    await precargar();
     // Si la versión activa es de antes de este esquema (la de `main` o una vista previa con la caché que
     // se reescribía), no hay una versión coherente que conservar: la nueva entra ya.
     const otras = (await caches.keys()).filter(k => k.startsWith(PREFIJO) && k !== VERSION);
@@ -79,8 +154,12 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
+    // Borra las demás cachés: las versiones anteriores y las de `main` (elplan-v3.3.0 y su -ext de
+    // fuentes y miniaturas de YouTube, que ya no se guardan).
     for (const k of await caches.keys()) if (k !== VERSION) await caches.delete(k);
     await self.clients.claim();
+    // Avisa a todas las pestañas: las que tienen código de otra versión se recargan (js/nucleo/version.js).
+    try { new BroadcastChannel('pipos-version').postMessage({ tipo: 'activada', version: VERSION }); } catch { /* sin BroadcastChannel */ }
   })());
 });
 

@@ -1,18 +1,28 @@
 // Versiones de la app: registra el service worker, busca versiones nuevas y avisa para actualizar.
+// - La página sabe de qué versión es por <meta name="pipos-version"> de index.html (la escribe
+//   `npm run version`; es la VERSION de sw.js con la que se instala). La enseña Perfil → Ajustes.
 // - Al volver a primer plano pide al navegador que mire si hay sw.js nuevo (reg.update()).
 // - Si hay una versión nueva esperando, muestra un aviso fijo «Hay una versión nueva — Actualizar».
-// - La versión nueva solo entra al tocar «Actualizar» (skipWaiting a petición): la página que está
-//   abierta sigue con los archivos de su versión hasta recargar, y nunca se recarga sola.
-// - Con una sesión en curso no se avisa: se espera a que termine para no cortar el entrenamiento.
-// versionApp() da la VERSION del service worker que controla la página (la enseña Perfil → Ajustes).
-import { estado, escuchar, hoyISO } from './estado.js';
+//   La versión nueva solo entra al tocarlo (skipWaiting a petición). Con una sesión en curso el aviso
+//   espera a que termine.
+// - Cuando una versión nueva se activa (desde otra pestaña), sw.js lo anuncia por BroadcastChannel y
+//   llega controllerchange: esta pestaña tiene código de otra versión, así que se recarga si no hay
+//   sesión en curso; si la hay, lo avisa y se recarga al terminarla.
+// El aviso es propio (no avisoFijo de ui.js): ese hueco es para «No se ha podido guardar», que manda.
+import { estado, escuchar, hoyISO, guardarYa } from './estado.js';
 
-let version = null;
-let avisoPendiente = false;
-let pidioActualizar = false;
-let registro = null;
-
+const meta = typeof document !== 'undefined' ? document.querySelector('meta[name="pipos-version"]') : null;
+const version = (meta && meta.content) || null;
 export const versionApp = () => version;
+
+// Para las pruebas en jsdom (allí no se puede recargar de verdad).
+export const opciones = { recargar: () => location.reload() };
+
+let registro = null;
+let pidioActualizar = false;
+let avisoPendiente = false; // versión nueva esperando, con el aviso guardado mientras hay sesión
+let recargarAlTerminar = false; // otra versión ya activa: recargar en cuanto acabe la sesión
+let recargando = false;
 
 // Hay sesión en curso: la de hoy está empezada, o alguna se empezó hace menos de 6 horas (pasada la medianoche).
 export function haySesionEnCurso(S = estado()) {
@@ -21,8 +31,11 @@ export function haySesionEnCurso(S = estado()) {
   return sesiones.some(s => s && s.estado === 'en_curso' && (s.fecha === hoyISO() || (s.empezada && Date.parse(s.empezada) > reciente)));
 }
 
-function pintarVersion() {
-  for (const el of document.querySelectorAll('[data-version-app]')) el.textContent = version || '—';
+function recargar() {
+  if (recargando) return;
+  recargando = true;
+  guardarYa();
+  opciones.recargar();
 }
 
 // Pregunta su VERSION a un service worker. Los de antes de este esquema no contestan: null.
@@ -37,67 +50,84 @@ function preguntarVersion(sw, espera = 1500) {
   });
 }
 
+function quitarAviso() { const el = document.getElementById('aviso-version'); if (el) el.remove(); }
+
+function pintarAviso(texto) {
+  let el = document.getElementById('aviso-version');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'aviso-version';
+    el.className = 'aviso-version';
+    el.setAttribute('role', 'status');
+    const txt = document.createElement('span');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn';
+    b.textContent = 'Actualizar';
+    b.addEventListener('click', actualizar);
+    el.append(txt, b);
+    document.body.appendChild(el);
+  }
+  el.firstChild.textContent = texto;
+}
+
+// Versión nueva esperando: aviso, salvo con una sesión en curso (entonces, al terminarla).
 export function mostrarAvisoVersion() {
-  if (haySesionEnCurso()) { avisoPendiente = true; return; }
+  if (haySesionEnCurso()) { avisoPendiente = true; quitarAviso(); return; }
   avisoPendiente = false;
-  if (document.getElementById('aviso-version')) return;
-  const el = document.createElement('div');
-  el.id = 'aviso-version';
-  el.className = 'aviso-version';
-  el.setAttribute('role', 'status');
-  const txt = document.createElement('span');
-  txt.textContent = 'Hay una versión nueva';
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'btn';
-  b.textContent = 'Actualizar';
-  b.addEventListener('click', actualizar);
-  el.append(txt, b);
-  document.body.appendChild(el);
+  pintarAviso('Hay una versión nueva');
 }
 
 function actualizar() {
   const esperando = registro && registro.waiting;
-  if (!esperando) { location.reload(); return; } // ya está activa (otra pestaña la activó): basta recargar
+  if (!esperando) { recargar(); return; } // ya está activa: basta recargar
   pidioActualizar = true;
   esperando.postMessage({ tipo: 'actualizar' });
-  // Si en unos segundos no cambia el controlador (no debería), recarga igual.
-  setTimeout(() => location.reload(), 4000);
+  setTimeout(recargar, 4000); // por si no llega controllerchange
 }
 
-function revisar() {
-  if (registro && registro.waiting && navigator.serviceWorker.controller) mostrarAvisoVersion();
+// Se ha activado la versión `nueva` (en esta pestaña o en otra).
+function versionActivada(nueva) {
+  if (pidioActualizar) { recargar(); return; }
+  if (!nueva || nueva === version) return; // primera instalación o paso desde main: esta página ya es esa
+  if (haySesionEnCurso()) {
+    recargarAlTerminar = true;
+    pintarAviso('Hay una versión nueva: se pondrá al terminar la sesión');
+    return;
+  }
+  recargar();
+}
+
+async function revisar() {
+  const esperando = registro && registro.waiting;
+  if (!esperando || !navigator.serviceWorker.controller) return;
+  const nueva = await preguntarVersion(esperando);
+  if (nueva && nueva !== version) mostrarAvisoVersion();
 }
 
 export async function iniciarVersiones() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   const sw = navigator.serviceWorker;
-  let controlador = sw.controller;
-  // Controlador de antes de este esquema (main o una vista previa vieja): no contesta a «version».
-  // Si la versión nueva lo sustituye, la página ya es nueva: no hace falta avisar.
-  let controladorViejo = false;
-  if (controlador) {
-    version = await preguntarVersion(controlador);
-    controladorViejo = !version;
-    pintarVersion();
-  }
 
   sw.addEventListener('controllerchange', async () => {
-    if (pidioActualizar) { location.reload(); return; }
-    const habia = controlador;
-    controlador = sw.controller;
-    version = await preguntarVersion(controlador);
-    pintarVersion();
-    // Primera instalación o paso desde un service worker viejo: la página ya tiene los archivos buenos.
-    if (habia && !controladorViejo) mostrarAvisoVersion();
-    controladorViejo = false;
+    if (pidioActualizar) { recargar(); return; }
+    versionActivada(await preguntarVersion(sw.controller));
   });
+  if (typeof BroadcastChannel !== 'undefined') {
+    const canal = new BroadcastChannel('pipos-version');
+    canal.onmessage = e => { if (e.data && e.data.tipo === 'activada') versionActivada(e.data.version); };
+    if (canal.unref) canal.unref(); // node (pruebas): que no impida terminar
+  }
 
-  // Al terminar la sesión en curso, enseña el aviso que quedó pendiente; si empieza una, lo guarda para luego.
+  // Al terminar la sesión: recarga si otra versión ya está activa, o enseña el aviso pendiente.
+  // Si empieza una con el aviso de «versión esperando» a la vista, lo guarda para luego.
   escuchar(() => {
-    const enCurso = haySesionEnCurso();
-    const el = document.getElementById('aviso-version');
-    if (el && enCurso) { el.remove(); avisoPendiente = true; } else if (avisoPendiente && !enCurso) mostrarAvisoVersion();
+    if (haySesionEnCurso()) {
+      if (!recargarAlTerminar && document.getElementById('aviso-version')) { quitarAviso(); avisoPendiente = true; }
+      return;
+    }
+    if (recargarAlTerminar) { setTimeout(recargar, 1500); return; } // deja ver «¡Sesión guardada!»
+    if (avisoPendiente) mostrarAvisoVersion();
   });
 
   try {
@@ -106,7 +136,6 @@ export async function iniciarVersiones() {
     console.warn('Sin modo sin conexión', e);
     return;
   }
-  if (!controlador) sw.ready.then(async r => { if (!version) { version = await preguntarVersion(r.active); pintarVersion(); } });
   registro.addEventListener('updatefound', () => {
     const nuevo = registro.installing;
     if (!nuevo) return;

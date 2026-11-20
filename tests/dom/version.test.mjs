@@ -1,9 +1,10 @@
 // Aviso de versión nueva (js/nucleo/version.js) con un service worker simulado en jsdom:
 // con una sesión en curso no avisa; al terminarla aparece «Hay una versión nueva — Actualizar»,
-// que pide al SW nuevo que entre. Perfil → Ajustes enseña la VERSION del SW que controla la página.
+// que pide al SW nuevo que entre. Perfil → Ajustes enseña la VERSION de la página (meta de index.html).
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { estadoBase, sesionDemo } from '../ayuda/comun.mjs';
+import fs from 'node:fs';
+import { estadoBase, sesionDemo, ruta } from '../ayuda/comun.mjs';
 import { montar } from '../ayuda/dom.mjs';
 
 const mensajes = [];
@@ -33,12 +34,14 @@ const a = await montar({
 });
 after(() => a.cerrar());
 
-test('Perfil → Ajustes enseña la versión del service worker que controla la página', async () => {
-  await a.esperar(() => mensajes.some(([n, m]) => n === 'vieja' && m.tipo === 'version'), { que: 'pregunta de versión' });
+test('Perfil → Ajustes enseña la versión de la app (la VERSION de sw.js)', async () => {
+  const VERSION = fs.readFileSync(ruta('sw.js'), 'utf8').match(/const VERSION = '([^']+)'/)[1];
   await a.ir('perfil');
   a.clic('[data-act="perfil.grupo"][data-v="ajustes"]');
   await a.tic();
-  await a.esperar(() => /pipos-app-vieja/.test(a.doc.querySelector('[data-version-app]').textContent), { que: 'versión pintada' });
+  assert.equal(a.doc.querySelector('[data-version-app]').textContent, VERSION);
+  // Y pregunta al SW en espera de qué versión es antes de avisar.
+  await a.esperar(() => mensajes.some(([n, m]) => n === 'nueva' && m.tipo === 'version'), { que: 'pregunta de versión' });
 });
 
 test('con una sesión en curso no avisa de la versión nueva', async () => {
