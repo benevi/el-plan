@@ -153,3 +153,32 @@ test('el historial enviado a la IA usa los kilos reales', async () => {
   await sesionIA({ objetivos: ['musculo'] }, BASE, ci0, S => hecha(S, 5, [{ id: 'press-pecho-maquina', sets: [[40, 10], [40, 10]] }]));
   assert.match(JSON.stringify(peticiones[0].cuerpo.historial), /40/);
 });
+
+// ── PR 11: día suave del plan y datos enviados ──
+test('un día suave de la IA (sin fuerza, con cardio y «Día suave:») se acepta como día suave', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'] });
+  const suave = dia(4, 'gym', [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })], { nombre: 'Día suave', explicacion: ['Día suave: cardio cómodo, core y movilidad para recuperar.'] });
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [dia(3, 'gym', [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')]), suave] } };
+  await ent.crearPlanSemana({ dias: [3, 4], minutos: 60, lugares: ['gym'] });
+  const d4 = est.estado().plan.dias.find(d => d.diaSemana === 4);
+  assert.equal(d4.tipo, 'suave');
+  assert.deepEqual(d4.ejercicios.filter(x => x.rol === 'principal').map(x => x.id), [], 'sin fuerza: el validador no le añade principales');
+  assert.ok(!d4.explicacion.includes('Día completado por la app.'), 'es el de la IA');
+});
+
+test('sin «Día suave:» un día sin fuerza de la IA lo rehace la app', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'] });
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [dia(4, 'gym', [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })])] } };
+  await ent.crearPlanSemana({ dias: [4], minutos: 60, lugares: ['gym'] });
+  assert.ok(est.estado().plan.dias[0].explicacion.includes('Día completado por la app.'));
+});
+
+test('a la IA no le llega el nombre ni la altura, y los lugares van como ids (PR 11)', async () => {
+  await sesionIA({ objetivos: ['musculo'], lugares: ['gym', 'piscina'] }, BASE, ci0);
+  const c = peticiones[0].cuerpo;
+  assert.equal(c.perfil.nombre, undefined);
+  assert.equal(c.perfil.alturaCm, undefined);
+  assert.deepEqual(c.perfil.lugares, ['gym', 'piscina']);
+  assert.equal(c.checkin.lugar, 'gym');
+  assert.doesNotMatch(JSON.stringify(c), /Víctor/);
+});

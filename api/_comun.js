@@ -113,6 +113,7 @@ function limpiarEjercicio(e) {
   if ('l' in e) x.l = textos(e.l, 10, 30);
   if ('niv' in e) x.niv = Number.isFinite(e.niv) ? e.niv : null;
   if (typeof e.t === 'string') x.t = recortar(e.t, 20);
+  if (typeof e.tipo === 'string') x.tipo = recortar(e.tipo, 20);
   if (typeof e.prec === 'string') x.prec = recortar(e.prec, 200);
   if (typeof e.gusto === 'string') x.gusto = recortar(e.gusto, 30);
   return x;
@@ -135,9 +136,10 @@ export function sanear(crudo) {
 // Pide una respuesta JSON que cumple `esquema`. En streaming para que las respuestas largas
 // (el plan de la semana) no choquen con los límites de tiempo de una petición normal.
 // `signal` corta la llamada si el móvil se va; `registro` recoge lo que se apunta en el log.
-export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 'low', maxTokens = 16000, signal, registro = {} }) {
+// `modelo`: solo para las pruebas de scripts/casos-ia.mjs (lista cerrada en entrenador.js); si no, MODELO.
+export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 'low', maxTokens = 16000, modelo = MODELO, signal, registro = {} }) {
   const msg = await client.beta.messages.stream({
-    model: MODELO,
+    model: modelo,
     max_tokens: maxTokens,
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
@@ -145,10 +147,8 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
     system: sistema,
     messages: [{ role: 'user', content: usuario }],
   }, { signal }).finalMessage();
-  Object.assign(registro, {
-    id: msg.id, modelo: msg.model, stop_reason: msg.stop_reason,
-    entrada: msg.usage && msg.usage.input_tokens, salida: msg.usage && msg.usage.output_tokens,
-  });
+  Object.assign(registro, { id: msg.id, modelo: msg.model, stop_reason: msg.stop_reason }, uso(msg.usage));
+  // Solo vale una respuesta terminada (end_turn): max_tokens, pause_turn, tool_use… se tratan como incompletas.
   if (msg.stop_reason === 'refusal') throw new ErrorIA('negativa');
   if (msg.stop_reason === 'max_tokens') throw new ErrorIA('incompleta', 'stop_reason max_tokens');
   if (msg.stop_reason !== 'end_turn') throw new ErrorIA('incompleta', 'stop_reason ' + msg.stop_reason);
@@ -167,6 +167,19 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
     if (datos && typeof datos === 'object' && !Array.isArray(datos)) return datos;
   }
   throw new ErrorIA('ilegible', 'JSON no válido');
+}
+
+// Tokens de una respuesta para el registro: totales, caché y, si la API los da, los de cada iteración (el
+// modelo pedido y, con un fallback, el de respaldo), para saber qué modelo respondió y cuánto costó cada uno.
+export function uso(u) {
+  if (!u || typeof u !== 'object') return {};
+  const out = { entrada: u.input_tokens, salida: u.output_tokens };
+  if (u.cache_read_input_tokens) out.cacheLeida = u.cache_read_input_tokens;
+  if (u.cache_creation_input_tokens) out.cacheEscrita = u.cache_creation_input_tokens;
+  if (Array.isArray(u.iterations) && u.iterations.length) {
+    out.iteraciones = u.iterations.map(i => ({ tipo: i && i.type, modelo: (i && i.model) || undefined, entrada: i && i.input_tokens, salida: i && i.output_tokens }));
+  }
+  return out;
 }
 
 // ── Cancelación ──

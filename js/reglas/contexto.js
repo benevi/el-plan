@@ -2,50 +2,89 @@
 // historial resumido, recuperación muscular y comentarios recientes. La IA decide; las reglas filtran antes
 // (nada peligroso llega al catálogo) y corrigen después (kilos acotados, ver progresion.acotarKg).
 
-import { ex, disponibles, nivelesZona, zonasRiesgo, ZONAS } from './catalogo.js';
+import { ex, disponibles, nivelesZona, zonasRiesgo, ZONAS, rehabPorFase, techoDolor } from './catalogo.js';
 import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
 import { es } from '../nucleo/ui.js';
 import { semanaISO } from '../nucleo/modelo.js';
-import { OBJETIVOS, NIVELES, PERSONAS, MUSCULOS, LUGARES } from '../datos/constantes.js';
+import { OBJETIVOS, NIVELES, MUSCULOS, LUGARES } from '../datos/constantes.js';
 
 const DIA = 864e5;
 
+// Textos libres que viajan a la IA: recortados aquí (además del tope del servidor) para no mandar más de lo que
+// hace falta. Son datos de la persona, nunca instrucciones (C-PRIN-5): el prompt lo dice y el validador manda.
+export const LARGO_IA = { notas: 600, nota: 400, comentario: 300, peticion: 500 };
+export function recortarIA(t, max) {
+  const s = String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
+  if (s.length <= max) return s;
+  let r = s.slice(0, max - 1);
+  const u = r.charCodeAt(r.length - 1);
+  if (u >= 0xd800 && u <= 0xdbff) r = r.slice(0, -1); // no dejar medio emoji
+  return r + '…';
+}
+
+// Perfil para la IA, sin el nombre de la persona ni datos que no cambian lo que se prescribe (altura, peso: el
+// peso va en las tendencias). Lugares y material con sus ids, los mismos que la clave «l» del catálogo. El
+// primer objetivo es el que manda (C-OBJ-1). Los datos de salud van aparte, solo como etiquetas (C-SALUD-0).
 export function perfilParaIA(S) {
   const p = S.perfil;
   const edad = p.datos.nacimiento ? Math.floor((Date.now() - new Date(p.datos.nacimiento)) / (365.25 * DIA)) : null;
-  const med = S.medidas.slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
-  const ult = med[med.length - 1];
   return {
-    nombre: PERSONAS[S.dueño] ? PERSONAS[S.dueño].nombre : '',
-    sexo: p.datos.sexo || null, edad, alturaCm: p.datos.altura || null,
-    pesoKg: ult && ult.peso || null,
+    sexo: p.datos.sexo || null, edad: Number.isFinite(edad) ? edad : null,
     objetivos: p.objetivos.map(o => OBJETIVOS[o] ? OBJETIVOS[o].nombre : o),
     nivel: NIVELES[p.nivel] || 'Principiante',
     diasPorSemana: p.disponibilidad.dias, minutosPorSesion: p.disponibilidad.minutos,
     diasPreferidos: p.disponibilidad.diasSemana,
-    lugares: p.lugares.map(l => LUGARES[l]), materialEnCasa: p.materialCasa,
+    lugares: p.lugares.filter(l => LUGARES[l]), materialEnCasa: p.materialCasa,
     entrenaAcompañado: !!p.acompañado,
-    notas: p.notas || '',
+    sabeNadar2x25: !!p.nadar25,
+    notas: recortarIA(p.notas, LARGO_IA.notas),
   };
 }
 
-export function lesionesParaIA(S, dolorHoy = {}) {
-  return S.perfil.lesiones.filter(l => l.activa).map(l => {
-    const z = ZONAS[l.zona] || {};
-    return { zona: z.nombre || l.zona, dolor: `${l.dolor}/10`, dolorHoy: dolorHoy[l.zona] != null ? `${dolorHoy[l.zona]}/10` : undefined,
-      desde: l.desde || undefined, tipo: l.tipo || undefined, nota: l.nota || undefined, evitar: z.evitar, rehabilitacionSugerida: (z.rehab || []).filter(id => ex(id)) };
+// Zonas activas para la IA: cada lesión activa y cada zona con dolor hoy sin lesión registrada, con la banda,
+// el techo de dolor y la fase de rehabilitación ya calculados por las reglas (C-DOLOR-1, C-DOLOR-6, C-LES-2,
+// C-DOSIS-7), para que la IA no tenga que deducirlos. bandas: las de bandasHoy (areas/entrenador/dia.js);
+// sin ellas, solo el dolor de ficha y el de hoy.
+const faseDeBanda = b => (b.banda === 0 ? 3 : b.banda === 1 && !b.nueva ? 2 : 1);
+export function lesionesParaIA(S, dolorHoy = {}, bandas = null) {
+  const activas = S.perfil.lesiones.filter(l => l.activa);
+  const zonas = bandas ? Object.keys(bandas) : [...new Set(activas.map(l => l.zona))];
+  return zonas.map(zona => {
+    const z = ZONAS[zona] || {};
+    const b = bandas ? bandas[zona] : null;
+    const l = (b && b.lesion) || activas.find(x => x.zona === zona) || null;
+    const nueva = b ? b.nueva : !l || l.tipo === 'puntual';
+    const fase = b ? faseDeBanda(b) : null;
+    const ids = fase ? (rehabPorFase(zona, l && l.detalle)[fase] || []) : (z.rehab || []);
+    return {
+      zona, nombre: z.corta || zona,
+      banda: b ? 'B' + b.banda : undefined,
+      dolorHoy: dolorHoy[zona] != null && dolorHoy[zona] !== '' ? +dolorHoy[zona] : undefined,
+      dolorFicha: l ? +l.dolor : undefined,
+      dolorPorRevisar: l && l.dolorRevisar ? true : undefined,
+      sinLesionRegistrada: b && b.sinLesion ? true : undefined,
+      lesionNueva: nueva || undefined,
+      techo: ZONAS[zona] ? techoDolor(zona, { nueva, detalle: l && l.detalle }).techo : 3,
+      faseRehab: fase || undefined,
+      tipo: (l && l.tipo) || undefined, detalle: (l && l.detalle) || undefined, desde: (l && l.desde) || undefined,
+      nota: l && l.nota ? recortarIA(l.nota, LARGO_IA.nota) : undefined,
+      evitar: z.evitar,
+      rehabilitacionSugerida: ids.filter(id => ex(id)),
+    };
   });
 }
 
 // Catálogo seguro de los lugares pedidos, en forma compacta (cada token cuesta):
-// { id, m: [principales, ...secundarios marcados con «~»], l: lugares, niv, t, prec?: zonas con cuidado, gusto? }
+// { id, m: [principales, ...secundarios marcados con «~»], l: ids de los lugares donde se puede hacer, niv, t,
+//   tipo (compuesto · aislamiento · corporal · propia, C-DOSIS-1), prec?: ids de las zonas activas en las que
+//   tiene riesgo (dosis «con precaución», C-DOSIS-4), gusto? }
 export function catalogoParaIA(S, lugares, dolorHoy = {}) {
   const niveles = nivelesZona(S.perfil, dolorHoy);
   const vistos = new Map();
   lugares.forEach(l => disponibles(S.perfil, l, { dolorHoy }).forEach(e => {
-    const x = vistos.get(e.id) || { id: e.id, m: [...e.m, ...(e.s || []).map(m => '~' + m)], l: [], niv: e.niv, t: e.t };
+    const x = vistos.get(e.id) || { id: e.id, m: [...e.m, ...(e.s || []).map(m => '~' + m)], l: [], niv: e.niv, t: e.t, tipo: e.tipo };
     x.l.push(l);
-    const z = zonasRiesgo(e, niveles); if (z.length) x.prec = z.map(k => ZONAS[k] ? ZONAS[k].corta : k).join(',');
+    const z = zonasRiesgo(e, niveles); if (z.length) x.prec = z.join(',');
     const g = S.perfil.gustos[e.id]; if (g) x.gusto = g === 'gusta' ? 'le gusta' : 'no le gusta';
     vistos.set(e.id, x);
   }));
@@ -71,12 +110,20 @@ export function historialParaIA(S, ids, ctx = {}) {
     recuperacion: Object.entries(carga).filter(([, k]) => k.estado !== 'fresco').map(([m, k]) => ({ musculo: MUSCULOS[m] || m, trabajado: hace(k.horas), estado: k.estado === 'cargado' ? 'sin recuperar' : 'casi recuperado', faltanHoras: k.faltan })),
     sesionesUltimos14dias: hechas.filter(s => Date.now() - new Date(s.terminada || s.fecha) < 14 * DIA).map(s => ({
       fecha: s.fecha, nombre: s.nombre, lugar: s.lugar, esfuerzo: s.cierre && s.cierre.esfuerzo ? s.cierre.esfuerzo + '/5' : undefined,
-      comentario: s.cierre && s.cierre.comentario || undefined,
-      comentariosEjercicios: (s.ejercicios || []).filter(x => x.comentario).map(x => `${ex(x.id) ? ex(x.id).n : x.id}: ${x.comentario}`),
+      comentario: s.cierre && s.cierre.comentario ? recortarIA(s.cierre.comentario, LARGO_IA.comentario) : undefined,
+      comentariosEjercicios: (s.ejercicios || []).filter(x => x.comentario).map(x => `${ex(x.id) ? ex(x.id).n : x.id}: ${recortarIA(x.comentario, LARGO_IA.comentario)}`),
     })),
     progreso: progreso.slice(0, 40),
-    dolorReciente: S.dolor.slice(-10),
+    dolorReciente: dolorReciente(S),
   };
+}
+
+// Dolor apuntado en las 4 últimas semanas, los 10 registros más recientes y solo lo que sirve para decidir
+// (sin ids de sesión ni otros campos).
+export function dolorReciente(S, ahora = Date.now()) {
+  return (S.dolor || []).filter(d => d && d.fecha && ahora - new Date(String(d.fecha).slice(0, 10) + 'T12:00') <= 28 * DIA)
+    .slice().sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).slice(-10)
+    .map(d => ({ fecha: String(d.fecha).slice(0, 10), zona: d.zona, dolor: +d.dolor, momento: d.momento || undefined }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,7 +364,7 @@ export function analisisParaIA(S) {
   const t = tendencias(S);
   return {
     ejercicios: an.slice(0, 40).map(a => ({ id: a.id, estado: a.estado, cambio: a.cambio != null ? a.cambio + '%' : undefined, veces: a.veces || undefined, gusto: a.gusto || undefined,
-      comentarios: a.comentarios.length ? a.comentarios.map(c => c.texto) : undefined, accion: a.accion })),
+      comentarios: a.comentarios.length ? a.comentarios.map(c => recortarIA(c.texto, LARGO_IA.comentario)) : undefined, accion: a.accion })),
     tendencias: { ...t, peso: undefined, cintura: undefined, pesoSuficiente: t.peso.suficiente, cinturaBaja: t.cintura.baja, descarga: semanaDescarga(S).toca || undefined },
   };
 }

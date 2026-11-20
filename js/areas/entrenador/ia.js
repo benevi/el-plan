@@ -7,11 +7,11 @@
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamar, enLinea } from '../../nucleo/api.js';
 import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
-import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA } from '../../reglas/contexto.js';
+import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona } from './dia.js';
+import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
@@ -19,14 +19,32 @@ import { alarmaPendiente, preguntaAlarma, respondidasNo, T2 } from './alarma.js'
 import { etiquetasSalud } from './salud.js';
 
 // ── Petición a la IA ──
-function peticionBase(S, lugares, dolorHoy) {
+// Sin el nombre de la persona, lugares con sus ids, textos libres recortados y salud solo como etiquetas
+// (C-SALUD-0). Las zonas van con su banda, techo y fase ya calculados (los mismos que usa el validador).
+function peticionBase(S, lugares, dolorHoy = {}, { plan = false } = {}) {
   const catalogo = catalogoParaIA(S, lugares, dolorHoy);
   const ids = catalogo.map(e => e.id);
   return {
-    // Datos de salud solo como etiquetas, nunca como texto libre (C-SALUD-0).
-    perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy), catalogo,
+    perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy, bandasHoy(S, dolorHoy, { plan })), catalogo,
     historial: historialParaIA(S, ids, { niveles: nivelesZona(S.perfil, dolorHoy) }), analisis: analisisParaIA(S),
     hoy: hoyISO(), diaSemana: diaSemana(),
+  };
+}
+// Lo que las reglas ya fijan para un día y la IA tiene que respetar: cardio mínimo (C-CARDIO-1, C-CARDIO-4),
+// minutos de calentamiento y vuelta (C-CAL-1, C-VUELTA-1), tiempo máximo (C-TIEMPO-1), principales con poca
+// energía (C-ENERGIA-1), edad (C-EDAD-1) y salud (C-SALUD-0). Son números: el validador los vuelve a comprobar.
+export function pautasDia(S, { lugar, minutos, dolorHoy = {}, energia = 3, futuro = false }) {
+  const ctx = contextoDia(S, { lugar, minutos, dolorHoy, energia, futuro });
+  const c = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, bandas: ctx.bandas });
+  const sal = ctx.salud, mayor = ctx.edad != null && ctx.edad >= 60;
+  return {
+    cardio: { minimo: c.minutos, maximo: c.max, rpe: c.rpe, intervalos: !!c.intervalos },
+    calentamientoMin: minutosCalentamiento(S, ctx), vueltaMin: minutosVuelta(S, ctx),
+    minutosMax: Math.floor(ctx.minutos * 1.1),
+    maxPrincipales: ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : undefined,
+    margenMin: Math.max(sal.margenMin || 0, mayor ? 2 : 0) || undefined,
+    rpeMax: sal.rpeMax || undefined, isometricoMaxSeg: sal.isoMax || undefined, descansoMinSeg: sal.descansoMin || undefined,
+    equilibrio: sal.equilibrio || mayor || undefined,
   };
 }
 
@@ -113,9 +131,12 @@ export async function crearSesionHoy(ci) {
   if (decide.usar) {
     try {
       const r = await llamar('entrenador', {
-        modo: 'sesion', ...peticionBase(S, [ci.lugar], ci.dolorHoy),
-        checkin: { lugar: LUGARES[ci.lugar], minutos, energia: ci.energia, dolorHoy: ci.dolorHoy, peticion: ci.peticion || '' },
-        planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, lugar: LUGARES[dia.lugar], ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
+        modo: 'sesion', ...peticionBase(S, [ci.lugar], ci.dolorHoy || {}),
+        checkin: {
+          lugar: ci.lugar, minutos, energia: ci.energia, dolorHoy: ci.dolorHoy || {}, peticion: recortarIA(ci.peticion, LARGO_IA.peticion),
+          pautas: pautasDia(S, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 }),
+        },
+        planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, lugar: dia.lugar, ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
         ajusteReglas: local.cambios,
       });
       const s = r.sesion;
@@ -161,9 +182,10 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
   if (conIA && enLinea() && !sinEntrenarHoy(S) && !alarmaPendiente(S, {})) {
     try {
       const r = await llamar('entrenador', {
-        modo: 'plan', ...peticionBase(S, lugares, {}),
+        modo: 'plan', ...peticionBase(S, lugares, {}, { plan: true }),
         semana: {
           dias, minutos: semana.minutos, lugares: lugares.map(l => ({ id: l, nombre: LUGARES[l] })),
+          pautas: Object.fromEntries(lugares.map(l => [l, pautasDia(S, { lugar: l, minutos: semana.minutos, futuro: true })])),
           hechas: hechas.map(d => ({ dia: DIAS[d.diaSemana], nombre: d.nombre, musculos: [...new Set(d.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id) && ex(x.id).m[0]).filter(Boolean))] })),
         },
       }, { espera: 240000 });
@@ -194,18 +216,20 @@ function normalizarPlan(S, p, lugares, dias, minutos) {
     const mejor = lugares.slice().sort((a, b) => cuenta(b) - cuenta(a))[0];
     if (cuenta(lugar) < 3 && cuenta(mejor) > cuenta(lugar)) lugar = mejor;
     const min = minutosSesion(minutos); // los minutos que pidió la persona para la semana, no los de la IA
+    const explicacion = (Array.isArray(d.explicacion) ? d.explicacion : [d.explicacion]).filter(Boolean).map(String);
+    // Día suave del reparto (C-REP-2): sin fuerza, con su cardio; lo marca el primer punto de la explicación.
+    const suave = /^Día suave/i.test(explicacion[0] || '') && !ejsIA.some(x => x.rol === 'principal') && ejsIA.some(x => x.rol === 'cardio');
     // Día sin ejercicios válidos para su lugar: lo hace la app (no se acepta un día vacío).
-    if (principalesValidos(ejsIA, lugar) === 0) return null;
+    if (!suave && principalesValidos(ejsIA, lugar) === 0) return null;
     const c = completarIA(S, {
-      nombre: String(d.nombre || '').slice(0, 60), foco: String(d.foco || '').slice(0, 80),
-      explicacion: (Array.isArray(d.explicacion) ? d.explicacion : [d.explicacion]).filter(Boolean).map(String),
-      calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [], ejercicios: ejsIA,
+      nombre: String(d.nombre || '').slice(0, 60), foco: String(d.foco || '').slice(0, 80), explicacion,
+      calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [], ejercicios: ejsIA, ...(suave ? { tipo: 'suave' } : {}),
     }, { lugar, minutos: min, k: i, futuro: true });
     if (!c.valida || !c.sesion.ejercicios.length) return null;
     vistos.add(ds);
     const dd = c.sesion;
     if (c.cambios.length) dd.explicacion = [...dd.explicacion, ...c.cambios.map(t => 'Ajustado por la app: ' + t)];
-    return { diaSemana: ds, lugar, minutos: min, tipo: null, nombre: dd.nombre, foco: dd.foco, explicacion: dd.explicacion, calentamiento: dd.calentamiento, ejercicios: dd.ejercicios, vuelta: dd.vuelta };
+    return { diaSemana: ds, lugar, minutos: min, tipo: suave ? 'suave' : null, nombre: dd.nombre, foco: dd.foco, explicacion: dd.explicacion, calentamiento: dd.calentamiento, ejercicios: dd.ejercicios, vuelta: dd.vuelta };
   }).filter(Boolean);
   // Días que la IA se dejó (o que no se pudieron corregir): los completa la app.
   const faltan = dias.filter(d => !vistos.has(d));
