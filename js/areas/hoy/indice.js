@@ -8,9 +8,10 @@ import { estado, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, fechaLarga } from '../../nucleo/ui.js';
 import { sesionDeHoy, diaSemana } from '../../nucleo/modelo.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
-import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias } from '../entrenador/indice.js';
-import { siguientePendiente, tiempoSesion } from '../entrenador/entrenador.js';
+import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo } from '../entrenador/indice.js';
+import { siguientePendiente, tiempoSesion, sinEntrenarHoy, T2 } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
+import { recordatorioCopia } from '../perfil/indice.js';
 
 const minus = t => String(t || '').toLowerCase();
 // El porqué en una frase, siempre a la vista: lo primero de la explicación del entrenador.
@@ -20,30 +21,35 @@ function tiraSemana(S) {
   const dias = estadoDias(S), hoy = diaSemana();
   return `<ol class="tira-semana" aria-label="Esta semana">${[1, 2, 3, 4, 5, 6, 7].map(i => {
     const d = dias.find(x => x.diaSemana === i);
-    return `<li class="${i === hoy ? 'hoy' : ''} ${d ? 'toca ' + d.estado + (d.estado === 'hecho' ? ' hecha' : '') : ''}" title="${d ? h(d.nombre) : 'Descanso'}"><span>${DIAS_CORTOS[i]}</span><i></i></li>`;
+    return `<li class="${i === hoy ? 'hoy' : ''} ${d ? 'toca ' + h(d.estado) + (d.estado === 'hecho' ? ' hecha' : '') : ''}" title="${d ? h(d.nombre) : 'Descanso'}"><span>${DIAS_CORTOS[i]}</span><i></i></li>`;
   }).join('')}</ol>`;
 }
 
 function tarjetaHoy(S) {
+  // Señal de alarma de hoy: día sin entrenar por precaución (C-ALAR-1).
+  if (sinEntrenarHoy(S) && !(sesionDeHoy(S) && sesionDeHoy(S).estado === 'hecha')) {
+    return `<section class="tarjeta destacada alarma"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}</section>`;
+  }
   const s = sesionDeHoy(S);
   if (s && s.estado === 'hecha') {
     const series = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
     const sig = siguientePendiente(S);
     return `<section class="tarjeta destacada hecha">
       <span class="etiqueta">${ICONOS.check} Hecha</span>
-      <h2>${h(s.nombre)}</h2><p class="tenue">${series} series · ${h(LUGARES[s.lugar] || '')}${s.cierre && s.cierre.esfuerzo ? ' · esfuerzo ' + s.cierre.esfuerzo + '/5' : ''}</p>
+      <h2>${h(s.nombre)}</h2><p class="tenue">${+series} series · ${h(LUGARES[s.lugar] || '')}${s.cierre && s.cierre.esfuerzo ? ' · esfuerzo ' + +s.cierre.esfuerzo + '/5' : ''}</p>
       ${sig ? `<p class="tenue">Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minus(sig.nombre))}.</p>` : ''}
-      <a class="btn sec" href="#sesion/${s.id}">Ver sesión</a></section>`;
+      <a class="btn sec" href="#sesion/${h(s.id)}">Ver sesión</a></section>`;
   }
   if (s) {
     const total = s.ejercicios.reduce((a, x) => a + x.sets.length, 0), hechas = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
     return `<section class="tarjeta destacada">
       <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app'}</span>
       <h2>${h(s.nombre)}</h2>
-      <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
+      <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${+s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
       ${porque(s)}
+      ${notaFallo(s)}
       ${hechas ? `<div class="barra"><i style="width:${Math.round(hechas / total * 100)}%"></i></div>` : ''}
-      <a class="btn grande" href="#sesion/${s.id}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
+      <a class="btn grande" href="#sesion/${h(s.id)}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
       ${s.estado === 'pendiente' ? '<button class="enlace" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}</section>`;
   }
   const dia = planDeHoy(S);
@@ -51,7 +57,7 @@ function tarjetaHoy(S) {
     return `<section class="tarjeta destacada">
       <span class="etiqueta">Hoy toca</span>
       <h2>${h(dia.nombre)}</h2>
-      <p class="tenue">${h(LUGARES[dia.lugar])} · ${dia.ejercicios.length} ejercicios · unos ${tiempoSesion(dia)} min${dia.foco ? ' · ' + h(dia.foco) : ''}</p>
+      <p class="tenue">${h(LUGARES[dia.lugar])} · ${+dia.ejercicios.length} ejercicios · unos ${+tiempoSesion(dia)} min${dia.foco ? ' · ' + h(dia.foco) : ''}</p>
       ${porque(dia)}
       <button class="btn grande" data-act="entrenador.prepararHoy">${ICONOS.play} Empezar</button>
       <p class="tenue pie">Antes te pregunto cómo estás y lo ajusto.</p></section>`;
@@ -70,7 +76,7 @@ function tarjetaSinPlan(S) {
     <span class="etiqueta">Esta semana</span>
     <h2>¿Qué días puedes entrenar?</h2>
     <p class="tenue">Dímelo y te monto la semana: calentamiento, ejercicios, rehabilitación y estiramientos de cada día. Cada día lo ajusto a cómo estés.</p>
-    ${d.diasSemana.length ? `<p class="tenue">La última vez: ${d.diasSemana.map(i => DIAS[i]).join(', ')}.</p>` : ''}
+    ${d.diasSemana.length ? `<p class="tenue">La última vez: ${h(d.diasSemana.map(i => DIAS[i]).filter(Boolean).join(', '))}.</p>` : ''}
     <button class="btn grande" data-act="entrenador.plan">${ICONOS.ia} Montar mi semana</button></section>`;
 }
 
@@ -87,7 +93,8 @@ function vista() {
       <p class="tenue">Objetivos, nivel, lesiones, dónde entrenas y cuántos días puedes. Sin eso va a ciegas.</p>
       <a class="btn grande" href="#perfil">Completar mi perfil</a></section>`
     : plan ? `${tiraSemana(S)}${tarjetaHoy(S)}${constancia}${tarjetaPlan(S)}`
-      : `${sesionDeHoy(S) ? tarjetaHoy(S) : ''}${tarjetaSinPlan(S)}${constancia}`}`;
+      : `${sesionDeHoy(S) ? tarjetaHoy(S) : ''}${tarjetaSinPlan(S)}${constancia}`}
+  ${recordatorioCopia()}`;
 }
 
 rutas({ hoy: { titulo: 'Hoy', vista } });

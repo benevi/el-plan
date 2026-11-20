@@ -17,7 +17,7 @@ const RUTAS = {};
 const ACCIONES = {};
 const PESTAÑAS = [];
 let actual = { ruta: '', params: [] };
-let guardia = null;
+const guardias = [];
 
 export function rutas(obj) { Object.assign(RUTAS, obj); }
 export function acciones(obj) {
@@ -27,8 +27,9 @@ export function acciones(obj) {
   }
 }
 export function pestaña(p) { PESTAÑAS.push(p); PESTAÑAS.sort((a, b) => a.orden - b.orden); }
-// Una función que decide a dónde ir antes que nada (p. ej. elegir dueño la primera vez).
-export function antesDeCadaRuta(fn) { guardia = fn; }
+// Funciones que deciden a dónde ir antes que nada (p. ej. rescatar datos ilegibles o elegir dueño la primera vez).
+// Se miran en el orden en que se registran; manda la primera que devuelva una ruta.
+export function antesDeCadaRuta(fn) { guardias.push(fn); }
 
 export const rutaActual = () => actual;
 export function ir(ruta) { if (location.hash === '#' + ruta) pintar(); else location.hash = ruta; }
@@ -40,7 +41,8 @@ function leer() {
 
 export function pintar() {
   let r = leer();
-  const desvio = guardia && guardia(r);
+  let desvio = null;
+  for (const g of guardias) { desvio = g(r); if (desvio) break; }
   if (desvio && desvio !== r.ruta) { r = { ruta: desvio, params: [] }; }
   const def = RUTAS[r.ruta] || RUTAS.hoy;
   const cambia = r.ruta !== actual.ruta || r.params.join('/') !== actual.params.join('/');
@@ -58,6 +60,19 @@ export function pintar() {
   pintarNav(r.ruta);
   if (def.montar) { try { def.montar(main, r.params); } catch (e) { console.error(e); } }
   window.scrollTo(0, scroll);
+}
+
+// Pinta en memoria (sin tocar la página) todas las pantallas con el estado actual y lanza si alguna falla.
+// Sirve para probar una copia antes de cargarla (estado.importar). Cada ruta puede dar `probar()` para
+// pintar sus variantes (todas las partes del perfil, cada sesión…); si no, se pinta su vista sin parámetros.
+// No se prueban las pantallas de rescate ni de bienvenida (no dependen de los datos).
+export function probarPantallas() {
+  for (const [nombre, def] of Object.entries(RUTAS)) {
+    if (nombre === 'rescate' || nombre === 'bienvenida') continue;
+    try {
+      if (def.probar) def.probar(); else def.vista([]);
+    } catch (e) { throw new Error(`pantalla «${nombre}»: ${e.message}`, { cause: e }); }
+  }
 }
 
 function pintarNav(ruta) {

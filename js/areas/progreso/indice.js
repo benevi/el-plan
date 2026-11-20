@@ -50,13 +50,13 @@ function seccionConstancia(S) {
     <p>${textoConstancia(c)}</p>
     ${barrasSemanas(c)}
     <ul class="lista compacta datos">
-      <li><span class="grow">Últimas 4 semanas</span><b>${c.cumplimiento == null ? '—' : c.cumplimiento + ' %'}</b><span class="tenue">de lo previsto</span></li>
-      <li><span class="grow">Sesiones en total</span><b>${c.total}</b></li>
-      ${c.diasSin != null && c.diasSin >= 4 ? `<li><span class="grow">Sin entrenar</span><b>${c.diasSin} días</b></li>` : ''}
+      <li><span class="grow">Últimas 4 semanas</span><b>${c.cumplimiento == null ? '—' : +c.cumplimiento + ' %'}</b><span class="tenue">de lo previsto</span></li>
+      <li><span class="grow">Sesiones en total</span><b>${+c.total}</b></li>
+      ${c.diasSin != null && c.diasSin >= 4 ? `<li><span class="grow">Sin entrenar</span><b>${+c.diasSin} días</b></li>` : ''}
     </ul>
-    <div class="nivel"><div class="fila-dato"><span class="grow">Tu nivel</span><b>${NIVELES[S.perfil.nivel || 1]}</b></div>
+    <div class="nivel"><div class="fila-dato"><span class="grow">Tu nivel</span><b>${h(NIVELES[S.perfil.nivel] || NIVELES[1])}</b></div>
       <p class="tenue pie">${S.perfil.nivelAuto ? 'Tu entrenador lo sube o lo baja según tu constancia y tu progreso.' : 'Lo eliges tú en <a href="#perfil">Perfil</a>.'}</p>
-      ${(() => { const m = medidorNivel(S); return m.criterios.length ? `<p class="tenue pie">Para ${NIVELES[(S.perfil.nivel || 1) + 1]}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : '<i></i>'}<span class="grow">${h(c.que)}</span><span class="tenue">${h(c.valor)}</span></li>`).join('')}</ul>` : ''; })()}
+      ${(() => { const m = medidorNivel(S); return m.criterios.length ? `<p class="tenue pie">Para ${h(NIVELES[(+S.perfil.nivel || 1) + 1])}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : '<i></i>'}<span class="grow">${h(c.que)}</span><span class="tenue">${h(c.valor)}</span></li>`).join('')}</ul>` : ''; })()}
     </div></section>`;
 }
 
@@ -66,8 +66,8 @@ function seccionFuerza(S) {
   if (!f.filas.length) return `<section class="tarjeta"><h2>Fuerza</h2><p class="tenue">Cuando apuntes los kilos de tus series verás aquí cómo sube tu fuerza en cada ejercicio.</p></section>`;
   return `<section class="tarjeta"><h2>Fuerza</h2>
     ${f.mediana != null ? `<p class="destacado"><b class="${f.mediana > 0 ? 'bien' : ''}">${signo(f.mediana)} %</b> <span>de fuerza en ${f.semanas} semanas<br><small class="tenue">mediana de ${f.comparados} ejercicio${f.comparados > 1 ? 's' : ''}${f.records ? ` · ${f.records} récord${f.records > 1 ? 's' : ''} en la última vez` : ''}</small></span></p>` : '<p class="tenue">Repite un ejercicio con kilos para ver la comparación.</p>'}
-    <ul class="lista">${f.filas.slice(0, 12).map(x => `<li><button class="fila" data-act="progreso.ejercicio" data-id="${x.id}">
-      <span class="grow"><b>${h(x.n)}</b><span class="tenue">${x.veces} ${x.veces > 1 ? 'veces' : 'vez'} · último ${es(x.ultimoKg)} kg${x.record ? ' · récord' : ''}</span></span>
+    <ul class="lista">${f.filas.slice(0, 12).map(x => `<li><button class="fila" data-act="progreso.ejercicio" data-id="${h(x.id)}">
+      <span class="grow"><b>${h(x.n)}</b><span class="tenue">${+x.veces} ${x.veces > 1 ? 'veces' : 'vez'} · último ${es(x.ultimoKg)} kg${x.record ? ' · récord' : ''}</span></span>
       ${x.cambio != null ? `<span class="insignia ${x.cambio > 0 ? 'bien' : x.cambio < -5 ? 'cuidado' : ''}">${signo(x.cambio)} %</span>` : ''}${ICONOS.sig}</button></li>`).join('')}</ul>
     <p class="tenue pie">Se compara el 1RM estimado (fórmula de Epley con tus kilos y repeticiones) de la primera y la última vez dentro de las ${f.semanas} semanas.</p></section>`;
 }
@@ -77,7 +77,7 @@ function hojaEjercicio(id) {
   const regs = registros(S, id).slice().reverse();
   abrirHoja(`<h2>${h(e ? e.n : id)}</h2>
     ${f && f.serie.length > 1 ? `<p class="tenue">1RM estimado: de ${es(f.serie[0].v, 1)} a ${es(f.e1rm)} kg</p>${linea(f.serie)}` : ''}
-    <ul class="lista compacta">${regs.slice(0, 15).map(r => `<li><span class="tenue fecha">${h(fechaCorta(String(r.fecha).slice(0, 10)))}</span><span class="grow">${h(resumen(r))}</span>${r.esfuerzo ? `<span class="tenue">esf. ${r.esfuerzo}/5</span>` : ''}</li>`).join('')}</ul>`);
+    <ul class="lista compacta">${regs.slice(0, 15).map(r => `<li><span class="tenue fecha">${h(fechaCorta(String(r.fecha).slice(0, 10)))}</span><span class="grow">${h(resumen(r))}</span>${r.esfuerzo ? `<span class="tenue">esf. ${+r.esfuerzo}/5</span>` : ''}</li>`).join('')}</ul>`);
 }
 
 // ── Salud ──
@@ -97,7 +97,7 @@ function seccionSalud(S) {
     ${t ? `<p class="lectura">${h(lecturaPeso(S, t))}</p>` : ''}` : '<p class="tenue">Apunta peso y cintura cada una o dos semanas, por la mañana y en ayunas. Con eso se ve si la comida y el entrenamiento van en la dirección de tus objetivos.</p>'}
     ${!sa.altura ? `<p class="tenue pie">Añade tu altura en <a href="#perfil">Perfil</a> para calcular el índice cintura/altura.</p>` : ''}
     <div class="cardio">
-      <div class="fila-dato"><span class="grow">Cardio últimos 7 días</span><b>${sa.cardio} de ${sa.cardioObjetivo} min</b></div>
+      <div class="fila-dato"><span class="grow">Cardio últimos 7 días</span><b>${+sa.cardio} de ${+sa.cardioObjetivo} min</b></div>
       <div class="barra"><i style="width:${cardioPct}%"></i></div>
       <p class="tenue pie">La OMS recomienda al menos 150 minutos a la semana de actividad moderada. Cuentan los ejercicios de cardio y la natación apuntados en tus sesiones.</p>
     </div>
@@ -111,15 +111,15 @@ function seccionDolor(S) {
   const flecha = { baja: 'Baja', sube: 'Sube', igual: 'Estable' };
   return `<section class="tarjeta"><h2>Dolor</h2><ul class="lista dolor">${zonas.map(z => `<li>
       <div class="fila-dato"><b class="grow">${h(z.nombre)}</b>${z.tendencia ? `<span class="insignia ${z.tendencia === 'baja' ? 'bien' : z.tendencia === 'sube' ? 'peligro' : ''}">${flecha[z.tendencia]}</span>` : ''}</div>
-      <span class="puntos">${z.registros.map(d => `<i title="${h(fechaCorta(d.fecha))} · ${d.momento === 'antes' ? 'antes' : d.momento === 'despues' ? 'después' : 'día'}" style="--v:${d.dolor}">${d.dolor}</i>`).join('')}</span>
-      ${z.subidas ? `<p class="tenue pie">${z.subidas} sesi${z.subidas > 1 ? 'ones' : 'ón'} en que subió 2 puntos o más.${z.sospechosos.length ? ` Coincide con: ${z.sospechosos.map(s => `<b>${h((ex(s.id) || {}).n || s.id)}</b> (${s.n} de ${s.total} veces)`).join(', ')}. Tu entrenador lo tiene en cuenta.` : ''}</p>` : ''}
+      <span class="puntos">${z.registros.map(d => `<i title="${h(fechaCorta(d.fecha))} · ${d.momento === 'antes' ? 'antes' : d.momento === 'despues' ? 'después' : 'día'}" style="--v:${+d.dolor}">${+d.dolor}</i>`).join('')}</span>
+      ${z.subidas ? `<p class="tenue pie">${+z.subidas} sesi${z.subidas > 1 ? 'ones' : 'ón'} en que subió 2 puntos o más.${z.sospechosos.length ? ` Coincide con: ${z.sospechosos.map(s => `<b>${h((ex(s.id) || {}).n || s.id)}</b> (${+s.n} de ${+s.total} veces)`).join(', ')}. Tu entrenador lo tiene en cuenta.` : ''}</p>` : ''}
     </li>`).join('')}</ul><p class="tenue pie">De 0 a 10, del más antiguo al más reciente, al terminar cada sesión.</p></section>`;
 }
 
 function historial(S) {
   const s = sesionesHechas(S).reverse().slice(0, 6);
   if (!s.length) return '';
-  return `<section class="tarjeta"><h2>Últimas sesiones</h2><ul class="lista">${s.map(x => `<li><a class="fila" href="#sesion/${x.id}"><span class="grow"><b>${h(x.nombre)}</b><span class="tenue">${h(fechaCorta(x.fecha))} · ${h(LUGARES[x.lugar] || '')}${x.cierre && x.cierre.esfuerzo ? ' · esfuerzo ' + x.cierre.esfuerzo + '/5' : ''}</span></span>${ICONOS.sig}</a></li>`).join('')}</ul></section>`;
+  return `<section class="tarjeta"><h2>Últimas sesiones</h2><ul class="lista">${s.map(x => `<li><a class="fila" href="#sesion/${h(x.id)}"><span class="grow"><b>${h(x.nombre)}</b><span class="tenue">${h(fechaCorta(x.fecha))} · ${h(LUGARES[x.lugar] || '')}${x.cierre && x.cierre.esfuerzo ? ' · esfuerzo ' + +x.cierre.esfuerzo + '/5' : ''}</span></span>${ICONOS.sig}</a></li>`).join('')}</ul></section>`;
 }
 
 function vista() {

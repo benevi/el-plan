@@ -10,6 +10,7 @@ import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
+import { notaFallo } from '../entrenador/indice.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio', principal: '' };
@@ -38,7 +39,7 @@ function tareas(s, clave, titulo, abierto) {
     <ul class="tareas">${lista.map((t, i) => `<li class="${t.hecho ? 'hecho' : ''}">
       <button class="marca" data-act="sesion.tarea" data-k="${clave}" data-i="${i}" aria-pressed="${t.hecho}" aria-label="Hecho">${t.hecho ? ICONOS.check : ''}</button>
       <div class="grow"><div class="t-nombre"><b>${h(t.nombre)}</b>${t.duracion ? `<span class="dur">${h(t.duracion)}</span>` : ''}</div>${t.detalle ? `<p class="tenue">${h(t.detalle)}</p>` : ''}</div>
-      ${t.id ? `<button class="icono" data-act="sesion.ficha" data-id="${t.id}" aria-label="Cómo se hace">${ICONOS.info}</button>` : ''}</li>`).join('')}</ul></details>`;
+      ${t.id ? `<button class="icono" data-act="sesion.ficha" data-id="${h(t.id)}" aria-label="Cómo se hace">${ICONOS.info}</button>` : ''}</li>`).join('')}</ul></details>`;
 }
 
 function filaSerie(x, i, j) {
@@ -79,7 +80,7 @@ function tarjetaEjercicio(s, x, i, grande = false) {
     <header>
       <span class="num">${hechas === x.sets.length ? ICONOS.check : i + 1}</span>
       <div class="grow"><h3>${h(e.n)}</h3>
-        <p class="tenue">${ROL[x.rol] ? `<span class="insignia ${x.rol}">${ROL[x.rol]}</span> ` : ''}${x.series} × ${h(x.reps)}${x.kg != null ? ` · ${h(x.kg)} kg` : ''}${x.descanso ? ` · ${x.descanso} s descanso` : ''}</p></div>
+        <p class="tenue">${ROL[x.rol] && Object.prototype.hasOwnProperty.call(ROL, x.rol) ? `<span class="insignia ${h(x.rol)}">${h(ROL[x.rol])}</span> ` : ''}${+x.series} × ${h(x.reps)}${x.kg != null ? ` · ${h(x.kg)} kg` : ''}${x.descanso ? ` · ${+x.descanso} s descanso` : ''}</p></div>
       <button class="icono" data-act="sesion.menu" data-e="${i}" aria-label="Más opciones">${ICONOS.lista}</button>
     </header>
     ${x.nota ? `<p class="nota">${h(x.nota)}</p>` : ''}
@@ -116,8 +117,10 @@ function vista([id]) {
       <button data-act="sesion.modo" data-v="lista" class="${modoFoco ? '' : 'on'}" aria-pressed="${!modoFoco}">Toda la sesión</button></div>` : ''}`;
   // Por qué: la primera frase (resumen del día) siempre a la vista; el resto, plegado.
   const [resumenDia, ...razones] = s.explicacion || [];
-  const porque = resumenDia ? `<section class="tarjeta porque">
-      <p class="porque-resumen">${ICONOS.ia}<span>${h(resumenDia)}</span></p>
+  // Si la hizo la app porque falló la IA, la nota con «Reintentar con IA» va aquí arriba (PR 12).
+  const porque = resumenDia || s.iaFallo ? `<section class="tarjeta porque">
+      ${notaFallo(s)}
+      ${resumenDia ? `<p class="porque-resumen">${ICONOS.ia}<span>${h(resumenDia)}</span></p>` : ''}
       ${razones.length ? `<details class="plegable"><summary>Por qué cada decisión</summary><ul>${razones.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
     </section>` : '';
 
@@ -141,7 +144,7 @@ function vista([id]) {
     ${s.ejercicios.map((x, i) => abierta && x.sets.every(z => z.hecha) ? tarjetaPlegada(x, i) : tarjetaEjercicio(s, x, i)).join('')}
     ${tareas(s, 'vuelta', 'Vuelta a la calma')}
     ${!abierta
-      ? `<section class="tarjeta"><h2>Cierre</h2><p>Esfuerzo ${s.cierre && s.cierre.esfuerzo ? s.cierre.esfuerzo + '/5' : '—'}</p>${s.cierre && s.cierre.comentario ? `<p class="comentario">«${h(s.cierre.comentario)}»</p>` : ''}</section>`
+      ? `<section class="tarjeta"><h2>Cierre</h2><p>Esfuerzo ${s.cierre && s.cierre.esfuerzo ? +s.cierre.esfuerzo + '/5' : '—'}</p>${s.cierre && s.cierre.comentario ? `<p class="comentario">«${h(s.cierre.comentario)}»</p>` : ''}</section>`
       : `<button class="btn grande" data-act="sesion.terminar">${ICONOS.check} Terminar sesión</button>
          <button class="enlace peligro centro" data-act="sesion.descartar">Descartar esta sesión</button>`}`;
 }
@@ -165,10 +168,11 @@ function conSesion(fn, motivo = 'sesion') {
 
 function hojaCierre() {
   const s = sesion(idActual());
-  const zonas = [...new Set([...Object.keys((s.checkin && s.checkin.dolor) || {}), ...estado().perfil.lesiones.filter(l => l.activa).map(l => l.zona)])];
+  // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
+  const zonas = [...new Set([...Object.keys((s.checkin && s.checkin.dolor) || {}), ...estado().perfil.lesiones.filter(l => l.activa).map(l => l.zona)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   abrirHoja(`<h2>¿Qué tal ha ido?</h2>
     <div class="campo col"><span>Esfuerzo</span><div class="segmentos" id="c-esf">${[['1', 'Muy fácil'], ['2', 'Fácil'], ['3', 'Justo'], ['4', 'Duro'], ['5', 'Al límite']].map(([v, t]) => `<button data-v="${v}" class="${v === '3' ? 'on' : ''}">${v}<small>${t}</small></button>`).join('')}</div></div>
-    ${zonas.map(z => `<label class="campo col"><span>Dolor ahora · ${h(ZONAS[z].corta)}: <b id="c-${z}-v">${(s.checkin && s.checkin.dolor[z]) || 0}</b>/10</span><input type="range" min="0" max="10" value="${(s.checkin && s.checkin.dolor[z]) || 0}" data-zona="${z}" oninput="document.getElementById('c-${z}-v').textContent=this.value"></label>`).join('')}
+    ${zonas.map(z => `<label class="campo col"><span>Dolor ahora · ${h(ZONAS[z].corta)}: <b id="c-${h(z)}-v">${+(s.checkin && s.checkin.dolor[z]) || 0}</b>/10</span><input type="range" min="0" max="10" value="${+(s.checkin && s.checkin.dolor[z]) || 0}" data-zona="${h(z)}" oninput="document.getElementById('c-${h(z)}-v').textContent=this.value"></label>`).join('')}
     <label class="campo col"><span>Para tu entrenador <small>molestias, qué cambiarías…</small></span><textarea id="c-com" rows="3"></textarea></label>
     <button class="btn grande" data-act="sesion.cerrar">Guardar sesión</button>`);
   $('#c-esf').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#c-esf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
@@ -178,7 +182,7 @@ function menuEjercicio(i) {
   const s = sesion(idActual()), x = s.ejercicios[i], e = ex(x.id);
   abrirHoja(`<h2>${h(e ? e.n : x.id)}</h2>
     <div class="menu">
-      <button data-act="sesion.ficha" data-id="${x.id}">${ICONOS.info} Cómo se hace</button>
+      <button data-act="sesion.ficha" data-id="${h(x.id)}">${ICONOS.info} Cómo se hace</button>
       ${s.estado !== 'hecha' ? `<button data-act="sesion.cambiar" data-e="${i}">${ICONOS.editar} Cambiar por otro</button>
       <button data-act="sesion.serieMas" data-e="${i}" data-v="1">${ICONOS.mas} Añadir una serie</button>
       ${x.sets.length > 1 ? `<button data-act="sesion.serieMas" data-e="${i}" data-v="-1">${ICONOS.menos} Quitar una serie</button>` : ''}` : ''}
@@ -243,7 +247,7 @@ acciones({
     const S = estado(), s = sesion(idActual()), i = +el.dataset.e, x = s.ejercicios[i], e = ex(x.id);
     const alts = alternativas(e, s.lugar, S.perfil, { excluir: s.ejercicios.map(y => y.id), dolorHoy: (s.checkin && s.checkin.dolor) || {} }).slice(0, 8);
     abrirHoja(`<h2>Cambiar ${h(e.n.toLowerCase())}</h2>
-      ${alts.length ? `<ul class="lista">${alts.map(a => `<li><button class="fila" data-act="sesion.cambiarPor" data-e="${i}" data-id="${a.id}"><span class="grow"><b>${h(a.n)}</b><span class="tenue">${a.m.map(m => MUSCULOS[m]).join(', ')}${S.perfil.gustos[a.id] ? ' · ' + GUSTOS[S.perfil.gustos[a.id]].icono : ''}</span></span>${ICONOS.sig}</button></li>`).join('')}</ul>` : '<p class="tenue">No hay alternativas seguras aquí.</p>'}`);
+      ${alts.length ? `<ul class="lista">${alts.map(a => `<li><button class="fila" data-act="sesion.cambiarPor" data-e="${i}" data-id="${h(a.id)}"><span class="grow"><b>${h(a.n)}</b><span class="tenue">${a.m.map(m => MUSCULOS[m]).join(', ')}${S.perfil.gustos[a.id] ? ' · ' + GUSTOS[S.perfil.gustos[a.id]].icono : ''}</span></span>${ICONOS.sig}</button></li>`).join('')}</ul>` : '<p class="tenue">No hay alternativas seguras aquí.</p>'}`);
   },
   'sesion.cambiarPor': el => {
     conSesion(s => {
@@ -288,4 +292,9 @@ registrarFin((meta, tiempos) => {
 // Mientras la sesión está abierta, la pantalla no se apaga sola (si el móvil lo permite).
 window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#sesion/')) soltarPantalla(); });
 
-rutas({ sesion: { titulo: 'Sesión', vista, sinNav: true, pestaña: 'hoy', montar: (_, [id]) => { const s = sesion(id); if (s && s.estado !== 'hecha') mantenerPantalla(); } } });
+// Prueba de pintado de una copia (router.probarPantallas): cada sesión, sin tocar lo que se está viendo.
+function probar() {
+  const antes = foco;
+  try { for (const id of Object.keys(estado().sesiones)) vista([id]); vista(['']); } finally { foco = antes; }
+}
+rutas({ sesion: { titulo: 'Sesión', vista, probar, sinNav: true, pestaña: 'hoy', montar: (_, [id]) => { const s = sesion(id); if (s && s.estado !== 'hecha') mantenerPantalla(); } } });

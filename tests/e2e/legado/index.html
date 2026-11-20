@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>App vieja</title></head>
+<body>
+  <p id="vieja">App vieja (rama main)</p>
+  <!-- Réplica mínima de la app de producción (main): solo importa su service worker (sw.js, copiado tal cual de main). -->
+  <script>navigator.serviceWorker.register('sw.js');</script>
+</body>
+</html>
