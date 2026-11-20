@@ -6,6 +6,8 @@ Plan para llevar la rama `pipos-v2` desde el estado auditado (noviembre de 2026)
 
 Incluye un **rediseño completo de la interfaz**. Se diseña en paralelo a las fases 1-4 (fase D: estudio de uso, identidad, sistema de diseño y prototipos navegables que apruebas en el móvil) y se implementa después (fase 5). El rediseño solo cambia la capa de presentación: datos, entrenador, reglas y servidor se conservan.
 
+Incluye también **copias de seguridad automáticas en la nube** de los dos móviles en un mismo sitio, cifradas en el propio móvil (PR 4b, antes del lanzamiento). La comparativa de destinos está en el anexo B.
+
 ---
 
 ## 1. Objetivo y criterios de «terminado»
@@ -24,6 +26,7 @@ La versión 2 está lista para producción cuando se cumplen **todos** estos cri
 | T8 | La IA cumple el contrato | 20 casos de referencia contra el endpoint real de preview: 100 % pasan el validador y ≥ 90 % aprueban la rúbrica del preparador |
 | T9 | Rediseño aprobado y usable con una mano | Prototipos aprobados por ti pantalla a pantalla; capturas de la app iguales al prototipo; zonas táctiles ≥ 48 px en la sesión y ≥ 44 px en el resto; contraste AA medido por script; primera serie visible sin desplazarse en 360×640; animaciones a 60 fps con CPU ×4 y alternativa con movimiento reducido |
 | T10 | Integración continua | `npm test` y lint en verde en cada PR; versión del service worker generada, no escrita a mano |
+| T11 | Copias automáticas en la nube | Con red, menos de 1 minuto después de terminar una sesión hay una copia nueva de esa persona; en un navegador limpio, con la frase de recuperación, se restaura todo (sesiones, perfil, lesiones, medidas, dolor); sin la frase, la copia es ilegible, también para el servidor |
 
 ---
 
@@ -61,6 +64,7 @@ No dispongo de una valoración pública de skills. He elegido las más específi
 | PWA y despliegue | `agentic-council:Operator` | `vercel:vercel-functions`, `vercel:deployments-cicd`, `vercel:vercel-firewall`, `vercel:verification`, `agentic-council:deployment-plan` | Service worker, CI, Vercel, lanzamiento y marcha atrás |
 | Uso y accesibilidad | `agentic-council:Advocate` | `design:user-research`, `design:research-synthesis`, `agentic-council:journey-mapping`, `design:accessibility-review`, `design-skills:accessibility-audit`, `vectorlab-ux-skills:ux-audit`, `vectorlab-ux-skills:forms`, `vectorlab-ux-skills:errors`, `vectorlab-ux-skills:loaders`, `vectorlab-ux-skills:empty-states`, `vectorlab-ux-skills:keyboard`, `design:ux-copy` | Estudio de uso en el gimnasio (DIS 1); revisión de accesibilidad del sistema y de los prototipos (DIS 3-4); revisión de cada PR del rediseño con capturas y Playwright |
 | Diseño visual | `agentic-council:Artisan` | `frontend-design:frontend-design`, `design:design-system`, `design-skills:design-systems`, `agentic-council:design-system-architecture`, `agentic-council:motion-design`, `vectorlab-ux-skills:colour-palette`, `vectorlab-ux-skills:typography`, `vectorlab-ux-skills:spacing`, `vectorlab-ux-skills:surfaces`, `vectorlab-ux-skills:motion`, `vectorlab-ux-skills:reduced-motion`, `vectorlab-ux-skills:anti-slop`, `design:design-critique`, `dataviz` | Identidad (DIS 2), sistema de diseño (DIS 3), prototipos (DIS 4) e implementación del rediseño (PR 13-16) |
+| Criptografía | `agentic-council:Cipher` | `agentic-council:crypto-review`, `agentic-council:protocol-analysis` | Diseño y revisión del cifrado de las copias en la nube (PR 4b) |
 | Privacidad | `agentic-council:Guardian` | `agentic-council:data-classification` | Solo en el PR de copia/migración y en el de prompt: qué datos de salud salen y cuáles sobran |
 
 **Orquestación.** Para las tareas en abanico (los 20 casos de referencia y la re-auditoría final con los siete agentes) propongo usar la herramienta Workflow. Lanza muchos agentes a la vez, así que solo la usaré si me lo confirmas (decisión D7). El resto se hace con agentes sueltos, en paralelo cuando no tocan los mismos archivos.
@@ -86,6 +90,8 @@ Llevan mi recomendación. Las marcadas con ★ bloquean su fase.
 | D11 | Identidad | — | **Decidido: identidad nueva entera** (logo, colores por persona, tipografía e iconos). Doy por hecho que el nombre «Pipos Fitness» se mantiene; dime si no |
 | D12 | Ambición visual | — | **Decidido: expresiva**, con presupuesto de rendimiento y alternativa con movimiento reducido |
 | D13 | Revisión de prototipos | — | **Decidido: página navegable en la vista previa de Vercel** de la rama `diseno-prototipos` |
+| D14 ★ | Dónde van las copias automáticas (anexo B) | (a) Vercel Blob privado; (b) Supabase; (c) Google Drive compartido | **(a)**, cifradas en el móvil |
+| D15 ★ | Frase de recuperación de las copias | (a) una por persona; (b) una común para los dos | **(a)**: cada uno solo puede abrir sus copias. Guardadla en un gestor de contraseñas: **sin la frase, las copias de la nube no se pueden abrir** |
 
 ---
 
@@ -101,14 +107,15 @@ Cada PR indica: **qué** cambia, **dónde**, **cómo se acepta**, **quién** y *
   - qué rama es la de producción;
   - que `APP_CODE` y `ANTHROPIC_API_KEY` estén en Production y en Preview;
   - que la protección de despliegues de fork esté activada (el repo es público);
-  - que Fluid Compute esté activado.
+  - que Fluid Compute esté activado;
+  - crear un almacén **Blob privado** (por ejemplo `pipos-copias`, en una región europea si está disponible) y conectarlo al proyecto `el-plan`. Si conectas el equipo `benevis-projects` al conector de Vercel de claude.ai, lo creo yo.
 - Decirme el nombre del proyecto y la cuenta o equipo: el conector de Vercel de esta sesión no lo encuentra, solo ve otro proyecto `pipos-fitness` (Next.js).
 
 **0.2 Lo hago yo**
 - Pedir acceso de escritura a `benevi/el-plan`. Ahora solo tengo lectura, así que no puedo empujar ramas ni abrir PR.
 - Rescatar los scripts de la auditoría al repo como base de las pruebas. Siguen en el directorio temporal de esta sesión y se pierden si se cierra.
 
-**0.3** Respuestas a D1-D9.
+**0.3** Respuestas a D1-D9, D14 y D15.
 
 ### Fase D — Diseño (en paralelo a las fases 1-4)
 
@@ -242,6 +249,31 @@ Cuatro entregas en cadena, cada una con tu OK antes de pasar a la siguiente: DIS
 - **Se acepta si:** pasan las pruebas de importar, migración y XSS por copia (`t05`, `t06` y la prueba de seguridad de copias maliciosas), y no queda ninguna interpolación sin escapar de las que listó la auditoría.
 - **Quién:** Craftsman implementa; Skeptic y Guardian revisan.
 - **Depende de:** PR 3.
+
+**PR 4b · Copias automáticas en la nube** (según D14 y D15)
+- **Dónde:** `api/copia.js` (nuevo), `js/nucleo/copia.js` (nuevo), `js/nucleo/estado.js` (solo un aviso tras guardar), `js/areas/perfil/indice.js`, `package.json` (`@vercel/blob`).
+- **Qué:**
+  - **Un solo almacén para los dos:** `copias/<persona>/<fecha-hora>.bin` en un Blob **privado**, con `persona` validada (`victor` o `virginia`).
+  - **Cifrado en el móvil, antes de salir:**
+    - el estado (sin el código de acceso) se comprime con `CompressionStream` y se cifra con AES-GCM de 256 bits;
+    - la clave se deriva de la frase de recuperación (PBKDF2-SHA-256, ≥ 600 000 iteraciones, sal propia guardada junto a la copia);
+    - la frase se pide una vez en cada móvil y no se guarda; el móvil conserva la clave derivada como clave no exportable de WebCrypto en IndexedDB, para poder copiar sin preguntar.
+    - El servidor, Vercel y quien tenga el código de acceso solo ven bytes cifrados.
+  - **Cuándo se copia, sin que hagáis nada:** al terminar una sesión; tras cambiar perfil, lesiones o medidas (esperando 1 minuto); y al abrir la app si la última copia tiene más de 24 horas. Solo con red; si no hay, se reintenta al volver la conexión.
+  - **Cuántas se guardan:** las de los últimos 14 días, una por semana durante 3 meses y una por mes durante 2 años, con caducidad nativa del Blob si el SDK la admite o, si no, limpieza en la propia función. Cada copia ocupa del orden de 0,1-1 MB.
+  - **Función `api/copia.js`:** subir, listar y bajar. Exige el código de acceso igual que `api/entrenador.js` (PR 2), limita el tamaño a 5 MB, el ritmo de peticiones y no deja nada en caché (`no-store`).
+  - **Perfil → Copias:**
+    - «Última copia en la nube: hoy 18:40» y aviso visible si pasan más de 3 días sin copia;
+    - lista de copias de esa persona con fecha, nº de sesiones y última sesión;
+    - restaurar en el mismo móvil o en uno nuevo (elegir persona + frase), siempre a través del `importar()` validado del PR 4 y guardando antes el estado actual en `pipos4-antes-de-importar`;
+    - cambiar la frase (vuelve a cifrar las copias siguientes; las antiguas siguen con la anterior).
+  - La copia manual a archivo del PR 4 se mantiene como segunda vía.
+- **Se acepta si:**
+  - se cumple T11;
+  - pasan las pruebas de cifrado ida y vuelta, frase incorrecta, copia corrupta o cortada y persona inválida;
+  - pasan las pruebas del handler con un Blob simulado y una e2e: terminar sesión → copia subida → navegador limpio → restaurar → mismos datos.
+- **Quién:** Operator implementa con `vercel:vercel-storage` y `vercel:vercel-functions`; Cipher revisa el cifrado con `agentic-council:crypto-review`; Skeptic revisa la función con `security-review`; Guardian confirma qué datos salen.
+- **Depende de:** PR 2 (código de acceso y límites del servidor), PR 4 (importar validado y copia sin el código) y el almacén Blob creado en la fase 0. Va antes del lanzamiento.
 
 **PR 5 · Service worker atómico y aviso de versión**
 - **Dónde:** `sw.js`, `index.html`, `js/main.js`, `js/arranque.js` (nuevo, clásico), `fonts/` (nuevo), `icons/`, `scripts/version.js`.
@@ -436,7 +468,7 @@ Implementa Artisan; Advocate revisa cada PR con capturas lado a lado, Playwright
 **PR 18 · Pruebas de extremo a extremo y re-auditoría**
 - Batería de Playwright con los recorridos completos de Víctor y Virginia: bienvenida, migración desde datos reales con la forma de `main`, perfil, plan, check-in, sesión, cierre, progreso, ejercicios, copia, modo avión y actualización.
 - **Re-auditoría** con los mismos siete agentes y los mismos encargos que la primera, comparando contra este plan.
-- **Se acepta si:** 0 críticos y 0 altos abiertos, y T1-T10 en verde.
+- **Se acepta si:** 0 críticos y 0 altos abiertos, y T1-T11 en verde.
 
 **Pruebas en tus móviles** (no se pueden hacer desde aquí)
 - Sonido y vibración con la pantalla bloqueada.
@@ -448,13 +480,15 @@ Implementa Artisan; Advocate revisa cada PR con capturas lado a lado, Playwright
 **Lanzamiento a `main`** (solo con tu OK)
 1. Anotar el despliegue de producción actual para poder volver atrás.
 2. Exportar la copia en la app vieja de cada móvil.
-3. Fusionar con los dos móviles en casa, con wifi y fuera de horario de entrenamiento.
-4. Abrir la app, esperar, cerrarla y volver a abrirla.
-5. Elegir bien el dueño y comprobar «He traído N sesiones».
-6. Poner el código de acceso y generar una sesión con IA.
-7. Modo avión y reabrir.
-8. Guardar una copia fuera del teléfono.
-9. Solo entonces, para ver el icono nuevo en iPhone, reinstalar y cargar la copia (iOS no cambia el icono de una app ya instalada; Android lo hace solo, con retraso).
+3. Comprobar que las copias en la nube funcionan en la vista previa: hacer una de prueba en cada móvil y restaurarla en un navegador limpio con la frase (simulacro de recuperación).
+4. Fusionar con los dos móviles en casa, con wifi y fuera de horario de entrenamiento.
+5. Abrir la app, esperar, cerrarla y volver a abrirla.
+6. Elegir bien el dueño y comprobar «He traído N sesiones».
+7. Poner el código de acceso y la frase de recuperación; comprobar «Última copia en la nube: ahora».
+8. Generar una sesión con IA.
+9. Modo avión y reabrir.
+10. Guardar además una copia a archivo fuera del teléfono.
+11. Solo entonces, para ver el icono nuevo en iPhone, reinstalar y restaurar desde la nube (iOS no cambia el icono de una app ya instalada; Android lo hace solo, con retraso).
 
 **Marcha atrás**
 - **Cuándo:** pantalla en blanco que persiste con buena red, migración con 0 sesiones o errores 5xx sistemáticos de la IA.
@@ -467,7 +501,7 @@ Implementa Artisan; Advocate revisa cada PR con capturas lado a lado, Playwright
 ```
         Construcción                                          │ Diseño (fase D)
 Ola 1   PR 1 pruebas y CI  ∥  PR 2 servidor                   │ DIS 1 estudio de uso      (tu OK)
-Ola 2   PR 3 guardado → PR 4 copia/migración                  │ DIS 2 identidad           (eliges)
+Ola 2   PR 3 guardado → PR 4 copia/migración → PR 4b nube     │ DIS 2 identidad           (eliges)
         PR 5 service worker                                   │
         PR 6 partir entrenador.js  ∥  PR 7 criterio (tu OK)   │
 Ola 3   PR 8 validador, dolor alto, cardio                    │ DIS 3 sistema de diseño   (tu OK)
@@ -491,6 +525,7 @@ Ola 6   PR 17 CSP → PR 18 e2e y re-auditoría → pruebas en móviles → lanz
 - Pasar a un framework o añadir un paso de compilación.
 - Vídeos de los ejercicios nuevos (D9).
 - Tema claro (D10).
+- **Integración con Salud de Apple y Google Fit:** para después del lanzamiento. Ojo: una app web instalada no puede leer ni escribir en Salud de Apple; hará falta una pieza nativa o un atajo, y Google Fit está sustituido por Health Connect en Android. Se estudiará entonces.
 
 ---
 
@@ -498,6 +533,7 @@ Ola 6   PR 17 CSP → PR 18 e2e y re-auditoría → pruebas en móviles → lanz
 
 - **Agentes:** 18 PR y 4 entregas de diseño con implementación y revisión, más los casos de referencia y la re-auditoría. Son unas 55-70 ejecuciones de agente; la auditoría fueron 7. Calcula un gasto de tokens del orden de 8 a 12 veces el de la auditoría; la fase de diseño, con tres direcciones de identidad y hasta tres rondas de prototipos, es la parte más variable.
 - **API de Claude:** los 20 casos de referencia, repetidos 2-3 veces, cuestan unos 10-20 $ con la clave de la app.
+- **Copias en la nube:** con dos personas y copias de 0,1-1 MB, el volumen total queda por debajo de unos cientos de MB y unas pocas decenas de operaciones al día. Espero que quepa en lo incluido en el plan de Vercel, es decir 0 €; las cifras exactas del plan las compruebo en la página de precios al implementar el PR 4b.
 - **Tiempo:** depende sobre todo de tus revisiones en el móvil: hay cuatro aprobaciones de diseño, además de las de cada PR. El diario de uso de DIS 1 necesita 3-4 sesiones reales de cada uno. Por agentes, cada ola cabe en una sesión de trabajo.
 
 ---
@@ -510,6 +546,7 @@ Ola 6   PR 17 CSP → PR 18 e2e y re-auditoría → pruebas en móviles → lanz
 | 2 | Endpoint abierto sin `APP_CODE`; cuerpo sin límite; abuso de coste; fuga en mensajes de error; sin `maxDuration`; generación pagada tras el abandono; observabilidad |
 | 3 | JSON ilegible pisado; fallo de guardado silencioso; dos pestañas; sin `persist()` ni espejo |
 | 4 | `importar` sin validar (incluido XSS por copia); `apiUrl`; copia con el código de acceso; sexo cruzado; dueño irreversible; re-migración tras marcha atrás; copia v3 no importable; zonas desconocidas |
+| 4b | Sin copia fuera del móvil (si se borra la app o se pierde el teléfono, se pierde todo); la copia manual depende de acordarse |
 | 5 | Mezcla de módulos y arranque en blanco; `index.html` pisado; sin aviso de versión; `VERSION` olvidada; fuentes que bloquean; PNG pesados; `generador.js` en la precarga |
 | 6 | `entrenador.js` de 55 KB; código muerto; regla de cardio en tres sitios |
 | 7 | Sin señales de alarma; objetivos combinados; descarga prometida; criterio de dosis triple |
@@ -525,3 +562,19 @@ Ola 6   PR 17 CSP → PR 18 e2e y re-auditoría → pruebas en móviles → lanz
 | 16 | Chips que se salen de la vista; textos y concordancias; constancia incoherente; `aria-pressed` y etiquetas; aviso de datos de salud en la copia |
 | 17 | Sin CSP ni cabeceras; manejadores en línea; archivos internos servidos |
 | 18 | Verificación de todo lo anterior y del paso a producción |
+
+---
+
+## Anexo B — Dónde guardar las copias automáticas
+
+Requisitos: las de los dos en el mismo sitio, automáticas (sin tocar nada), legibles solo por cada uno, que funcionen desde una app web instalada en iPhone y Android, y baratas.
+
+| Opción | A favor | En contra | Coste esperado |
+|---|---|---|---|
+| **(a) Vercel Blob privado, cifrado en el móvil** — recomendada | Mismo proyecto y servidor que ya tenéis: sin cuentas nuevas ni claves que guardar en otro sitio. Funciona igual en iPhone y Android, sin ventanas de inicio de sesión. Con el cifrado en el móvil, ni Vercel ni quien tenga el código de acceso puede leerlas. Caducidad y limpieza automáticas | Todo queda en el mismo proveedor que la app: si se pierde la cuenta de Vercel, se pierden ambas cosas (lo mitiga la copia manual a archivo). El almacenamiento privado de Blob está en beta pública. Si olvidáis la frase, las copias de la nube no sirven | 0 € previsto dentro de lo incluido; lo confirmo al implementar |
+| (b) Supabase (Storage o Postgres) | Base de datos de verdad, con consola para ver las copias y conector disponible aquí. Separado de Vercel | Otra cuenta y otras claves. Los proyectos gratuitos se pausan si pasan un tiempo sin actividad, y entonces la copia falla hasta reactivarlo. Más piezas para dos personas | 0 € en el plan gratuito, con riesgo de pausa; de pago, unos 25 $ al mes |
+| (c) Carpeta compartida de Google Drive | Las veis y descargáis vosotros desde Drive, fuera de Vercel. 15 GB gratis | Hay que iniciar sesión con Google desde la app instalada: en iPhone, en modo pantalla de inicio, ese flujo es frágil y la sesión caduca y pide volver a entrar, así que la copia «automática» deja de serlo. Requiere crear y mantener una app en Google Cloud. Datos de salud en una cuenta personal | 0 € |
+| Descartadas | iCloud / Archivos: una app web no puede guardar ahí sola, solo con la hoja de compartir (manual). Un repositorio de GitHub: no es para esto y obliga a guardar un token en el servidor | — | — |
+
+**Recomendación:** (a), con la copia manual a archivo como segunda vía. Si algún día queréis no depender de Vercel, la misma copia cifrada se puede enviar también a (b) o (c) sin cambiar el formato.
+
