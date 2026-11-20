@@ -12,12 +12,11 @@ export const enLinea = () => navigator.onLine !== false;
 export async function llamar(nombre, cuerpo, { espera = 120000 } = {}) {
   if (!enLinea()) throw new ErrorApi('sin conexión', { sinRed: true });
   const S = estado();
-  const base = (S.ajustes.apiUrl || '').replace(/\/$/, '');
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), espera);
   let r;
   try {
-    r = await fetch(`${base}/api/${nombre}`, {
+    r = await fetch(`/api/${encodeURIComponent(nombre)}`, { // siempre relativa: el mismo sitio que sirve la app
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app-code': S.ajustes.codigo || '' },
       body: JSON.stringify(cuerpo),

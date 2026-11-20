@@ -62,6 +62,19 @@ export function pintar() {
   window.scrollTo(0, scroll);
 }
 
+// Pinta en memoria (sin tocar la página) todas las pantallas con el estado actual y lanza si alguna falla.
+// Sirve para probar una copia antes de cargarla (estado.importar). Cada ruta puede dar `probar()` para
+// pintar sus variantes (todas las partes del perfil, cada sesión…); si no, se pinta su vista sin parámetros.
+// No se prueban las pantallas de rescate ni de bienvenida (no dependen de los datos).
+export function probarPantallas() {
+  for (const [nombre, def] of Object.entries(RUTAS)) {
+    if (nombre === 'rescate' || nombre === 'bienvenida') continue;
+    try {
+      if (def.probar) def.probar(); else def.vista([]);
+    } catch (e) { throw new Error(`pantalla «${nombre}»: ${e.message}`, { cause: e }); }
+  }
+}
+
 function pintarNav(ruta) {
   const nav = $('#nav');
   const activa = (RUTAS[ruta] && RUTAS[ruta].pestaña) || ruta;

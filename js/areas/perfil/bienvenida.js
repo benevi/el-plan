@@ -1,9 +1,10 @@
 // Primera vez en este móvil: ¿de quién es? Trae su historial de la app anterior si lo hay.
 
 import { rutas, acciones, antesDeCadaRuta, ir } from '../../nucleo/router.js';
-import { estado, cambiar, migrarDeViejo } from '../../nucleo/estado.js';
-import { h, aviso } from '../../nucleo/ui.js';
+import { estado, cambiar, migrarDeViejo, resultadoMigracion, dueñoSoltadoConConfirmacion } from '../../nucleo/estado.js';
+import { h, aviso, confirmar } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
+import { QUEDA } from './indice.js';
 
 antesDeCadaRuta(r => (estado().dueño ? null : 'bienvenida'));
 
@@ -21,10 +22,24 @@ rutas({
 });
 
 acciones({
-  'bienvenida.elegir': el => {
-    let n = 0;
-    cambiar(S => { S.dueño = el.dataset.v; n = migrarDeViejo(el.dataset.v); }, 'dueño');
-    if (n) aviso(`He traído ${n} sesiones de la app anterior`);
+  'bienvenida.elegir': async el => {
+    const v = el.dataset.v;
+    if (!PERSONAS[v]) return;
+    // Lo traído de la app anterior es de la otra persona: se quitará y se traerá lo de esta. Se confirma
+    // (salvo si se acaba de confirmar en Perfil → «cambiar»).
+    const m = estado().migracion, antes = m && m.dueño;
+    if (antes && antes !== v && !dueñoSoltadoConConfirmacion()) {
+      const ok = await confirmar(`Lo traído de la app anterior es de ${PERSONAS[antes].nombre}. Si eliges ${PERSONAS[v].nombre}, se quita y se trae lo de ${PERSONAS[v].nombre}. ${QUEDA}`, { si: 'Seguir' });
+      if (!ok) return;
+    }
+    cambiar(S => { S.dueño = v; migrarDeViejo(v); }, 'dueño');
+    const r = resultadoMigracion();
+    if (r && (r.sesiones || r.descartadas.length)) {
+      const partes = [];
+      if (r.sesiones) partes.push(`He traído ${r.sesiones} sesiones de la app anterior`);
+      if (r.descartadas.length) partes.push(`No he podido traer ${r.descartadas.join(', ')}`);
+      aviso(partes.join('. '), r.descartadas.length ? 'info' : '');
+    }
     ir(estado().perfil.objetivos.length ? 'hoy' : 'perfil');
   },
 });

@@ -113,7 +113,7 @@ test('si lo guardado no se puede leer, no se pisa al guardar', () => {
   assert.ok(conservado, 'el texto original ya no está en ninguna clave');
 });
 
-test('importar una copia con forma mala no rompe ni pisa los datos', { todo: 'PR 4: importar sin validar' }, () => {
+test('importar una copia con forma mala no rompe ni pisa los datos', () => {
   cargarCon({ pipos4: estadoBase({ sesiones: { s1: sesionDemo('s1', { estado: 'hecha' }) } }) });
   const antes = N.almacen.getItem('pipos4');
   let lanzo = false;
@@ -126,37 +126,37 @@ test('importar una copia con forma mala no rompe ni pisa los datos', { todo: 'PR
   assert.ok(S.sesiones && typeof S.sesiones === 'object', 'sesiones nulas');
 });
 
-test('importar nunca trae el código de acceso ni apiUrl de la copia', { todo: 'PR 4: apiUrl y código importados' }, () => {
+test('importar nunca trae el código de acceso ni apiUrl de la copia', () => {
   cargarCon({ pipos4: estadoBase() });
   est.importar(JSON.stringify(estadoBase({ ajustes: { codigo: 'ajeno', vibrar: true, sonido: true, apiUrl: 'https://malo.example' } })));
   assert.notEqual(est.estado().ajustes.apiUrl, 'https://malo.example');
   assert.notEqual(est.estado().ajustes.codigo, 'ajeno');
 });
 
-test('la copia exportada no lleva el código de acceso', { todo: 'PR 4: copia con el código de acceso' }, () => {
+test('la copia exportada no lleva el código de acceso', () => {
   cargarCon({ pipos4: estadoBase({ ajustes: { codigo: 'secreto-123', vibrar: true, sonido: true, apiUrl: '' } }) });
   assert.doesNotMatch(est.exportar(), /secreto-123/);
 });
 
-test('importar acepta una copia v3 de la app anterior', { todo: 'PR 4: copia v3 no importable' }, () => {
+test('importar acepta una copia v3 de la app anterior', () => {
   cargarCon({ pipos4: estadoBase() });
   assert.doesNotThrow(() => est.importar(JSON.stringify(viejoDemo())));
 });
 
-test('migración: el sexo se traduce bien (en la app anterior m = hombre)', { todo: "PR 4: sexo cruzado ('m' → 'h', 'f' → 'm')" }, () => {
+test('migración: el sexo se traduce bien (en la app anterior m = hombre)', () => {
   const S = cargarCon({ elplan2: viejoDemo() });
   S.dueño = 'victor';
   est.migrarDeViejo('victor');
   assert.equal(S.perfil.datos.sexo, 'h');
 });
 
-test('migración: la fecha de la sesión es la local (terminó el 6 de octubre a la 1:30 en Madrid)', { todo: 'PR 4: fecha UTC en la migración' }, () => {
+test('migración: la fecha de la sesión es la local (terminó el 6 de octubre a la 1:30 en Madrid)', () => {
   const S = cargarCon({ elplan2: viejoDemo() });
   est.migrarDeViejo('victor');
   assert.equal(Object.values(S.sesiones)[0].fecha, '2026-10-06');
 });
 
-test('migración: ejercicios sin exId se resuelven por nombre', { todo: 'PR 4: ejercicios sin exId' }, () => {
+test('migración: ejercicios sin exId se resuelven por nombre', () => {
   const v = viejoDemo();
   v.workouts.k1.exercises[1].name = cat.ex('curl-mancuernas').n;
   const S = cargarCon({ elplan2: v });
@@ -164,7 +164,7 @@ test('migración: ejercicios sin exId se resuelven por nombre', { todo: 'PR 4: e
   assert.deepEqual(Object.values(S.sesiones)[0].ejercicios.map(x => x.id), ['press-pecho-maquina', 'curl-mancuernas']);
 });
 
-test('migración: elegir mal el dueño se puede corregir (se retira lo del otro y se migra lo suyo)', { todo: 'PR 4: dueño irreversible' }, () => {
+test('migración: elegir mal el dueño se puede corregir (se retira lo del otro y se migra lo suyo)', () => {
   const S = cargarCon({ elplan2: viejoDemo() });
   S.dueño = 'victor';
   est.migrarDeViejo('victor');
@@ -175,7 +175,7 @@ test('migración: elegir mal el dueño se puede corregir (se retira lo del otro 
   assert.deepEqual(S.medidas.map(m => m.peso), [60]);
 });
 
-test('migración incremental: tras una marcha atrás a la app anterior se traen las sesiones nuevas', { todo: 'PR 4: re-migración tras marcha atrás' }, () => {
+test('migración incremental: tras una marcha atrás a la app anterior se traen las sesiones nuevas', () => {
   const S = cargarCon({ elplan2: viejoDemo() });
   S.dueño = 'victor';
   est.migrarDeViejo('victor');
