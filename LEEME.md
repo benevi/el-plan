@@ -3,6 +3,8 @@
 App privada de entrenamiento de Víctor y Virginia. Cada uno usa su móvil y ve solo lo suyo; no hay datos compartidos ni backend propio. La nutrición irá en otra app.
 PWA sin paso de compilación (HTML + módulos JS + CSS), alojada en Vercel. La IA va en funciones del servidor (`/api`), la clave nunca sale de Vercel.
 
+Qué es la app, qué quiere Víctor y las reglas de ramas están en `CLAUDE.md` (lo lee Claude Code solo al abrir el proyecto). El criterio de entrenamiento y salud está en `docs/criterio.md`.
+
 ## Variables en Vercel (Production y Preview)
 Las dos son **obligatorias** y hay que darlas de alta en **Production y en Preview** (en Preview también, o las vistas previas no tendrán IA).
 - `ANTHROPIC_API_KEY`: clave de la API de Claude.
@@ -37,7 +39,7 @@ Mientras no exista el almacén, `/api/copia` responde 503 («las copias en la nu
 | **Entrenador IA** | `js/areas/entrenador/` (`entrenador.js` fachada de la lógica: `dia.js` sesión con reglas, `plan.js` semana, `checkin.js` ajuste al check-in, `ia.js` puente con la IA, `validar.js` validador; `indice.js` check-in y plan), `api/entrenador.js`, `api/_comun.js`, `js/reglas/contexto.js` | Sesión de hoy y plan semanal con IA; si falla, reglas |
 | **Perfil** | `js/areas/perfil/` (`indice.js`, `bienvenida.js`, `nube.js` copias en la nube) | Objetivos, nivel, lesiones, disponibilidad, lugares, material, gustos, ajustes, copia y copias en la nube |
 | **Sesión** | `js/areas/sesion/` (`indice.js`, `temporizador.js`) | Hacer la sesión: series, descansos con alarma visual y vibración, tiempo, modo uno a uno, cambiar ejercicio, cierre |
-| **Progreso** | `js/areas/progreso/indice.js` | Constancia, fuerza, medidas, dolor, historial |
+| **Progreso** | `js/areas/progreso/indice.js`, `js/areas/progreso/analisis.js` | Constancia, fuerza, medidas, dolor, historial |
 | **Hoy** | `js/areas/hoy/indice.js` | Pantalla de inicio |
 | **Ejercicios** | `js/areas/ejercicios/indice.js` | Catálogo, ficha técnica, me gusta / no me gusta / no lo quiero |
 | **Aspecto** | `css/base.css`, `css/componentes.css`, `css/areas.css`, `icons/`, `fonts/`, `js/aspecto/` | Colores, tipografía, componentes, movimiento y confeti; color por persona en `--acc` |
@@ -68,7 +70,14 @@ Mientras no exista el almacén, `/api/copia` responde 503 («las copias en la nu
 - Las fuentes (Archivo y Outfit, subconjunto latino, licencia OFL en `fonts/`) se sirven desde el propio sitio.
 
 ## Probar en local
-`python3 -m http.server 8765` y abrir `http://localhost:8765` (la IA necesita Vercel; sin ella la app usa las reglas).
+Requiere Node 24.
+1. `git clone https://github.com/benevi/el-plan.git && cd el-plan && git checkout pipos-v2`
+2. `npm ci`
+3. `python3 -m http.server 8765` (o `npx serve -l 8765`) y abrir `http://localhost:8765`.
+
+Así la app funciona entera **sin IA** (usa las reglas). Para la IA hace falta Vercel: la vista previa del PR, o `vercel dev` tras `vercel link` y `vercel env pull` (necesita `ANTHROPIC_API_KEY` y `APP_CODE`).
+
+Con Claude Code: abre una terminal en la carpeta del repo y ejecuta `claude`; lee `CLAUDE.md` solo.
 
 ## Pruebas
 Requiere Node 24. Primero `npm ci`.
