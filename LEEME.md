@@ -31,3 +31,12 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 
 ## Probar en local
 `python3 -m http.server 8765` y abrir `http://localhost:8765` (la IA necesita Vercel; sin ella la app usa las reglas).
+
+## Pruebas
+Requiere Node 24. Primero `npm ci`.
+- `npm test`: pruebas unitarias y de pantalla con `node:test` (`tests/**/*.test.mjs`, en zona horaria de Madrid). Las de pantalla montan la app real en jsdom (`tests/ayuda/dom.mjs`); las de lógica usan un almacén en memoria (`tests/ayuda/node.mjs`, que inyecta `usarAlmacen` en `estado.js`).
+- `npm run lint`: ESLint sobre `js/`, `api/`, `tests/` y `sw.js`.
+- `npm run e2e`: prueba de humo con Playwright en un móvil emulado, con y sin red (`tests/e2e/`). Si ya tienes Chromium: `PW_CHROMIUM=/ruta/al/chromium npm run e2e`; si no, `npx playwright install chromium` antes.
+- `tests/app-check.test.mjs` comprueba que la lista `APP` de `sw.js` coincide con los archivos reales y que no hay `import` rotos.
+
+**Pruebas pendientes (`todo`).** Cada fallo que demostró la auditoría tiene una prueba que lo reproduce, marcada como `test('…', { todo: 'PR N: …' }, fn)` con el PR que lo arreglará. Un `todo` que falla no rompe `npm test`, pero se ve en el resumen (`# todo`). Cuando tu PR arregle el fallo, la prueba pasará: quítale el `todo` en ese mismo PR para que ya no pueda volver a romperse. La CI (`.github/workflows/ci.yml`) ejecuta todo esto en cada PR y en cada push a `pipos-v2`.

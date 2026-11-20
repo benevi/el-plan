@@ -50,6 +50,12 @@ let S = null;
 const oyentes = new Set();
 let temporizadorGuardar = null;
 
+// Almacén de datos: en el navegador, localStorage. Las pruebas en node pueden inyectar otro
+// con la misma forma (getItem/setItem) mediante `usarAlmacen`; si no se inyecta nada, se usa localStorage.
+let almacenInyectado = null;
+const almacen = () => almacenInyectado || localStorage;
+export function usarAlmacen(obj) { clearTimeout(temporizadorGuardar); almacenInyectado = obj || null; }
+
 function rellenar(base, x) {
   // Añade claves que falten sin pisar lo guardado (útil al ampliar el modelo).
   for (const k of Object.keys(base)) {
@@ -60,11 +66,12 @@ function rellenar(base, x) {
 }
 
 export function cargar() {
+  clearTimeout(temporizadorGuardar); // un guardado pendiente del estado anterior no debe escribir sobre el nuevo
   let x = null;
-  try { x = JSON.parse(localStorage.getItem(CLAVE) || 'null'); } catch (e) { x = null; }
+  try { x = JSON.parse(almacen().getItem(CLAVE) || 'null'); } catch (e) { x = null; }
   if (!x) {
     x = nuevo();
-    try { const viejo = JSON.parse(localStorage.getItem(CLAVE_VIEJA) || 'null'); if (viejo) x.viejo = viejo; } catch (e) { /* nada */ }
+    try { const viejo = JSON.parse(almacen().getItem(CLAVE_VIEJA) || 'null'); if (viejo) x.viejo = viejo; } catch (e) { /* nada */ }
   }
   S = rellenar(nuevo(), x);
   delete S.nutricion; // la nutrición irá en otra app
@@ -75,14 +82,15 @@ export const estado = () => S;
 
 export function guardarYa() {
   clearTimeout(temporizadorGuardar);
-  try { localStorage.setItem(CLAVE, JSON.stringify(S)); } catch (e) { console.error('No se pudo guardar', e); }
+  try { almacen().setItem(CLAVE, JSON.stringify(S)); } catch (e) { console.error('No se pudo guardar', e); }
 }
 function guardar() {
   clearTimeout(temporizadorGuardar);
   temporizadorGuardar = setTimeout(guardarYa, 250);
 }
-window.addEventListener('pagehide', guardarYa);
-document.addEventListener('visibilitychange', () => { if (document.hidden) guardarYa(); });
+// Guardar al salir o pasar a segundo plano (solo si hay navegador; en node no existen).
+if (typeof window !== 'undefined') window.addEventListener('pagehide', guardarYa);
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) guardarYa(); });
 
 export function cambiar(fn, motivo = '') {
   fn(S);
