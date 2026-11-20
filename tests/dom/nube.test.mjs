@@ -29,7 +29,24 @@ test('activar pide la frase dos veces con la advertencia; si no coinciden, no ac
   hoja.querySelector('#n-f2').value = 'otra frase bastante larga';
   a.clic('[data-act="nube.confirmarActivar"]'); await a.tic();
   assert.match(a.doc.querySelector('#aviso').textContent, /no coinciden/);
+  // Una sola palabra (o repeticiones) se rechaza aunque sea larga.
+  hoja.querySelector('#n-f1').value = hoja.querySelector('#n-f2').value = 'electroencefalografista';
+  a.clic('[data-act="nube.confirmarActivar"]'); await a.tic();
+  assert.match(a.doc.querySelector('#aviso').textContent, /sola palabra/);
   assert.equal(llamadas, 0);
+  a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
+});
+
+test('activar propone una frase de 6 palabras; «Generar otra» la cambia y «Usar esta» la pone en los dos campos', async () => {
+  a.clic('[data-act="nube.activar"]'); await a.tic();
+  const gen = () => a.doc.querySelector('#n-gen').textContent;
+  const p1 = gen();
+  assert.equal(p1.split(' ').length, 6);
+  a.clic('[data-act="nube.generar"]'); await a.tic();
+  assert.notEqual(gen(), p1);
+  a.clic('[data-act="nube.usarGenerada"]'); await a.tic();
+  assert.equal(a.doc.querySelector('#n-f1').value, gen());
+  assert.equal(a.doc.querySelector('#n-f2').value, gen());
   a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
 });
 
@@ -43,4 +60,11 @@ test('en el rescate hay «Recuperar de la nube» y abre la hoja con persona y fr
   assert.equal(hoja.querySelectorAll('#n-persona button').length, 2);
   assert.ok(hoja.querySelector('#n-frase'));
   assert.ok(hoja.querySelector('#n-codigo'), 'sin código en el móvil, lo pide');
+});
+
+test('«Empezar de cero» en el rescate deja las copias en la nube en pausa (pipos4-nube)', async () => {
+  a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
+  a.clic('[data-act="rescate.descartar"]'); await a.tic();
+  a.clic('.hoja [data-r="1"]'); await a.tic(); await a.tic();
+  assert.equal(JSON.parse(a.w.localStorage.getItem('pipos4-nube')).pausada, true);
 });

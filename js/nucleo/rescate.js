@@ -7,6 +7,7 @@ import { rutas, acciones, antesDeCadaRuta, ir } from './router.js';
 import { estadoGuardado, recuperarDelEspejo, descartarRescate, textoRoto } from './estado.js';
 import { h, aviso, confirmar } from './ui.js';
 import { PERSONAS } from '../datos/constantes.js';
+import { pausarNube } from './copia.js';
 
 const rescate = () => estadoGuardado().rescate;
 antesDeCadaRuta(() => (rescate() ? 'rescate' : null));
@@ -65,6 +66,12 @@ acciones({
         ? 'No se pudo apartar una copia de los datos ilegibles: si empiezas de cero, se perderán. ¿Seguro?'
         : `Empezarás con la app vacía${r.espejo ? ' y se perderá la copia interna' : ''}${r.copia ? '. Lo ilegible sigue apartado en el móvil' : ''}. ¿Seguro?`;
     if (!await confirmar(txt, { si: r.motivo === 'espejo' ? 'Seguir' : 'Empezar de cero', peligro: true })) return;
-    if (descartarRescate()) ir('hoy');
+    const deCero = r.motivo !== 'espejo';
+    if (descartarRescate()) {
+      // Tras «Empezar de cero», las copias en la nube quedan en pausa hasta que la persona lo confirme
+      // (si no, la siguiente copia automática sería la de la app vacía).
+      if (deCero) pausarNube();
+      ir('hoy');
+    }
   },
 });

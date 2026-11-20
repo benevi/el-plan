@@ -3,14 +3,16 @@
 // Terminar una sesión → copia subida al Blob → navegador limpio → restaurar con la frase → mismos datos.
 import { test, expect } from '@playwright/test';
 import { BlobSimulado, porLaFuncion } from '../ayuda/nube.mjs';
-import { ponerAlmacen, reiniciarRitmo } from '../../api/copia.js';
+import { ponerAlmacen, reiniciarRitmo, ponerReloj } from '../../api/copia.js';
 import { estadoBase, sesionDemo } from '../ayuda/comun.mjs';
 
 const FRASE = 'tortuga lámpara otoño ciento';
 const blob = new BlobSimulado();
 
-test.beforeAll(() => { process.env.APP_CODE = 'secreto'; ponerAlmacen(blob); reiniciarRitmo(); });
-test.afterAll(() => ponerAlmacen(null));
+// Reloj del servidor: la retención deja una copia por hora, así que la prueba avanza una hora entre copias.
+let desfase = 0;
+test.beforeAll(() => { process.env.APP_CODE = 'secreto'; ponerAlmacen(blob); reiniciarRitmo(); ponerReloj(() => Date.now() + desfase); });
+test.afterAll(() => { ponerAlmacen(null); ponerReloj(null); });
 
 // Contexto con /api/copia → función real (el service worker no atiende /api/*, así que la ruta lo ve).
 async function contexto(browser, datos) {
@@ -52,6 +54,7 @@ test('terminar sesión → copia en la nube → navegador limpio → restaurar c
   expect(guardado.exportable).toBe(false);
   expect(guardado.ls).not.toContain(FRASE);
 
+  desfase += 3600e3;
   await p.goto('/#sesion/s1');
   await p.locator('[data-act="sesion.serie"]').first().click();
   const terminar = p.locator('[data-act="sesion.terminar"]:visible').first();
@@ -59,7 +62,7 @@ test('terminar sesión → copia en la nube → navegador limpio → restaurar c
   await terminar.click();
   await p.locator('[data-act="sesion.cerrar"]:visible').first().click();
   await expect.poll(() => copiasDe('victor').length, { timeout: 15000 }).toBe(2);
-  expect(copiasDe('victor')[1]).toMatch(/_s1_u\d{4}-\d{2}-\d{2}\.bin$/);
+  expect(copiasDe('victor')[1]).toMatch(/^copias\/victor\/[^_]+Z_k[\w-]{22}_m[\w-]{40,200}\.bin$/); // sin datos en claro
   // En el Blob solo hay bytes cifrados.
   const subido = blob.blobs.get(copiasDe('victor')[1]).bytes.toString('latin1');
   expect(subido.startsWith('PIPC')).toBe(true);
@@ -91,8 +94,12 @@ test('terminar sesión → copia en la nube → navegador limpio → restaurar c
   await q.fill('#n-frase', FRASE);
   await q.click('[data-act="nube.buscar"]');
   await expect(q.locator('#n-lista li')).toHaveCount(2);
-  await expect(q.locator('#n-lista li').first()).toContainText('1 sesiones');
+  await expect(q.locator('#n-lista li').first()).toContainText('✓ 1 sesiones');
+  await expect(q.locator('#n-lista li').nth(1)).toContainText('✓ 0 sesiones');
   await q.locator('[data-act="nube.restaurarCon"]').first().click();
+  // Antes de cargar, enseña lo que hay dentro (metadatos cifrados en la copia).
+  await expect(q.locator('.hoja')).toContainText('Copia de Víctor');
+  await expect(q.locator('.hoja')).toContainText('1 sesiones');
   await q.click('.hoja [data-r="1"]'); // «Restaurar»
   await expect(q.locator('#aviso')).toContainText('Copia de la nube cargada');
   const despues = await q.evaluate(() => JSON.parse(localStorage.getItem('pipos4')));

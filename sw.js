@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-ba7bb40ee4bf';
+const VERSION = 'pipos-app-6e5f663f6b81';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-le9pa3+obvHqeCKUDfopoQh0CcE9m8UbOjrHIRoKXng=',
+  './': 'sha256-BHguwcim2Y1s6tSnLG8URFatL/LPhIG7JkscfsZryfA=',
   './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
   './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
   './css/componentes.css': 'sha256-qcAHPb9HeaqPt++g/W85R/j7MGEaJSCdwQE1kHdbsFw=',
@@ -28,7 +28,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
   './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
   './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
-  './index.html': 'sha256-le9pa3+obvHqeCKUDfopoQh0CcE9m8UbOjrHIRoKXng=',
+  './index.html': 'sha256-BHguwcim2Y1s6tSnLG8URFatL/LPhIG7JkscfsZryfA=',
   './js/arranque.js': 'sha256-FY4jDwXB/NYydVPPBDDohoLfSKNFw2RNc2B1oG8JFio=',
   './js/areas/ejercicios/indice.js': 'sha256-1dNwpWu3kCieSdNnYOFKfqrH7+iu0Mumcz4HQ/hOL2A=',
   './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
@@ -41,7 +41,7 @@ const HUELLAS = {
   './js/areas/hoy/indice.js': 'sha256-5NjAmPjWWvpDctLRZvh5bcCzsT8osw+R9umEnsvCBoo=',
   './js/areas/perfil/bienvenida.js': 'sha256-vBSfVuWCABRvMxTlPfVtZQn6Oiq6sWk7YfqBm0czmko=',
   './js/areas/perfil/indice.js': 'sha256-V6r+B6ppcJgDWCSbUwRD+i5nxtljraic0H4NwZKxUMc=',
-  './js/areas/perfil/nube.js': 'sha256-rqHkAY1hd7Q6vEhHuVtWuZvQe9nAs0co0byz2yNnVtI=',
+  './js/areas/perfil/nube.js': 'sha256-fIbFFHjClReMFn/F2or7At0yk0pqUxPa+4g29y/1Jjg=',
   './js/areas/progreso/analisis.js': 'sha256-ERUbRDIg94+Mk5E6y/GcWb4ksCLP5CW1snvghmIv5Gc=',
   './js/areas/progreso/indice.js': 'sha256-0PCKCaJQOr3a5D3wk0UPSkeblEodUXvn97VpL709Rto=',
   './js/areas/sesion/indice.js': 'sha256-aAKCxtCQrrZ6DL8CfuZ1gOCLYYD6twEhETcP+hBil8g=',
@@ -50,15 +50,16 @@ const HUELLAS = {
   './js/datos/constantes.js': 'sha256-8n0nnc8b2TB4qI1A0Idi2e8dcPyVl+8nEL1iiyS7nGg=',
   './js/datos/ejercicios.js': 'sha256-CT+AS9GUwXOvS7hvcjwwVGgf+pskLngV2eoutzDYvbk=',
   './js/datos/lesiones.js': 'sha256-JecIpuwLmKw05yIXyhdLZEJyXxR+H4XWiwjwWcHSFCk=',
+  './js/datos/palabras.js': 'sha256-uNIKPRAkULGKC90yvFVDChjrk/Xymx0tBE8BuAulTF0=',
   './js/main.js': 'sha256-HGRZ9zo5/U73KCvqEE+FWLtC90SEXTpuha+lhoPhgi8=',
   './js/nucleo/api.js': 'sha256-v9hN8+9rp5/5hfnDIG5bVauFFdL0Y2ISdQNjUxBp0TE=',
-  './js/nucleo/copia.js': 'sha256-Zm1X61dbh20bqnYYCNTnmFAK8TAeypd0ZEIHpsxqOxc=',
+  './js/nucleo/copia.js': 'sha256-kwGnIJi3iwkG+qM+48Mzmbr2QkE05BOo2zCOQ5WJuP0=',
   './js/nucleo/espejo.js': 'sha256-dbtF3o38cXtXdMI+h3IksN1zkiIT5x54DsHsr7InGuY=',
   './js/nucleo/estado.js': 'sha256-tbdB17MhC46SrzKvwCw9an2ONGJL5VBeEStmtO28kqY=',
   './js/nucleo/migracion.js': 'sha256-KU2w3gp99EJQ2i+nP4fZjKihPDMFPybH6i/JMKhZhs0=',
   './js/nucleo/modelo.js': 'sha256-80TG9nhKN3LoYAdGpiiceodtJUL0nBgNa3bu2WmgFXI=',
   './js/nucleo/normalizar.js': 'sha256-hxbVhInItX7fNoiH8LYx9RppoRbQ3XiVgIl2oT01MDQ=',
-  './js/nucleo/rescate.js': 'sha256-aoLVyrA76SB1tHpHZAm7SLJstpGSt0TQ/GX0YrvT6rE=',
+  './js/nucleo/rescate.js': 'sha256-nkpOCeQb3GnT6xCB6tNjiXhruP4zeimkSE+h0l5KL2g=',
   './js/nucleo/router.js': 'sha256-yMtffyf5KI/fj2UoTGk+rBMohWY7aHuXofjRXEbyluQ=',
   './js/nucleo/ui.js': 'sha256-u4LkYrLJD/uYHweHnTn9lYbB+7YvITO72E2fSkRJBSM=',
   './js/nucleo/version.js': 'sha256-/F3bhqZEQ2dGPs+qYrdQEawe6YM2+5h+/ypcXWxHHiY=',
@@ -105,6 +106,7 @@ const APP = [
   './js/datos/constantes.js',
   './js/datos/ejercicios.js',
   './js/datos/lesiones.js',
+  './js/datos/palabras.js',
   './js/main.js',
   './js/nucleo/api.js',
   './js/nucleo/copia.js',

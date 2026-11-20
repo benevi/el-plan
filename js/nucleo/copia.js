@@ -1,32 +1,38 @@
 // Copias automáticas en la nube (PR 4b, D14 y D15): cifradas en este móvil antes de salir.
 //
-// Formato del archivo (versión 1), todo en bytes:
+// Formato del archivo, todo en bytes (versión 2; la 1 se sigue leyendo):
 //   0  'PIPC'                     4 B  marca
-//   4  versión = 1                1 B
+//   4  versión = 2                1 B
 //   5  kdf = 1 (PBKDF2-SHA-256)   1 B
 //   6  iteraciones                4 B  (entero sin signo, big-endian; ≥ 600 000)
 //   10 largo de la sal = 16       1 B
 //   11 sal                        16 B (aleatoria, una por persona y frase)
 //   27 largo del IV = 12          1 B
 //   28 IV                         12 B (aleatorio en cada copia)
-//   40 AES-GCM-256(gzip(exportar()))  con etiqueta de 16 B al final; los 40 B de la cabecera van como AAD,
+//   40 AES-GCM-256(gzip(texto))   con etiqueta de 16 B al final; los 40 B de la cabecera van como AAD,
 //      así que tocar cualquier byte de la cabecera o del cuerpo hace fallar el descifrado.
-// Lo que se cifra es exportar() (ya sin el código de acceso).
+// El texto, en la versión 2: JSON { tipo: 'pipos-copia', persona, creada, sesiones, ultima, estado }, con
+// estado = exportar() (ya sin el código de acceso). En la versión 1 era exportar() a secas.
+// En el nombre del blob van la sal (pública) y { s: sesiones, u: última } cifrados con la misma clave
+// (IV propio, AAD 'pipos-copia-nombre/v2/<persona>'), para listar y probar la frase sin bajar las copias.
 //
 // La clave: PBKDF2-SHA-256(frase, sal, 600 000) → AES-GCM de 256 bits, NO exportable. La frase no se guarda
 // nunca; la clave (CryptoKey) y su sal se guardan en IndexedDB ('pipos-copia'), no en localStorage, para poder
-// copiar sin preguntar. Cada copia lleva su sal e iteraciones en la cabecera: con la frase basta para abrirla
-// desde un móvil nuevo. Cambiar la frase crea sal y clave nuevas; las copias anteriores siguen con la anterior.
+// copiar sin preguntar. Cada copia lleva su sal: con la frase basta para abrirla desde un móvil nuevo.
+// Cambiar la frase crea sal y clave nuevas; las copias anteriores siguen con la anterior.
 //
 // Cuándo se copia (sin hacer nada): al terminar una sesión; tras cambios de perfil, lesiones o medidas
 // (1 minuto sin más cambios); al abrir la app si la última copia tiene más de 24 h. Solo con red (si no, se
 // reintenta al volver la conexión), nunca dos subidas a la vez (tampoco entre pestañas, con Web Locks si hay)
-// y nunca durante el rescate.
+// y nunca durante el rescate. Nunca se sube sola una copia con menos sesiones (o con una última sesión
+// anterior) que la última subida: se pregunta (subir de todos modos o recuperar de la nube).
 
 import { estado, exportar, escuchar, estadoGuardado } from './estado.js';
+import { PALABRAS } from '../datos/palabras.js';
 
 export const MAGIA = [0x50, 0x49, 0x50, 0x43]; // 'PIPC'
-export const VERSION_FORMATO = 1;
+export const VERSION_FORMATO = 2;
+const VERSIONES = [1, 2];
 export const KDF_PBKDF2_SHA256 = 1;
 export const ITERACIONES = 600000;
 const MAX_ITERACIONES = 5000000; // por si alguien manipula la cabecera: no colgar el móvil
@@ -34,9 +40,11 @@ const LARGO_SAL = 16, LARGO_IV = 12, CABECERA = 40;
 const MAX_TEXTO = 12 * 1024 * 1024; // tras descomprimir (importar() ya rechaza más de 10 MB)
 export const LIMITE_SUBIDA = 4 * 1024 * 1024; // el mismo que api/copia.js
 export const FRASE_MIN = 12;
+export const PALABRAS_FRASE = 6; // 6 × 11 bits = 66 bits con la lista de 2048
 export const DIA = 864e5;
 export const ESPERA_CAMBIOS = 60e3;
 export const AVISO_DIAS = 3;
+const MAX_SALES = 8; // frases distintas que se prueban como mucho (cada una cuesta un PBKDF2)
 
 export class ErrorNube extends Error {
   constructor(msg, codigo = '', extra = {}) { super(msg); this.name = 'ErrorNube'; this.codigo = codigo; Object.assign(this, extra); }
@@ -51,6 +59,37 @@ const sutil = () => {
 };
 const aleatorio = n => globalThis.crypto.getRandomValues(new Uint8Array(n));
 const utf8 = new TextEncoder();
+const desdeUtf8 = b => new TextDecoder('utf-8', { fatal: true }).decode(b);
+
+// base64url sin relleno (para la sal y los metadatos del nombre).
+export function b64u(bytes) {
+  let s = ''; for (const x of bytes) s += String.fromCharCode(x);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+export function deB64u(txt) {
+  if (typeof txt !== 'string' || !/^[A-Za-z0-9_-]*$/.test(txt)) return null;
+  try { const s = atob(txt.replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(s, c => c.charCodeAt(0)); } catch { return null; }
+}
+
+// ── Frases ──
+// Propuesta: PALABRAS_FRASE palabras al azar de la lista de 2048 (índices de 11 bits, sin sesgo).
+export function generarFrase(n = PALABRAS_FRASE) {
+  const r = globalThis.crypto.getRandomValues(new Uint16Array(n));
+  return [...r].map(x => PALABRAS[x & 2047]).join(' ');
+}
+// Rechaza frases cortas o de baja entropía. Devuelve { ok, motivo }.
+export function calidadFrase(frase) {
+  const mal = motivo => ({ ok: false, motivo });
+  if (typeof frase !== 'string' || frase.trim().length < FRASE_MIN) return mal(`La frase tiene que tener al menos ${FRASE_MIN} caracteres.`);
+  const t = frase.normalize('NFC').trim().toLowerCase();
+  const junto = t.replace(/\s+/g, '');
+  if (new Set(junto).size < 6 || /(.)\1{3,}/u.test(junto) || /^(.{1,8}?)\1+$/u.test(junto)) return mal('La frase repite demasiado: usa palabras distintas.');
+  const pal = t.split(/\s+/).filter(Boolean);
+  if (pal.length === 1 && /^\p{L}+$/u.test(pal[0])) return mal('Una sola palabra es fácil de adivinar: usa varias (mejor la que te propongo).');
+  if (new Set(pal).size < pal.length) return mal('La frase repite palabras: usa palabras distintas.');
+  if (/^(0123|1234|abcd|qwer|asdf|contrase|password)/u.test(junto)) return mal('Esa frase es demasiado común.');
+  return { ok: true, motivo: '' };
+}
 
 // ── Compresión ──
 async function porFlujo(bytes, transformacion, max = Infinity) {
@@ -80,9 +119,9 @@ export async function derivarClave(frase, sal, iteraciones = ITERACIONES) {
 export const nuevaSal = () => aleatorio(LARGO_SAL);
 
 // ── Formato ──
-function cabecera(sal, iteraciones, iv) {
+function cabecera(sal, iteraciones, iv, version) {
   const c = new Uint8Array(CABECERA);
-  c.set(MAGIA, 0); c[4] = VERSION_FORMATO; c[5] = KDF_PBKDF2_SHA256;
+  c.set(MAGIA, 0); c[4] = version; c[5] = KDF_PBKDF2_SHA256;
   new DataView(c.buffer).setUint32(6, iteraciones, false);
   c[10] = LARGO_SAL; c.set(sal, 11); c[27] = LARGO_IV; c.set(iv, 28);
   return c;
@@ -92,23 +131,23 @@ export function leerCabecera(bytes) {
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
   if (b.length < CABECERA + 16 + 1) throw new ErrorNube(DAÑADA, 'dañada');
   if (MAGIA.some((x, i) => b[i] !== x)) throw new ErrorNube(DAÑADA, 'dañada');
-  if (b[4] !== VERSION_FORMATO) throw new ErrorNube('Esta copia es de una versión más nueva de la app: actualízala y vuelve a probar.', 'version');
+  if (!VERSIONES.includes(b[4])) throw new ErrorNube('Esta copia es de una versión más nueva de la app: actualízala y vuelve a probar.', 'version');
   if (b[5] !== KDF_PBKDF2_SHA256 || b[10] !== LARGO_SAL || b[27] !== LARGO_IV) throw new ErrorNube(DAÑADA, 'dañada');
   const iteraciones = new DataView(b.buffer, b.byteOffset, b.length).getUint32(6, false);
   if (iteraciones < ITERACIONES || iteraciones > MAX_ITERACIONES) throw new ErrorNube(DAÑADA, 'dañada');
   return { version: b[4], iteraciones, sal: b.slice(11, 27), iv: b.slice(28, 40), aad: b.slice(0, CABECERA), cuerpo: b.slice(CABECERA) };
 }
-// Cifra el texto con la clave (y la sal/iteraciones con que se derivó, que van en la cabecera).
-export async function cifrar(texto, { clave, sal, iteraciones = ITERACIONES }) {
+// Cifra un texto con la clave (y la sal/iteraciones con que se derivó, que van en la cabecera).
+export async function cifrar(texto, { clave, sal, iteraciones = ITERACIONES }, { version = VERSION_FORMATO } = {}) {
   const iv = aleatorio(LARGO_IV);
-  const c = cabecera(sal, iteraciones, iv);
+  const c = cabecera(sal, iteraciones, iv, version);
   const datos = await comprimir(utf8.encode(texto));
   const cifrado = new Uint8Array(await sutil().encrypt({ name: 'AES-GCM', iv, additionalData: c, tagLength: 128 }, clave, datos));
   const out = new Uint8Array(CABECERA + cifrado.length);
   out.set(c, 0); out.set(cifrado, CABECERA);
   return out;
 }
-// Descifra. `clave` es una CryptoKey o una función (sal, iteraciones) => CryptoKey (p. ej. derivar de la frase).
+// Descifra y devuelve el texto. `clave` es una CryptoKey o una función (sal, iteraciones) => CryptoKey.
 // Lanza ErrorNube: 'dañada' (cortada, alterada o no es una copia), 'frase' (no abre con esta clave/frase).
 export async function descifrar(bytes, clave) {
   const c = leerCabecera(bytes);
@@ -118,12 +157,44 @@ export async function descifrar(bytes, clave) {
     // AES-GCM no distingue «otra frase» de «bytes tocados»: se dice lo más probable.
     throw new ErrorNube(MAL_FRASE, 'frase');
   }
-  let txt;
-  try { txt = new TextDecoder('utf-8', { fatal: true }).decode(await descomprimir(datos)); } catch (e) {
+  try { return desdeUtf8(await descomprimir(datos)); } catch (e) {
     if (e instanceof ErrorNube) throw e;
     throw new ErrorNube(DAÑADA, 'dañada');
   }
-  return txt;
+}
+// Versión 2: el texto lleva los metadatos y el estado.
+export function empaquetar({ persona, creada, sesiones, ultima }, estadoTxt) {
+  return JSON.stringify({ tipo: 'pipos-copia', persona, creada, sesiones, ultima: ultima || null, estado: JSON.parse(estadoTxt) });
+}
+// Abre un archivo: { estado (texto para importar()), meta ({ persona, creada, sesiones, ultima } o null en la v1), version }.
+export async function abrirArchivo(bytes, clave) {
+  const { version } = leerCabecera(bytes);
+  const txt = await descifrar(bytes, clave);
+  if (version === 1) return { estado: txt, meta: null, version };
+  let x;
+  try { x = JSON.parse(txt); } catch { throw new ErrorNube(DAÑADA, 'dañada'); }
+  if (!x || x.tipo !== 'pipos-copia' || typeof x.persona !== 'string' || !x.estado || typeof x.estado !== 'object') throw new ErrorNube(DAÑADA, 'dañada');
+  const meta = { persona: x.persona, creada: typeof x.creada === 'string' ? x.creada : null, sesiones: Number.isInteger(x.sesiones) ? x.sesiones : null, ultima: typeof x.ultima === 'string' ? x.ultima : null };
+  return { estado: JSON.stringify(x.estado), meta, version };
+}
+
+// Metadatos del nombre: { s, u } cifrados con la clave de la persona.
+const aadNombre = persona => utf8.encode('pipos-copia-nombre/v2/' + persona);
+export async function cifrarNombre({ sesiones, ultima }, clave, persona) {
+  const iv = aleatorio(LARGO_IV);
+  const c = new Uint8Array(await sutil().encrypt({ name: 'AES-GCM', iv, additionalData: aadNombre(persona), tagLength: 128 }, clave, utf8.encode(JSON.stringify({ s: sesiones, u: ultima || '' }))));
+  const out = new Uint8Array(LARGO_IV + c.length); out.set(iv, 0); out.set(c, LARGO_IV);
+  return b64u(out);
+}
+// { sesiones, ultima } o null si no abre con esta clave (otra frase, o basura).
+export async function descifrarNombre(txt, clave, persona) {
+  const b = deB64u(txt);
+  if (!b || b.length < LARGO_IV + 17) return null;
+  try {
+    const p = await sutil().decrypt({ name: 'AES-GCM', iv: b.slice(0, LARGO_IV), additionalData: aadNombre(persona), tagLength: 128 }, clave, b.slice(LARGO_IV));
+    const x = JSON.parse(desdeUtf8(new Uint8Array(p)));
+    return { sesiones: Number.isInteger(x.s) ? x.s : null, ultima: typeof x.u === 'string' && x.u ? x.u : null };
+  } catch { return null; }
 }
 const mismaSal = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
 
@@ -162,7 +233,9 @@ const almacenIDB = {
 let almacenClave = almacenIDB;
 
 // ── Estado de la nube en este móvil (localStorage 'pipos4-nube'; no es parte de pipos4) ──
-// { ultima: ISO de la última copia subida, error: texto|null, inactiva: bool (el servidor dijo 503) }
+// { persona, ultima: ISO de la última subida, sesiones y ultimaSesion de lo último subido o restaurado (la
+//   «base»: no se sube solo nada con menos), error, inactiva (el servidor dijo 503), retenida (se dejó de
+//   subir algo por tener menos que la base), pausada (tras «Empezar de cero» en el rescate) }
 const CLAVE_NUBE = 'pipos4-nube';
 function leerNube() {
   try { const x = JSON.parse(globalThis.localStorage.getItem(CLAVE_NUBE) || 'null'); return x && typeof x === 'object' ? x : {}; } catch { return {}; }
@@ -178,17 +251,20 @@ function ponerNube(cambios) {
 }
 
 // ── Dependencias (las pruebas las sustituyen) ──
+const cerrojos = () => (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function' ? navigator.locks : null);
 let dep = {
   fetch: (...a) => globalThis.fetch(...a),
   enLinea: () => typeof navigator === 'undefined' || navigator.onLine !== false,
   ahora: () => Date.now(),
   setTimeout: (...a) => globalThis.setTimeout(...a),
   clearTimeout: (...a) => globalThis.clearTimeout(...a),
+  // Ejecuta fn con el cerrojo entre pestañas si está libre; si otra pestaña lo tiene, devuelve 'ocupado'.
   bloqueo: (nombre, fn) => {
-    const l = typeof navigator !== 'undefined' && navigator.locks;
-    if (l && typeof l.request === 'function') return l.request(nombre, { ifAvailable: true }, lock => (lock ? fn() : 'ocupado'));
-    return fn();
+    const l = cerrojos();
+    return l ? l.request(nombre, { ifAvailable: true }, lock => (lock ? fn() : 'ocupado')) : fn();
   },
+  // Se cumple cuando el cerrojo queda libre (para reintentar entonces).
+  cuandoLibre: nombre => { const l = cerrojos(); return l ? l.request(nombre, () => {}) : Promise.resolve(); },
 };
 export function configurarCopia({ almacen, ...resto } = {}) {
   if (almacen !== undefined) almacenClave = almacen || almacenIDB;
@@ -210,18 +286,25 @@ export async function cargarClave(persona = estado() && estado().dueño) {
   return claveActual;
 }
 
-// Para la interfaz: { activada, cargada, ultima, error, inactiva, subiendo, avisar }.
+// Para la interfaz: { activada, cargada, ultima, error, inactiva, subiendo, retenida, pausada, desactivada, avisar }.
 export function estadoNube() {
   const n = nube(), S = estado();
-  const activada = !!(claveActual && S && claveActual.persona === S.dueño);
+  const dueño = S && S.dueño;
+  const activada = !!(claveActual && dueño && claveActual.persona === dueño);
+  const deEsta = !n.persona || n.persona === dueño;
   const vieja = !n.ultima || dep.ahora() - Date.parse(n.ultima) > AVISO_DIAS * DIA;
-  return { activada, cargada: claveCargada, ultima: n.ultima || null, error: n.error || null, inactiva: !!n.inactiva,
-    subiendo: !!subiendo, avisar: activada && (!!n.inactiva || vieja) };
+  // Hubo copias desde este móvil para esta persona, pero ya no está su clave (p. ej. se borró IndexedDB).
+  const desactivada = claveCargada && !activada && !!dueño && !!n.ultima && n.persona === dueño;
+  const retenida = activada && deEsta && n.retenida ? n.retenida : null;
+  const pausada = activada && !!n.pausada;
+  return { activada, cargada: claveCargada, ultima: deEsta ? n.ultima || null : null, error: deEsta ? n.error || null : null, inactiva: !!n.inactiva,
+    subiendo: !!subiendo, retenida, pausada, desactivada,
+    avisar: desactivada || (activada && (!!n.inactiva || vieja || !!retenida || pausada)) };
 }
 
 // ── Servidor (api/copia.js) ──
 const hechas = S => Object.values((S && S.sesiones) || {}).filter(s => s && s.estado === 'hecha');
-function metadatos(S) {
+export function metadatos(S) {
   const h = hechas(S);
   const ultima = h.map(s => String(s.fecha || s.terminada || '').slice(0, 10)).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f)).sort().pop() || '';
   return { sesiones: h.length, ultima };
@@ -254,30 +337,84 @@ export async function bajar(persona, nombre, opciones = {}) {
   return new Uint8Array(await r.arrayBuffer());
 }
 
-// ── Activar, cambiar la frase y restaurar ──
-// Activa las copias de `persona` en este móvil con `frase`. Si ya hay copias en la nube y la frase no abre
-// la última, lanza ErrorNube('otra-frase') salvo con { aunqueNoCoincida: true }.
-export async function activar(persona, frase, { aunqueNoCoincida = false } = {}) {
-  if (typeof frase !== 'string' || frase.length < FRASE_MIN) throw new ErrorNube(`La frase tiene que tener al menos ${FRASE_MIN} caracteres.`, 'corta');
-  let ultimaNube;
-  if (!aunqueNoCoincida) {
-    try { const l = await listar(persona); ultimaNube = l[0] || null; } catch { ultimaNube = null; } // sin red o sin nube: se activa igual
-    if (ultimaNube) {
-      try {
-        const b = await bajar(persona, ultimaNube.nombre);
-        const c = leerCabecera(b);
-        const clave = await derivarClave(frase, c.sal, c.iteraciones);
-        await descifrar(b, clave);
-        // La frase abre las copias que ya hay: se sigue con su misma sal (misma clave).
-        return guardarClave(persona, { clave, sal: c.sal, iteraciones: c.iteraciones });
-      } catch (e) {
-        if (e instanceof ErrorNube && e.codigo === 'frase') throw new ErrorNube('Esta frase no abre tu última copia en la nube. Si es una frase nueva, las copias anteriores solo se abrirán con la anterior.', 'otra-frase');
-        // No se pudo comprobar (sin red, copia dañada…): se activa con sal nueva.
+// ── Probar una frase (o la clave guardada) contra la lista ──
+// No depende de la copia más nueva: agrupa las copias por sal, deriva UNA vez por sal distinta (como mucho
+// MAX_SALES, de la más reciente a la más antigua) y marca cada copia: abre true/false/null (sin probar),
+// con sus sesiones y última sesión si abre. Así sirven las frases antiguas y una copia basura no bloquea nada.
+// Las copias de la versión 1 (sin sal en el nombre) se bajan para leer su cabecera.
+// Devuelve { copias, claves: Map(sal base64url → { clave, sal, iteraciones }) }.
+export async function probarCopias(persona, copias, { frase = null, reg = null, codigo } = {}) {
+  const claves = new Map(), descartadas = new Set();
+  const bajadas = new Map();
+  const claveDe = async salTxt => {
+    if (claves.has(salTxt)) return claves.get(salTxt);
+    if (descartadas.has(salTxt)) return null;
+    const sal = deB64u(salTxt);
+    if (!sal || sal.length !== LARGO_SAL) { descartadas.add(salTxt); return null; }
+    let k = null;
+    if (reg && mismaSal(reg.sal, sal)) k = { clave: reg.clave, sal: reg.sal, iteraciones: reg.iteraciones };
+    else if (frase && claves.size + descartadas.size < MAX_SALES) k = { clave: await derivarClave(frase, sal, ITERACIONES), sal, iteraciones: ITERACIONES };
+    if (k) claves.set(salTxt, k); else descartadas.add(salTxt);
+    return k;
+  };
+  const out = [];
+  for (const c of copias) {
+    const x = { ...c, abre: null };
+    try {
+      if (c.sal && c.meta) {
+        const k = await claveDe(c.sal);
+        if (k) {
+          const m = await descifrarNombre(c.meta, k.clave, persona); // null: otra frase o basura
+          x.abre = !!m;
+          if (m) Object.assign(x, m);
+        } else x.abre = frase ? null : false; // sin probar (demasiadas frases distintas) u otra frase
+      } else {
+        // Versión 1: hay que bajarla para saber su sal y probar.
+        const b = await bajar(persona, c.nombre, { codigo });
+        bajadas.set(c.nombre, b);
+        const cab = leerCabecera(b);
+        const salTxt = b64u(cab.sal);
+        x.sal = salTxt;
+        const k = await claveDe(salTxt);
+        if (k) {
+          try { await descifrar(b, k.clave); x.abre = true; } catch { x.abre = false; }
+        } else x.abre = frase ? null : false;
       }
+    } catch (e) {
+      if (e instanceof ErrorNube && (e.codigo === 'sin-red' || e.codigo === 'inactiva' || e.codigo === 'codigo')) throw e;
+      x.abre = false;
     }
+    out.push(x);
+  }
+  return { copias: out, claves, bajadas };
+}
+
+// ── Activar, cambiar la frase y restaurar ──
+// Activa las copias de `persona` en este móvil con `frase`. Si la nube ya tiene copias que abren con esta
+// frase, se sigue con la sal de la más nueva que abre (misma clave) y su contenido pasa a ser la base (no se
+// sube solo nada con menos). Si hay copias y ninguna abre, lanza ErrorNube('otra-frase') salvo con
+// { aunqueNoCoincida: true }. Devuelve { reg, copias: nº en la nube, abren, ultimaQueAbre }.
+export async function activar(persona, frase, { aunqueNoCoincida = false } = {}) {
+  const q = calidadFrase(frase);
+  if (!q.ok) throw new ErrorNube(q.motivo, 'corta');
+  let lista;
+  try { lista = await listar(persona); } catch { lista = []; } // sin red o sin nube: se activa igual
+  if (lista.length) {
+    let p;
+    try { p = await probarCopias(persona, lista, { frase }); } catch { p = null; }
+    const abren = p ? p.copias.filter(c => c.abre) : [];
+    if (abren.length) {
+      const u = abren[0];
+      const k = p.claves.get(u.sal);
+      const reg = await guardarClave(persona, k);
+      ponerBase(persona, { sesiones: u.sesiones || 0, ultima: u.ultima || '' }, { siMayor: true });
+      return { reg, copias: lista.length, abren: abren.length, ultimaQueAbre: u };
+    }
+    if (p && !aunqueNoCoincida) throw new ErrorNube('Esta frase no abre ninguna de tus copias en la nube. Si es una frase nueva, las copias anteriores solo se abrirán con la anterior.', 'otra-frase');
   }
   const sal = nuevaSal();
-  return guardarClave(persona, { clave: await derivarClave(frase, sal), sal, iteraciones: ITERACIONES });
+  const reg = await guardarClave(persona, { clave: await derivarClave(frase, sal), sal, iteraciones: ITERACIONES });
+  return { reg, copias: lista.length, abren: 0, ultimaQueAbre: null };
 }
 async function guardarClave(persona, { clave, sal, iteraciones }) {
   const reg = { persona, sal: new Uint8Array(sal), iteraciones, clave, creada: new Date(dep.ahora()).toISOString() };
@@ -287,9 +424,21 @@ async function guardarClave(persona, { clave, sal, iteraciones }) {
   ponerNube({ error: null });
   return reg;
 }
+// La base: lo último subido o restaurado. Con siMayor, solo sube (nunca baja) lo que ya hubiera.
+function ponerBase(persona, { sesiones, ultima }, { siMayor = false } = {}) {
+  const n = nube();
+  if (siMayor && n.persona === persona && ((n.sesiones || 0) > sesiones || String(n.ultimaSesion || '') > String(ultima || ''))) return;
+  ponerNube({ persona, sesiones, ultimaSesion: ultima || '', retenida: null });
+}
+// Tras restaurar (o cargar a mano) unos datos: lo que hay ahora es la base.
+export function marcarBase() {
+  const S = estado(); if (!S || !S.dueño) return;
+  ponerBase(S.dueño, metadatos(S));
+}
 // Nueva frase: sal y clave nuevas. Las copias siguientes van con ella; las anteriores siguen con la anterior.
 export async function cambiarFrase(persona, frase) {
-  if (typeof frase !== 'string' || frase.length < FRASE_MIN) throw new ErrorNube(`La frase tiene que tener al menos ${FRASE_MIN} caracteres.`, 'corta');
+  const q = calidadFrase(frase);
+  if (!q.ok) throw new ErrorNube(q.motivo, 'corta');
   const sal = nuevaSal();
   return guardarClave(persona, { clave: await derivarClave(frase, sal), sal, iteraciones: ITERACIONES });
 }
@@ -298,41 +447,67 @@ export async function desactivar(persona) {
   if (claveActual && claveActual.persona === persona) claveActual = null;
   avisarNube();
 }
+// Tras «Empezar de cero» en el rescate: no se vuelve a usar la clave hasta que la persona lo confirme.
+export function pausarNube() { ponerNube({ pausada: true }); }
+export function reanudarNube() { ponerNube({ pausada: false }); }
 
-// Baja y descifra una copia. Con `frase` se deriva con la sal de la copia; sin ella, con la clave guardada
-// (si la copia es de la misma sal). Devuelve { texto, recordar } (recordar: guarda la clave tras importar bien).
-export async function abrirCopia(persona, nombre, { frase = null, codigo } = {}) {
-  const b = await bajar(persona, nombre, { codigo });
+// Baja y descifra una copia. Clave: `clave` ({ clave, sal, iteraciones } de probarCopias) si es de su sal; si no,
+// `frase` (con la sal de la copia); si no, la clave guardada (si es de la misma sal). `esperado`: lo que dice
+// el nombre ({ fecha, sesiones, ultima }). Devuelve { texto, meta, avisos, recordar }: avisos si los metadatos de
+// dentro no cuadran con el nombre o la persona; recordar() guarda la clave tras importar bien.
+export async function abrirCopia(persona, nombre, { frase = null, clave = null, codigo, esperado = null, bytes = null } = {}) {
+  const b = bytes || await bajar(persona, nombre, { codigo });
   const c = leerCabecera(b);
-  let clave;
-  if (frase) clave = await derivarClave(frase, c.sal, c.iteraciones);
+  let k;
+  if (clave && mismaSal(clave.sal, c.sal) && clave.iteraciones === c.iteraciones) k = clave;
+  else if (frase) k = { clave: await derivarClave(frase, c.sal, c.iteraciones), sal: c.sal, iteraciones: c.iteraciones };
   else {
     const reg = claveActual && claveActual.persona === persona ? claveActual : await almacenClave.leer(persona);
     if (!reg || !mismaSal(reg.sal, c.sal) || reg.iteraciones !== c.iteraciones) throw new ErrorNube('Esta copia se hizo con otra frase: escríbela para abrirla.', 'pide-frase');
-    clave = reg.clave;
+    k = reg;
   }
-  const texto = await descifrar(b, clave);
-  return { texto, recordar: frase ? () => guardarClave(persona, { clave, sal: c.sal, iteraciones: c.iteraciones }) : null };
+  const { estado: texto, meta, version } = await abrirArchivo(b, k.clave);
+  const avisos = [];
+  if (meta) {
+    if (meta.persona !== persona) avisos.push(`Por dentro dice ser de ${meta.persona === 'victor' ? 'Víctor' : meta.persona === 'virginia' ? 'Virginia' : 'otra persona'}, no de quien elegiste.`);
+    if (esperado) {
+      if (esperado.sesiones != null && meta.sesiones !== esperado.sesiones) avisos.push(`La lista decía ${+esperado.sesiones} sesiones y dentro hay ${+meta.sesiones}.`);
+      if (esperado.ultima !== undefined && (esperado.ultima || null) !== (meta.ultima || null)) avisos.push('La fecha de la última sesión no coincide con la de la lista.');
+      const t1 = Date.parse(esperado.fecha), t2 = Date.parse(meta.creada);
+      if (!Number.isNaN(t1) && (Number.isNaN(t2) || t2 > t1 + 5 * 60e3 || t1 - t2 > 30 * 60e3)) avisos.push('La fecha de dentro no coincide con la de la subida.');
+    }
+  }
+  return { texto, meta, version, avisos, recordar: frase || (clave && !(claveActual && mismaSal(claveActual.sal, c.sal))) ? () => guardarClave(persona, k) : null };
 }
 
 // ── Subir ──
 let subiendo = null;      // la subida en curso (promesa)
 let otraVez = false;      // se pidió otra copia mientras se subía
+let forzarOtraVez = false;
+let esperandoCerrojo = false;
 let faltaRed = false;     // se quiso copiar sin red: se reintenta al volver
 let tCambios = null;
 
-async function subirYa(motivo) {
+async function subirYa(motivo, { forzar = false } = {}) {
   const S = estado();
   if (!S || !S.dueño) return 'sin-dueño';
   if (estadoGuardado().rescate) return 'rescate';
   const reg = claveActual && claveActual.persona === S.dueño ? claveActual : null;
   if (!reg) return 'sin-clave';
+  const persona = S.dueño, m = metadatos(S), n = nube();
+  if (n.pausada && !forzar) return 'pausada';
+  // No subir sola una copia vacía o atrasada como «la más nueva».
+  if (!forzar && n.persona === persona && ((n.sesiones || 0) > m.sesiones || String(n.ultimaSesion || '') > m.ultima)) {
+    if (!n.retenida || n.retenida.sesiones !== m.sesiones) ponerNube({ retenida: { sesiones: m.sesiones, ultima: m.ultima, base: n.sesiones || 0, baseUltima: n.ultimaSesion || '' } });
+    return 'retenida';
+  }
   if (!dep.enLinea()) { faltaRed = true; return 'sin-red'; }
-  const persona = S.dueño, m = metadatos(S);
-  const bytes = await cifrar(exportar(), reg);
+  const creada = new Date(dep.ahora()).toISOString();
+  const bytes = await cifrar(empaquetar({ persona, creada, ...m }, exportar()), reg);
   if (bytes.length > LIMITE_SUBIDA) { ponerNube({ error: 'Tus datos ocupan demasiado para la nube: guarda una copia en un archivo.' }); return 'grande'; }
+  const meta = await cifrarNombre(m, reg.clave, persona);
   try {
-    await pedir({ binario: bytes, cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sesiones': String(m.sesiones), 'x-copia-ultima': m.ultima } });
+    await pedir({ binario: bytes, cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': b64u(reg.sal), 'x-copia-meta': meta } });
   } catch (e) {
     if (e.codigo === 'sin-red') { faltaRed = true; return 'sin-red'; }
     if (e.codigo === 'inactiva') { ponerNube({ inactiva: true, error: e.message }); return 'inactiva'; }
@@ -340,21 +515,26 @@ async function subirYa(motivo) {
     return 'error';
   }
   faltaRed = false;
-  ponerNube({ ultima: new Date(dep.ahora()).toISOString(), error: null, inactiva: false, motivo });
+  ponerNube({ persona, ultima: new Date(dep.ahora()).toISOString(), sesiones: m.sesiones, ultimaSesion: m.ultima, error: null, inactiva: false, retenida: null, pausada: false, motivo });
   return 'ok';
 }
 
-// Pide una copia ahora. Si ya hay una subiendo, se hace otra al acabar (una sola, con lo último).
-export function copiarAhora(motivo = 'manual') {
-  if (subiendo) { otraVez = true; return subiendo; }
+// Pide una copia ahora. Si ya hay una subiendo, se hace otra al acabar (una sola, con lo último). Si otra
+// pestaña tiene el cerrojo, se reintenta cuando lo suelte. { forzar }: «Subir de todos modos».
+export function copiarAhora(motivo = 'manual', { forzar = false } = {}) {
+  if (subiendo) { otraVez = true; forzarOtraVez = forzarOtraVez || forzar; return subiendo; }
   subiendo = (async () => {
     let r;
-    try { r = await dep.bloqueo('pipos-copia-nube', () => subirYa(motivo)); } catch (e) { console.error('Copia en la nube', e); ponerNube({ error: 'No se pudo hacer la copia en la nube.' }); r = 'error'; }
+    try { r = await dep.bloqueo('pipos-copia-nube', () => subirYa(motivo, { forzar })); } catch (e) { console.error('Copia en la nube', e); ponerNube({ error: 'No se pudo hacer la copia en la nube.' }); r = 'error'; }
+    if (r === 'ocupado' && !esperandoCerrojo) {
+      esperandoCerrojo = true;
+      Promise.resolve(dep.cuandoLibre('pipos-copia-nube')).catch(() => {}).then(() => { esperandoCerrojo = false; copiarAhora(motivo, { forzar }); });
+    }
     return r;
   })().finally(() => {
     subiendo = null;
     avisarNube();
-    if (otraVez) { otraVez = false; copiarAhora(motivo); }
+    if (otraVez) { const f = forzarOtraVez; otraVez = false; forzarOtraVez = false; copiarAhora(motivo, { forzar: f }); }
   });
   avisarNube();
   return subiendo;
@@ -364,6 +544,7 @@ export const subidaEnCurso = () => subiendo;
 // ── Disparadores ──
 let sesionesVistas = 0;
 let iniciado = false;
+let dejarDeEscuchar = null;
 const CAMBIOS = /^(perfil|medidas)(-silencio)?$/;
 function alCambiar(motivo) {
   const S = estado();
@@ -383,20 +564,23 @@ export async function revisarApertura() {
   await cargarClave();
   const n = nube();
   if (!claveActual) return 'sin-clave';
-  if (n.ultima && dep.ahora() - Date.parse(n.ultima) <= DIA) return 'reciente';
+  if (n.ultima && n.persona === claveActual.persona && dep.ahora() - Date.parse(n.ultima) <= DIA) return 'reciente';
   return copiarAhora('apertura');
 }
 export function iniciarCopias() {
   if (iniciado) return revisarApertura();
   iniciado = true;
   sesionesVistas = hechas(estado()).length;
-  escuchar(alCambiar);
+  dejarDeEscuchar = escuchar(alCambiar);
   if (typeof window !== 'undefined') window.addEventListener('online', alVolverRed);
   return revisarApertura();
 }
 // Solo para pruebas: deja el módulo como recién cargado.
 export function reiniciarCopia() {
-  dep.clearTimeout(tCambios); tCambios = null; subiendo = null; otraVez = false; faltaRed = false;
+  if (dejarDeEscuchar) { dejarDeEscuchar(); dejarDeEscuchar = null; }
+  if (typeof window !== 'undefined') window.removeEventListener('online', alVolverRed);
+  iniciado = false;
+  dep.clearTimeout(tCambios); tCambios = null; subiendo = null; otraVez = false; forzarOtraVez = false; faltaRed = false; esperandoCerrojo = false;
   claveActual = null; claveCargada = false; memoria = null;
   sesionesVistas = hechas(estado()).length;
 }
