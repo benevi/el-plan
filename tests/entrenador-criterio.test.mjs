@@ -595,7 +595,8 @@ test('B5 y M4: dosis absurdas de la IA se acotan (cardio 300 min, plancha 10 min
   assert.match(x('bici-estatica').reps, /^\d+ min$/);
   assert.notEqual(x('press-pecho-maquina').reps, '1-50');
   assert.doesNotMatch(x('jalon-pecho').reps, /fallo/);
-  if (x('plancha')) assert.ok(prog_seg(x('plancha').reps) <= 90, x('plancha').reps);
+  assert.ok(x('plancha'), 'la plancha sigue como principal');
+  assert.ok(prog_seg(x('plancha').reps) <= 90, x('plancha').reps);
   const p = vIA({ objetivos: ['natacion'], lugares: ['piscina'], nadar25: true, nivel: 2 }, { ejercicios: [E('crol', 'principal', { reps: '1000 m' }), E('espalda'), E('patada-espalda-tabla', 'principal', { reps: '4 × 25 m' })] }, { lugar: 'piscina' }).v;
   assert.ok(!p.sesion.ejercicios.some(y => /1000 m/.test(y.reps)));
   // Cardio sin unidad son minutos.
@@ -607,7 +608,8 @@ const prog_seg = r => { const m = String(r).match(/(\d+)(?:-(\d+))?\s*(s|min)/);
 test('C-SALUD-0 (revisión B7): tensión alta: isométricos ≤ 45 s, descanso ≥ 60 s y sus notas en la explicación', () => {
   const { v } = vIA({ objetivos: ['musculo'], salud: { hipertension: 'controlada' } }, { ejercicios: [...IA3, E('plancha', 'principal', { reps: '60-90 s', descanso: 30 }), E('curl-mancuernas', 'principal', { descanso: 20 })] });
   const pl = v.sesion.ejercicios.find(y => y.id === 'plancha');
-  if (pl) assert.ok(prog_seg(pl.reps) <= 45, pl.reps);
+  assert.ok(pl, 'la plancha sigue como principal');
+  assert.ok(prog_seg(pl.reps) <= 45, pl.reps);
   assert.ok(v.sesion.ejercicios.filter(y => y.rol === 'principal').every(y => y.descanso >= 60));
   assert.ok(v.sesion.explicacion.some(t => /^Tensión alta/.test(t)));
   assert.ok(v.sesion.explicacion.some(t => /2 repeticiones de margen/.test(t)));
@@ -642,8 +644,21 @@ test('M5: el validador se defiende de sesiones rotas', () => {
   }
 });
 
-test('N3: lo que se quita por riesgo no vuelve como rehabilitación de la misma zona', () => {
-  const { v } = vIA({ objetivos: ['musculo'], lesiones: [L('rodilla', 3)] }, { ejercicios: [E('sentadilla-goblet'), E('jalon-pecho'), E('press-pecho-maquina')] }, { dolorHoy: { rodilla: 5 } });
-  const quitados = v.cambios.filter(c => /goblet/i.test(c));
-  if (quitados.length) assert.ok(!v.sesion.ejercicios.some(x => x.id === 'sentadilla-goblet'));
+test('N3: lo que se quita o se cambia (por riesgo o por nivel) no vuelve como rehabilitación', () => {
+  // Rodilla en B0: la sentadilla goblet (nivel 2) se cambia por nivel y no puede volver como rehabilitación de fase 3.
+  const { v } = vIA({ objetivos: ['musculo'], lesiones: [L('rodilla', 2)] }, { ejercicios: [E('prensa-piernas'), E('sentadilla-goblet'), E('step-up'), E('press-pecho-maquina'), E('eliptica', 'cardio', { reps: '20 min' })] }, { dolorHoy: { rodilla: 0 } });
+  assert.ok(v.cambios.some(c => /cambio sentadilla goblet/.test(c)), v.cambios.join(' / '));
+  assert.ok(!v.sesion.ejercicios.some(x => x.id === 'sentadilla-goblet'), v.sesion.ejercicios.map(x => x.rol + ':' + x.id).join(', '));
+});
+
+test('N1: al cambiar ejercicios por riesgo, como mucho un principal por músculo si hay otra opción', () => {
+  const { v } = vIA({ objetivos: ['musculo'], lesiones: [L('rodilla', 2, { desde: '2026-11-04' })] }, { ejercicios: [E('prensa-piernas'), E('sentadilla-goblet'), E('step-up'), E('press-pecho-maquina'), E('eliptica', 'cardio', { reps: '20 min' })] }, { dolorHoy: { rodilla: 2 } });
+  const m = v.sesion.ejercicios.filter(x => x.rol === 'principal').map(x => cat.ex(x.id).m[0]);
+  assert.equal(new Set(m).size, m.length, m.join(', '));
+  assert.ok(m.length >= 3);
+});
+
+test('M5: una tarea cuyo nombre no es texto se descarta', () => {
+  const { v } = vIA({ objetivos: ['musculo'] }, { ejercicios: IA3, calentamiento: [null, { nombre: { a: 1 } }, { nombre: 5 }], vuelta: [{ nombre: ['estiramiento'] }] });
+  assert.ok([...v.sesion.calentamiento, ...v.sesion.vuelta].every(t => typeof t.nombre === 'string'));
 });

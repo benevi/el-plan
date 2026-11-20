@@ -55,9 +55,11 @@ function alternativa(S, ctx, e, excluir, actuales = []) {
   // Mejor no repetir el músculo principal de otro ejercicio de la sesión.
   const repetidos = m => actuales.filter(x => x && x.rol === 'principal' && ex(x.id) && ex(x.id).m[0] === m).length;
   const c = ctx.pool.filter(a => a.id !== e.id && !excluir.includes(a.id) && valePrincipal(S, a, ctx) && (a.m[0] === e.m[0] || e.m.includes(a.m[0])));
-  const nivelOk = c.filter(a => a.niv <= ctx.nivel);
-  return (nivelOk.length ? nivelOk : c)
-    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) - Math.abs(a.niv - e.niv) + (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) - repetidos(a.m[0]) * 4 }))
+  // Como mucho un principal por músculo: solo alternativas de un músculo que aún no esté (N1).
+  const libres = c.filter(a => !repetidos(a.m[0]));
+  const nivelOk = libres.filter(a => a.niv <= ctx.nivel);
+  return (nivelOk.length ? nivelOk : libres)
+    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) - Math.abs(a.niv - e.niv) + (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) }))
     .sort((x, y) => y.p - x.p || x.a.id.localeCompare(y.a.id)).map(x => x.a)[0] || null;
 }
 
@@ -225,7 +227,9 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     ejs.push(x);
   }
 
-  // 3. Rehabilitación de cada zona activa: al menos 1 por zona, como mucho 2.
+  // 3. Rehabilitación de cada zona activa: al menos 1 por zona, como mucho 2. Lo propuesto que se ha quitado
+  // o cambiado (por riesgo, nivel o rol) no vuelve como rehabilitación (N3).
+  propuestos.filter(id => !ejs.some(y => y.id === id)).forEach(id => quitados.add(id));
   const rehab = ejs.filter(x => x.rol === 'rehab');
   zonasRehab(ctx).forEach(z => {
     const deZona = rehab.filter(x => x.zona === z);
@@ -350,7 +354,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
 
   // 7. Calentamiento y vuelta a la calma: tareas válidas, ≥ 2 tareas y un estiramiento en la vuelta.
   const principales = () => ejs.filter(x => x.rol === 'principal').map(x => ex(x.id));
-  const tareaValida = t => t && typeof t === 'object' && (t.nombre || (t.id && ex(t.id)));
+  const tareaValida = t => t && typeof t === 'object' && (t.nombre == null || typeof t.nombre === 'string') && (t.nombre || (t.id && ex(t.id)));
   // Tareas sin id (la IA las manda así): se busca su ejercicio por el nombre; si no casa y hay zonas activas,
   // la tarea de la IA no se puede comprobar y se cambia por las de las reglas (C-EST-4, B3).
   const porNombre = n => { const k = normalizarTexto(n).trim(); return k ? EJERCICIOS.find(e => normalizarTexto(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizarTexto(e.n).length >= 8 && k.includes(normalizarTexto(e.n))) : null) : null; };
