@@ -3,7 +3,25 @@
 //   modo 'plan'   → el plan de la semana con los días que esa persona tiene esta semana.
 // El móvil manda el catálogo ya filtrado por seguridad; aquí solo se aceptan ids de ese catálogo.
 // El cuerpo llega ya saneado (lista blanca de claves y recortes, ver _comun.js).
-import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError } from './_comun.js';
+//
+// Dos formas de responder con el mismo resultado:
+//   · JSON (por defecto; scripts/casos-ia.mjs): 200 con { sesion } o { plan } al terminar, o el error con su estado.
+//   · En vivo (D6), si la petición trae «Accept: text/event-stream» (el móvil): los errores de la puerta y de
+//     los datos siguen siendo una respuesta normal (401, 400…); una vez aceptada, 200 en text/event-stream con
+//     una línea «data: {json}» por evento: {t:'inicio'}, {t:'progreso', fase, ejercicios, dias, de},
+//     {t:'latido'} cada 10 s, y al final {t:'fin', sesion|plan} (el mismo objeto que en JSON) o
+//     {t:'error', status, error} con el estado y el mensaje fijo que tendría en JSON. Si el stream se corta
+//     sin «fin» ni «error», el móvil lo trata como corte.
+// El corte es por inactividad (INACTIVIDAD_IA_MS sin noticias de Claude), no por tiempo total; solo antes del
+// tope de la función en Vercel (maxDuration 300 s en vercel.json) se corta con un error claro (LIMITE_MS).
+import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError, registrarError, errorPara, ErrorIA } from './_comun.js';
+
+export const INACTIVIDAD_IA_MS = 150_000; // el razonamiento no manda eventos (los «ping» no llegan al SDK)
+export const LATIDO_MS = 10_000;
+export const LIMITE_MS = 285_000;
+// Para las pruebas: tiempos más cortos.
+const tiempos = { inactividad: INACTIVIDAD_IA_MS, latido: LATIDO_MS, limite: LIMITE_MS };
+export function ponerTiempos(t) { Object.assign(tiempos, { inactividad: INACTIVIDAD_IA_MS, latido: LATIDO_MS, limite: LIMITE_MS }, t || {}); }
 
 // Prompt de sistema, escrito desde docs/criterio.md (C-IA-1, C-IA-2): cada bloque cita las reglas que aplica.
 // Es fijo (sin fechas ni datos de la persona) para que no cambie entre llamadas. Las cifras que dependen de la
@@ -172,6 +190,31 @@ function pruebasDe(req, modo) {
   return { activa, modelo, esfuerzo };
 }
 
+// Progreso a partir del texto que va escribiendo Claude: cuántos ejercicios (sesión) o días (plan) lleva.
+// Es una estimación para que la persona vea que avanza; el resultado de verdad es el de «fin».
+function contador(modo, alCambiar) {
+  let texto = '', fase = 'pensando', ultimo = '';
+  const cuenta = re => (texto.match(re) || []).length;
+  const avisar = () => {
+    const p = { fase, ...(modo === 'plan' ? { dias: cuenta(/"diaSemana"\s*:/g) } : { ejercicios: cuenta(/"rol"\s*:/g) }) };
+    const clave = JSON.stringify(p);
+    if (clave !== ultimo) { ultimo = clave; alCambiar(p); }
+  };
+  return ev => {
+    if (!ev || typeof ev !== 'object') return;
+    if (ev.type === 'content_block_start' && ev.content_block) {
+      if (ev.content_block.type === 'thinking') fase = 'pensando';
+      if (ev.content_block.type === 'fallback') texto = ''; // el modelo de respaldo puede empezar de nuevo
+      if (ev.content_block.type === 'text') fase = 'escribiendo';
+    }
+    if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta' && typeof ev.delta.text === 'string') {
+      fase = 'escribiendo';
+      texto += ev.delta.text;
+    }
+    avisar();
+  };
+}
+
 export default async function handler(req, res) {
   const inicio = Date.now();
   const crudo = comprobar(req, res); if (!crudo) return;
@@ -205,13 +248,46 @@ export default async function handler(req, res) {
   // Lo que se devuelve en «uso» con x-pruebas: lo mismo que el registro, sin nada de la persona.
   const uso = () => ({ modelo: registro.modelo, modeloPedido: registro.modeloPedido, esfuerzo: registro.esfuerzo, entrada: registro.entrada, salida: registro.salida,
     cacheLeida: registro.cacheLeida, cacheEscrita: registro.cacheEscrita, iteraciones: registro.iteraciones, fallback: registro.fallback, ms: Date.now() - inicio });
-  const corte = cancelarAlCerrar(req, res, () => { registro.resultado = 'cancelada'; escribirRegistro(); });
+  const enVivo = /\btext\/event-stream\b/i.test(String((req.headers || {}).accept || ''));
+  registro.enVivo = enVivo;
+  let latido = null, limite = null;
+  const parar = () => { clearInterval(latido); clearTimeout(limite); };
+  const corte = cancelarAlCerrar(req, res, () => { parar(); registro.resultado = 'cancelada'; escribirRegistro(); });
+  // En vivo: una línea SSE por evento. Nada se escribe en una conexión cerrada.
+  const enviar = o => { if (!res.writableEnded && !res.destroyed) res.write('data: ' + JSON.stringify(o) + '\n\n'); };
+  let alEvento;
+  let tope = null;
+  if (enVivo) {
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+    enviar({ t: 'inicio', modo });
+    latido = setInterval(() => enviar({ t: 'latido' }), tiempos.latido);
+    if (latido.unref) latido.unref();
+    const de = modo === 'plan' && body.semana && Array.isArray(body.semana.dias) ? body.semana.dias.length : undefined;
+    alEvento = contador(modo, p => enviar({ t: 'progreso', ...p, ...(de ? { de } : {}) }));
+    // Antes de que Vercel corte la función a los 300 s, se corta aquí con un mensaje claro.
+    const ctrlTope = new AbortController();
+    corte.signal.addEventListener('abort', () => ctrlTope.abort(), { once: true });
+    limite = setTimeout(() => { registro.limite = true; ctrlTope.abort(); }, tiempos.limite);
+    if (limite.unref) limite.unref();
+    tope = ctrlTope.signal;
+  }
+  const señal = tope || corte.signal;
+  const comunPedir = { signal: señal, registro, alEvento, inactividadMs: tiempos.inactividad };
+  const responder = (clave, valor) => {
+    const fuera = pruebas.activa ? { [clave]: valor, uso: uso() } : { [clave]: valor };
+    if (!enVivo) return res.status(200).json(fuera);
+    enviar({ t: 'fin', ...fuera });
+    res.end();
+  };
   try {
     if (modo === 'plan') {
       const plan = await pedirJSON(clienteIA(), {
         sistema: SISTEMA + '\n\n' + SISTEMA_PLAN,
         usuario: mensajeUsuario('plan', { ...comun, semana: body.semana }),
-        esquema: esquemaPlan(ids, idsSuaves, lugares), esfuerzo: registro.esfuerzo, maxTokens: 48000, signal: corte.signal, registro,
+        esquema: esquemaPlan(ids, idsSuaves, lugares), esfuerzo: registro.esfuerzo, maxTokens: 48000, ...comunPedir,
       });
       let descartados = 0;
       (Array.isArray(plan.dias) ? plan.dias : []).forEach(d => {
@@ -221,22 +297,35 @@ export default async function handler(req, res) {
       });
       registro.descartados = descartados;
       registro.resultado = 'ok';
-      return res.status(200).json(pruebas.activa ? { plan, uso: uso() } : { plan });
+      return responder('plan', plan);
     }
     const sesion = await pedirJSON(clienteIA(), {
       sistema: SISTEMA + '\n\n' + SISTEMA_SESION,
       usuario: mensajeUsuario('sesion', { ...comun, checkin: body.checkin, planDeHoy: body.planDeHoy || null, ajusteReglas: body.ajusteReglas || [] }),
-      esquema: esquemaSesion(ids, idsSuaves), esfuerzo: registro.esfuerzo, modelo: pruebas.modelo, signal: corte.signal, registro,
+      esquema: esquemaSesion(ids, idsSuaves), esfuerzo: registro.esfuerzo, modelo: pruebas.modelo, ...comunPedir,
     });
     const antes = (sesion.ejercicios || []).length;
     sesion.ejercicios = (sesion.ejercicios || []).filter(e => ids.includes(e.id));
     registro.descartados = antes - sesion.ejercicios.length;
     registro.resultado = 'ok';
-    return res.status(200).json(pruebas.activa ? { sesion, uso: uso() } : { sesion });
-  } catch (e) {
-    const r = responderError(res, e, 'entrenador', corte.signal);
-    if (!escrito) registro.resultado = r;
+    return responder('sesion', sesion);
+  } catch (e0) {
+    // El tope de Vercel se cuenta como inactividad (504): la IA no ha terminado a tiempo.
+    const e = registro.limite && !corte.signal.aborted ? new ErrorIA('inactividad', 'tope de la función') : e0;
+    if (!enVivo) {
+      const r = responderError(res, e, 'entrenador', corte.signal);
+      if (!escrito) registro.resultado = r;
+    } else {
+      registrarError(e, 'entrenador');
+      if (corte.signal.aborted || res.writableEnded || res.destroyed) { if (!escrito) registro.resultado = 'cancelada'; } else {
+        const { cat, status, error } = errorPara(e);
+        enviar({ t: 'error', status, error });
+        res.end();
+        if (!escrito) registro.resultado = cat;
+      }
+    }
   } finally {
+    parar();
     corte.soltar();
     escribirRegistro();
   }

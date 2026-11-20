@@ -145,18 +145,52 @@ export function sanear(crudo) {
 // (el plan de la semana) no choquen con los límites de tiempo de una petición normal.
 // `signal` corta la llamada si el móvil se va; `registro` recoge lo que se apunta en el log.
 // `modelo`: solo para las pruebas de scripts/casos-ia.mjs (lista cerrada en entrenador.js); si no, MODELO.
-export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 'low', maxTokens = 16000, modelo = MODELO, signal, registro = {} }) {
-  const msg = await client.beta.messages.stream({
-    model: modelo,
-    max_tokens: maxTokens,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: esfuerzo, format: { type: 'json_schema', schema: esquema } },
-    // El prompt de sistema es fijo: se marca para la caché (5 min). Escribirla cuesta un 25 % más esos tokens;
-    // leerla, un 10 %. scripts/casos-ia.mjs enseña si se aprovecha (cacheLeida / cacheEscrita).
-    system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: usuario }],
-  }, { signal }).finalMessage();
+// `alEvento(ev)`: cada evento del stream de Claude (lo usa entrenador.js para el progreso que ve el móvil).
+// `inactividadMs`: si Claude pasa ese tiempo sin mandar nada, se corta con ErrorIA('inactividad'). El corte
+// es por inactividad, no por tiempo total: una respuesta larga que sigue llegando no se corta.
+export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 'low', maxTokens = 16000, modelo = MODELO, signal, registro = {}, alEvento, inactividadMs = 0 }) {
+  // Señal propia: la corta el móvil (signal) o el vigilante de inactividad; así se sabe quién cortó.
+  const ctrl = new AbortController();
+  let cortadoPor = '';
+  const cortar = quien => { if (!ctrl.signal.aborted) { cortadoPor = quien; ctrl.abort(); } };
+  const alAbortar = () => cortar('movil');
+  if (signal) { if (signal.aborted) cortar('movil'); else signal.addEventListener('abort', alAbortar, { once: true }); }
+  let vigia = null;
+  const vigilar = () => {
+    if (!inactividadMs) return;
+    clearTimeout(vigia);
+    vigia = setTimeout(() => cortar('inactividad'), inactividadMs);
+    if (vigia.unref) vigia.unref(); // la petición abierta ya mantiene viva la función
+  };
+  vigilar();
+  let msg;
+  try {
+    const stream = client.beta.messages.stream({
+      model: modelo,
+      max_tokens: maxTokens,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: esfuerzo, format: { type: 'json_schema', schema: esquema } },
+      // El prompt de sistema es fijo: se marca para la caché (5 min). Escribirla cuesta un 25 % más esos tokens;
+      // leerla, un 10 %. scripts/casos-ia.mjs enseña si se aprovecha (cacheLeida / cacheEscrita).
+      system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: usuario }],
+    }, { signal: ctrl.signal });
+    if (stream && typeof stream.on === 'function') {
+      stream.on('connect', vigilar);
+      stream.on('streamEvent', ev => {
+        vigilar();
+        if (alEvento) { try { alEvento(ev); } catch (e) { /* el progreso nunca rompe la respuesta */ } }
+      });
+    }
+    msg = await stream.finalMessage();
+  } catch (e) {
+    if (cortadoPor === 'inactividad') throw new ErrorIA('inactividad', `sin noticias de la IA en ${inactividadMs} ms`);
+    throw e;
+  } finally {
+    clearTimeout(vigia);
+    if (signal) signal.removeEventListener('abort', alAbortar);
+  }
   Object.assign(registro, { id: msg.id, modelo: msg.model, stop_reason: msg.stop_reason }, uso(msg.usage));
   // Solo vale una respuesta terminada (end_turn): max_tokens, pause_turn, tool_use… se tratan como incompletas.
   if (msg.stop_reason === 'refusal') throw new ErrorIA('negativa');
@@ -218,6 +252,8 @@ const MENSAJES = {
   permiso: [502, 'la clave de la IA no tiene permiso para este modelo'],
   saldo: [502, 'la cuenta de la API de Claude no tiene saldo'],
   ritmo: [429, 'demasiadas peticiones, prueba en un minuto'],
+  sobrecarga: [529, 'la IA está saturada ahora mismo, prueba en unos minutos'],
+  inactividad: [504, 'la IA ha dejado de responder'],
   rechazada: [502, 'petición rechazada por la IA'],
   conexion: [502, 'el servidor no pudo conectar con la IA'],
   ilegible: [502, 'la IA devolvió una respuesta que no se pudo leer'],
@@ -232,19 +268,29 @@ export function categoria(e) {
   if (e instanceof Anthropic.PermissionDeniedError) return 'permiso';
   if (e instanceof Anthropic.PaymentRequiredError || (e && e.type === 'billing_error') || /credit balance/i.test(String(e && e.message))) return 'saldo';
   if (e instanceof Anthropic.RateLimitError) return 'ritmo';
+  // 529 al pedir, o un evento «overloaded_error» a mitad del stream (llega como APIError sin status).
+  if (e instanceof Anthropic.OverloadedError || (e && (e.status === 529 || e.type === 'overloaded_error' || (e.error && e.error.error && e.error.error.type === 'overloaded_error')))) return 'sobrecarga';
   if (e instanceof Anthropic.BadRequestError) return 'rechazada';
   if (e instanceof Anthropic.APIConnectionError) return 'conexion';
   if (e instanceof SyntaxError) return 'ilegible';
   return 'otro';
 }
+// El estado HTTP y el mensaje fijo de un error (nunca el texto crudo de la excepción).
+export function errorPara(e) {
+  let cat = categoria(e);
+  if (cat === 'cancelada') cat = 'otro';
+  const [status, error] = MENSAJES[cat] || MENSAJES.otro;
+  return { cat, status, error: cat === 'otro' && Number.isInteger(e && e.status) ? `${error} (error ${e.status})` : error };
+}
+export function registrarError(e, quien) {
+  console.error(quien + ': error de la IA', JSON.stringify({ categoria: categoria(e), status: e && e.status, tipo: e && (e.type || e.name), peticion: e && e.requestID }), String((e && e.message) || '').slice(0, 2000));
+}
 // signal: la de cancelarAlCerrar. Solo se calla si la cancelación es nuestra o la respuesta ya no se puede escribir;
 // un aborto que no sea nuestro es un error más y se responde con el mensaje genérico.
 export function responderError(res, e, quien, signal) {
-  let cat = categoria(e);
-  console.error(quien + ': error de la IA', JSON.stringify({ categoria: cat, status: e && e.status, tipo: e && (e.type || e.name), peticion: e && e.requestID }), String((e && e.message) || '').slice(0, 2000));
+  registrarError(e, quien);
   if ((signal && signal.aborted) || res.writableEnded || res.destroyed) return 'cancelada';
-  if (cat === 'cancelada') cat = 'otro';
-  const [status, error] = MENSAJES[cat] || MENSAJES.otro;
-  res.status(status).json({ error: cat === 'otro' && Number.isInteger(e && e.status) ? `${error} (error ${e.status})` : error });
+  const { cat, status, error } = errorPara(e);
+  res.status(status).json({ error });
   return cat;
 }
