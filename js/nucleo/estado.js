@@ -54,7 +54,7 @@ let temporizadorGuardar = null;
 // con la misma forma (getItem/setItem) mediante `usarAlmacen`; si no se inyecta nada, se usa localStorage.
 let almacenInyectado = null;
 const almacen = () => almacenInyectado || localStorage;
-export function usarAlmacen(obj) { almacenInyectado = obj || null; }
+export function usarAlmacen(obj) { clearTimeout(temporizadorGuardar); almacenInyectado = obj || null; }
 
 function rellenar(base, x) {
   // Añade claves que falten sin pisar lo guardado (útil al ampliar el modelo).
@@ -66,6 +66,7 @@ function rellenar(base, x) {
 }
 
 export function cargar() {
+  clearTimeout(temporizadorGuardar); // un guardado pendiente del estado anterior no debe escribir sobre el nuevo
   let x = null;
   try { x = JSON.parse(almacen().getItem(CLAVE) || 'null'); } catch (e) { x = null; }
   if (!x) {
