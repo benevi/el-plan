@@ -83,17 +83,19 @@ for (const [dir, nombre] of Object.entries(DIRS)) {
     `Fuentes: ${fuentes.join(', ')} (${kb.toFixed(1).replace('.', ',')} KB de 150). Iconos PNG: ${pngTxt.join(', ')}.\n`;
 }
 
-// Iconos de las propuestas de logo
-let logosTxt = '';
-try {
-  for (const id of (await readdir(path.join(AQUI, 'logos'), { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)) {
-    const pngs = (await readdir(path.join(AQUI, 'logos', id))).filter(f => f.endsWith('.png'));
-    const t = [];
-    for (const f of pngs) { const k = (await stat(path.join(AQUI, 'logos', id, f))).size / 1024; if (k > 50) fallos++; t.push(k.toFixed(1).replace('.', ',') + ' KB'); }
-    logosTxt += `| ${id} | ${t.join(', ')} |\n`;
-  }
-} catch { /* sin carpeta de logos */ }
-if (logosTxt) md += `\n#### Propuestas de logo (PNG 192, 512 y maskable 512; máximo 50 KB)\n\n| Propuesta | PNG |\n|---|---|\n${logosTxt}`;
+// Iconos de las propuestas de logo (todas las rondas)
+for (const [carpeta, titulo] of [['logos', 'Propuestas de logo, primera ronda'], ['logos-2', 'Símbolo de pareja (segunda ronda de logos)']]) {
+  let txt = '';
+  try {
+    for (const id of (await readdir(path.join(AQUI, carpeta), { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)) {
+      const pngs = (await readdir(path.join(AQUI, carpeta, id))).filter(f => f.endsWith('.png'));
+      const t = [];
+      for (const f of pngs) { const k = (await stat(path.join(AQUI, carpeta, id, f))).size / 1024; if (k > 50) fallos++; t.push(k.toFixed(1).replace('.', ',') + ' KB'); }
+      txt += `| ${id} | ${t.join(', ')} |\n`;
+    }
+  } catch { /* sin carpeta */ }
+  if (txt) md += `\n#### ${titulo} (PNG 192, 512 y maskable 512; máximo 50 KB)\n\n| Propuesta | PNG |\n|---|---|\n${txt}`;
+}
 
 const tabla = `| Dirección | Pares que cumplen | Contraste mínimo medido | ΔE mínimo entre personas | Fuentes | PNG (192, 512, maskable) |\n|---|---|---|---|---|---|\n${resumen.join('\n')}\n`;
 const salida = `<!-- contraste:inicio -->\n_Generado con \`node prototipos/identidad/contraste.mjs --escribir\`. No editar a mano._\n\n${tabla}${md}<!-- contraste:fin -->`;

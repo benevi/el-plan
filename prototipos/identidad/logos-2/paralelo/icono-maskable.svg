@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" fill="#081723"/>
+<g transform="translate(256 256) scale(.78) translate(-256 -256)">
+<path d="M162 350 L278 150" fill="none" stroke="#C9E77E" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/><path d="M264 372 L360 206" fill="none" stroke="#F29BC2" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

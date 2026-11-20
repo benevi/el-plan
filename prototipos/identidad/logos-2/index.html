@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#151618">
+<title>Pipos Fitness, símbolo de pareja</title>
+<link rel="icon" href="arco/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../indice.css">
+<link rel="stylesheet" href="../logos/logos.css">
+<link rel="stylesheet" href="logos-2.css">
+<script type="module" src="logos.js"></script>
+</head>
+<body>
+<header class="intro">
+  <p><a href="../">‹ Las identidades</a></p>
+  <h1>Símbolo de pareja: seis propuestas</h1>
+  <p>Dos personas que entrenan juntas, en abstracto. Cada símbolo tiene dos piezas: la lima de Víctor y el rosa de Virginia. También funciona en un solo tono (columna «un tono»). Mira sobre todo 16 y 32 px y cómo queda entre otros iconos.</p>
+</header>
+
+<section class="finalistas" aria-labelledby="fin-t">
+  <h2 id="fin-t">Las dos finalistas</h2>
+  <div class="dos">
+    <article>
+      <img src="arco/icono-512.png" alt="Arco: dos trazos que se inclinan el uno hacia el otro y casi se tocan arriba" width="120" height="120">
+      <h3>1 · Arco (aplicada en Carril 2)</h3>
+      <p>Dos trazos que suben y se inclinan el uno hacia el otro hasta casi tocarse. Son <b>dos personas que se apoyan</b> sin fundirse (queda un hueco: cada uno es quien es) y juntos forman un <b>arco</b>, una forma que sube. No dibuja cuerpos ni corazones; lo dice la postura.</p>
+      <p>Es la más sencilla de todas: dos trazos y un hueco. A 16 px queda como una «Λ» redondeada en dos colores y en un tono sigue entendiéndose. Va bien con Carril 2 porque usa el mismo trazo redondo y grueso que los botones en píldora.</p>
+      <p class="riesgo">Lo que vigilar: a 16 px, en un tono, se puede leer como una «n» o una «Λ». No conozco marcas con esta forma, pero no he podido comprobarlo con todas.</p>
+    </article>
+    <article>
+      <img src="escalon/icono-512.png" alt="Escalón: dos p minúsculas, la segunda un paso más arriba" width="120" height="120">
+      <h3>2 · Escalón</h3>
+      <p>Dos «p» minúsculas, una de cada color, y la segunda un paso más arriba. Junta las tres ideas: <b>Pipos</b> (el nombre, en plural), <b>dos</b> personas y el <b>progreso</b> (el escalón). Es la más propia y la más fácil de recordar; a 16 px se lee perfecta.</p>
+      <p class="riesgo">Lo que vigilar: son letras, no un símbolo abstracto, así que es menos «de estudio». Que una persona vaya más alta que la otra se puede leer como jerarquía; si molesta, se igualan las alturas.</p>
+    </article>
+  </div>
+</section>
+
+<section aria-labelledby="tam-t">
+  <h2 id="tam-t">A varios tamaños</h2>
+  <div class="seg" role="group" aria-label="Fondo">
+    <button type="button" data-fondo="oscuro" aria-pressed="true">Fondo oscuro</button>
+    <button type="button" data-fondo="claro" aria-pressed="false">Fondo claro</button>
+  </div>
+  <div class="tabla-logos" id="tabla" data-fondo="oscuro"></div>
+</section>
+
+<section aria-labelledby="movil-t">
+  <h2 id="movil-t">En la pantalla del móvil</h2>
+  <p class="nota">Los cuadros grises son otras apps, de relleno. Arriba, iconos redondeados (como en iPhone); abajo, recortados en círculo (Android, versión maskable).</p>
+  <div class="moviles" id="moviles"></div>
+</section>
+
+<section aria-labelledby="descartes-t">
+  <h2 id="descartes-t">Por qué no las otras cuatro</h2>
+  <ul class="descartes">
+    <li><b>Paralelo.</b> Dos trazos que avanzan a la par. Limpia, pero «//» es una forma muy común (barras, comentarios, «pausa» inclinada) y no se recuerda.</li>
+    <li><b>Ondas.</b> Dos ondas con el mismo ritmo. Bonita y muy de Carril, pero dos ondas apiladas son el signo de Acuario y el «≈»: no es propia.</li>
+    <li><b>Órbita.</b> Dos puntos en la misma órbita con su estela. Tiene movimiento, pero pequeña se confunde con el icono de «sincronizar» o «actualizar».</li>
+    <li><b>Trenza.</b> Dos trazos que se cruzan por encima y por debajo. A tamaño de icono se lee como «XX» y recuerda a una cadena de ADN.</li>
+  </ul>
+</section>
+
+<footer class="pie"><p>Cada propuesta, en <code>prototipos/identidad/logos-2/&lt;propuesta&gt;/</code>: símbolo en dos colores y en un tono, icono, icono maskable, logo con el nombre y PNG (192, 512 y maskable 512). Se generan con <code>herramientas/logos2.py</code> y <code>herramientas/iconos.mjs</code>.</p></footer>
+</body>
+</html>

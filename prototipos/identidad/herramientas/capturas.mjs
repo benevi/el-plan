@@ -160,6 +160,10 @@ if (!solo || solo === 'carril-2') {
     await l.pag.waitForTimeout(600);
     await l.pag.screenshot({ path: path.join(SALIDA, 'logos.png'), fullPage: true });
     if (l.errores.length) fallos.push('logos: ' + l.errores.join(' | '));
+    const l2 = await abrir(ctx, '/prototipos/identidad/logos-2/');
+    await l2.pag.waitForTimeout(600);
+    await l2.pag.screenshot({ path: path.join(SALIDA, 'logos-2.png'), fullPage: true });
+    if (l2.errores.length) fallos.push('logos-2: ' + l2.errores.join(' | '));
   }
   await ctx.close();
 }

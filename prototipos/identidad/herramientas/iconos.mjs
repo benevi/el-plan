@@ -10,7 +10,7 @@ const AQUI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { srv, url } = await arrancar();
 const nav = await lanzarChromium();
 const pag = await nav.newPage();
-const CARPETAS = ['tiza', 'carril', 'hierro', 'carril-2', 'logos/giro', 'logos/marea', 'logos/trazo', 'logos/duo', 'logos/nivel'];
+const CARPETAS = ['logos-2/paralelo', 'logos-2/ondas', 'logos-2/arco', 'logos-2/orbita', 'logos-2/escalon', 'logos-2/trenza', 'tiza', 'carril', 'hierro', 'carril-2', 'logos/giro', 'logos/marea', 'logos/trazo', 'logos/duo', 'logos/nivel'];
 const solo = process.argv.slice(2);
 for (const dir of CARPETAS.filter(c => !solo.length || solo.includes(c))) {
   for (const [svg, png, lado] of [['icono.svg', 'icono-192.png', 192], ['icono.svg', 'icono-512.png', 512], ['icono-maskable.svg', 'icono-maskable-512.png', 512]]) {

@@ -1,0 +1,3 @@
+/* Solo lo que añade esta ronda; el resto viene de ../logos/logos.css */
+.descartes { margin: 0; padding-left: 20px; color: var(--texto-2); display: grid; gap: 8px; max-width: 48em; }
+.descartes b { color: var(--texto); font-weight: 600; }

@@ -2,7 +2,7 @@
 
 Segunda entrega de la fase D. Tres direcciones de identidad **claramente distintas** para Pipos Fitness, solo en tema oscuro, para que Víctor elija una (o una mezcla) desde el móvil. El nombre se mantiene; todo lo demás es nuevo: logo, iconos, colores, letra y movimiento.
 
-**Estado:** primera vuelta vista por Víctor: Carril es la que más se acerca, «sin maravillarme». Segunda vuelta (Carril 2 y cinco logos) pendiente de su opinión.
+**Estado:** Víctor aprueba **Carril 2**. Logos: la primera ronda (Giro, Marea, Trazo, Dúo y Nivel) no le gusta; elige la dirección «símbolo de pareja». La ronda nueva está en `/prototipos/identidad/logos-2/`, con «Arco» aplicado en Carril 2, pendiente de su elección.
 **Dónde verlo:** en la vista previa de Vercel de la rama `diseno-prototipos`, ruta **`/prototipos/identidad/`** (con la barra final). La página índice permite comparar la misma pantalla en las tres direcciones, con Víctor o Virginia, a 360 × 640 o 390 × 844.
 
 ---
@@ -100,11 +100,28 @@ En `/prototipos/identidad/logos/`: cada propuesta a 16, 24, 32, 48, 64 y 128 px,
 
 | Propuesta | Idea | Valoración |
 |---|---|---|
-| **Giro** (finalista 1, la que va en Carril 2) | Dos P que comparten el asta y giran media vuelta | P de Pipos, dos personas y un ciclo (constancia) en una sola forma. Simetría por giro: memorable, se reconoce del revés y a 16 px. No conozco ninguna marca con esta forma, pero no he podido comprobarlo contra todas: conviene revisarlo antes de cerrarla |
+| **Giro** (finalista 1 de la primera ronda) | Dos P que comparten el asta y giran media vuelta | P de Pipos, dos personas y un ciclo (constancia) en una sola forma. Simetría por giro: memorable, se reconoce del revés y a 16 px. No conozco ninguna marca con esta forma, pero no he podido comprobarlo contra todas: conviene revisarlo antes de cerrarla |
 | **Marea** (finalista 2) | Una P sólida con la línea del agua a media altura | La alusión a la piscina mejor resuelta y la más legible pequeña. Menos propia; el segundo tono desaparece a 16 px |
 | Trazo | Una P de un solo trazo con el cuenco abierto | Limpia, pero a tamaño de icono parece una P cualquiera |
 | Dúo | La P en dos piezas separadas por una calle | Correcta y profesional; la idea de «pareja» no se lee sin explicarla |
 | Nivel | Un círculo que se llena de agua | Muy legible, pero genérica (podría ser de cualquier app de agua) |
+
+### Logos, segunda ronda: símbolo de pareja
+
+**Encargo:** algo que represente a dos personas que entrenan juntas, abstracto y no literal (sin figuritas ni corazones; sin aros tipo olímpico, yin-yang, infinito genérico ni estética de apps de citas), pensado para Carril 2: lima de Víctor y rosa de Virginia sobre noche `#081723`, y el nombre en Instrument Sans. Está en `/prototipos/identidad/logos-2/`, con la misma comparación que la primera ronda (16-128 px, fondo oscuro y claro, maskable, pantalla de inicio) y además una versión en un solo tono. La primera ronda sigue en `logos/` sin cambios.
+
+| Propuesta | Idea | Valoración |
+|---|---|---|
+| **Arco** (finalista 1, aplicada en Carril 2) | Dos trazos que suben y se inclinan el uno hacia el otro hasta casi tocarse | Dos personas que se apoyan sin fundirse (el hueco las separa) y juntas forman un arco que sube. Dos trazos y un hueco: la más sencilla y abstracta. Se entiende a 16 px y en un tono, y usa el mismo trazo redondo que los botones de Carril 2. Riesgo: en un tono y muy pequeña puede leerse como «n» o «Λ» |
+| **Escalón** (finalista 2) | Dos «p» minúsculas, la segunda un paso más arriba | Pipos en plural, dos personas y el progreso en una sola forma. La más propia y legible. Riesgo: son letras, no un símbolo abstracto, y la diferencia de altura puede leerse como jerarquía (se pueden igualar) |
+| Paralelo | Dos trazos que avanzan a la par | Limpia, pero «//» es demasiado común y no se recuerda |
+| Ondas | Dos ondas con el mismo ritmo | Muy de Carril, pero es el signo de Acuario y el «≈» |
+| Órbita | Dos puntos en la misma órbita con su estela | Pequeña se confunde con el icono de «sincronizar» |
+| Trenza | Dos trazos que se cruzan por encima y por debajo | Se lee «XX» y recuerda al ADN |
+
+**Aplicado en Carril 2:** `carril-2/logo.svg` (cabecera), `icono.svg`, `icono-maskable.svg` y los PNG (192: 6,6 KB; 512: 21,7 KB; maskable: 13,4 KB). No cambia nada más de Carril 2. Para pasar a Escalón basta con copiar sus archivos de `logos-2/escalon/`.
+
+Generación: `python3 prototipos/identidad/herramientas/logos2.py` y `node prototipos/identidad/herramientas/iconos.mjs`.
 
 ---
 
@@ -120,7 +137,7 @@ _Generado con `node prototipos/identidad/contraste.mjs --escribir`. No editar a 
 | Tiza | 24 de 24 | 3,09:1 | 0,18 | 73,6 KB | 8,2 KB, 26,2 KB, 17,1 KB |
 | Carril | 24 de 24 | 3,20:1 | 0,21 | 96,6 KB | 4,9 KB, 16,6 KB, 9,4 KB |
 | Hierro | 24 de 24 | 3,07:1 | 0,16 | 72,5 KB | 8,9 KB, 27,3 KB, 17,8 KB |
-| Carril 2 | 29 de 29 | 3,40:1 | 0,15 | 56,0 KB | 5,6 KB, 19,0 KB, 11,2 KB |
+| Carril 2 | 29 de 29 | 3,40:1 | 0,15 | 56,0 KB | 6,6 KB, 21,7 KB, 13,4 KB |
 
 #### Tiza
 
@@ -285,9 +302,9 @@ Colores de persona con daltonismo (simulación de Machado et al., 2009; ΔE OKLa
 | Deuteranopia | `#eedb84` / `#b9bbc0` | 0,15 | 9,45:1 | Sí |
 | Tritanopia | `#d1dece` / `#fe98a9` | 0,17 | 8,88:1 | Sí |
 
-Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 5,6 KB, icono-512.png 19,0 KB, icono-maskable-512.png 11,2 KB.
+Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 6,6 KB, icono-512.png 21,7 KB, icono-maskable-512.png 13,4 KB.
 
-#### Propuestas de logo (PNG 192, 512 y maskable 512; máximo 50 KB)
+#### Propuestas de logo, primera ronda (PNG 192, 512 y maskable 512; máximo 50 KB)
 
 | Propuesta | PNG |
 |---|---|
@@ -296,6 +313,17 @@ Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 5,6 K
 | marea | 5,9 KB, 19,4 KB, 11,3 KB |
 | nivel | 8,9 KB, 29,7 KB, 18,7 KB |
 | trazo | 6,2 KB, 20,6 KB, 12,2 KB |
+
+#### Símbolo de pareja (segunda ronda de logos) (PNG 192, 512 y maskable 512; máximo 50 KB)
+
+| Propuesta | PNG |
+|---|---|
+| arco | 6,6 KB, 21,7 KB, 13,4 KB |
+| escalon | 6,5 KB, 21,1 KB, 12,8 KB |
+| ondas | 7,9 KB, 25,6 KB, 16,2 KB |
+| orbita | 7,2 KB, 23,5 KB, 14,1 KB |
+| paralelo | 6,8 KB, 23,3 KB, 13,6 KB |
+| trenza | 8,7 KB, 27,7 KB, 17,7 KB |
 <!-- contraste:fin -->
 
 ### Otras comprobaciones (Playwright)
@@ -322,7 +350,8 @@ Cada página lleva una CSP sin `'unsafe-inline'` (ni `<script>` en línea, ni `o
 | Ruta | Qué es |
 |---|---|
 | `prototipos/identidad/index.html`, `indice.css`, `indice.js` | Índice y comparador (neutro, con la letra del sistema, para no inclinar la elección) |
-| `prototipos/identidad/carril-2/` | Segunda vuelta (misma estructura que las demás; usa el logo Giro) |
+| `prototipos/identidad/carril-2/` | Segunda vuelta, aprobada (misma estructura que las demás; usa el logo Arco) |
+| `prototipos/identidad/logos-2/` | Símbolo de pareja: página comparativa y una carpeta por propuesta (`arco`, `escalon`, `paralelo`, `ondas`, `orbita`, `trenza`) |
 | `prototipos/identidad/logos/` | Página de logos y una carpeta por propuesta (`giro`, `marea`, `trazo`, `duo`, `nivel`) |
 | `prototipos/identidad/{tiza,carril,hierro}/` | Cada dirección: `index.html`, `estilo.css` (tokens y estilo), `pantallas.js` (cómo pinta Hoy, Sesión, Progreso y el final), `logo.svg`, `icono.svg`, `icono-maskable.svg`, `icono-192.png`, `icono-512.png`, `icono-maskable-512.png` y `fuentes/` (woff2 + licencia OFL) |
 | `prototipos/identidad/comun/` | Datos de ejemplo (`datos.js`), motor común (`demo.js`: persona, rutas, series, descanso, alarma y celebración) y `base.css` |
