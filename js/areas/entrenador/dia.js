@@ -5,7 +5,7 @@
 
 import { analizarEjercicios, preferencia } from '../../reglas/contexto.js';
 import { cargaMuscular, rango, sesionesHechas } from '../../reglas/progresion.js';
-import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS } from '../../reglas/catalogo.js';
+import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRehab, riesgoDetalle, techoDolor as techoZona } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS, OBJETIVOS } from '../../datos/constantes.js';
 import { restriccionesSalud } from './salud.js';
 import { validarSesion } from './validar.js';
@@ -182,18 +182,30 @@ export function contextoDia(S, op = {}) {
   const niveles = nivelesDe(bandas);
   const salud = restriccionesSalud(S);
   const nivel = Math.max(1, Math.min(3, S.perfil.nivel || 1));
-  const base = { lugar, niveles, salud };
+  const base = { lugar, niveles, salud, bandas };
   const pool = EJERCICIOS.filter(e => e.niv <= Math.min(3, nivel + 1) && permitidoBase(S, e, base));
   return {
     lugar, minutos: minutosSesion(op.minutos || S.perfil.disponibilidad.minutos), dolorHoy, bandas, niveles, salud, nivel, pool,
     energia: +op.energia || 3, futuro: !!op.futuro, edad: edadDe(S), an: analizarEjercicios(S),
   };
 }
+// Riesgo de hoy ('ok' · 'precaucion' · 'evitar') con el detalle de cada lesión (C-ZONA-SUB, riesgoDetalle del
+// PR 9; sin detalle, el de por defecto, que es el más prudente).
+export function riesgoHoy(e, niveles, bandas = {}) {
+  let peor = 'ok';
+  for (const [z, n] of Object.entries(niveles)) {
+    const r = riesgoDetalle(e, z, ((bandas[z] || {}).lesion || {}).detalle);
+    if (!r || !n) continue;
+    if (r === 2 || (r === 1 && n >= 2)) return 'evitar';
+    peor = 'precaucion';
+  }
+  return peor;
+}
 // Lo que cualquier ejercicio o tarea con id debe cumplir hoy (C-EST-4, C-DOLOR-1, C-SALUD-0).
-export function permitidoBase(S, e, { lugar, niveles, salud }) {
+export function permitidoBase(S, e, { lugar, niveles, salud, bandas }) {
   if (!e || !e.l.includes(lugar) || !hayMaterial(e, lugar, S.perfil)) return false;
   if ((S.perfil.gustos || {})[e.id] === 'rechazo') return false;
-  if (riesgo(e, niveles) === 'evitar') return false;
+  if (riesgoHoy(e, niveles, bandas) === 'evitar') return false;
   if (salud && salud.excluir.has(e.id)) return false;
   return true;
 }
@@ -246,9 +258,9 @@ export function opcionesCardio(S, ctx, { sinRiesgo = false } = {}) {
   return [...new Set([...pref, ...orden])].filter(id => orden.includes(id) && ok(id)).map(ex);
 }
 // El ejercicio de cardio del día, con su porqué.
-export function cardioDelDia(S, ctx, k = 0, extra = 0) {
+export function cardioDelDia(S, ctx, k = 0, extra = 0, excluir = []) {
   const regla = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, bandas: ctx.bandas });
-  const opciones = opcionesCardio(S, ctx);
+  const opciones = opcionesCardio(S, ctx).filter(e => !excluir.includes(e.id)); // no dos veces el mismo (rehabilitación y cardio)
   if (!opciones.length) return null;
   const an = ctx.an || {};
   const orden = opciones.map((e, i) => ({ e, p: -i + preferencia(an, e.id) })).sort((a, b) => b.p - a.p).map(x => x.e);
@@ -281,15 +293,7 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
 export const faseDeBanda = b => (b.banda === 0 ? 3 : b.banda === 1 && !b.nueva ? 2 : 1);
 // Fases en las que un ejercicio sirve de rehabilitación para una zona (campo `rehab` del catálogo, PR 9:
 // número, lista de fases o { fase, detalle }). Sin detalle en la lesión, el de por defecto de la zona.
-export function fasesRehab(e, z, detalle) {
-  const v = ((e && e.rehab) || {})[z];
-  if (v == null) return [];
-  const D = (ZONAS[z] || {}).detalles;
-  const det = D ? (D.opciones && Object.prototype.hasOwnProperty.call(D.opciones, detalle) ? detalle : D.porDefecto) : null;
-  const uno = x => (typeof x === 'number' ? [x] : Array.isArray(x) ? x.flatMap(uno)
-    : x && typeof x === 'object' ? (!x.detalle || !det || [].concat(x.detalle).includes(det) ? uno(x.fase) : []) : []);
-  return uno(v);
-}
+export const fasesRehab = (e, z, detalle) => fasesDe(e, z, detalle);
 const detalleDe = (ctx, z) => ((ctx.bandas[z] || {}).lesion || {}).detalle;
 // Ejercicio solo de rehabilitación (fases 1-2, dosis propia): no cuenta como principal (los de fuerza sí).
 export const soloRehab = e => !!e.rehab && tipoEj(e) === 'propia' && !['core', 'cardio'].includes(e.m[0]);
@@ -299,7 +303,7 @@ export function rehabValida(S, e, z, ctx) {
   const fases = fasesRehab(e, z, detalleDe(ctx, z));
   const conCampo = fases.length > 0;
   if (!conCampo && !((ZONAS[z] || {}).rehab || []).includes(e.id)) return false;
-  const r = (e.r || {})[z];
+  const r = riesgoDetalle(e, z, detalleDe(ctx, z));
   if (r === 2) return false;
   if (r === 1 && !(b.banda === 0 && fases.includes(3))) return false;
   return true;
@@ -313,9 +317,12 @@ export function candidatosRehab(S, z, ctx) {
   return ids.map(ex).filter(e => rehabValida(S, e, z, ctx));
 }
 export function ejercicioRehab(S, e, z, ctx) {
-  const iso = e.t === 'tiempo';
-  const series = faseDeBanda(ctx.bandas[z]) === 1 && iso ? 4 : Math.min(3, e.d[0]);
-  return { id: e.id, rol: 'rehab', series, reps: e.d[1], descanso: iso ? 30 : 45, nota: porQueRehab(S, e, z, ctx.dolorHoy) };
+  const b = ctx.bandas[z], det = detalleDe(ctx, z), max = faseDeBanda(b);
+  const fs = fasesRehab(e, z, det).filter(f => f <= max);
+  const fase = fs.length ? Math.max(...fs) : max;
+  const d = dosisRehab(e, fase); // C-DOSIS-7
+  const nota = ZONAS[z] ? notaRehab(z, { dolor: b.dolor, fase, detalle: det, nueva: b.nueva }) : porQueRehab(S, e, z, ctx.dolorHoy);
+  return { id: e.id, rol: 'rehab', series: d.series, reps: d.reps, descanso: d.descanso, nota: d.intensidad ? `${nota} Intensidad: ${d.intensidad}.` : nota };
 }
 // Zonas que llevan rehabilitación, de más a menos dolor (B3 no lleva: día de dolor alto).
 export const zonasRehab = ctx => Object.entries(ctx.bandas).filter(([, b]) => b.banda <= 2).sort((a, b) => b[1].dolor - a[1].dolor).map(([z]) => z);
@@ -450,10 +457,8 @@ function zonaTxt(S, z, dolorHoy) {
 // 5 en cadera lateral, hombro y codo crónicos o recurrentes. Con el campo `techo` de la ficha (PR 9) manda él.
 export function techoDolor(S, z, { rehab = false } = {}) {
   const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z);
-  if (rehab || faseLesion(l) === 'nueva') return 3;
-  const t = (ZONAS[z] || {}).techo;
-  if (t && typeof t === 'object' && +t.cronica) return +t.cronica;
-  return ['cadera_lateral', 'hombro', 'codo'].includes(z) ? 5 : 3;
+  if (!ZONAS[z]) return 3;
+  return techoZona(z, { nueva: faseLesion(l) === 'nueva', detalle: l && l.detalle, rehab }).techo;
 }
 // c: { i, d, an, carga, niveles, dolorHoy, sustituye: { n, por } }
 export function porQueEjercicio(S, e, c) {
@@ -514,7 +519,7 @@ export function elegirPrincipales(S, ctx, op) {
     const c = candidatosDe(m);
     if (!c.length) continue;
     const nota = e => preferencia(an, e.id) + extraBase(m, e.id) - (usados[e.id] || 0) * 6 + (elegidos.length < 2 ? (e.s || []).length * 1.5 : 0)
-      + (riesgo(e, ctx.niveles) === 'precaucion' ? -3 : 0) + (e.t === 'reps' || ctx.lugar === 'piscina' ? 1 : 0)
+      + (riesgoHoy(e, ctx.niveles, ctx.bandas) === 'precaucion' ? -3 : 0) + (e.t === 'reps' || ctx.lugar === 'piscina' ? 1 : 0)
       - (carga[e.m[0]] && carga[e.m[0]].estado === 'cargado' ? 4 : 0) + ((e.id.length * 7 + k * 13) % 5) / 10;
     const e = c.sort((a, b) => nota(b) - nota(a) || a.id.localeCompare(b.id))[0];
     const d = dosis(S, e, elegidos.length, ctx.lugar);
@@ -525,7 +530,7 @@ export function elegirPrincipales(S, ctx, op) {
   }
   // Orden: multiarticulares primero, core al final; nunca el primero con riesgo en una zona activa (C-DOSIS-4).
   elegidos.sort((a, b) => (b.m[0] === 'core' ? -1 : 0) - (a.m[0] === 'core' ? -1 : 0) || (esCompuesto(b) - esCompuesto(a)) || (b.s || []).length - (a.s || []).length);
-  const j = elegidos.findIndex(e => riesgo(e, ctx.niveles) === 'ok');
+  const j = elegidos.findIndex(e => riesgoHoy(e, ctx.niveles, ctx.bandas) === 'ok');
   if (j > 0) elegidos.unshift(elegidos.splice(j, 1)[0]);
   return elegidos;
 }
@@ -544,7 +549,7 @@ export function montarDia(S, op) {
 
   const rehab = rehabDelDia(S, ctx, { k });
   const ejercicios = rehab.map(({ zona: _z, ...x }) => x);
-  const cardio = cardioDelDia(S, ctx, k, op.extraCardio || 0);
+  const cardio = cardioDelDia(S, ctx, k, op.extraCardio || 0, rehab.map(r => r.id));
   const tCal = minutosCalentamiento(S, ctx), tVue = minutosVuelta(S, ctx);
   const presupuesto = minutos - tCal - tVue - (cardio ? minDe(cardio.reps) : 0) - ejercicios.reduce((t, x) => t + tiempoEj(x), 0);
   const maximo = ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : 9; // C-ENERGIA-1

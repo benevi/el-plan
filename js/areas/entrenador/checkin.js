@@ -9,9 +9,9 @@ import { es } from '../../nucleo/ui.js';
 import { diaSemana } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
 import { sugerir, cargaMuscular, sesionesHechas } from '../../reglas/progresion.js';
-import { nivelesZona, ex, riesgo } from '../../reglas/catalogo.js';
+import { nivelesZona, ex } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
-import { montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion } from './dia.js';
+import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion } from './dia.js';
 import { diaDolorAlto } from './dolor-alto.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
 import { avisosConsulta, T8 } from './alarma.js';
@@ -83,12 +83,12 @@ export function ajustarAlCheckin(S, dia, ci) {
   const ctx = contextoDia(S, { lugar: ci.lugar, minutos, dolorHoy, energia });
   ej = ej.map((x, idx) => {
     const e = ex(x.id); if (!e || x.rol !== 'principal') return x;
-    const peligro = riesgo(e, ctx.niveles) === 'evitar';
+    const peligro = riesgoHoy(e, ctx.niveles, ctx.bandas) === 'evitar';
     const molesta = an[x.id] && (an[x.id].estado === 'molesta' || an[x.id].gusto === 'rechazo');
     if (!peligro && !molesta) return x;
     const excluir = ej.map(y => y.id);
     const alt = ctx.pool.filter(a => !excluir.includes(a.id) && valePrincipal(S, a, ctx) && permitidoBase(S, a, ctx) && (a.m[0] === e.m[0] || e.m.includes(a.m[0])) && (!an[a.id] || an[a.id].estado !== 'molesta'))
-      .sort((a, b) => (b.m[0] === e.m[0]) - (a.m[0] === e.m[0]) || (a.niv <= ctx.nivel ? 0 : 1) - (b.niv <= ctx.nivel ? 0 : 1) || (riesgo(a, ctx.niveles) === 'ok' ? 0 : 1) - (riesgo(b, ctx.niveles) === 'ok' ? 0 : 1) || a.id.localeCompare(b.id))[0];
+      .sort((a, b) => (b.m[0] === e.m[0]) - (a.m[0] === e.m[0]) || (a.niv <= ctx.nivel ? 0 : 1) - (b.niv <= ctx.nivel ? 0 : 1) || (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 0 : 1) - (riesgoHoy(b, ctx.niveles, ctx.bandas) === 'ok' ? 0 : 1) || a.id.localeCompare(b.id))[0];
     const por = peligro ? 'carga la zona que hoy te duele' : an[x.id].gusto === 'rechazo' ? 'no lo quieres' : `te ha molestado («${(an[x.id].comentarios.slice(-1)[0] || {}).texto || 'dolor después'}»)`;
     if (!alt) { cambios.push(`Quito ${e.n.toLowerCase()}: ${por}.`); return null; }
     cambios.push(`Cambio ${e.n.toLowerCase()} por ${alt.n.toLowerCase()}: ${por}.`);

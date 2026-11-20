@@ -33,7 +33,7 @@ export function perfilVacio() {
     objetivos: [],            // claves de OBJETIVOS, varias a la vez
     nivel: 1,                 // 1-3
     nivelAuto: true,          // si el medidor de progreso puede subirlo solo
-    lesiones: [],             // { id, zona, dolor 0-10, desde 'YYYY-MM-DD', nota, activa, tipo?, dolorRevisar?, vid? }
+    lesiones: [],             // { id, zona, dolor 0-10, desde 'YYYY-MM-DD', nota, activa, tipo?, detalle?, dolorRevisar?, vid? }
     disponibilidad: { dias: 3, minutos: 60, diasSemana: [] }, // diasSemana 1=lunes…7; cambia cada semana
     lugares: ['gym', 'piscina'],
     materialCasa: [],

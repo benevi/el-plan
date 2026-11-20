@@ -18,10 +18,10 @@
 //     cada tarea con id válida para el lugar y el dolor (C-EST-4).
 //  8. Tiempo ≤ pedido + 10 % con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
 
-import { ex, riesgo, hayMaterial } from '../../reglas/catalogo.js';
+import { ex, hayMaterial } from '../../reglas/catalogo.js';
 import { rango, acotarKg, sesionesHechas, cargaMuscular } from '../../reglas/progresion.js';
 import {
-  contextoDia, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
+  contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
   calentamientoDe, vueltaDe, tiempoSesionExacto, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
 } from './dia.js';
@@ -40,7 +40,7 @@ function motivoNoVale(S, e, ctx) {
   if (!e.l.includes(ctx.lugar)) return `es de otro lugar (hoy entrenas en ${LUGAR_TXT[ctx.lugar] || ctx.lugar})`;
   if (!hayMaterial(e, ctx.lugar, S.perfil)) return 'no tienes el material';
   if ((S.perfil.gustos || {})[e.id] === 'rechazo') return 'no lo quieres';
-  if (riesgo(e, ctx.niveles) === 'evitar') {
+  if (riesgoHoy(e, ctx.niveles, ctx.bandas) === 'evitar') {
     const z = Object.keys(ctx.niveles).find(z => (e.r || {})[z]);
     return `carga tu ${nombreZona(z)}${ctx.bandas[z] ? `, que hoy está a ${ctx.bandas[z].dolor}/10` : ''}`;
   }
@@ -53,7 +53,7 @@ function alternativa(S, ctx, e, excluir) {
   const c = ctx.pool.filter(a => a.id !== e.id && !excluir.includes(a.id) && valePrincipal(S, a, ctx) && (a.m[0] === e.m[0] || e.m.includes(a.m[0])));
   const nivelOk = c.filter(a => a.niv <= ctx.nivel);
   return (nivelOk.length ? nivelOk : c)
-    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) - Math.abs(a.niv - e.niv) + (riesgo(a, ctx.niveles) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) }))
+    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) - Math.abs(a.niv - e.niv) + (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) }))
     .sort((x, y) => y.p - x.p || x.a.id.localeCompare(y.a.id)).map(x => x.a)[0] || null;
 }
 
@@ -182,7 +182,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (x.rol === 'cardio' && !esCardioValido(e, lugar)) {
       if (valePrincipal(S, e, ctx)) { x.rol = 'principal'; Object.assign(x, dosis(S, e, nPrin(), lugar)); cambios.push(`${nombre(e)} no es cardio: pasa a ejercicio principal`); }
       else { cambios.push(`quito ${nombre(e)} como cardio: no lo es`); continue; }
-    } else if (x.rol !== 'cardio' && esCardioValido(e, lugar) && !valePrincipal(S, e, ctx)) x.rol = 'cardio';
+    } else if (x.rol === 'principal' && esCardioValido(e, lugar) && !valePrincipal(S, e, ctx)) x.rol = 'cardio';
     // Rehabilitación: de una zona activa y sin riesgo en ella (C-DOSIS-1, C-ZONA-0).
     if (x.rol === 'rehab') {
       const z = Object.keys(ctx.bandas).find(z => rehabValida(S, e, z, ctx));
@@ -233,7 +233,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   cardios.slice(1).forEach(x => { ejs.splice(ejs.indexOf(x), 1); });
   const cardio = cardios[0];
   if (!cardio) {
-    const c = cardioDelDia(S, ctx, ctxIn.k || 0);
+    const c = cardioDelDia(S, ctx, ctxIn.k || 0, 0, ejs.map(x => x.id));
     if (c) { ejs.push(c); cambios.push(`añado ${minDe(c.reps)} min de cardio (${nombre(ex(c.id))}): toda sesión lleva cardio`); }
     else cambios.push('hoy no hay ningún cardio posible en este lugar con tu dolor');
   } else {
@@ -268,7 +268,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   // Orden: rehabilitación → principales (el primero sin riesgo en una zona activa) → cardio (C-REP-5, C-DOSIS-4).
   const orden = { rehab: 0, principal: 1, cardio: 2 };
   ejs.sort((a, b) => orden[a.rol] - orden[b.rol]);
-  const pi = ejs.findIndex(x => x.rol === 'principal'), ok = ejs.findIndex(x => x.rol === 'principal' && riesgo(ex(x.id), ctx.niveles) === 'ok');
+  const pi = ejs.findIndex(x => x.rol === 'principal'), ok = ejs.findIndex(x => x.rol === 'principal' && riesgoHoy(ex(x.id), ctx.niveles, ctx.bandas) === 'ok');
   if (pi >= 0 && ok > pi) ejs.splice(pi, 0, ejs.splice(ok, 1)[0]);
 
   // 6. Dosis.

@@ -406,13 +406,13 @@ test('C-SALUD-0: equilibrio quita los ejercicios inestables; a la IA solo le lle
   assert.deepEqual(cuerpo.perfil.salud, ['hipertension_controlada', 'equilibrio']);
 });
 
-test('CR-29: salud, casa con banda, tobillo (esguince) hoy 5, 45 min', { todo: 'PR 8 + 9: etiquetas de riesgo del PR 9 (jumping-jacks, step-bajo, boxeo-sombra con tobillo)' }, () => {
+test('CR-29: salud, casa con banda, tobillo (esguince) hoy 5, 45 min', () => {
   const { s } = sesionReglas({ objetivos: ['salud'], lugares: ['casa'], materialCasa: ['banda'], lesiones: [L('tobillo_pie', 3)] }, { lugar: 'casa', minutos: 45, dolorHoy: { tobillo_pie: 5 } });
   assert.deepEqual(nunca(s, ['marcha-estatica', 'jumping-jacks-sin-salto', 'step-bajo', 'comba', 'boxeo-sombra', 'zancadas', 'step-up']), []);
   assert.equal(s.ejercicios.find(x => x.rol === 'cardio').id, 'cardio-sentado');
 });
 
-test('CR-30: salud, piscina, hombro hoy 5, 45 min', { todo: 'PR 8 + 9: patada-crol-tabla con r en hombro (PR 9)' }, () => {
+test('CR-30: salud, piscina, hombro hoy 5, 45 min', () => {
   const { s } = sesionReglas({ objetivos: ['salud'], lugares: ['piscina'], lesiones: [L('hombro', 3)] }, { lugar: 'piscina', minutos: 45, dolorHoy: { hombro: 5 } });
   assert.deepEqual(nunca(s, ['crol', 'espalda', 'nado-continuo', 'series-50-crol', 'patada-crol-tabla', 'crol-pull-buoy']), []);
   assert.equal(s.ejercicios.find(x => x.rol === 'cardio').id, 'aquajogging');
@@ -440,7 +440,7 @@ test('CR-17: músculo, intermedio, gimnasio, dolor nuevo cervical hoy 5 sin lesi
   assert.deepEqual(nunca(s, ['pike-pushup', 'paseo-granjero', 'elevaciones-laterales', 'press-hombro-maquina', 'crol', 'superman', 'crunch']), []);
 });
 
-test('CR-14: perder grasa, intermedio, calle, 45 min, Aquiles crónico hoy 2', { todo: 'PR 8 + 9: carrera-suave y comba a r=2 en tobillo (PR 9)' }, () => {
+test('CR-14: perder grasa, intermedio, calle, 45 min, Aquiles crónico hoy 2', () => {
   for (let k = 0; k < 7; k++) {
     fijarFecha(`2026-11-${16 + k}T10:00`);
     const { s } = sesionReglas({ objetivos: ['perder'], nivel: 2, lugares: ['calle'], lesiones: [L('tobillo_pie', 2)] }, { lugar: 'calle', minutos: 45, dolorHoy: { tobillo_pie: 2 } });
@@ -474,4 +474,23 @@ test('C-REC-2: con el músculo cargado (ayer 4 series), como mucho 2 series con 
   const r = ent.ajustarAlCheckin(S, d, ci());
   const pecho = r.datos.ejercicios.filter(x => x.rol === 'principal' && cat.ex(x.id).m[0] === 'pecho');
   assert.ok(pecho.length && pecho.every(x => x.series <= 2 && /3 repeticiones de margen/.test(x.nota)), JSON.stringify(pecho));
+});
+
+test('C-DOLOR-1, C-DOSIS-7: también en la piscina cada zona activa lleva su rehabilitación, con la dosis y la nota de su fase', () => {
+  for (const [z, d] of [['hombro', 5], ['rodilla', 4], ['lumbar', 2]]) {
+    const { S, s, c } = sesionReglas({ objetivos: ['salud'], lugares: ['piscina'], lesiones: [L(z, 3)] }, { lugar: 'piscina', minutos: 45, dolorHoy: { [z]: d } });
+    const rehab = s.ejercicios.filter(x => x.rol === 'rehab');
+    assert.ok(rehab.length >= 1, `${z}: sin rehabilitación en la piscina`);
+    assert.ok(rehab.every(x => cat.fasesDe(cat.ex(x.id), z).length && !(cat.ex(x.id).r || {})[z]), rehab.map(x => x.id).join(', '));
+    assert.ok(rehab.every(x => new RegExp(`Empiezas en ${d}/10`).test(x.nota)), rehab.map(x => x.nota).join(' | '));
+    sinProblemas(S, s, c);
+  }
+});
+
+test('C-ZONA-SUB: el detalle de la lesión cambia el riesgo (lumbar con contractura frente a sin detalle)', () => {
+  const id = 'estiramiento-gluteo-rodilla-pecho';
+  const sin = ent.bandasHoy(nuevoS({ lesiones: [L('lumbar', 2)] }), { lumbar: 2 });
+  const con = ent.bandasHoy(nuevoS({ lesiones: [L('lumbar', 2, { detalle: 'contractura' })] }), { lumbar: 2 });
+  assert.equal(cat.riesgoDetalle(cat.ex(id), 'lumbar', sin.lumbar.lesion.detalle), 2);
+  assert.ok(cat.riesgoDetalle(cat.ex(id), 'lumbar', con.lumbar.lesion.detalle) < 2);
 });
