@@ -41,3 +41,19 @@ test('una zona sin detalles no guarda detalle, y al quitarlo se borra', async ()
   assert.equal('detalle' in a.estado.estado().perfil.lesiones[0], false);
   assert.ok(!a.pantallaRota());
 });
+
+test('con «dolor que baja por la pierna» o «por el brazo» sale el aviso de consultar (A4)', async () => {
+  a.clic('[data-act="perfil.lesion"]:not([data-id])');
+  await a.esperar(() => a.doc.querySelector('#l-detalle-lumbar'));
+  const zona = a.doc.querySelector('#l-zona');
+  zona.value = 'lumbar'; zona.dispatchEvent(new a.w.Event('change', { bubbles: true }));
+  const a4 = a.doc.querySelector('[data-a4="lumbar"]');
+  assert.match(a.doc.querySelector('[data-detalle="lumbar"]').textContent, /no baja por la pierna, elige «contractura»/);
+  assert.equal(a4.style.display, 'none');
+  const sel = a.doc.querySelector('#l-detalle-lumbar');
+  sel.value = 'hernia'; sel.dispatchEvent(new a.w.Event('change', { bubbles: true }));
+  assert.equal(a4.style.display, '');
+  assert.equal(a4.textContent, 'Si es nuevo o va a más, no entrenes y consulta.');
+  sel.value = 'contractura'; sel.dispatchEvent(new a.w.Event('change', { bubbles: true }));
+  assert.equal(a4.style.display, 'none');
+});

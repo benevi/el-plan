@@ -144,6 +144,11 @@ test('las etiquetas de riesgo son las de la tabla 12.9 del criterio (y las de la
     ...['superman', 'elevaciones-laterales-maquina', 'elevaciones-laterales-banda', 'crol-catch-up', 'crol-pull-buoy', 'crol-un-brazo', 'patada-lateral'].map(id => [id, 'cervical', 1]),
     ['estiramiento-figura-4', 'cadera_lateral', 2], ['buenos-dias', 'cadera_lateral', 2], ['paso-lateral-banda', 'cadera_lateral', 0],
     ['talones-toalla-dedos', 'tobillo_pie', 1], ['estiramiento-pectoral-pared', 'hombro', 1],
+    // Revisión del PR 9: la negativa termina colgado de la barra (12.5: colgarse es r=2); la asistida sigue en 1.
+    ['dominadas-negativas', 'hombro', 2], ['dominadas-asistidas-maquina', 'hombro', 1],
+    // Convención del PR 9 (no está en la tabla 12.9): cuadrupedia o de rodillas con la rodilla apoyada = rodilla 1,
+    // como bird-dog; así cuadra el «con dolor 4 o más: sin apoyar la rodilla» de la ficha.
+    ...['bird-dog', 'gato-camello', 'rotacion-toracica-cuadrupedia', 'flexiones-rodillas', 'patada-gluteo-cuadrupedia', 'rueda-abdominal'].map(id => [id, 'rodilla', 1]),
   ];
   assert.deepEqual(esperado.filter(([id, z, v]) => tieneR(id, z) !== v).map(([id, z, v]) => `${id} ${z}: ${tieneR(id, z)} (esperado ${v})`), []);
 });
@@ -248,7 +253,8 @@ test('las notas de rehabilitación usan el dolor real y el techo, no un «3/10»
   const n0 = L.notaRehab('cadera_lateral', { dolor: 0, fase: 3, nueva: false });
   assert.match(n0, /0\/10/); assert.match(n0, /hasta 2\/10/);
   assert.match(L.notaRehab('rodilla', { dolor: 5, fase: 1 }), /5\/10: no debe subir/);
-  assert.match(L.notaRehab('cervical', { dolor: 2, detalle: 'irradiado' }), /baja más hacia la mano/);
+  assert.match(L.notaRehab('cervical', { dolor: 2, detalle: 'irradiado' }), /baja hacia el brazo, para/);
+  assert.match(L.notaRehab('lumbar', { dolor: 2 }), /baja hacia la pierna, para/, 'lumbar sin detalle: como dolor que baja');
   assert.match(L.notaRehab('muñeca', {}), /2 puntos/);
   for (const z of Object.keys(ZONAS)) assert.doesNotMatch(L.notaRehab(z, { dolor: 3 }), /diagn|tratamiento|curar/i);
 });
@@ -268,6 +274,7 @@ test('fichas: tareas de calentar y estirar con ids que existen, uso válido y si
     }
     if (!Z.estirar.length || !Z.calentar.length) mal.push(`${z}: sin tareas`);
     if (!Z.derivar || !Z.derivar.length) mal.push(`${z}: sin derivar`);
+    // Los ids del PR 8 se comprueban aparte (prueba «todo» de abajo), no se ignoran.
     for (const lugar of ['gym', 'casa', 'calle', 'piscina']) for (const id of Z.cardio.preferente[lugar] || []) {
       if (!existeOPendiente(id)) mal.push(`${z}: cardio ${id} no existe`);
       else if (ex(id) && !ex(id).l.includes(lugar)) mal.push(`${z}: cardio ${id} no se hace en ${lugar}`);
@@ -275,6 +282,12 @@ test('fichas: tareas de calentar y estirar con ids que existen, uso válido y si
     for (const id of Object.keys(Z.cardio.condiciones)) if (!existeOPendiente(id)) mal.push(`${z}: condición de ${id}`);
   }
   assert.deepEqual(mal, []);
+});
+
+test('todo id del cardio preferente de las fichas existe (también los del PR 8)', { todo: 'PR 8 + 9: marcha-estatica, cardio-sentado y nado-continuo llegan con el PR 8' }, () => {
+  const faltan = [];
+  for (const [z, Z] of Object.entries(ZONAS)) for (const id of [...Object.values(Z.cardio.preferente).flat(), ...Object.keys(Z.cardio.condiciones)]) if (!ex(id)) faltan.push(`${z}: ${id}`);
+  assert.deepEqual(faltan, []);
 });
 
 test('el «evitar» de cada ficha cuadra con el catálogo: absoluto si hay r=2, «con dolor 4 o más» si hay r=1', () => {
@@ -302,9 +315,13 @@ test('cada zona, banda y lugar tiene rehabilitación, fuerza, estiramientos y ca
         const fuerza = pool.filter(e => !['cardio', 'movilidad', 'natacion', 'antebrazo'].includes(e.m[0]) && !(e.rehab || {})[z]);
         const estirar = pool.filter(e => e.m[0] === 'movilidad' && e.t === 'tiempo');
         const fase = b === 'B2' ? 1 : 2;
-        // B2 → fase 1 en cualquier sitio seco sin material; B1 → fase 2 en el gimnasio. Piscina: alguna de las dos.
-        if (lugar === 'piscina') { if (![...ZONAS[z].fases[1], ...ZONAS[z].fases[2]].some(id => hay.has(id))) mal.push(`${z} ${b} piscina: sin rehabilitación`); }
-        else if ((b === 'B2' || lugar === 'gym') && !ZONAS[z].fases[fase].some(id => hay.has(id))) mal.push(`${z} ${b} ${lugar}: sin fase ${fase}`);
+        // B2 → fase 1 en cualquier lugar (también piscina; C-DOLOR-3), con cada detalle de la zona.
+        // B1 → fase 2 en el gimnasio; en la piscina, fase 2 o, si no hay, fase 1 (rehabDeFase).
+        const detalles = ZONAS[z].detalles ? Object.keys(ZONAS[z].detalles.opciones) : [undefined];
+        for (const d of detalles) {
+          if (b === 'B2' && !L.rehabDeFase(z, 1, { detalle: d, disponibles: hay }).length) mal.push(`${z}/${d} B2 ${lugar}: sin fase 1`);
+          if (b === 'B1' && ['gym', 'piscina'].includes(lugar) && !L.rehabDeFase(z, fase, { detalle: d, disponibles: hay }).length) mal.push(`${z}/${d} B1 ${lugar}: sin fase 2 ni 1`);
+        }
         if (lugar !== 'piscina' && fuerza.length < 6) mal.push(`${z} ${b} ${lugar}: solo ${fuerza.length} de fuerza`);
         if (estirar.length < 2) mal.push(`${z} ${b} ${lugar}: ${estirar.length} estiramientos`);
         if (lugar === 'gym' && !['bici-estatica', 'eliptica', 'cinta-inclinada', 'remo-ergometro'].some(id => hay.has(id))) mal.push(`${z} ${b} gym: sin cardio`);
@@ -324,4 +341,40 @@ test('en casa y en la calle hay cardio permitido con lesiones de carga (cadera, 
     if (!cardio[lugar].some(id => hay.has(id))) mal.push(`${z} B2 ${lugar}`);
   }
   assert.deepEqual(mal, []);
+});
+
+test('dosis de rehabilitación por fase (C-DOSIS-7 y fichas)', () => {
+  const D = (id, f) => L.dosisRehab(ex(id), f);
+  for (const id of ['abduccion-isometrica-pared', 'rotacion-externa-isometrica', 'extension-rodilla-isometrica', 'talones-isometrico', 'extension-muneca-isometrica']) assert.deepEqual([D(id, 1).series, D(id, 1).reps, D(id, 1).descanso], [4, '30-45s', 30], id);
+  assert.deepEqual([D('puente-gluteo', 1).series, D('puente-gluteo', 1).reps], [3, '10']);
+  assert.match(D('puente-gluteo', 1).intensidad, /lento/);
+  assert.deepEqual([D('separacion-banda', 1).series, D('separacion-banda', 1).reps], [2, '15']);
+  assert.match(D('separacion-banda', 1).intensidad, /muy ligera/);
+  assert.deepEqual([D('separacion-banda', 2).series, D('separacion-banda', 2).reps, D('separacion-banda', 2).descanso], [3, '15-20', 45]);
+  assert.deepEqual([D('dead-bug', 1).series, D('dead-bug', 1).reps], [3, '8 c/lado']);
+  assert.deepEqual([D('prension-pelota', 1).series, D('prension-pelota', 1).reps], [3, '10 × 5 s']);
+  assert.deepEqual([D('descarga-90-90', 1).reps, D('descarga-90-90', 1).descanso], ['2-3 min', 0]);
+  assert.deepEqual([D('almeja', 2).series, D('almeja', 2).reps, D('almeja', 2).descanso], [3, '15 c/pierna', 45]);
+  assert.match(D('extension-muneca-excentrica', 2).intensidad, /3 s al bajar/);
+  assert.deepEqual([D('puente-una-pierna', 3).series, D('puente-una-pierna', 3).reps, D('puente-una-pierna', 3).descanso], [3, '8-12 c/pierna', 60]);
+  assert.deepEqual([D('talones-toalla-dedos', 3).series, D('talones-toalla-dedos', 3).reps], [3, '12']);
+  // Toda la rehabilitación tiene dosis válida en todas sus fases.
+  for (const [z, Z] of Object.entries(ZONAS)) for (const f of [1, 2, 3]) for (const id of Z.fases[f]) {
+    const d = D(id, f);
+    assert.ok(Number.isInteger(d.series) && d.series >= 1 && d.series <= 4 && prog.rango(d.reps) && d.descanso >= 0 && d.intensidad, `${z} ${id} fase ${f}`);
+  }
+});
+
+test('rehabDeFase: en B1 sin fase 2 en el lugar baja a la fase 1', () => {
+  const pis = new Set(cat.disponibles(perfil(), 'piscina').map(e => e.id));
+  for (const z of ['lumbar', 'codo', 'muñeca']) {
+    assert.deepEqual(L.rehabDeFase(z, 2, { disponibles: pis }), L.rehabDeFase(z, 1, { disponibles: pis }), z);
+    assert.ok(L.rehabDeFase(z, 2, { disponibles: pis }).length, z);
+  }
+  assert.deepEqual(L.rehabDeFase('hombro', 2, { disponibles: pis }), ['rotacion-hombro-agua']);
+});
+
+test('con Aquiles, ni movilidad de tobillo a la pared ni estiramiento de gemelo en la ficha', () => {
+  const tareas = [...ZONAS.tobillo_pie.tareas.calentar, ...ZONAS.tobillo_pie.tareas.estirar];
+  for (const id of ['movilidad-tobillo-pared', 'estiramiento-gemelo-pared']) assert.deepEqual(tareas.find(t => t.id === id).detalle, ['esguince', 'fascitis'], id);
 });

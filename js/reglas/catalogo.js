@@ -4,7 +4,7 @@
 import { EJERCICIOS } from '../datos/ejercicios.js';
 import { ZONAS } from '../datos/lesiones.js';
 // Rehabilitación por fases, detalle de la lesión, techo de dolor y notas (docs/criterio.md, sección 12).
-export { fasesDe, rehabPorFase, detalleDe, riesgoDetalle, techoDolor, notaRehab } from '../datos/lesiones.js';
+export { fasesDe, rehabPorFase, rehabDeFase, dosisRehab, detalleDe, riesgoDetalle, techoDolor, notaRehab } from '../datos/lesiones.js';
 
 const POR_ID = Object.fromEntries(EJERCICIOS.map(e => [e.id, e]));
 export const ex = id => POR_ID[id] || null;

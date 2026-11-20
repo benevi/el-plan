@@ -7,12 +7,13 @@
 // - tareas: { calentar, estirar }: [{ id | texto, uso: 'alivio' | 'normal' | 'activacion', detalle? }] (C-EST-2).
 //   'alivio' vale en B1-B3 si no sube el dolor; 'normal', solo en B0-B1; 'activacion' (de su fase 1, C-CAL-2),
 //   en B0-B2. Con `detalle`, solo para ese detalle de la lesión.
-// - calentar, estirar: las mismas tareas como textos (nombre del ejercicio), sin las de un detalle concreto.
+// - calentar, estirar: las mismas tareas como textos (nombre del ejercicio), las del detalle por defecto.
 // - techo: { nueva, cronica } de dolor (C-DOLOR-6). derivar: cuándo consultar (T5).
 // - detalles: { porDefecto, opciones: { clave: { nombre, techo?, irradiado?, r?, alivio? } } } (C-ZONA-SUB).
 //   Sin detalle se aplica `porDefecto`, la opción más prudente. `r` cambia el riesgo de un ejercicio con ese detalle.
 // - cardio: { preferente: { gym, casa, calle, piscina }, condiciones: { id: texto } } (C-CARDIO-6). Solo orden de
-//   preferencia y notas: el permiso lo dan siempre las etiquetas r.
+//   preferencia y notas: el permiso lo dan siempre las etiquetas r. Cita marcha-estatica, cardio-sentado y
+//   nado-continuo, que llegan con el PR 8: quien lea estas listas debe filtrar con ex(id) (puede no existir aún).
 // - fases: { 1, 2, 3 } con los ids de rehabilitación del detalle por defecto (del campo rehab del catálogo).
 // - rehab: fases 1 y 2 (las que nunca tienen riesgo en la zona), para quien aún lee una lista plana.
 import { EJERCICIOS } from './ejercicios.js';
@@ -110,10 +111,10 @@ const DATOS = {
     "evitar": [
       "Sin press por encima de la cabeza con carga (máquina, mancuernas, botellas, banda, pike)",
       "Sin fondos (paralelas, banco o asistidos) ni extensión de tríceps por detrás de la cabeza",
-      "Sin dominadas ni dominadas escapulares; sin colgarte de la barra",
+      "Sin dominadas (tampoco negativas ni escapulares); sin colgarte de la barra",
       "Sin aperturas profundas, pullover, press de banca con barra ni dislocaciones con banda",
       "Con dolor 4 o más: sin press de pecho o inclinado, flexiones, aperturas en máquina ni cruces",
-      "Con dolor 4 o más: sin jalón, dominadas asistidas o negativas ni elevaciones laterales",
+      "Con dolor 4 o más: sin jalón, dominadas asistidas ni elevaciones laterales",
       "Con dolor 4 o más: sin Y-T-W, plancha, rueda ni leñador",
       "Con dolor 4 o más: sin crol, espalda ni patada con tabla; sin remo ergómetro, jumping jacks ni boxeo de sombra",
       "Con dolor 4 o más: sin estirar el pecho ni el hombro cruzado"
@@ -293,11 +294,11 @@ const DATOS = {
     ],
     "tareas": {
       "calentar": [
-        { "id": "movilidad-tobillo-pared", "uso": "normal" },
+        { "id": "movilidad-tobillo-pared", "uso": "normal", "detalle": ["esguince", "fascitis"] },
         { "id": "balanceo-pierna-frontal", "uso": "normal" }
       ],
       "estirar": [
-        { "id": "estiramiento-gemelo-pared", "uso": "normal" },
+        { "id": "estiramiento-gemelo-pared", "uso": "normal", "detalle": ["esguince", "fascitis"] },
         { "id": "estiramiento-isquios-pie", "uso": "normal" }
       ]
     },
@@ -373,6 +374,7 @@ const DETALLES = {
   },
   "lumbar": {
     "porDefecto": "hernia",
+    "ayuda": "Si el dolor se queda en la espalda y no baja por la pierna, elige «contractura».",
     "opciones": {
       "contractura": { "nombre": "Contractura, sin dolor que baje por la pierna", "r": { "estiramiento-gluteo-rodilla-pecho": 1 }, "alivio": ["estiramiento-gluteo-rodilla-pecho"] },
       "hernia": { "nombre": "Hernia o dolor que baja por la pierna", "irradiado": true }
@@ -441,7 +443,7 @@ const FASE_TXT = {
   2: 'lento: 3 segundos al bajar, 1 de pausa y 2 al subir, dejando 3 repeticiones de margen.',
   3: 'fuerza progresiva, con 2 repeticiones de margen y el movimiento controlado.',
 };
-const HACIA = { cervical: 'la mano', lumbar: 'el pie' };
+const HACIA = { cervical: 'el brazo', lumbar: 'la pierna' };
 
 // Nota de un ejercicio de rehabilitación con el dolor real de hoy y su techo (C-ZONA-0, C-DOLOR-6).
 // dolor: el de hoy (0-10) o null si no se sabe; nueva: lesión nueva o puntual (C-LES-1, C-LES-4).
@@ -450,7 +452,7 @@ export function notaRehab(zona, { dolor = null, fase = 2, detalle, nueva = true 
   const { techo, irradiado } = techoDolor(zona, { nueva, detalle, rehab: true });
   const d = dolor === null || dolor === '' || !Number.isFinite(+dolor) ? null : Math.max(0, Math.min(10, Math.round(+dolor)));
   let regla;
-  if (irradiado) regla = `${d != null ? `Empiezas en ${d}/10: ` : ''}no debe subir; si sube o baja más hacia ${HACIA[zona] || 'la mano o el pie'}, para.`;
+  if (irradiado) regla = `${d != null ? `Empiezas en ${d}/10: ` : ''}no debe subir; si sube o baja hacia ${HACIA[zona] || 'el brazo o la pierna'}, para.`;
   else if (d == null) regla = `El dolor puede subir como mucho 2 puntos sobre cómo empiezas y nunca por encima de ${techo}/10.`;
   else {
     const max = Math.min(d + 2, techo);
@@ -460,11 +462,57 @@ export function notaRehab(zona, { dolor = null, fase = 2, detalle, nueva = true 
   return `Para tu ${nombre}: ${FASE_TXT[fase] || FASE_TXT[2]} ${regla} Mañana debe estar como hoy antes de empezar.`;
 }
 
+// Ids de rehabilitación de una fase que están en `disponibles` (ids posibles hoy en ese lugar). En B1, si no
+// hay ninguno de fase 2 (p. ej. lumbar, codo o muñeca en la piscina), se baja a la fase 1.
+export function rehabDeFase(zona, fase, { detalle, disponibles } = {}) {
+  const f = rehabPorFase(zona, detalle);
+  const hay = id => !disponibles || [...disponibles].includes(id);
+  const ids = (f[fase] || []).filter(hay);
+  return ids.length || fase !== 2 ? ids : f[1].filter(hay);
+}
+
+// Dosis de un ejercicio de rehabilitación por fase (C-DOSIS-7 y fichas de la sección 12):
+// { series, reps, descanso (s), intensidad }. Fase 1: isométricos 4 × 30-45 s al 50-70 %, descanso 30 s.
+// Fase 2: isotónicos lentos 3 × 10-15 (3-1-2), descanso 45 s, margen 3. Fase 3: 3 × 8-12, margen 2.
+const DOSIS_PROPIA = {
+  'puente-gluteo:1': [3, '10', 30, 'lento: 3 s al subir y 3 s al bajar'],
+  'separacion-banda:1': [2, '15', 30, 'banda muy ligera'],
+  'movilidad-tobillo-pared:1': [2, '10 c/lado', 0, 'sin dolor, rango cómodo'],
+  'dead-bug:1': [3, '8 c/lado', 30, 'lento y sin arquear la lumbar'],
+  'bird-dog:1': [3, '8 c/lado', 30, 'lento y sin arquear la lumbar'],
+  'almeja:2': [3, '15 c/pierna', 45, null],
+  'paso-lateral-banda:2': [3, '10 pasos c/lado', 45, null],
+  'puente-gluteo:2': [3, '12-15', 45, null],
+  'talones-pie:2': [3, '15', 45, null],
+  'talones-una-pierna:3': [3, '12 c/pierna', 60, null],
+  'talones-toalla-dedos:3': [3, '12', 60, null],
+};
+const INTENSIDAD = {
+  1: 'a la mitad o algo más de tu fuerza (50-70 %); el dolor, igual que al empezar o como mucho 3/10',
+  2: 'lento: 3 s al bajar, 1 s de pausa y 2 s al subir; deja 3 repeticiones de margen',
+  3: 'fuerza progresiva con 2 repeticiones de margen y movimiento controlado',
+};
+export function dosisRehab(e, fase) {
+  const [s0, r0, d0] = e.d;
+  const propia = DOSIS_PROPIA[`${e.id}:${fase}`];
+  if (propia) return { series: propia[0], reps: propia[1], descanso: propia[2], intensidad: propia[3] || INTENSIDAD[fase] || INTENSIDAD[2] };
+  // Posturas y caminar por minutos (descarga 90/90, caminar en el agua): su propia dosis, suave.
+  if (e.t === 'tiempo' && /min/.test(r0)) return { series: s0, reps: r0, descanso: d0, intensidad: 'suave, en una postura o a un ritmo que no aumente el dolor' };
+  const isoSeg = e.t === 'tiempo' && /^\d+(-\d+)?\s*s\b/.test(r0);
+  if (fase === 1) return isoSeg ? { series: 4, reps: '30-45s', descanso: 30, intensidad: INTENSIDAD[1] } : { series: s0, reps: r0, descanso: Math.min(d0 || 30, 30), intensidad: INTENSIDAD[1] };
+  if (fase === 3) {
+    const m = e.t === 'reps' && String(r0).match(/^\d+(?:-\d+)?(.*)$/);
+    return { series: 3, reps: m ? '8-12' + m[1] : r0, descanso: 60, intensidad: INTENSIDAD[3] };
+  }
+  return { series: Math.min(3, s0), reps: r0, descanso: 45, intensidad: e.t === 'tiempo' ? 'controlado, sin llegar al límite: que pudieras aguantar más' : INTENSIDAD[2] };
+}
+
 const nombreTarea = t => t.texto || (POR_ID[t.id] ? POR_ID[t.id].n : t.id);
 
 export const ZONAS = Object.fromEntries(Object.entries(DATOS).map(([z, Z]) => {
   const fases = rehabPorFase(z);
-  const comunes = l => l.filter(t => !t.detalle);
+  const porDefecto = DETALLES[z] ? DETALLES[z].porDefecto : null;
+  const comunes = l => l.filter(t => !t.detalle || t.detalle.includes(porDefecto));
   return [z, {
     ...Z,
     calentar: comunes(Z.tareas.calentar).map(nombreTarea),

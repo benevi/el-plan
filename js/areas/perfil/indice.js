@@ -251,10 +251,17 @@ function esCopiaVieja(txt) { try { return esViejo(JSON.parse(txt)); } catch { re
 // Detalle opcional de la zona (esguince, fascitis…): un desplegable por zona y solo se ve el de la elegida.
 // Sin detalle, el entrenador aplica lo más prudente.
 function detallesLesion(l) {
-  return Object.entries(ZONAS).filter(([, z]) => z.detalles).map(([k, z]) => `<label class="campo col" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
+  return Object.entries(ZONAS).filter(([, z]) => z.detalles).map(([k, z]) => {
+    const irradia = l.zona === k && l.detalle && (z.detalles.opciones[l.detalle] || {}).irradiado;
+    return `<label class="campo col" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
       <span>Detalle <small>opcional; si no lo sabes, la app elige lo más prudente</small></span>
-      <select id="l-detalle-${h(k)}"><option value="">No lo sé</option>${Object.entries(z.detalles.opciones).map(([o, d]) => `<option value="${h(o)}" ${l.zona === k && l.detalle === o ? 'selected' : ''}>${h(d.nombre)}</option>`).join('')}</select></label>`).join('');
+      <select id="l-detalle-${h(k)}" data-cambio="perfil.lesionDetalle"><option value="">No lo sé</option>${Object.entries(z.detalles.opciones).map(([o, d]) => `<option value="${h(o)}" data-irradia="${d.irradiado ? '1' : ''}" ${l.zona === k && l.detalle === o ? 'selected' : ''}>${h(d.nombre)}</option>`).join('')}</select>
+      ${z.detalles.ayuda ? `<small class="tenue">${h(z.detalles.ayuda)}</small>` : ''}
+      <p class="nota aviso-nota" data-a4="${h(k)}" ${irradia ? '' : 'style="display:none"'}>${h(AVISO_IRRADIADO)}</p></label>`;
+  }).join('');
 }
+// Dolor que baja por el brazo o la pierna (A4 de docs/criterio.md).
+const AVISO_IRRADIADO = 'Si es nuevo o va a más, no entrenes y consulta.';
 
 function hojaLesion(l) {
   const nueva = !l;
@@ -290,6 +297,10 @@ acciones({
   'perfil.notas': el => cambiar(S => { S.perfil.notas = el.value.trim(); }, 'perfil-silencio'),
   'perfil.codigo': el => { cambiar(S => { S.ajustes.codigo = el.value.trim(); }, 'perfil-silencio'); aviso('Código guardado'); },
   'perfil.ajuste': el => cambiar(S => { S.ajustes[el.dataset.k] = el.checked; }, 'perfil-silencio'),
+  'perfil.lesionDetalle': el => {
+    const a4 = document.querySelector(`[data-a4="${el.id.replace('l-detalle-', '')}"]`);
+    if (a4) a4.style.display = el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia ? '' : 'none';
+  },
   'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.style.display = c.dataset.detalle === el.value ? '' : 'none'; }),
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),
   'perfil.guardarLesion': el => {
