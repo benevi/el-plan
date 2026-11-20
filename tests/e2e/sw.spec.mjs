@@ -1,6 +1,7 @@
 // Service worker atómico (PR 5): casos de la auditoría (pwa/t2.js y t3.js) convertidos en pruebas.
-// Levanta su propio servidor en el puerto 8783 (PUERTO_SW; +1 por cada proceso en paralelo) para poder cambiar la «versión desplegada»
-// y cortar archivos concretos, como pasa con mala cobertura en el gimnasio.
+// Más los de la revisión del PR 5 (rev-pr5/repro.mjs): despliegue a mitad de la instalación y dos pestañas.
+// Levanta su propio servidor en el puerto 8783 (PUERTO_SW; +1 por cada proceso en paralelo) para poder
+// cambiar la «versión desplegada», servir rutas de otra, y cortar o retrasar archivos concretos.
 //   vA, vB: copias de la app con una marca de versión. vB añade un export a ui.js que usa main.js:
 //           si se mezclaran módulos de las dos, la app quedaría en blanco (SyntaxError al importar).
 //   legado: réplica mínima de producción (main) con su service worker copiado tal cual.
@@ -55,7 +56,7 @@ test.afterAll(async () => {
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test.beforeEach(() => { srv.control.raiz = vA; srv.control.cortar = []; srv.control.peticiones = []; });
+test.beforeEach(() => { Object.assign(srv.control, { raiz: vA, porRuta: {}, cortar: [], retrasar: {}, peticiones: [] }); });
 
 function vigilarErrores(page) {
   const errores = [];
@@ -79,9 +80,13 @@ const foto = page => page.evaluate(async () => ({
   caches: (await caches.keys()).sort(),
 }));
 
-const sinInstalacionEnCurso = page => page.waitForFunction(async () => {
-  const r = await navigator.serviceWorker.getRegistration();
-  return r && !r.installing;
+// Espera a que algo asíncrono de la página sea verdadero (waitForFunction no espera promesas).
+const enPagina = (page, fn, arg, timeout = 15000) => expect.poll(() => page.evaluate(fn, arg).catch(() => false), { timeout }).toBeTruthy();
+const sinInstalacionEnCurso = page => enPagina(page, async () => { const r = await navigator.serviceWorker.getRegistration(); return !!r && !r.installing; });
+const hayEnEspera = page => enPagina(page, async () => { const r = await navigator.serviceWorker.getRegistration(); return !!(r && r.waiting); });
+const volverAPrimerPlano = page => page.evaluate(() => {
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
 });
 
 async function appEntera(page, marca) {
@@ -90,6 +95,14 @@ async function appEntera(page, marca) {
   await expect(page.locator('#vista')).not.toContainText('Algo ha fallado');
   await expect(page.locator('#fallo-arranque')).toHaveCount(0);
   if (marca !== undefined) expect((await foto(page)).marca).toBe(marca);
+}
+
+// Contexto nuevo con una sesión empezada hoy (y dueño elegido) en sus datos.
+async function contextoConSesion(browser) {
+  const ctx = await browser.newContext({ ...test.info().project.use, baseURL: `http://127.0.0.1:${PUERTO}` });
+  const datos = estadoBase({ sesiones: { s1: sesionDemo('s1', { estado: 'en_curso', empezada: new Date().toISOString() }) } });
+  await ctx.addInitScript(d => { if (!localStorage.getItem('pipos4')) localStorage.setItem('pipos4', d); }, JSON.stringify(datos));
+  return ctx;
 }
 
 test('se instala, arranca sin red con sus fuentes y no pide nada fuera del sitio', async ({ page, context }) => {
@@ -109,7 +122,7 @@ test('se instala, arranca sin red con sus fuentes y no pide nada fuera del sitio
     await document.fonts.ready;
     return document.fonts.check('800 20px Archivo') && document.fonts.check('400 16px Outfit') && [...document.fonts].filter(f => f.status === 'loaded').length >= 2;
   })).toBe(true);
-  // La versión del SW, discreta, en Perfil → Ajustes.
+  // La versión, discreta, en Perfil → Ajustes.
   await page.click('#nav a[href="#perfil"]');
   await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
   await expect(page.locator('[data-version-app]')).toHaveText(VERSION);
@@ -127,12 +140,11 @@ test('actualización con un archivo que falla a medias: sigue la versión vieja 
   // Se despliega vB, pero ui.js no llega (cobertura a medias).
   srv.control.raiz = vB;
   srv.control.cortar = ['/js/nucleo/ui.js'];
-  srv.control.peticiones = [];
   await page.reload();
   await expect.poll(() => srv.control.peticiones.includes('/js/nucleo/ui.js')).toBe(true);
   await sinInstalacionEnCurso(page);
   await appEntera(page, 'A');
-  expect((await foto(page)).caches).toEqual(cacheA); // la caché a medias de vB se ha borrado
+  await enPagina(page, async c => JSON.stringify(await caches.keys()) === c, JSON.stringify(cacheA)); // sin caché a medias
 
   // En el gimnasio, sin red: la versión vieja, entera.
   await context.setOffline(true);
@@ -160,23 +172,75 @@ test('actualización con un archivo que falla a medias: sigue la versión vieja 
   expect(errores).toEqual([]);
 });
 
-test('al volver a primer plano avisa de la versión nueva; con una sesión en curso, no', async ({ page }) => {
+test('despliegue a mitad de la instalación (sw.js de B, ui.js de A): no se instala la mezcla y sigue A entera', async ({ page, context }) => {
+  // rev-pr5/repro.mjs, escenario 1: antes quedaba una caché «coherente» con módulos de dos despliegues
+  // y la app en blanco para siempre, también con red.
+  const errores = vigilarErrores(page);
   await instalar(page);
-  const visible = () => page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
+  const cacheA = (await foto(page)).caches;
+  srv.control.raiz = vB;
+  srv.control.porRuta = { '/js/nucleo/ui.js': vA };
+  await page.reload();
+  await expect.poll(() => srv.control.peticiones.filter(p => p === '/js/nucleo/ui.js').length).toBeGreaterThan(0);
+  await sinInstalacionEnCurso(page);
+  await page.waitForTimeout(300);
+  await expect(page.locator('#aviso-version')).toHaveCount(0);
+  expect((await foto(page)).caches).toEqual(cacheA);
+  await appEntera(page, 'A');
+  await context.setOffline(true);
+  await page.reload();
+  await appEntera(page, 'A');
+  await context.setOffline(false);
+
+  // Termina el despliegue: B entra entera.
+  srv.control.porRuta = {};
+  await page.reload();
+  await expect(page.locator('#aviso-version')).toBeVisible();
+  await Promise.all([page.waitForEvent('load'), page.click('#aviso-version button')]);
+  await appEntera(page, 'B');
+  await context.setOffline(true);
+  await page.reload();
+  await appEntera(page, 'B');
+  await context.setOffline(false);
+  await page.reload();
+  await appEntera(page, 'B');
+  expect(errores).toEqual([]);
+});
+
+test('caché estropeada: con red, el vigilante la tira y recarga desde la red; sin red, lo dice', async ({ page, context }) => {
+  await instalar(page);
+  // Simula una caché que ya no arranca (un módulo con otros exports).
+  await page.evaluate(async () => {
+    const [k] = await caches.keys();
+    await (await caches.open(k)).put('js/nucleo/ui.js', new Response('export const nada = 1;\n', { headers: { 'content-type': 'application/javascript' } }));
   });
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.locator('#fallo-arranque')).toContainText('No se pudo actualizar: conéctate y vuelve a abrir', { timeout: 10000 });
+  await context.setOffline(false);
+  // Con red, «Volver a intentar»: el vigilante rescata (una vez) y la app vuelve.
+  await page.click('#fallo-arranque button');
+  await expect(page.locator('#nav a')).toHaveCount(4, { timeout: 20000 });
+  await appEntera(page, 'A');
+  // Y vuelve a instalarse entera, sin red sigue funcionando.
+  await enPagina(page, async () => !!navigator.serviceWorker.controller && (await caches.keys()).length === 1);
+  await context.setOffline(true);
+  await page.reload();
+  await appEntera(page, 'A');
+  await context.setOffline(false);
+});
+
+test('al volver a primer plano avisa de la versión nueva; con una sesión en curso, no', async ({ page, browser }) => {
+  await instalar(page);
   srv.control.raiz = vB;
   await page.evaluate(() => { window.sinRecargar = true; });
-  await visible();
+  await volverAPrimerPlano(page);
   await expect(page.locator('#aviso-version')).toBeVisible();
   expect(await page.evaluate(() => window.sinRecargar)).toBe(true);
 
   // Otro móvil, desde vA, con una sesión empezada: el SW nuevo espera y no hay aviso ni recarga.
   srv.control.raiz = vA;
-  const ctx2 = await page.context().browser().newContext({ ...test.info().project.use, baseURL: `http://127.0.0.1:${PUERTO}` });
-  const datos = estadoBase({ sesiones: { s1: sesionDemo('s1', { estado: 'en_curso', empezada: new Date().toISOString() }) } });
-  await ctx2.addInitScript(d => { if (!localStorage.getItem('pipos4')) localStorage.setItem('pipos4', d); }, JSON.stringify(datos));
+  const ctx2 = await contextoConSesion(browser);
   const p2 = await ctx2.newPage();
   try {
     await p2.goto('/#hoy');
@@ -184,17 +248,63 @@ test('al volver a primer plano avisa de la versión nueva; con una sesión en cu
     await expect(p2.locator('#vista')).toContainText('Seguir');
     srv.control.raiz = vB;
     await p2.evaluate(() => { window.sinRecargar = true; });
-    await p2.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
-      document.dispatchEvent(new Event('visibilitychange'));
-    });
-    await p2.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting);
+    await volverAPrimerPlano(p2);
+    await hayEnEspera(p2);
     await p2.waitForTimeout(500);
     await expect(p2.locator('#aviso-version')).toHaveCount(0);
     expect(await p2.evaluate(() => window.sinRecargar)).toBe(true);
     expect((await foto(p2)).marca).toBe('A');
   } finally {
     await ctx2.close();
+  }
+});
+
+test('dos pestañas: al actualizar en una, la otra (sin sesión) se recarga con la versión nueva', async ({ context }) => {
+  // rev-pr5/repro.mjs, escenario 2: antes la otra pestaña seguía con código viejo bajo el SW nuevo.
+  const t1 = await context.newPage();
+  await instalar(t1);
+  const t2 = await context.newPage();
+  await t2.goto('/#hoy');
+  await t2.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await t2.evaluate(() => { window.sinRecargar = true; });
+  srv.control.raiz = vB;
+  await t1.reload();
+  await expect(t1.locator('#aviso-version')).toBeVisible();
+  await Promise.all([t1.waitForEvent('load'), t2.waitForEvent('load'), t1.click('#aviso-version button')]);
+  await appEntera(t1, 'B');
+  await appEntera(t2, 'B');
+  expect(await t2.evaluate(() => window.sinRecargar || null)).toBe(null);
+});
+
+test('dos pestañas con una sesión en curso: la otra avisa, no se recarga y se recarga al terminar la sesión', async ({ browser }) => {
+  const ctx = await contextoConSesion(browser);
+  try {
+    const t1 = await ctx.newPage();
+    await t1.goto('/#hoy');
+    await t1.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    const t2 = await ctx.newPage();
+    await t2.goto('/#sesion/s1');
+    await expect(t2.locator('[data-act="sesion.serie"]').first()).toBeVisible();
+    await t2.evaluate(() => { window.sinRecargar = true; });
+    srv.control.raiz = vB;
+    await volverAPrimerPlano(t1);
+    await hayEnEspera(t1);
+    // Se activa la versión nueva desde fuera de t2 (como «Actualizar» en otra pestaña o «Volver a intentar»).
+    await t1.evaluate(async () => (await navigator.serviceWorker.getRegistration()).waiting.postMessage({ tipo: 'actualizar' }));
+    await expect(t2.locator('#aviso-version')).toContainText('al terminar la sesión');
+    await t2.waitForTimeout(500);
+    expect(await t2.evaluate(() => window.sinRecargar)).toBe(true);
+    expect((await foto(t2)).marca).toBe('A');
+    // Termina la sesión: se recarga sola con B.
+    const terminar = t2.locator('[data-act="sesion.terminar"]:visible').first();
+    await terminar.evaluate(e => e.scrollIntoView({ block: 'center' }));
+    await terminar.click({ timeout: 5000 });
+    await Promise.all([t2.waitForEvent('load', { timeout: 10000 }), t2.locator('[data-act="sesion.cerrar"]:visible').first().click({ timeout: 5000 })]);
+    await expect(t2.locator('#nav a')).toHaveCount(4);
+    expect((await foto(t2)).marca).toBe('B');
+    expect(await t2.evaluate(() => JSON.parse(localStorage.getItem('pipos4')).sesiones.s1.estado)).toBe('hecha');
+  } finally {
+    await ctx.close();
   }
 });
 
@@ -227,24 +337,35 @@ test('vigilante de arranque: si un módulo no llega, lo dice y deja recargar', a
   await expect(page.locator('#fallo-arranque')).toHaveCount(0);
 });
 
+test('vigilante en la primera instalación con red lenta: «Sigue cargando…» sin error, y arranca', async ({ page }) => {
+  srv.control.retrasar = { '/js/datos/ejercicios.js': 10000 };
+  await page.goto('/', { waitUntil: 'commit' });
+  await expect(page.locator('#fallo-arranque')).toHaveText('Sigue cargando…', { timeout: 9000 });
+  await expect(page.locator('#fallo-arranque button')).toHaveCount(0);
+  await expect(page.locator('#nav')).toBeAttached({ timeout: 15000 });
+  await expect(page.locator('#fallo-arranque')).toHaveCount(0);
+  await expect(page.locator('[data-act="bienvenida.elegir"]').first()).toBeVisible();
+});
+
 test('paso desde main (SW viejo) con red a medias, luego sin red, y marcha atrás', async ({ page, context }) => {
   srv.control.raiz = legado;
   await page.goto('/');
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await expect(page).toHaveTitle('App vieja');
 
-  // Lanzamiento: el primer arranque pierde ui.js. El SW de main da su index.html en su lugar: el vigilante avisa.
+  // Lanzamiento: el primer arranque pierde ui.js. El SW de main da su index.html en su lugar: el vigilante
+  // da de baja ese SW y lo reintenta desde la red una vez; como ui.js sigue sin llegar, avisa.
   srv.control.raiz = vA;
   srv.control.cortar = ['/js/nucleo/ui.js'];
   await page.reload();
-  await expect(page.locator('#fallo-arranque')).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('#fallo-arranque')).toContainText('No se pudo actualizar', { timeout: 15000 });
 
-  // Con red: arranca, el SW nuevo sustituye al de main sin pedir «Actualizar» y sin aviso.
+  // Con red: arranca y el SW nuevo toma el control sin pedir «Actualizar» y sin aviso.
   srv.control.cortar = [];
   await Promise.all([page.waitForEvent('load'), page.click('#fallo-arranque button')]);
-  await page.waitForFunction(async () => {
+  await enPagina(page, async () => {
     const ks = await caches.keys();
-    return ks.length === 1 && ks[0].startsWith('pipos-app-') && navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith('/sw.js');
+    return ks.length === 1 && ks[0].startsWith('pipos-app-') && !!navigator.serviceWorker.controller;
   });
   await page.click('[data-act="bienvenida.elegir"][data-v="virginia"]');
   await appEntera(page, 'A');
@@ -255,10 +376,11 @@ test('paso desde main (SW viejo) con red a medias, luego sin red, y marcha atrá
   await appEntera(page, 'A');
   await context.setOffline(false);
 
-  // Marcha atrás a main: abrir la app dos veces basta para volver a la vieja.
+  // Marcha atrás a main: al abrir la app, el SW de main se instala, entra solo y borra la caché nueva;
+  // la siguiente apertura ya es la app vieja.
   srv.control.raiz = legado;
   await page.reload();
-  await page.waitForFunction(async () => (await caches.keys()).some(k => k.startsWith('elplan-')));
+  await enPagina(page, async () => { const ks = await caches.keys(); return ks.some(k => k.startsWith('elplan-')) && !ks.some(k => k.startsWith('pipos-app-')); });
   await page.reload();
   await expect(page).toHaveTitle('App vieja');
 });

@@ -9,14 +9,14 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-4cc9e4d42587';
+const VERSION = 'pipos-app-18dadb4be5de';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-C3VnjzoTZ29PiQ2YBHaB2zewhWlqDRMh6y812NAagYA=',
+  './': 'sha256-9uNAhz3kZQ9uJPYO7IS2ZyOIPGu/u3bbx9KIVMi2Zj8=',
   './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
   './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
-  './css/componentes.css': 'sha256-4XRT3q8IvSVJWYUo+XRK4bOZoKPkfsDpv/TgyRGyzh8=',
+  './css/componentes.css': 'sha256-qcAHPb9HeaqPt++g/W85R/j7MGEaJSCdwQE1kHdbsFw=',
   './fonts/archivo-latin-var.woff2': 'sha256-igMZE3lrXQl0FyWcAdsDT4ylrAXkBnpr2qdXeeoMjtg=',
   './fonts/outfit-latin-400.woff2': 'sha256-cfAo/SNJmQs/iqZDq+dn6C4PWWvkB65m8ABP8WQSG9s=',
   './fonts/outfit-latin-500.woff2': 'sha256-/Jv/lB3vbZJKcWMr2KkxkFKIcurmQUhE88Nn/5SNkv0=',
@@ -28,7 +28,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
   './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
   './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
-  './index.html': 'sha256-C3VnjzoTZ29PiQ2YBHaB2zewhWlqDRMh6y812NAagYA=',
+  './index.html': 'sha256-9uNAhz3kZQ9uJPYO7IS2ZyOIPGu/u3bbx9KIVMi2Zj8=',
   './js/arranque.js': 'sha256-Y+wo7mgETmoZVY2B5y4EaVCBSAzq3DMYSTkwpiIuEJY=',
   './js/areas/ejercicios/indice.js': 'sha256-uTRWT8hDPOXYUn9+fRLQ+mOqc5g4vgFLbww55sdtmiI=',
   './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
@@ -57,7 +57,7 @@ const HUELLAS = {
   './js/nucleo/rescate.js': 'sha256-rQNc7KlmEYenoeTzDfYr69q8XI9uO3hbpCzb3NwGstk=',
   './js/nucleo/router.js': 'sha256-yiKB0ffAUd5QdluulRJdzWtzFdD16tRg9CltWm16z2Y=',
   './js/nucleo/ui.js': 'sha256-u4LkYrLJD/uYHweHnTn9lYbB+7YvITO72E2fSkRJBSM=',
-  './js/nucleo/version.js': 'sha256-31EowLLTP8OG20u6Tq4i65lDO8jy0Y6o+CdFVVe1s80=',
+  './js/nucleo/version.js': 'sha256-/F3bhqZEQ2dGPs+qYrdQEawe6YM2+5h+/ypcXWxHHiY=',
   './js/reglas/catalogo.js': 'sha256-h+tmDslS2iqHrvlYMthQH4b8jxfiACjC5KrhK+aWRGw=',
   './js/reglas/contexto.js': 'sha256-CN6N1hA9J1o1NrAa7bpg+XaADWQ0yeDc8wkylSJZh5g=',
   './js/reglas/progresion.js': 'sha256-INGcRYa5QoEeZ77v00ScJqD6rO3UFFkhvIepWfkr2GA=',

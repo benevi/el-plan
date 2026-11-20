@@ -38,6 +38,25 @@ test('todo archivo de la app (css, js, icons, fuentes, index, manifest) está en
   assert.deepEqual(front.filter(f => !APP.includes(f)), []);
 });
 
+// Lo que el sitio sirve y no es de la app: ni se precarga ni entra en VERSION. Cualquier otro archivo
+// (también una carpeta nueva de recursos) tiene que estar en APP, o añadirse aquí a sabiendas.
+const FUERA_DE_APP = [
+  /^api\//, /^tests\//, /^scripts\//, /^docs\//, /^\.github\//, /^fonts\/OFL-[\w-]+\.txt$/,
+  /^(\.gitignore|\.vercelignore|LEEME\.md|eslint\.config\.js|playwright\.config\.js|package\.json|package-lock\.json|vercel\.json|sw\.js)$/,
+];
+test('todo archivo servible está en APP salvo lo excluido a sabiendas (VERSION cubre toda la app)', () => {
+  const todo = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
+    ['.git', 'node_modules', 'test-results', 'playwright-report'].includes(e.name) ? [] : e.isDirectory() ? todo(path.join(d, e.name)) : [path.join(d, e.name)]);
+  const sueltos = todo(RAIZ).map(f => path.relative(RAIZ, f).split(path.sep).join('/'))
+    .filter(f => !APP.includes(f) && !FUERA_DE_APP.some(r => r.test(f)));
+  assert.deepEqual(sueltos, [], 'súmalos a APP en sw.js (y npm run version) o a FUERA_DE_APP en esta prueba');
+});
+
+test('sin import() dinámico en js/: tras activar una versión, una pestaña vieja no puede pedir módulos nuevos', () => {
+  const js = archivos.filter(f => f.startsWith('js/') && f.endsWith('.js'));
+  assert.deepEqual(js.filter(f => /\bimport\s*\(/.test(fs.readFileSync(ruta(f), 'utf8'))), []);
+});
+
 test('APP no tiene entradas repetidas e incluye la raíz', () => {
   assert.deepEqual(APP.filter((a, i) => APP.indexOf(a) !== i), []);
   assert.ok(APP.includes(''), 'falta ./');

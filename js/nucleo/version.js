@@ -50,7 +50,7 @@ function preguntarVersion(sw, espera = 1500) {
   });
 }
 
-function quitarAviso() { const el = document.getElementById('aviso-version'); if (el) el.remove(); }
+function quitarAviso() { const el = document.getElementById('aviso-version'); if (el) el.remove(); document.body.classList.remove('con-aviso-version'); }
 
 function pintarAviso(texto) {
   let el = document.getElementById('aviso-version');
@@ -67,6 +67,7 @@ function pintarAviso(texto) {
     b.addEventListener('click', actualizar);
     el.append(txt, b);
     document.body.appendChild(el);
+    document.body.classList.add('con-aviso-version'); // deja sitio debajo para que no tape nada
   }
   el.firstChild.textContent = texto;
 }
