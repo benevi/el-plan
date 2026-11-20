@@ -151,7 +151,25 @@ function perfil(p, avisos) {
       fecha: fechaISO(c.fecha), de: numero(c.de, 1, 3, null, { entero: true }), a: numero(c.a, 1, 3, null, { entero: true }), motivo: texto(c.motivo, 300),
     })).filter(c => c.fecha && c.de && c.a);
   }
+  if (p.nadar25 === true) out.nadar25 = true;
+  const sal = salud(p.salud); if (sal) out.salud = sal;
   return out;
+}
+
+// Datos de salud (D4, opcional): solo claves conocidas y valores de listas cerradas (js/areas/entrenador/salud.js).
+const SALUD_BOOL = ['cesarea', 'cardiopatia', 'diabetes', 'diabetesVista', 'diabetesPies', 'protesis', 'epilepsia', 'asma', 'equilibrio'];
+const VISTO_BUENO = ['hipertension', 'embarazo', 'posparto', 'cardiopatia', 'diabetes', 'osteoporosis', 'protesis'];
+function salud(s) {
+  if (!esObjeto(s)) return null;
+  const out = {};
+  const h = enLista(s.hipertension, ['controlada', 'sin_controlar']); if (h) out.hipertension = h;
+  const emb = numero(s.embarazo, 0, 45, 0, { entero: true }); if (emb) out.embarazo = emb;
+  const pos = numero(s.posparto, 0, 104, 0, { entero: true }); if (pos) out.posparto = pos;
+  const med = [...new Set(lista(s.medicacion, 10).filter(m => ['betabloqueantes', 'anticoagulantes', 'azucar', 'corticoides'].includes(m)))]; if (med.length) out.medicacion = med;
+  const o = enLista(s.osteoporosis, ['sin_fracturas', 'con_fracturas']); if (o) out.osteoporosis = o;
+  SALUD_BOOL.forEach(k => { if (s[k] === true) out[k] = true; });
+  if (esObjeto(s.vistoBueno)) { const vb = {}; VISTO_BUENO.forEach(k => { if (s.vistoBueno[k] === true) vb[k] = true; }); if (Object.keys(vb).length) out.vistoBueno = vb; }
+  return Object.keys(out).length ? out : null;
 }
 
 // ── Sesiones y plan ──
@@ -177,6 +195,7 @@ function ejercicioSesion(x) {
     gusto: enLista(x.gusto, Object.keys(GUSTOS), null), comentario: texto(x.comentario, 400),
   };
   const nombre = texto(x.nombre, 120); if (nombre) out.nombre = nombre;
+  if (x.superserie === true) out.superserie = true;
   return out.id || out.nombre ? out : null;
 }
 function ejercicioPlan(x) {
@@ -187,6 +206,7 @@ function ejercicioPlan(x) {
   };
   const motivo = texto(x.motivo, 400); if (motivo) out.motivo = motivo;
   const kg = numero(x.kg, 0, 500, null); if (kg != null) out.kg = kg;
+  if (x.superserie === true) out.superserie = true;
   return out;
 }
 const explicacion = v => (typeof v === 'string' ? [v] : lista(v, 12)).map(t => texto(t, 600)).filter(Boolean);
@@ -265,6 +285,12 @@ function registroDolor(d) {
   if (typeof d.vid === 'string') out.vid = texto(d.vid, 200);
   return out;
 }
+// Señales de alarma apuntadas (C-ALAR-1, C-ALAR-4): { fecha, respuesta 'si'|'no', frase }.
+function alarma(a) {
+  if (!esObjeto(a)) return null;
+  const fecha = fechaDia(a.fecha), respuesta = enLista(a.respuesta, ['si', 'no']);
+  return fecha && respuesta ? { fecha, respuesta, frase: texto(a.frase, 200) } : null;
+}
 export function migracion(m) {
   if (!esObjeto(m)) return { version: 1, dueño: null, claves: [], sexoRevisar: false };
   return {
@@ -311,5 +337,7 @@ export function normalizarEstado(x) {
     ajustes,
     migracion: migracion(x.migracion),
   };
+  const alarmas = lista(x.alarmas, 100).map(alarma).filter(Boolean);
+  if (alarmas.length) estado.alarmas = alarmas;
   return { estado, avisos };
 }

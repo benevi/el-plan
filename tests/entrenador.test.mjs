@@ -41,11 +41,12 @@ test('un ejercicio rechazado después del plan se cambia al hacer el check-in', 
   assert.ok(r.cambios.some(c => /no lo quieres/.test(c)));
 });
 
-test('con dolor ≥ 7 la sesión pasa a «Sesión suave» y avisa de consultar', () => {
+test('con dolor ≥ 7 la sesión pasa a «Sesión suave» y avisa de consultar (C-DOLOR-4, T6)', () => {
   const S = nuevoS({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'lumbar', dolor: 3, activa: true }] });
   const r = ent.ajustarAlCheckin(S, null, ci({ dolorHoy: { lumbar: 9 }, minutos: 30 }));
   assert.equal(r.datos.nombre, 'Sesión suave');
-  assert.ok(r.cambios.some(c => /fisio/.test(c)));
+  assert.equal(r.cambios[0], ent.T6('lumbar', 9, 30));
+  assert.ok(r.cambios.some(c => /consúltalo/.test(c)));
 });
 
 test('crearSesionHoy sin red: sesión del plan, guardada y marcada en el plan', async () => {
@@ -66,7 +67,7 @@ test('reorganizar mueve los días pendientes a los días libres', async () => {
   assert.deepEqual(est.estado().plan.dias.map(d => d.diaSemana), [4, 6]);
 });
 
-// ── Fallos demostrados por la auditoría (PR 8) ──
+// ── Fallos demostrados por la auditoría (los de plan.js los cerró el PR 10; el resto, el PR 8) ──
 
 test('reorganizar sin días libres no borra la semana', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
@@ -84,7 +85,7 @@ test('una sesión no marca dos días del plan como hechos', async () => {
   assert.equal(hechos.length, 1, hechos.map(d => d.diaSemana).join(','));
 });
 
-test('una rehabilitación rechazada después del plan no aparece en la sesión', { todo: 'PR 8: el check-in no revalida el día del plan contra el perfil de hoy' }, () => {
+test('una rehabilitación rechazada después del plan no aparece en la sesión', () => {
   const S = nuevoS({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 2, activa: true }] });
   const d = ent.planReglas(S, { dias: [3], minutos: 60, lugares: ['gym'] }).dias[0];
   const rehab = d.ejercicios.find(x => x.rol === 'rehab').id;
@@ -92,7 +93,7 @@ test('una rehabilitación rechazada después del plan no aparece en la sesión',
   assert.ok(!ids(ent.ajustarAlCheckin(S, d, ci({ dolorHoy: { rodilla: 2 } })).datos).includes(rehab));
 });
 
-test('con dolor 5 hoy no queda ninguna rehabilitación contraindicada', { todo: 'PR 8: riesgo con el dolor de hoy también en los de rehabilitación' }, () => {
+test('con dolor 5 hoy no queda ninguna rehabilitación contraindicada', () => {
   const S = nuevoS({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 2, activa: true }] });
   const d = ent.planReglas(S, { dias: [3], minutos: 60, lugares: ['gym'] }).dias[0];
   const r = ent.ajustarAlCheckin(S, d, ci({ dolorHoy: { rodilla: 5 } }));
@@ -100,7 +101,7 @@ test('con dolor 5 hoy no queda ninguna rehabilitación contraindicada', { todo: 
   assert.deepEqual(r.datos.ejercicios.filter(x => cat.riesgo(cat.ex(x.id), niv) === 'evitar').map(x => x.id), []);
 });
 
-test('una lesión nueva tras el plan añade su rehabilitación y quita tareas contraindicadas', { todo: 'PR 8: rehabilitación por zona y tareas de calentamiento/vuelta con riesgo' }, () => {
+test('una lesión nueva tras el plan añade su rehabilitación y quita tareas contraindicadas', () => {
   const S = nuevoS({ objetivos: ['musculo'] });
   const d = ent.planReglas(S, { dias: [3], minutos: 60, lugares: ['gym'] }).dias[0];
   S.perfil.lesiones.push({ id: 'h', zona: 'hombro', dolor: 6, activa: true });
@@ -111,7 +112,7 @@ test('una lesión nueva tras el plan añade su rehabilitación y quita tareas co
   assert.deepEqual(tareas, []);
 });
 
-test('quitar material y bajar de nivel rehace los días pendientes', { todo: 'PR 8: material de casa y nivel cambiados después del plan' }, () => {
+test('quitar material y bajar de nivel rehace los días pendientes', () => {
   const S = nuevoS({ objetivos: ['musculo'], lugares: ['casa'], nivel: 3, materialCasa: ['mancuernas', 'banda', 'banco', 'barra fija'] });
   const d = ent.planReglas(S, { dias: [3], minutos: 60, lugares: ['casa'] }).dias[0];
   S.perfil.materialCasa = []; S.perfil.nivel = 1;
@@ -120,7 +121,7 @@ test('quitar material y bajar de nivel rehace los días pendientes', { todo: 'PR
   assert.deepEqual(ids(r.datos).filter(id => !posibles.has(id)), []);
 });
 
-test('un día de piscina hecho en el gimnasio usa la plantilla del gimnasio', { todo: 'PR 8: cambio de lugar piscina ↔ seco' }, () => {
+test('un día de piscina hecho en el gimnasio usa la plantilla del gimnasio', () => {
   const S = nuevoS({ objetivos: ['natacion'], lugares: ['gym', 'piscina'] });
   const p = ent.planReglas(S, { dias: [1, 3, 5], minutos: 60, lugares: ['gym', 'piscina'] });
   const dp = p.dias.find(d => d.lugar === 'piscina');
@@ -129,12 +130,12 @@ test('un día de piscina hecho en el gimnasio usa la plantilla del gimnasio', { 
   assert.ok(ent.tiempoSesion(r.datos) >= 60 * 0.7, `${ent.tiempoSesion(r.datos)} min: ${ids(r.datos).join(', ')}`);
 });
 
-test('una zona de dolor desconocida no rompe el check-in', { todo: 'PR 8: zona desconocida con dolor ≥ 7 lanza una excepción' }, () => {
+test('una zona de dolor desconocida no rompe el check-in', () => {
   const S = nuevoS({ objetivos: ['musculo'], lesiones: [{ id: 'a', zona: 'espalda_alta', dolor: 6, activa: true }] });
   assert.doesNotThrow(() => ent.ajustarAlCheckin(S, null, ci({ dolorHoy: { espalda_alta: 9 } })));
 });
 
-test('con dolor 9 no se sube de peso en ningún ejercicio', { todo: 'PR 8: día con dolor ≥ 7 (D2)' }, () => {
+test('con dolor 9 no se sube de peso en ningún ejercicio', () => {
   const S = nuevoS({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'lumbar', dolor: 3, activa: true }] });
   const d = new Date(Date.now() - 5 * 864e5);
   S.sesiones.h = { id: 'h', fecha: est.hoyISO(d), terminada: d.toISOString(), estado: 'hecha', lugar: 'gym', ejercicios: [{ id: 'jalon-pecho', sets: [[40, 12], [40, 12], [40, 12]].map(([kg, v]) => ({ kg, valor: String(v), hecha: true })) }] };
@@ -142,9 +143,9 @@ test('con dolor 9 no se sube de peso en ningún ejercicio', { todo: 'PR 8: día 
   assert.deepEqual(r.datos.ejercicios.filter(x => /^Sube/.test(x.motivo || '')).map(x => x.id), []);
 });
 
-test('al sustituir un ejercicio por dolor, la dosis sigue el tipo del nuevo (reps ↔ tiempo)', { todo: 'PR 8: sustitución que cambia de tipo conservando reps' }, () => {
+test('al sustituir un ejercicio por dolor, la dosis sigue el tipo del nuevo (reps ↔ tiempo)', () => {
   const S = nuevoS({ objetivos: ['musculo'], nivel: 2 });
-  const d = { nombre: 'x', lugar: 'gym', minutos: 60, tipo: 'fullA', calentamiento: [{ nombre: 'a' }], vuelta: [{ nombre: 'b' }], explicacion: [], ejercicios: [{ id: 'plancha', rol: 'principal', series: 4, reps: '6-10', descanso: 120 }] };
+  const d = { nombre: 'x', lugar: 'gym', minutos: 60, tipo: 'fullA', calentamiento: [{ nombre: 'a' }], vuelta: [{ nombre: 'b' }], explicacion: [], ejercicios: [{ id: 'crunch', rol: 'principal', series: 4, reps: '30-45 s', descanso: 120 }] };
   const r = ent.ajustarAlCheckin(S, d, ci({ dolorHoy: { lumbar: 5 }, minutos: 30 }));
   const x = r.datos.ejercicios.find(x => /en lugar de/i.test(x.nota || ''));
   assert.ok(x, 'no hubo sustitución');

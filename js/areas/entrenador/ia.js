@@ -1,70 +1,111 @@
 // Área ENTRENADOR · el puente con la IA (/api/entrenador): qué se le manda, las barandillas sobre lo que
 // devuelve y la creación de la sesión de hoy y del plan de la semana (con las reglas si la IA no está o falla).
+// Lo que propone la IA pasa por el validador único (validar.js): se corrige con las reglas y, si no se puede,
+// la sesión entera sale de las reglas; la IA no se reintenta (C-IA-3). Antes de generar nada se preguntan
+// las señales de alarma y el «desde cuándo» de las lesiones que no lo tienen (C-ALAR-1, C-ALAR-4, C-LES-6).
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamar, enLinea } from '../../nucleo/api.js';
 import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA } from '../../reglas/contexto.js';
-import { acotarKg, cargaMuscular, sesionesHechas } from '../../reglas/progresion.js';
+import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { montarDia, reglaCardio, porQueEjercicio, porQueRehab, resumenDia, lista, minus } from './dia.js';
+import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
-import { validarSesion } from './validar.js';
+import { validarSesion, esUltimoRecurso } from './validar.js';
+import { alarmaPendiente, preguntaAlarma, respondidasNo, T2 } from './alarma.js';
+import { etiquetasSalud } from './salud.js';
 
 // ── Petición a la IA ──
 function peticionBase(S, lugares, dolorHoy) {
   const catalogo = catalogoParaIA(S, lugares, dolorHoy);
   const ids = catalogo.map(e => e.id);
   return {
-    perfil: perfilParaIA(S), lesiones: lesionesParaIA(S, dolorHoy), catalogo,
+    // Datos de salud solo como etiquetas, nunca como texto libre (C-SALUD-0).
+    perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy), catalogo,
     historial: historialParaIA(S, ids, { niveles: nivelesZona(S.perfil, dolorHoy) }), analisis: analisisParaIA(S),
     hoy: hoyISO(), diaSemana: diaSemana(),
   };
 }
 
-// Barandillas sobre lo que propone la IA (sesión o día de plan): seguridad, kilos y piezas obligatorias.
-function completarIA(S, d, { lugar, minutos, dolorHoy = {}, k = 0 }) {
-  const r = montarDia(S, { lugar, minutos, tipo: lugar === 'piscina' ? 'piscina' : 'fullA', dolorHoy, k, futuro: !!d.futuro });
-  const añadidos = [];
-  if (!d.calentamiento || d.calentamiento.length < 2) { d.calentamiento = r.calentamiento; añadidos.push('calentamiento'); }
-  if (!d.vuelta || d.vuelta.length < 2) { d.vuelta = r.vuelta; añadidos.push('estiramientos'); }
-  const zonas = Object.keys(nivelesZona(S.perfil, dolorHoy)).filter(z => ZONAS[z]);
-  zonas.forEach(z => {
-    const tieneRehab = d.ejercicios.some(x => x.rol === 'rehab' && (ZONAS[z].rehab || []).includes(x.id)) || d.ejercicios.some(x => x.rol === 'rehab');
-    if (!tieneRehab) { const x = r.ejercicios.find(y => y.rol === 'rehab'); if (x) { d.ejercicios.unshift(x); añadidos.push('rehabilitación de ' + minus(ZONAS[z].corta)); } }
-  });
-  const cardio = reglaCardio(S, lugar);
-  if (cardio && cardio.obligatorio && !d.ejercicios.some(x => x.rol === 'cardio')) {
-    const c = r.ejercicios.find(y => y.rol === 'cardio'); if (c) { d.ejercicios.push(c); añadidos.push('cardio'); }
-  }
-  d.ejercicios.forEach(x => {
-    if (!(x.kg != null && +x.kg > 0)) { x.kg = null; return; }
-    const conHistorial = sesionesHechas(S).some(s2 => (s2.ejercicios || []).some(y => y.id === x.id && (y.sets || []).some(z => z.hecha && +z.kg > 0)));
-    // Sin historial no hay referencia: un peso absurdo se descarta y la persona elige el de partida.
-    x.kg = conHistorial ? acotarKg(S, x.id, +x.kg) : +x.kg <= 120 ? +x.kg : null;
-  });
+// ── Antes de generar: alarma y «desde cuándo» ──
+// Opciones de «¿Desde cuándo te duele?» (C-LES-6): la respuesta se guarda como fecha aproximada.
+export const DESDE = { menos6: ['menos de 6 semanas', 21], de6a12: ['6 a 12 semanas', 63], mas3m: ['más de 3 meses', 120], nose: ['no lo sé', 0] };
+const sinDesde = S => lesionesSinFecha(S);
+// Lo que hay que preguntar antes de generar la sesión, o null. ci.desde: { zona: clave de DESDE }.
+export function preguntaAntes(S, ci = {}) {
+  const p = alarmaPendiente(S, ci);
+  if (p) return { tipo: 'alarma', frase: p.frase, texto: preguntaAlarma(p.frase, p.de) };
+  const zonas = sinDesde(S).map(l => l.zona).filter(z => !(ci.desde || {})[z]);
+  if (zonas.length) return { tipo: 'desde', zonas, texto: `¿Desde cuándo te duele ${lista(zonas.map(z => `tu ${nombreZona(z)}`))}?` };
+  return null;
+}
+// Apunta una alarma (marcada o respondida) en S.alarmas. Con «sí», el día queda «sin entrenar por precaución»
+// y la sesión de hoy que aún no se ha empezado se cancela (C-ALAR-1).
+function apuntarAlarma(a) {
+  cambiar(S => {
+    S.alarmas = [...(S.alarmas || []), { fecha: hoyISO(), ...a }].slice(-100);
+    if (a.respuesta !== 'si') return;
+    Object.values(S.sesiones).filter(s => s.fecha === hoyISO() && s.estado === 'pendiente').forEach(s => {
+      delete S.sesiones[s.id];
+      if (S.plan && S.plan.hechos) Object.keys(S.plan.hechos).forEach(d => { if (S.plan.hechos[d] === s.id) delete S.plan.hechos[d]; });
+    });
+  }, 'alarma');
+}
+export const sinEntrenarHoy = S => (S.alarmas || []).some(a => a.fecha === hoyISO() && a.respuesta === 'si');
+
+// Barandillas sobre lo que propone la IA (sesión o día de plan): el validador único y notas con datos.
+function completarIA(S, d, { lugar, minutos, dolorHoy = {}, energia = 3, k = 0, futuro = false }) {
+  const v = validarSesion(S, d, { lugar, minutos, dolorHoy, energia, futuro, origen: 'ia', k });
+  const s = v.sesion;
   // Cada ejercicio con su porqué concreto: si la IA deja una nota vacía o genérica, la escribe la app con sus datos.
-  const an = analizarEjercicios(S), carga = d.futuro ? {} : cargaMuscular(S), niveles = nivelesZona(S.perfil, dolorHoy);
-  d.ejercicios.forEach((x, i) => {
+  const an = analizarEjercicios(S), carga = futuro ? {} : cargaMuscular(S), niveles = nivelesZona(S.perfil, dolorHoy);
+  const zonas = Object.keys(nivelesZona(S.perfil, dolorHoy)).filter(z => ZONAS[z]);
+  s.ejercicios.forEach((x, i) => {
     const e = ex(x.id); if (!e || !notaGenerica(x.nota)) return;
     if (x.rol === 'rehab') { const z = zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0]; if (z) x.nota = porQueRehab(S, e, z, dolorHoy); }
     else if (x.rol === 'principal') x.nota = porQueEjercicio(S, e, { i, d: x, an, carga, niveles, dolorHoy });
   });
-  if (!(d.explicacion || []).length) {
-    const rehabZ = d.ejercicios.filter(x => x.rol === 'rehab').map(x => ({ zona: zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0] })).filter(x => x.zona);
-    d.explicacion = [resumenDia(S, { plantilla: { nombre: d.nombre || 'Sesión' }, elegidos: d.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id)).filter(Boolean), rehab: rehabZ, cardio: d.ejercicios.find(x => x.rol === 'cardio'), an: {} })];
+  if (!(s.explicacion || []).length) {
+    const rehabZ = s.ejercicios.filter(x => x.rol === 'rehab').map(x => ({ zona: zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0] })).filter(x => x.zona);
+    s.explicacion = [resumenDia(S, { plantilla: { nombre: s.nombre || 'Sesión' }, elegidos: s.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id)).filter(Boolean), rehab: rehabZ, cardio: s.ejercicios.find(x => x.rol === 'cardio'), an: {} })];
   }
-  if (añadidos.length) d.explicacion = [...(d.explicacion || []), `La app añadió ${lista(añadidos)}, que siempre van.`];
-  return d;
+  return { sesion: s, cambios: v.cambios, valida: v.valida };
 }
 const notaGenerica = t => !t || String(t).trim().length < 30 || /^(con cuidado|cuidado|técnica limpia|cambiado|sin dolor|controlad)/i.test(String(t).trim()) && !/\d/.test(t);
+const principalesValidos = (lista0, lugar) => (lista0 || []).filter(x => x && x.rol !== 'rehab' && x.rol !== 'cardio' && ex(x.id) && ex(x.id).l.includes(lugar)).length;
 
 // ── Sesión de hoy ──
-// Devuelve { sesion, aviso }. Sin IA (o si falla) usa el día del plan ajustado al check-in o una sesión de reglas.
+// Devuelve { sesion, aviso, motivo } o, si antes hay que preguntar algo, { sesion: null, pregunta } y, con una
+// señal de alarma, { sesion: null, alarma: [T2] }. Sin IA (o si falla) usa el día del plan ajustado al
+// check-in o una sesión de reglas. ci: { …, alarma (casilla), alarmaRespuesta 'si'|'no', alarmaFrase, desde }
 export async function crearSesionHoy(ci) {
-  const S = estado();
+  let S = estado();
+  // Señal de alarma marcada o confirmada: hoy no se entrena, ni reglas ni IA (C-ALAR-1, C-ALAR-5).
+  if (ci.alarma || ci.alarmaRespuesta === 'si') {
+    apuntarAlarma({ respuesta: 'si', frase: String(ci.alarmaFrase || (ci.alarma ? 'casilla del check-in' : '')).slice(0, 200) });
+    return { sesion: null, alarma: T2, aviso: '', motivo: '' };
+  }
+  // Ya hay una alarma confirmada hoy: no se entrena (por ningún camino).
+  if (sinEntrenarHoy(S)) return { sesion: null, alarma: T2, aviso: '', motivo: '' };
+  const yaNo = new Set((S.alarmas || []).filter(a => a.respuesta === 'no').map(a => a.frase));
+  respondidasNo(ci).filter(f => !yaNo.has(f)).forEach(f => apuntarAlarma({ respuesta: 'no', frase: String(f).slice(0, 200) }));
+  // Respuestas a «¿desde cuándo?» (C-LES-6).
+  const desde = ci.desde || {};
+  if (sinDesde(S).some(l => DESDE[desde[l.zona]])) {
+    cambiar(S2 => S2.perfil.lesiones.forEach(l => {
+      const r = DESDE[desde[l.zona]]; if (!l.activa || l.desde || !r) return;
+      l.desde = hoyISO(new Date(Date.now() - r[1] * 864e5));
+      if (desde[l.zona] === 'nose' && !l.tipo) l.tipo = 'puntual';
+    }), 'perfil');
+    S = estado();
+  }
+  const pregunta = preguntaAntes(S, ci);
+  if (pregunta) return { sesion: null, pregunta, aviso: '', motivo: '' };
+
+  const minutos = minutosSesion(ci.minutos);
   const dia = diaElegido(S, ci.diaPlan);
   const local = ajustarAlCheckin(S, dia, ci);
   const decide = motivoIA(S, ci, dia);
@@ -73,21 +114,29 @@ export async function crearSesionHoy(ci) {
     try {
       const r = await llamar('entrenador', {
         modo: 'sesion', ...peticionBase(S, [ci.lugar], ci.dolorHoy),
-        checkin: { lugar: LUGARES[ci.lugar], minutos: ci.minutos, energia: ci.energia, dolorHoy: ci.dolorHoy, peticion: ci.peticion || '' },
+        checkin: { lugar: LUGARES[ci.lugar], minutos, energia: ci.energia, dolorHoy: ci.dolorHoy, peticion: ci.peticion || '' },
         planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, lugar: LUGARES[dia.lugar], ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
         ajusteReglas: local.cambios,
       });
       const s = r.sesion;
-      const d = completarIA(S, { ...s, vuelta: s.vueltaCalma, ejercicios: (s.ejercicios || []).filter(x => ex(x.id) && ex(x.id).l.includes(ci.lugar)) }, { lugar: ci.lugar, minutos: ci.minutos, dolorHoy: ci.dolorHoy });
-      if (d.ejercicios.filter(x => x.rol !== 'rehab').length) {
-        datos = { ...d, explicacion: [...(d.explicacion || []).slice(0, 1), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...(d.explicacion || []).slice(1)].slice(0, 8), fuente: 'ia', lugar: ci.lugar, minutos: ci.minutos, checkin: local.datos.checkin };
-      } else aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
+      if (!principalesValidos(s.ejercicios, ci.lugar)) aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
+      else {
+        const d = completarIA(S, { ...s, vuelta: s.vueltaCalma || s.vuelta, ejercicios: (s.ejercicios || []).filter(x => x && ex(x.id)) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
+        if (!d.valida) aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.';
+        else {
+          const ex0 = d.sesion.explicacion || [];
+          datos = {
+            ...d.sesion, fuente: 'ia', lugar: ci.lugar, minutos, checkin: local.datos.checkin,
+            // El último recurso de tiempo va arriba: explica por qué hay menos de 3 principales (C-TIEMPO-2).
+            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...d.cambios.map(c => 'Ajustado por la app: ' + c), ...ex0.slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
+          };
+        }
+      }
     } catch (e) {
       aviso = `Sesión ajustada por la app (${e.message}).`;
     }
   }
-  const sesion = crearSesion(validarSesion(datos));
-  sesion.ejercicios.forEach(x => { if (x.kg != null) { x.kg = acotarKg(S, x.id, x.kg); x.sets.forEach(z => { z.kg = x.kg; }); } });
+  const sesion = crearSesion(datos);
   cambiar(S2 => {
     S2.sesiones[sesion.id] = sesion;
     if (dia && S2.plan) { S2.plan.hechos = S2.plan.hechos || {}; S2.plan.hechos[dia.diaSemana] = sesion.id; }
@@ -108,7 +157,8 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
   const conservar = hechas.map(d => planDeLaSemana(S).dias.find(x => x.diaSemana === d.diaSemana));
   const unir = plan => { plan.dias = [...conservar, ...plan.dias].sort((a, b) => a.diaSemana - b.diaSemana); plan.hechos = (planDeLaSemana(S) || {}).hechos || {}; return plan; };
   if (!dias.length) return { plan: planDeLaSemana(S), aviso: 'No quedan días por planificar esta semana.' };
-  if (conIA && enLinea()) {
+  // Con una alarma pendiente o confirmada hoy, la IA no recibe nada (C-ALAR-5): el plan lo hacen las reglas.
+  if (conIA && enLinea() && !sinEntrenarHoy(S) && !alarmaPendiente(S, {})) {
     try {
       const r = await llamar('entrenador', {
         modo: 'plan', ...peticionBase(S, lugares, {}),
@@ -135,20 +185,29 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
 function normalizarPlan(S, p, lugares, dias, minutos) {
   const vistos = new Set();
   const out = (p.dias || []).map((d, i) => {
-    const lugar = lugares.includes(d.lugar) ? d.lugar : lugares[0];
     const ds = Math.max(1, Math.min(7, +d.diaSemana || 1));
     if (!dias.includes(ds) || vistos.has(ds)) return null;
-    vistos.add(ds);
-    const dd = completarIA(S, {
-      futuro: true, nombre: String(d.nombre || '').slice(0, 60), foco: String(d.foco || '').slice(0, 80),
+    // Lugar del día: el que dice la IA si es de la persona; si sus ejercicios son de otro lugar, el de la mayoría.
+    const ejsIA = (d.ejercicios || []).filter(x => x && ex(x.id));
+    const cuenta = l => ejsIA.filter(x => ex(x.id).l.includes(l)).length;
+    let lugar = lugares.includes(d.lugar) ? d.lugar : lugares[0];
+    const mejor = lugares.slice().sort((a, b) => cuenta(b) - cuenta(a))[0];
+    if (cuenta(lugar) < 3 && cuenta(mejor) > cuenta(lugar)) lugar = mejor;
+    const min = minutosSesion(minutos); // los minutos que pidió la persona para la semana, no los de la IA
+    // Día sin ejercicios válidos para su lugar: lo hace la app (no se acepta un día vacío).
+    if (principalesValidos(ejsIA, lugar) === 0) return null;
+    const c = completarIA(S, {
+      nombre: String(d.nombre || '').slice(0, 60), foco: String(d.foco || '').slice(0, 80),
       explicacion: (Array.isArray(d.explicacion) ? d.explicacion : [d.explicacion]).filter(Boolean).map(String),
-      calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [],
-      ejercicios: (d.ejercicios || []).filter(x => ex(x.id) && ex(x.id).l.includes(lugar)),
-    }, { lugar, minutos: +d.minutos || minutos, k: i });
-    delete dd.futuro;
-    return { diaSemana: ds, lugar, minutos: +d.minutos || minutos, tipo: null, ...dd };
+      calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [], ejercicios: ejsIA,
+    }, { lugar, minutos: min, k: i, futuro: true });
+    if (!c.valida || !c.sesion.ejercicios.length) return null;
+    vistos.add(ds);
+    const dd = c.sesion;
+    if (c.cambios.length) dd.explicacion = [...dd.explicacion, ...c.cambios.map(t => 'Ajustado por la app: ' + t)];
+    return { diaSemana: ds, lugar, minutos: min, tipo: null, nombre: dd.nombre, foco: dd.foco, explicacion: dd.explicacion, calentamiento: dd.calentamiento, ejercicios: dd.ejercicios, vuelta: dd.vuelta };
   }).filter(Boolean);
-  // Días que la IA se dejó: los completa la app.
+  // Días que la IA se dejó (o que no se pudieron corregir): los completa la app.
   const faltan = dias.filter(d => !vistos.has(d));
   if (faltan.length) planReglas(S, { dias: faltan, minutos, lugares }).dias.forEach(d => out.push({ ...d, explicacion: [...d.explicacion.slice(0, 1), 'Día completado por la app.', ...d.explicacion.slice(1)] }));
   return {

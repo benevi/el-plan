@@ -8,14 +8,13 @@ import { cat, K, prog, lesiones } from './ayuda/node.mjs';
 const { EJERCICIOS, ZONAS, ex } = cat;
 const { MUSCULOS, MATERIAL, LUGARES, MATERIAL_CASA } = K;
 const repetidos = a => a.filter((x, i) => a.indexOf(x) !== i);
-// Ejercicios de cardio nuevos que añade el PR 8 (en paralelo a este): se citan en el criterio y en las fichas.
-const PENDIENTES_PR8 = ['marcha-estatica', 'cardio-sentado', 'nado-continuo', 'series-50-crol'];
-const existeOPendiente = id => !!ex(id) || PENDIENTES_PR8.includes(id);
+// Ejercicios de cardio nuevos del PR 8 (C-CARDIO-5): se citan en el criterio y en las fichas.
+const CARDIO_PR8 = ['marcha-estatica', 'cardio-sentado', 'nado-continuo', 'series-50-crol'];
+const existeOPendiente = id => !!ex(id);
 
-// 159 + 19 nuevos del PR 9 (docs/criterio.md, sección 18). Los 4 de cardio del PR 8 se suman al unir las dos ramas.
-test('el catálogo tiene 178 ejercicios (182 con los 4 de cardio del PR 8)', () => {
-  const pr8 = PENDIENTES_PR8.filter(id => ex(id)).length;
-  assert.equal(EJERCICIOS.length, 178 + pr8);
+// 159 + 19 nuevos del PR 9 + 4 de cardio del PR 8 (docs/criterio.md, sección 18).
+test('el catálogo tiene 182 ejercicios', () => {
+  assert.equal(EJERCICIOS.length, 182);
 });
 
 test('ids y nombres únicos; ids en minúsculas con guiones', () => {
@@ -113,15 +112,15 @@ const tieneR = (id, z) => ((ex(id) || {}).r || {})[z] || 0;
 const perfil = (extra = {}) => ({ nivel: 3, lesiones: [], gustos: {}, materialCasa: [], ...extra });
 const banda = { B1: 2, B2: 5 };
 
-test('todos los ids de ejercicio citados en docs/criterio.md existen (salvo los 4 de cardio del PR 8)', () => {
+test('todos los ids de ejercicio citados en docs/criterio.md existen', () => {
   const t = fs.readFileSync(ruta('docs/criterio.md'), 'utf8');
   const citados = [...new Set([...t.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)].map(m => m[1]))];
   assert.ok(citados.length > 100, 'el criterio cita muchos ids');
   assert.deepEqual(citados.filter(id => !existeOPendiente(id)), []);
 });
 
-test('los 4 ejercicios de cardio del PR 8 están en el catálogo', { todo: 'PR 8 + 9: marcha-estatica, cardio-sentado, nado-continuo y series-50-crol llegan con el PR 8' }, () => {
-  assert.deepEqual(PENDIENTES_PR8.filter(id => !ex(id)), []);
+test('los 4 ejercicios de cardio del PR 8 están en el catálogo', () => {
+  assert.deepEqual(CARDIO_PR8.filter(id => !ex(id)), []);
 });
 
 test('las etiquetas de riesgo son las de la tabla 12.9 del criterio (y las de la revisión)', () => {
@@ -274,7 +273,6 @@ test('fichas: tareas de calentar y estirar con ids que existen, uso válido y si
     }
     if (!Z.estirar.length || !Z.calentar.length) mal.push(`${z}: sin tareas`);
     if (!Z.derivar || !Z.derivar.length) mal.push(`${z}: sin derivar`);
-    // Los ids del PR 8 se comprueban aparte (prueba «todo» de abajo), no se ignoran.
     for (const lugar of ['gym', 'casa', 'calle', 'piscina']) for (const id of Z.cardio.preferente[lugar] || []) {
       if (!existeOPendiente(id)) mal.push(`${z}: cardio ${id} no existe`);
       else if (ex(id) && !ex(id).l.includes(lugar)) mal.push(`${z}: cardio ${id} no se hace en ${lugar}`);
@@ -284,7 +282,7 @@ test('fichas: tareas de calentar y estirar con ids que existen, uso válido y si
   assert.deepEqual(mal, []);
 });
 
-test('todo id del cardio preferente de las fichas existe (también los del PR 8)', { todo: 'PR 8 + 9: marcha-estatica, cardio-sentado y nado-continuo llegan con el PR 8' }, () => {
+test('todo id del cardio preferente de las fichas existe (también los del PR 8)', () => {
   const faltan = [];
   for (const [z, Z] of Object.entries(ZONAS)) for (const id of [...Object.values(Z.cardio.preferente).flat(), ...Object.keys(Z.cardio.condiciones)]) if (!ex(id)) faltan.push(`${z}: ${id}`);
   assert.deepEqual(faltan, []);
@@ -332,7 +330,7 @@ test('cada zona, banda y lugar tiene rehabilitación, fuerza, estiramientos y ca
   assert.deepEqual(mal, []);
 });
 
-test('en casa y en la calle hay cardio permitido con lesiones de carga (cadera, rodilla, tobillo, lumbar) en B2', { todo: 'PR 8 + 9: hace falta marcha-estatica y cardio-sentado del PR 8' }, () => {
+test('en casa y en la calle hay cardio permitido con lesiones de carga (cadera, rodilla, tobillo, lumbar) en B2', () => {
   // Casa sin material ni bici y calle (C-CARDIO-5): cardio continuo o bloque encadenado sin r en la zona.
   const cardio = { casa: ['bici-estatica', 'marcha-estatica', 'step-bajo', 'jumping-jacks-sin-salto', 'boxeo-sombra', 'comba', 'cardio-sentado'], calle: ['marcha-rapida', 'carrera-suave', 'comba', 'cardio-sentado'] };
   const mal = [];

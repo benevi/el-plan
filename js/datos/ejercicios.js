@@ -584,5 +584,19 @@ export const EJERCICIOS = [
   e:['Separar el codo del cuerpo.','Hacerlo rápido.'] },
 { id:'talones-agua', n:'Puntillas en el agua', m:['gemelo'], s:[], l:['piscina'], mat:['agua'], niv:1, t:'reps', tipo:'propia', d:[3,'15-20',30], r:{}, rehab:{tobillo_pie:2},
   p:['De pie con el agua por el pecho, sujétate al borde.','Sube de puntillas despacio con las dos piernas.','Aguanta 1 segundo arriba y baja despacio.','Cuando no moleste, prueba con menos agua o a una pierna.'],
-  e:['Rebotar.','Empezar con el agua por la cintura: cuanta menos agua, más carga.'] }
+  e:['Rebotar.','Empezar con el agua por la cintura: cuanta menos agua, más carga.'] },
+
+// ───────────── CARDIO NUEVO (PR 8: cardio en todos los lugares, C-CARDIO-5; sin vídeo, D9) ─────────────
+{ id:'marcha-estatica', n:'Marcha en el sitio', m:['cardio'], s:['gluteo','gemelo'], l:['casa','calle'], mat:['peso corporal'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-15 min',0], r:{tobillo_pie:1, cadera_lateral:1},
+  p:['De pie, erguido, con los brazos sueltos a los lados.','Marcha sin moverte del sitio levantando las rodillas a una altura cómoda.','Acompaña con los brazos, como al caminar rápido.','Ritmo en el que puedas hablar con frases cortas.'],
+  e:['Ir encogido o mirando al suelo.','Golpear el suelo con los talones: apoya suave.'], c:'Cardio sin impacto para casa o la calle.' },
+{ id:'cardio-sentado', n:'Cardio sentado (puñetazos y remo sin peso)', m:['cardio'], s:['hombro','core'], l:['casa','calle','gym'], mat:['peso corporal','banda'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-15 min',0], r:{hombro:1, codo:1},
+  p:['Siéntate en el borde de una silla o un banco, espalda recta y pies apoyados.','Alterna 1 minuto de puñetazos al frente con 1 minuto de remo sin peso (o con banda).','Mueve los brazos con ritmo hasta notar que respiras más rápido.','Ritmo en el que puedas hablar con frases cortas.'],
+  e:['Encorvarse hacia delante.','Bloquear los codos de golpe en cada puñetazo.'], c:'Cardio que no carga las piernas: útil con la rodilla, el tobillo o la cadera doloridos.' },
+{ id:'nado-continuo', n:'Nado continuo', m:['natacion'], s:['espalda','hombro','core'], l:['piscina'], mat:['agua'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-20 min',0], r:{hombro:1, cervical:1},
+  p:['Nada sin parar al estilo que te resulte más cómodo (crol, espalda o braza suave).','Ritmo en el que podrías decir frases cortas al parar.','Si te cansas, para en el borde menos de 20 segundos sin parar el reloj.'],
+  e:['Empezar demasiado rápido y parar a los pocos largos.','Contener la respiración.'], c:'El bloque de cardio de la piscina.' },
+{ id:'series-50-crol', n:'Series de 50 m crol', m:['natacion'], s:['espalda','hombro'], l:['piscina'], mat:['agua'], niv:2, t:'distancia', tipo:'propia', d:[6,'50 m',30], r:{hombro:1, cervical:1},
+  p:['Nada 50 m de crol a un ritmo algo más vivo que el de nado continuo.','Descansa en el borde el tiempo indicado.','Mantén la misma técnica en todas las series.'],
+  e:['Perder la técnica en las últimas series.','Respirar siempre al mismo lado si te cansa el cuello.'] }
 ];

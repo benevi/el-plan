@@ -68,56 +68,56 @@ test('sin ejercicios válidos de la IA (perfil músculo) la hace la app', async 
   assert.match(aviso, /no propuso ejercicios válidos/);
 });
 
-// ── Fallos demostrados por la auditoría ──
+// ── Fallos demostrados por la auditoría (cerrados en el PR 8 salvo los de errores crudos, PR 12) ──
 
-test('la sesión de la IA siempre lleva cardio (perfil solo músculo)', { todo: 'PR 8: cardio siempre según D3, también con IA' }, async () => {
+test('la sesión de la IA siempre lleva cardio (perfil solo músculo)', async () => {
   const { sesion } = await sesionIA({ objetivos: ['musculo'] }, BASE);
   assert.ok(sesion.ejercicios.some(esCardio), sesion.ejercicios.map(x => x.rol + ':' + x.id).join(', '));
 });
 
-test('una vuelta a la calma sin estiramientos se completa', { todo: 'PR 8: vuelta sin estiramientos' }, async () => {
+test('una vuelta a la calma sin estiramientos se completa', async () => {
   const { sesion } = await sesionIA({ objetivos: ['perder'] }, { ...BASE, vueltaCalma: [T('Respiración'), T('Beber agua')] });
   assert.ok(sesion.vuelta.some(t => /estir/i.test(t.nombre)), sesion.vuelta.map(t => t.nombre).join(', '));
 });
 
-test('sin ejercicios de la IA no queda una sesión de solo cardio (perfil perder)', { todo: 'PR 8: ≥ 3 ejercicios principales válidos' }, async () => {
+test('sin ejercicios de la IA no queda una sesión de solo cardio (perfil perder)', async () => {
   const { sesion } = await sesionIA({ objetivos: ['perder'] }, { ...BASE, ejercicios: [] });
   assert.ok(sesion.ejercicios.filter(x => x.rol === 'principal').length >= 3, sesion.ejercicios.map(x => x.rol + ':' + x.id).join(', '));
 });
 
-test('ids únicos: la IA no puede repetir como principal la rehabilitación que añade la app', { todo: 'PR 8: ids únicos' }, async () => {
-  const { sesion } = await sesionIA({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true }] },
+test('ids únicos: la IA no puede repetir como principal la rehabilitación que añade la app', async () => {
+  const { sesion } = await sesionIA({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true, desde: '2026-01-01' }] },
     { ...BASE, ejercicios: [E('sentadilla-isometrica'), E('puente-gluteo'), E('jalon-pecho')] }, { ...ci0, dolorHoy: { rodilla: 3 } });
   const ids = sesion.ejercicios.map(x => x.id);
   assert.equal(new Set(ids).size, ids.length, ids.join(', '));
 });
 
-test('con dos lesiones hay rehabilitación de cada zona', { todo: 'PR 8: rehabilitación por cada zona activa' }, async () => {
-  const { sesion } = await sesionIA({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true }, { id: 'm', zona: 'hombro', dolor: 3, activa: true }] },
+test('con dos lesiones hay rehabilitación de cada zona', async () => {
+  const { sesion } = await sesionIA({ objetivos: ['musculo'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true, desde: '2026-01-01' }, { id: 'm', zona: 'hombro', dolor: 3, activa: true, desde: '2026-01-01' }] },
     { ...BASE, ejercicios: [E('puente-gluteo', 'rehab'), E('jalon-pecho'), E('curl-femoral-tumbado')] }, { ...ci0, dolorHoy: { rodilla: 3, hombro: 3 } });
   const rehab = sesion.ejercicios.filter(x => x.rol === 'rehab').map(x => x.id);
   for (const z of ['rodilla', 'hombro']) assert.ok(rehab.some(id => cat.ZONAS[z].rehab.includes(id)), `sin rehabilitación de ${z}: ${rehab.join(', ')}`);
 });
 
-test('kilos de la IA sin historial: nulos (que elija la persona)', { todo: 'PR 8: kg nulo sin historial' }, async () => {
+test('kilos de la IA sin historial: nulos (que elija la persona)', async () => {
   const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, ejercicios: [E('curl-mancuernas', 'principal', { kg: 119 }), E('jalon-pecho'), E('prensa-piernas')] });
   assert.equal(sesion.ejercicios.find(x => x.id === 'curl-mancuernas').kg, null);
 });
 
-test('un ejercicio de fuerza no puede venir con rol de cardio', { todo: 'PR 8: cardio con rol válido (jalón como cardio)' }, async () => {
+test('un ejercicio de fuerza no puede venir con rol de cardio', async () => {
   const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, ejercicios: [E('press-pecho-maquina'), E('plancha'), E('jalon-pecho', 'cardio')] });
   assert.deepEqual(sesion.ejercicios.filter(x => x.rol === 'cardio' && !['cardio', 'natacion'].includes(cat.ex(x.id).m[0])).map(x => x.id), []);
 });
 
-test('series y repeticiones de la IA normalizadas («1:30» no es un rango de repeticiones)', { todo: 'PR 8: repeticiones normalizadas; series ≤ 6' }, async () => {
+test('series y repeticiones de la IA normalizadas («1:30» no es un rango de repeticiones)', async () => {
   const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, ejercicios: [E('press-pecho-maquina'), E('plancha', 'principal', { series: 40, reps: '1:30' }), E('jalon-pecho')] });
   const p = sesion.ejercicios.find(x => x.id === 'plancha');
   assert.ok(p.series <= 6, `series ${p.series}`);
   assert.match(p.reps, /^\d+(-\d+)?\s*(s|min)\b/);
 });
 
-test('con dolor ≥ 7 no se llama a la IA (D2)', { todo: 'PR 8: día con dolor ≥ 7 sin IA' }, async () => {
-  await sesionIA({ objetivos: ['perder'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true }] }, BASE, { ...ci0, forzarIA: false, dolorHoy: { rodilla: 8 } });
+test('con dolor ≥ 7 no se llama a la IA (D2)', async () => {
+  await sesionIA({ objetivos: ['perder'], lesiones: [{ id: 'l', zona: 'rodilla', dolor: 3, activa: true, desde: '2026-01-01' }] }, BASE, { ...ci0, forzarIA: false, dolorHoy: { rodilla: 8 } });
   assert.equal(peticiones.length, 0);
 });
 
@@ -128,14 +128,14 @@ test('respuesta 200 sin «sesion»: mensaje claro, sin el error interno', { todo
   assert.doesNotMatch(aviso, /Cannot read|undefined|TypeError/);
 });
 
-test('un plan de la IA con días vacíos no se acepta tal cual', { todo: 'PR 8: días vacíos del plan' }, async () => {
+test('un plan de la IA con días vacíos no se acepta tal cual', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
   respuesta = { plan: { resumen: '', criterios: '', progresion: '', dias: [dia(3, 'gym', []), dia(4, 'gym', [])] } };
   await ent.crearPlanSemana({ dias: [3, 4], minutos: 60, lugares: ['gym'] });
   assert.deepEqual(est.estado().plan.dias.filter(d => !d.ejercicios.length).map(d => d.diaSemana), []);
 });
 
-test('un plan de la IA con ejercicios de otro lugar no deja días vacíos', { todo: 'PR 8: lugar del día que no encaja con sus ejercicios' }, async () => {
+test('un plan de la IA con ejercicios de otro lugar no deja días vacíos', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym', 'piscina'] });
   respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [dia(3, 'piscina', [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')]), dia(4, 'gym', [E('crol'), E('espalda'), E('aquajogging')])] } };
   await ent.crearPlanSemana({ dias: [3, 4], minutos: 60, lugares: ['gym', 'piscina'] });

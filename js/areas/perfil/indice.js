@@ -12,11 +12,12 @@ import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
 import { versionApp } from '../../nucleo/version.js';
 import { grupoCopias, avisoNube, siVisible } from './nube.js';
+import { grupoSalud } from './salud.js';
 
 const chip = (act, val, on, txt) => `<button class="chip ${on ? 'on' : ''}" data-act="${act}" data-v="${h(val)}" aria-pressed="${on}">${h(txt)}</button>`;
 
 // El perfil va por grupos (antes era una página de 2200 px): se ve uno cada vez.
-const GRUPOS = [['objetivos', 'Objetivos y nivel'], ['lesiones', 'Lesiones'], ['entreno', 'Mi entreno'], ['datos', 'Mis datos'], ['copias', 'Copias'], ['ajustes', 'Ajustes']];
+const GRUPOS = [['objetivos', 'Objetivos y nivel'], ['lesiones', 'Lesiones'], ['salud', 'Salud'], ['entreno', 'Mi entreno'], ['datos', 'Mis datos'], ['copias', 'Copias'], ['ajustes', 'Ajustes']];
 let grupo = 'objetivos';
 siVisible(() => grupo === 'copias');
 const TIPOS_LESION = { lesion: 'Lesión diagnosticada', recurrente: 'Dolor que va y viene', puntual: 'Molestia puntual (días)' };
@@ -39,7 +40,7 @@ function vista() {
   ${avisosMigracion(S)}
   ${grupo !== 'copias' ? avisoNube() : ''}
   <nav class="chips grupos" aria-label="Partes del perfil">${GRUPOS.map(([k, n]) => `<button class="chip ${grupo === k ? 'on' : ''}" data-act="perfil.grupo" data-v="${k}" aria-pressed="${grupo === k}">${h(n)}</button>`).join('')}</nav>
-  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[grupo] || grupoObjetivos)(S)}`;
+  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[grupo] || grupoObjetivos)(S)}`;
 }
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
@@ -60,7 +61,7 @@ function avisosMigracion(S) {
     ${migracionDeOtro() ? `<section class="tarjeta aviso-nota migracion-otro">
       <p>Lo que se trajo de la app anterior es de ${h(nombre(m.dueño))}, no de ${h(nombre(S.dueño))}.</p>
       <button class="btn sec" data-act="perfil.rehacerMigracion">Traer lo de ${h(nombre(S.dueño))}</button></section>` : ''}
-    ${porRevisar && grupo !== 'lesiones' ? `<p class="nota aviso-nota">Tienes ${+porRevisar} lesi${porRevisar > 1 ? 'ones' : 'ón'} de la app anterior con el dolor estimado. <button class="enlace" data-act="perfil.grupo" data-v="lesiones">Revísalo</button></p>` : ''}`;
+    ${porRevisar && grupo !== 'lesiones' ? `<p class="nota aviso-nota">Tienes ${+porRevisar} lesi${porRevisar > 1 ? 'ones' : 'ón'} de la app anterior con el dolor estimado: ¿cuánto te duele normalmente, de 0 a 10? Hasta que lo digas, el plan la trata con prudencia. <button class="enlace" data-act="perfil.grupo" data-v="lesiones">Revísalo</button></p>` : ''}`;
 }
 
 function grupoObjetivos(S) {
@@ -109,6 +110,7 @@ function grupoEntreno(S) {
     <div class="chips">${Object.entries(LUGARES).map(([k, n]) => chip('perfil.lugar', k, p.lugares.includes(k), n)).join('')}</div>
     ${p.lugares.includes('casa') ? `<h3>Material que tienes ahora en casa</h3><div class="chips">${MATERIAL_CASA.map(m => chip('perfil.material', m, p.materialCasa.includes(m), MATERIAL[m])).join('')}</div>` : ''}
     <label class="interruptor"><input type="checkbox" data-cambio="perfil.acompañado" ${p.acompañado ? 'checked' : ''}><span>Entreno a la vez que otra persona</span></label>
+    ${p.lugares.includes('piscina') ? `<label class="interruptor"><input type="checkbox" data-cambio="perfil.nadar25" ${p.nadar25 ? 'checked' : ''}><span>Sé nadar 2 × 25 m seguidos</span></label>` : ''}
   </section>
   <section class="tarjeta">
     <h2>Ejercicios que has valorado</h2>
@@ -283,6 +285,7 @@ const alternar = (lista, v) => { const i = lista.indexOf(v); if (i >= 0) lista.s
 acciones({
   'perfil.grupo': el => { grupo = el.dataset.v; pintar(); window.scrollTo(0, 0); },
   'perfil.acompañado': el => cambiar(S => { S.perfil.acompañado = el.checked; }, 'perfil-silencio'),
+  'perfil.nadar25': el => cambiar(S => { if (el.checked) S.perfil.nadar25 = true; else delete S.perfil.nadar25; }, 'perfil'),
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
   'perfil.quitarGusto': el => cambiar(S => { delete S.perfil.gustos[el.dataset.id]; }, 'perfil'),
   'perfil.objetivo': el => cambiar(S => alternar(S.perfil.objetivos, el.dataset.v), 'perfil'),
