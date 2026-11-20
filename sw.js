@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-4941c0d9efe7';
+const VERSION = 'pipos-app-aa17e19f8051';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-aJtSstU+umxg/BFK2tcDvnggXNipsplViS7AtHlabqg=',
+  './': 'sha256-qOrn0ShHA7VS2SWQafr1LClI1K6wj2yGLbdkQpSqdMY=',
   './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
   './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
   './css/componentes.css': 'sha256-qcAHPb9HeaqPt++g/W85R/j7MGEaJSCdwQE1kHdbsFw=',
@@ -28,7 +28,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
   './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
   './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
-  './index.html': 'sha256-aJtSstU+umxg/BFK2tcDvnggXNipsplViS7AtHlabqg=',
+  './index.html': 'sha256-qOrn0ShHA7VS2SWQafr1LClI1K6wj2yGLbdkQpSqdMY=',
   './js/arranque.js': 'sha256-FY4jDwXB/NYydVPPBDDohoLfSKNFw2RNc2B1oG8JFio=',
   './js/areas/ejercicios/indice.js': 'sha256-1dNwpWu3kCieSdNnYOFKfqrH7+iu0Mumcz4HQ/hOL2A=',
   './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
@@ -65,7 +65,7 @@ const HUELLAS = {
   './js/nucleo/version.js': 'sha256-/F3bhqZEQ2dGPs+qYrdQEawe6YM2+5h+/ypcXWxHHiY=',
   './js/reglas/catalogo.js': 'sha256-EsPEiWQjkndM6gsik32/ocVD4UqGWSrfZh0u8sNJxPM=',
   './js/reglas/contexto.js': 'sha256-GhXN0dcgusNjAS8lKpiBTXUZ6EwI8XLRgIfcnrydC10=',
-  './js/reglas/progresion.js': 'sha256-opHnWE2VF7FRajrA4ufWe6vAAsGMLZGuyRq8RyByx54=',
+  './js/reglas/progresion.js': 'sha256-0uNieaVd51H3Pts8hL0N/asG/ne6HIpb7SMOO4V4Zy0=',
   './manifest.webmanifest': 'sha256-OmIi8iwSpWN8kvG0ZzJf0w9au0bwrlMnVTMsxQltZPA=',
 };
 const APP = [
