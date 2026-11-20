@@ -8,6 +8,7 @@ import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCo
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
+import { versionApp } from '../../nucleo/version.js';
 
 const chip = (act, val, on, txt) => `<button class="chip ${on ? 'on' : ''}" data-act="${act}" data-v="${h(val)}" aria-pressed="${on}">${h(txt)}</button>`;
 
@@ -119,6 +120,7 @@ function grupoAjustes(S) {
     <div class="fila-botones"><button class="btn sec" data-act="perfil.exportar">Guardar copia</button><button class="btn sec" data-act="perfil.importar">Cargar copia</button></div>
     ${bloqueCopia()}
     <p class="tenue pie">Móvil de ${h(PERSONAS[S.dueño] ? PERSONAS[S.dueño].nombre : '—')} · <button class="enlace" data-act="perfil.cambiarDueño">cambiar</button></p>
+    <p class="tenue pie version-app">Versión de la app: <span data-version-app>${h(versionApp() || '—')}</span></p>
   </section>`;
 }
 

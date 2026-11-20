@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/**', 'test-results/**', 'playwright-report/**', 'css/**', 'icons/**'] },
+  { ignores: ['node_modules/**', 'test-results/**', 'playwright-report/**', 'css/**', 'icons/**', 'fonts/**', 'tests/e2e/legado/**'] },
   {
     files: ['**/*.js', '**/*.mjs'],
     ...js.configs.recommended,
@@ -17,6 +17,10 @@ export default [
   },
   // La app (navegador, módulos ES).
   { files: ['js/**/*.js'], languageOptions: { globals: { ...globals.browser } } },
+  // Vigilante de arranque (script clásico, no módulo).
+  { files: ['js/arranque.js'], languageOptions: { sourceType: 'script' } },
+  // Scripts de mantenimiento (node).
+  { files: ['scripts/**/*.mjs'], languageOptions: { globals: { ...globals.node } } },
   // Service worker (script clásico).
   { files: ['sw.js'], languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } } },
   // Funciones de Vercel (node).

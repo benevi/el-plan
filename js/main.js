@@ -6,6 +6,7 @@ import { cargar, estado, escuchar, escucharGuardado, revisarEspejo } from './nuc
 import { arrancar, pintar } from './nucleo/router.js';
 import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
+import { iniciarVersiones } from './nucleo/version.js';
 
 import './nucleo/rescate.js'; // antes que la bienvenida: su guardia manda
 import './areas/perfil/bienvenida.js';
@@ -49,6 +50,9 @@ escucharGuardado(ev => {
   }
 });
 arrancar();
+// Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).
+document.documentElement.setAttribute('data-arrancado', '');
+window.dispatchEvent(new Event('pipos:arrancado'));
 
 // Pedir que el navegador no borre los datos por falta de espacio (si lo permite; si no, no pasa nada).
 try {
@@ -59,6 +63,5 @@ try {
   }
 } catch { /* nada */ }
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(e => console.warn('Sin modo sin conexión', e));
-}
+// Service worker y aviso de versión nueva (js/nucleo/version.js).
+iniciarVersiones();
