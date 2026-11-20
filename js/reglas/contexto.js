@@ -46,7 +46,8 @@ export function perfilParaIA(S) {
 // C-DOSIS-7), para que la IA no tenga que deducirlos. bandas: las de bandasHoy (areas/entrenador/dia.js);
 // sin ellas, solo el dolor de ficha y el de hoy.
 const faseDeBanda = b => (b.banda === 0 ? 3 : b.banda === 1 && !b.nueva ? 2 : 1);
-export function lesionesParaIA(S, dolorHoy = {}, bandas = null) {
+// idsCatalogo: los ids del catálogo que se manda; la rehabilitación sugerida solo cita esos.
+export function lesionesParaIA(S, dolorHoy = {}, bandas = null, idsCatalogo = null) {
   const activas = S.perfil.lesiones.filter(l => l.activa);
   const zonas = bandas ? Object.keys(bandas) : [...new Set(activas.map(l => l.zona))];
   return zonas.map(zona => {
@@ -69,7 +70,7 @@ export function lesionesParaIA(S, dolorHoy = {}, bandas = null) {
       tipo: (l && l.tipo) || undefined, detalle: (l && l.detalle) || undefined, desde: (l && l.desde) || undefined,
       nota: l && l.nota ? recortarIA(l.nota, LARGO_IA.nota) : undefined,
       evitar: z.evitar,
-      rehabilitacionSugerida: ids.filter(id => ex(id)),
+      rehabilitacionSugerida: ids.filter(id => ex(id) && (!idsCatalogo || idsCatalogo.has(id))),
     };
   });
 }

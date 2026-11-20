@@ -25,7 +25,7 @@ function peticionBase(S, lugares, dolorHoy = {}, { plan = false } = {}) {
   const catalogo = catalogoParaIA(S, lugares, dolorHoy);
   const ids = catalogo.map(e => e.id);
   return {
-    perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy, bandasHoy(S, dolorHoy, { plan })), catalogo,
+    perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy, bandasHoy(S, dolorHoy, { plan }), new Set(ids)), catalogo,
     historial: historialParaIA(S, ids, { niveles: nivelesZona(S.perfil, dolorHoy) }), analisis: analisisParaIA(S),
     hoy: hoyISO(), diaSemana: diaSemana(),
   };
@@ -136,14 +136,18 @@ export async function crearSesionHoy(ci) {
           lugar: ci.lugar, minutos, energia: ci.energia, dolorHoy: ci.dolorHoy || {}, peticion: recortarIA(ci.peticion, LARGO_IA.peticion),
           pautas: pautasDia(S, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 }),
         },
-        planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, lugar: dia.lugar, ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
+        planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, tipo: dia.tipo || null, lugar: dia.lugar, ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
         ajusteReglas: local.cambios,
       });
       const s = r.sesion;
-      if (!principalesValidos(s.ejercicios, ci.lugar)) aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
+      // Día suave del plan (C-REP-2): sin fuerza; basta con su cardio. Si la IA pone fuerza, es un día normal.
+      const suave = !!dia && dia.tipo === 'suave' && !(s.ejercicios || []).some(x => x && x.rol === 'principal');
+      const util = suave ? (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id)) : principalesValidos(s.ejercicios, ci.lugar) > 0;
+      if (!util) aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.';
       else {
-        const d = completarIA(S, { ...s, vuelta: s.vueltaCalma || s.vuelta, ejercicios: (s.ejercicios || []).filter(x => x && ex(x.id)) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
-        if (!d.valida) aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.';
+        const d = completarIA(S, { ...s, vuelta: s.vueltaCalma || s.vuelta, ejercicios: (s.ejercicios || []).filter(x => x && ex(x.id)), ...(suave ? { tipo: 'suave' } : {}) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
+        if (suave && d.sesion.ejercicios.some(x => x.rol === 'principal')) aviso = 'La IA no propuso un día suave válido: sesión ajustada por la app.';
+        else if (!d.valida) aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.';
         else {
           const ex0 = d.sesion.explicacion || [];
           datos = {
@@ -189,7 +193,9 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
           hechas: hechas.map(d => ({ dia: DIAS[d.diaSemana], nombre: d.nombre, musculos: [...new Set(d.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id) && ex(x.id).m[0]).filter(Boolean))] })),
         },
       }, { espera: 240000 });
-      const plan = normalizarPlan(S, r.plan, lugares, dias, semana.minutos);
+      // Cuántos días suaves pone el reparto (C-REP-2): la IA no puede poner más.
+      const maxSuaves = planReglas(S, { ...semana, dias, lugares }, { hechas }).dias.filter(d => d.tipo === 'suave').length;
+      const plan = normalizarPlan(S, r.plan, lugares, dias, semana.minutos, maxSuaves);
       if (!plan.dias.length) throw new Error('plan vacío');
       cambiar(S2 => { S2.plan = unir(plan); }, 'plan');
       return { plan, aviso: '' };
@@ -204,8 +210,9 @@ export async function crearPlanSemana(semana, { conIA = true } = {}) {
   return { plan, aviso: '' };
 }
 
-function normalizarPlan(S, p, lugares, dias, minutos) {
+function normalizarPlan(S, p, lugares, dias, minutos, maxSuaves = 0) {
   const vistos = new Set();
+  let suaves = 0;
   const out = (p.dias || []).map((d, i) => {
     const ds = Math.max(1, Math.min(7, +d.diaSemana || 1));
     if (!dias.includes(ds) || vistos.has(ds)) return null;
@@ -218,7 +225,9 @@ function normalizarPlan(S, p, lugares, dias, minutos) {
     const min = minutosSesion(minutos); // los minutos que pidió la persona para la semana, no los de la IA
     const explicacion = (Array.isArray(d.explicacion) ? d.explicacion : [d.explicacion]).filter(Boolean).map(String);
     // Día suave del reparto (C-REP-2): sin fuerza, con su cardio; lo marca el primer punto de la explicación.
+    // Solo tantos como pone el reparto de la app; los demás los rehace la app.
     const suave = /^Día suave/i.test(explicacion[0] || '') && !ejsIA.some(x => x.rol === 'principal') && ejsIA.some(x => x.rol === 'cardio');
+    if (suave && suaves >= maxSuaves) return null;
     // Día sin ejercicios válidos para su lugar: lo hace la app (no se acepta un día vacío).
     if (!suave && principalesValidos(ejsIA, lugar) === 0) return null;
     const c = completarIA(S, {
@@ -226,6 +235,9 @@ function normalizarPlan(S, p, lugares, dias, minutos) {
       calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [], ejercicios: ejsIA, ...(suave ? { tipo: 'suave' } : {}),
     }, { lugar, minutos: min, k: i, futuro: true });
     if (!c.valida || !c.sesion.ejercicios.length) return null;
+    // Se decide sobre la sesión ya validada: un «día suave» con fuerza (p. ej. con roles cambiados) no vale.
+    if (suave && c.sesion.ejercicios.some(x => x.rol === 'principal')) return null;
+    if (suave) suaves++;
     vistos.add(ds);
     const dd = c.sesion;
     if (c.cambios.length) dd.explicacion = [...dd.explicacion, ...c.cambios.map(t => 'Ajustado por la app: ' + t)];

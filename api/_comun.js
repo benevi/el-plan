@@ -152,7 +152,9 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: { effort: esfuerzo, format: { type: 'json_schema', schema: esquema } },
-    system: sistema,
+    // El prompt de sistema es fijo: se marca para la caché (5 min). Escribirla cuesta un 25 % más esos tokens;
+    // leerla, un 10 %. scripts/casos-ia.mjs enseña si se aprovecha (cacheLeida / cacheEscrita).
+    system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: usuario }],
   }, { signal }).finalMessage();
   Object.assign(registro, { id: msg.id, modelo: msg.model, stop_reason: msg.stop_reason }, uso(msg.usage));

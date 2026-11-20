@@ -53,8 +53,11 @@ export function crearSesion(d) {
     ejercicios: (d.ejercicios || []).filter(x => ex(x.id) && ex(x.id).l.includes(d.lugar || 'gym')).map(crearEjercicio),
     vuelta: (d.vuelta || d.vueltaCalma || []).map(tarea).filter(t => t.nombre),
     estado: 'pendiente', empezada: null, terminada: null, cierre: null,
+    // Opcional: el tipo de día que cambia lo que se comprueba (día suave del reparto, día de dolor alto).
+    ...(TIPOS_SESION.includes(d.tipo) ? { tipo: d.tipo } : {}),
   };
 }
+export const TIPOS_SESION = ['suave', 'dolorAlto'];
 
 // Semana ISO: '2026-W47'
 export function semanaISO(d = new Date()) {

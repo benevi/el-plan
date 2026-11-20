@@ -139,7 +139,7 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   if (vue.length < 2 || !vue.some(esEstiramiento)) out.push('vuelta sin estiramientos');
   [...cal, ...vue].forEach(t => { if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); });
   if (!alto && !suave) {
-    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || (sesion.explicacion || []).some(t => /^Día suave/.test(t)) || sesion.tipo === 'suave';
+    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || sesion.tipo === 'suave'; // el día suave lo marca su tipo, no un texto
     const prin = ejs.filter(x => x.rol === 'principal').length;
     if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) out.push(`${prin} principales`);
     zonasRehab(ctx).forEach(z => {

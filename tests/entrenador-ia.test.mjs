@@ -159,7 +159,8 @@ test('un día suave de la IA (sin fuerza, con cardio y «Día suave:») se acept
   nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'] });
   const suave = dia(4, 'gym', [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })], { nombre: 'Día suave', explicacion: ['Día suave: cardio cómodo, core y movilidad para recuperar.'] });
   respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [dia(3, 'gym', [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')]), suave] } };
-  await ent.crearPlanSemana({ dias: [3, 4], minutos: 60, lugares: ['gym'] });
+  // Principiante con 5 días: el reparto lleva días suaves (C-REP-2), así que la IA puede poner uno.
+  await ent.crearPlanSemana({ dias: [3, 4, 5, 6, 7], minutos: 60, lugares: ['gym'] });
   const d4 = est.estado().plan.dias.find(d => d.diaSemana === 4);
   assert.equal(d4.tipo, 'suave');
   assert.deepEqual(d4.ejercicios.filter(x => x.rol === 'principal').map(x => x.id), [], 'sin fuerza: el validador no le añade principales');
@@ -181,4 +182,52 @@ test('a la IA no le llega el nombre ni la altura, y los lugares van como ids (PR
   assert.deepEqual(c.perfil.lugares, ['gym', 'piscina']);
   assert.equal(c.checkin.lugar, 'gym');
   assert.doesNotMatch(JSON.stringify(c), /Víctor/);
+});
+
+// ── Revisión del PR 11: días suaves de la IA ──
+const diaSuaveIA = (ds, ejs = [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })]) => dia(ds, 'gym', ejs, { nombre: 'Día suave', explicacion: ['Día suave: cardio cómodo, core y movilidad.'] });
+test('la IA no puede convertir en suaves más días de los que pone el reparto (intermedio de músculo, 3 días)', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 2, lugares: ['gym'] });
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [diaSuaveIA(3), diaSuaveIA(5), diaSuaveIA(7)] } };
+  await ent.crearPlanSemana({ dias: [3, 5, 7], minutos: 60, lugares: ['gym'] });
+  const dias = est.estado().plan.dias;
+  assert.deepEqual(dias.filter(d => d.tipo === 'suave').map(d => d.diaSemana), [], 'el reparto de 3 días no tiene días suaves');
+  assert.ok(dias.every(d => d.ejercicios.some(x => x.rol === 'principal')), 'los rehace la app con fuerza');
+});
+test('principiante con 5 días: como mucho tantos días suaves de la IA como pone el reparto', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'] });
+  const ref = ent.planReglas(est.estado(), { dias: [3, 4, 5, 6, 7], minutos: 60, lugares: ['gym'] }).dias.filter(d => d.tipo === 'suave').length;
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [3, 4, 5, 6, 7].map(n => diaSuaveIA(n)) } };
+  await ent.crearPlanSemana({ dias: [3, 4, 5, 6, 7], minutos: 60, lugares: ['gym'] });
+  assert.ok(ref >= 1);
+  assert.ok(est.estado().plan.dias.filter(d => d.tipo === 'suave').length <= ref);
+});
+test('un «Día suave» con fuerza disfrazada (prensa como cardio, press como rehab) no queda como día suave con fuerza', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'] });
+  const truco = diaSuaveIA(4, [E('bici-estatica', 'cardio', { series: 1, reps: '20 min', descanso: 0 }), E('prensa-piernas', 'cardio', { series: 5, reps: '5', descanso: 60 }), E('press-pecho-maquina', 'rehab')]);
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [truco] } };
+  await ent.crearPlanSemana({ dias: [3, 4, 5, 6, 7], minutos: 60, lugares: ['gym'] });
+  const d4 = est.estado().plan.dias.find(d => d.diaSemana === 4);
+  assert.ok(!(d4.tipo === 'suave' && d4.ejercicios.some(x => x.rol === 'principal')), d4.ejercicios.map(x => x.id + ':' + x.rol).join(', '));
+});
+test('sesión de un día suave del plan: la IA lo recibe como suave y su día suave se acepta', async () => {
+  nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['gym'], disponibilidad: { dias: 5, minutos: 60, diasSemana: [] } });
+  ponerRed(false);
+  await ent.crearPlanSemana({ dias: [3, 4, 5, 6, 7], minutos: 60, lugares: ['gym'] }, { conIA: false });
+  const suave = est.estado().plan.dias.find(d => d.tipo === 'suave');
+  assert.ok(suave, 'el reparto tiene un día suave');
+  peticiones = [];
+  ponerRed(true, async (url, o) => { peticiones.push({ url, cuerpo: JSON.parse(o.body) }); return { ok: true, status: 200, json: async () => respuesta }; });
+  respuesta = { sesion: { nombre: 'Día suave', foco: 'x', cambios: [], explicacion: ['Día suave: cardio cómodo.', 'b'], calentamiento: [T('a'), T('b')], ejercicios: [E('bici-estatica', 'cardio', { series: 1, reps: '35 min', descanso: 0, nota: 'Cardio cómodo de 35 minutos, puedes hablar con frases.' })], vueltaCalma: [T('Estirar cuádriceps', '2 min'), T('Respirar', '2 min')] } };
+  const r = await ent.crearSesionHoy({ ...ci0, diaPlan: suave.diaSemana });
+  assert.equal(peticiones[0].cuerpo.planDeHoy.tipo, 'suave');
+  assert.equal(r.aviso, '');
+  assert.equal(r.sesion.fuente, 'ia');
+  assert.deepEqual(r.sesion.ejercicios.filter(x => x.rol === 'principal').map(x => x.id), []);
+});
+test('«Día suave» escrito en la explicación no salta comprobaciones: solo cuenta tipo «suave» (validador)', () => {
+  const S = nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
+  const s = { nombre: 'x', lugar: 'gym', minutos: 60, explicacion: ['Día suave: hoy nada.'], calentamiento: [T('a'), T('b')], vuelta: [T('Estirar pecho'), T('Respirar')], ejercicios: [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })] };
+  assert.ok(ent.problemasSesion(S, s, { lugar: 'gym', minutos: 60 }).includes('0 principales'));
+  assert.ok(!ent.problemasSesion(S, { ...s, tipo: 'suave' }, { lugar: 'gym', minutos: 60 }).includes('0 principales'));
 });

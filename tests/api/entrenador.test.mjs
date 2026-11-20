@@ -139,7 +139,7 @@ test('con un cuerpo real del móvil, a la IA le llega exactamente lo mismo que s
       ? mensajeUsuario('plan', { ...comun, semana: cuerpo.semana })
       : mensajeUsuario('sesion', { ...comun, checkin: cuerpo.checkin, planDeHoy: cuerpo.planDeHoy || null, ajusteReglas: cuerpo.ajusteReglas || [] });
     assert.equal(cliente.llamadas[0].params.messages[0].content, antes);
-    assert.equal(cliente.llamadas[0].params.system, SISTEMA + '\n\n' + (cuerpo.modo === 'plan' ? SISTEMA_PLAN : SISTEMA_SESION));
+    assert.deepEqual(cliente.llamadas[0].params.system, [{ type: 'text', text: SISTEMA + '\n\n' + (cuerpo.modo === 'plan' ? SISTEMA_PLAN : SISTEMA_SESION), cache_control: { type: 'ephemeral' } }]);
   }
 });
 
@@ -389,6 +389,14 @@ test('el prompt de sistema lleva T7 tal cual y las reglas de criterio.md que pid
   assert.doesNotMatch(SISTEMA, /0 si no aplica o no hay datos/);
   assert.doesNotMatch(SISTEMA + SISTEMA_SESION + SISTEMA_PLAN, /con "id" vacío|"id" vacío\)/);
   assert.doesNotMatch(SISTEMA_PLAN, /empuje\/tirón\/pierna; 4/);
+  // Todas las etiquetas de salud que manda el móvil (salud.js, etiquetasSalud) están explicadas (C-SALUD-0).
+  for (const et of ['hipertension_', 'embarazo_semana_', 'posparto_semana_', '_cesarea', 'medicacion_betabloqueantes', 'medicacion_anticoagulantes', 'medicacion_azucar', 'medicacion_corticoides', 'cardiopatia', 'diabetes_vista', 'diabetes_pies', 'osteoporosis', 'protesis', 'epilepsia', 'asma', 'equilibrio']) {
+    assert.ok(SISTEMA.toLowerCase().includes(et.replace(/_$/, '').toLowerCase()) || SISTEMA.includes(et), `etiqueta ${et}`);
+  }
+  assert.match(SISTEMA, /30 → 7,5 min/);
+  assert.match(SISTEMA, /en B0, 1 ejercicio de fase 3/);
+  assert.match(SISTEMA, /calle: marcha-rapida o carrera-suave, o un bloque encadenado de marcha-estatica, cardio-sentado/);
+  assert.match(SISTEMA_SESION, /"planDeHoy\.tipo" es "suave"/);
   // Fijo: sin fechas ni datos de nadie.
   assert.doesNotMatch(SISTEMA + SISTEMA_SESION + SISTEMA_PLAN, /Víctor|Virginia|20\d\d-\d\d/);
 });
