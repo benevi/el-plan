@@ -71,7 +71,7 @@ test('sw.js declara una VERSION', () => {
 
 // ── Fallos demostrados por la auditoría (PR 5) ──
 
-test('APP solo precarga JS que la app usa (sin generador.js)', { todo: 'PR 5: generador.js en la precarga' }, () => {
+test('APP solo precarga JS que la app usa (sin generador.js)', () => {
   assert.deepEqual(APP.filter(a => a.endsWith('.js') && !alcanzables.has(a)), []);
 });
 

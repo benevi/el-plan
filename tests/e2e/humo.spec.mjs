@@ -2,9 +2,18 @@
 // y, con el service worker instalado, sigue pintando sin red.
 import { test, expect } from '@playwright/test';
 
-// Las fuentes de Google no forman parte de la prueba: se sirven vacías para no depender de la red.
+// Nada de fuera del servidor local forma parte de la prueba (fuentes de Google, miniaturas de i.ytimg.com…):
+// se sirve vacío para no depender de la red del entorno. Las imágenes, con un GIF transparente de 1×1
+// para que no haya errores de carga en la consola.
+const GIF_VACIO = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+const LOCALES = ['127.0.0.1', 'localhost'];
 async function sinFuentesExternas(context) {
-  await context.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+  await context.route(u => !LOCALES.includes(u.hostname), r => {
+    const tipo = r.request().resourceType();
+    if (tipo === 'image') return r.fulfill({ status: 200, contentType: 'image/gif', body: GIF_VACIO });
+    if (tipo === 'stylesheet') return r.fulfill({ status: 200, contentType: 'text/css', body: '' });
+    return r.fulfill({ status: 204, body: '' });
+  });
 }
 
 function vigilarErrores(page) {
