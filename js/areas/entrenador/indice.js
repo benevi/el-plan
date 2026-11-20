@@ -1,5 +1,5 @@
 // Área ENTRENADOR · interfaz: la semana (crear, ver, reorganizar), el check-in que ajusta la sesión de hoy
-// y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js.
+// y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js (fachada de dia, plan, checkin e ia).
 
 import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
@@ -12,10 +12,10 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, asegurarPlan, tiempoSesion,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido,
 } from './entrenador.js';
 
-export { planDeLaSemana, planDeHoy, estadoDias, asegurarPlan };
+export { planDeLaSemana, planDeHoy, estadoDias };
 
 const ENERGIA = ['', 'Muy baja', 'Baja', 'Normal', 'Buena', 'A tope'];
 const minus = t => String(t || '').toLowerCase();
@@ -52,7 +52,7 @@ function hojaCheckin() {
 
 export function abrirCheckin(diaPlan = null) {
   const S = estado();
-  const p = diaPlan != null ? (planDeLaSemana(S) || { dias: [] }).dias.find(d => d.diaSemana === diaPlan) : planDeHoy(S);
+  const p = diaElegido(S, diaPlan);
   ci = { diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: '', forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
