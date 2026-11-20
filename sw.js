@@ -3,7 +3,7 @@
 // - Sirve primero lo guardado y lo actualiza por detrás, así una sesión ya creada funciona en el gimnasio sin red.
 // - /api/* nunca se guarda: la IA siempre va a la red.
 // Al cambiar archivos, sube VERSION para que los móviles descarguen la versión nueva.
-const VERSION = 'pipos-5.3.0';
+const VERSION = 'pipos-5.4.0';
 const APP = [
   './',
   './css/areas.css',
@@ -38,8 +38,10 @@ const APP = [
   './js/datos/lesiones.js',
   './js/main.js',
   './js/nucleo/api.js',
+  './js/nucleo/espejo.js',
   './js/nucleo/estado.js',
   './js/nucleo/modelo.js',
+  './js/nucleo/rescate.js',
   './js/nucleo/router.js',
   './js/nucleo/ui.js',
   './js/reglas/catalogo.js',

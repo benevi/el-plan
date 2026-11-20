@@ -104,7 +104,7 @@ test('migrarDeViejo sin datos de la app anterior no hace nada', () => {
 
 // ── Fallos demostrados por la auditoría ──
 
-test('si lo guardado no se puede leer, no se pisa al guardar', { todo: 'PR 3: JSON ilegible pisado (copiar a pipos4-roto-<fecha> y no escribir)' }, () => {
+test('si lo guardado no se puede leer, no se pisa al guardar', () => {
   const bueno = JSON.stringify(estadoBase({ sesiones: { s1: sesionDemo('s1', { estado: 'hecha' }) } }));
   const roto = bueno.slice(0, -20);
   cargarCon({ pipos4: roto });
