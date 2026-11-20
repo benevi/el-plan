@@ -392,6 +392,7 @@ export function sugerir(S, id, base, ctx = {}) {
       else { kg = k; out.tipo = 'sube'; out.motivo = asist ? `Quita ${es(p)} kg de ayuda: llegaste a ${es(hi)} en todas las series. Hoy basta con llegar a ${es(lo)}.` : `Sube ${es(p)} kg: llegaste a ${es(hi)} en todas las series. Hoy basta con llegar a ${es(lo)}.`; }
     } else if (llego && freno) out.motivo = `Te tocaba subir, pero ${freno}: repite ${es(kgUlt)} kg.`;
     else if (llego) out.motivo = `Llegaste a ${es(hi)} en todas: el siguiente peso es un salto grande, así que repite ${es(kgUlt)} kg y súbelo cuando llegues al tope dos veces seguidas o a ${es(hi + 2)}.`;
+    else if (top.length >= 2 && top.length < base.series && top.every(v => v >= hi)) out.motivo = freno ? `Mantén ${es(kgUlt)} kg: ${freno}.` : `Llegaste a ${es(hi)} en tus ${top.length} series; hoy son ${base.series}: mismo peso, ${es(kgUlt)} kg, y cuando llegues a ${es(hi)} en todas, subes.`;
     else if (corto(ult)) out.motivo = `Repite ${es(kgUlt)} kg e intenta llegar a ${es(lo)} repeticiones en cada serie.`;
     else { const obj = Math.min(hi, Math.floor(Math.max(...top, 0)) + 1); out.motivo = freno ? `Mantén ${es(kgUlt)} kg: ${freno}.` : `Mismo peso, ${es(kgUlt)} kg: intenta ${es(obj)} repeticiones por serie. Al llegar a ${es(hi)} en todas, subes.`; }
     if (reentrada) out.series = reentrada.series(base.series);
