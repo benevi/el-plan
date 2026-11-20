@@ -11,6 +11,13 @@ export class Respuesta extends EventEmitter {
     this.emit('finish'); this.emit('close'); // como en Node: «close» también llega al terminar bien
     return this;
   }
+  // Respuesta binaria (p. ej. api/copia.js al bajar una copia).
+  end(b) {
+    this.bytes = b == null ? Buffer.alloc(0) : Buffer.from(b);
+    this.writableEnded = this.writableFinished = true;
+    this.emit('finish'); this.emit('close');
+    return this;
+  }
   // El móvil se va antes de que respondamos.
   cortar() { this.destroyed = true; this.emit('close'); }
 }

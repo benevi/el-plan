@@ -1,6 +1,7 @@
 // Utilidades de las funciones del servidor. Los archivos de /api que empiezan por _ no son rutas.
 // Variables de entorno en Vercel: ANTHROPIC_API_KEY (obligatoria para la IA) y APP_CODE (código de acceso,
-// obligatorio: sin él el servidor no atiende a nadie).
+// obligatorio: sin él el servidor no atiende a nadie). Las copias en la nube (api/copia.js) usan además el
+// almacén Blob conectado al proyecto (BLOB_READ_WRITE_TOKEN, o BLOB_STORE_ID con OIDC).
 import { createHash, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -30,18 +31,25 @@ function codigoValido(dado, esperado) {
   return timingSafeEqual(resumen(typeof dado === 'string' ? dado : ''), resumen(esperado));
 }
 
-// Comprueba método, código, tipo y tamaño. Devuelve el cuerpo ya parseado (objeto) o null si ya ha respondido.
-export function comprobar(req, res) {
+// Puerta común a todas las funciones: método POST, APP_CODE configurado y código correcto (en tiempo constante).
+// Devuelve true si se puede seguir; si no, ya ha respondido (405, 500 o 401). Siempre deja `no-store`.
+export function puerta(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Usa POST' }); return null; }
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Usa POST' }); return false; }
   const codigo = process.env.APP_CODE;
-  if (!codigo) { console.error('servidor: falta APP_CODE'); res.status(500).json({ error: 'el servidor no está configurado' }); return null; }
-  if (!codigoValido(req.headers['x-app-code'], codigo)) { res.status(401).json({ error: 'código de acceso incorrecto' }); return null; }
-  const tipo = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
-  if (tipo !== 'application/json') { res.status(415).json({ error: 'la petición tiene que ser JSON' }); return null; }
+  if (!codigo) { console.error('servidor: falta APP_CODE'); res.status(500).json({ error: 'el servidor no está configurado' }); return false; }
+  if (!codigoValido(req.headers['x-app-code'], codigo)) { res.status(401).json({ error: 'código de acceso incorrecto' }); return false; }
+  return true;
+}
+export const tipoDe = req => String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+// Si la cabecera Content-Length ya pasa del límite, responde 413 (sin leer el cuerpo) y devuelve false.
+export function largoAdmitido(req, res, limite) {
   const largo = Number(req.headers['content-length']);
-  if (Number.isFinite(largo) && largo > LIMITE_CUERPO) { res.status(413).json({ error: 'la petición es demasiado grande' }); return null; }
-  if (!process.env.ANTHROPIC_API_KEY) { console.error('servidor: falta ANTHROPIC_API_KEY'); res.status(500).json({ error: 'el servidor no está configurado' }); return null; }
+  if (Number.isFinite(largo) && largo > limite) { res.status(413).json({ error: 'la petición es demasiado grande' }); return false; }
+  return true;
+}
+// El cuerpo JSON ya parseado (objeto) y de como mucho `limite` bytes, o null si ya ha respondido (400 o 413).
+export function leerJSON(req, res, limite = LIMITE_CUERPO) {
   let cuerpo;
   try {
     cuerpo = req.body; // en Vercel es un getter que parsea el JSON y lanza si está mal formado
@@ -50,8 +58,17 @@ export function comprobar(req, res) {
   if (!cuerpo || typeof cuerpo !== 'object' || Array.isArray(cuerpo)) { res.status(400).json({ error: 'petición mal formada' }); return null; }
   let tam;
   try { tam = Buffer.byteLength(JSON.stringify(cuerpo)); } catch (e) { res.status(400).json({ error: 'petición mal formada' }); return null; } // p. ej. anidado sin fin
-  if (tam > LIMITE_CUERPO) { res.status(413).json({ error: 'la petición es demasiado grande' }); return null; }
+  if (tam > limite) { res.status(413).json({ error: 'la petición es demasiado grande' }); return null; }
   return cuerpo;
+}
+
+// Comprueba método, código, tipo y tamaño (para el entrenador). Devuelve el cuerpo ya parseado (objeto) o null si ya ha respondido.
+export function comprobar(req, res) {
+  if (!puerta(req, res)) return null;
+  if (tipoDe(req) !== 'application/json') { res.status(415).json({ error: 'la petición tiene que ser JSON' }); return null; }
+  if (!largoAdmitido(req, res, LIMITE_CUERPO)) return null;
+  if (!process.env.ANTHROPIC_API_KEY) { console.error('servidor: falta ANTHROPIC_API_KEY'); res.status(500).json({ error: 'el servidor no está configurado' }); return null; }
+  return leerJSON(req, res, LIMITE_CUERPO);
 }
 
 // ── Saneado del cuerpo ──
