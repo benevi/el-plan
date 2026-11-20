@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { Respuesta, peticion } from './_simulado.mjs';
 import { BlobSimulado } from './_blob-simulado.mjs';
-import handler, { ponerAlmacen, reiniciarRitmo, sobrantes, nombreCopia, leerNombre, LIMITE_COPIA } from '../../api/copia.js';
+import handler, { ponerAlmacen, reiniciarRitmo, sobrantes, nombreCopia, nombreCopiaV1, leerNombre, LIMITE_COPIA, SUBIDAS_DIA } from '../../api/copia.js';
 
 let registros, errores, logAntes, errorAntes, blob;
 beforeEach(() => {
@@ -26,10 +26,14 @@ function cifrado(n = 300) {
   return b;
 }
 async function llamar(op) { const res = new Respuesta(); await handler(peticion(op), res); return res; }
-const subir = (bytes = cifrado(), { persona = 'victor', sesiones = '12', ultima = '2026-11-19', codigo = 'secreto', extra = {} } = {}) => llamar({
+const META = randomBytes(55).toString('base64url'); // como los metadatos cifrados del nombre (IV + texto + etiqueta)
+const salDe = b => b.subarray(11, 27).toString('base64url');
+const subir = (bytes = cifrado(), { persona = 'victor', sal = salDe(bytes), meta = META, codigo = 'secreto', extra = {} } = {}) => llamar({
   codigo, tipo: 'application/octet-stream', cuerpo: bytes,
-  cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sesiones': sesiones, 'x-copia-ultima': ultima, 'content-length': String(bytes.length), ...extra },
+  cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': sal, 'x-copia-meta': meta, 'content-length': String(bytes.length), ...extra },
 });
+const v2 = (persona, fecha) => nombreCopia(persona, fecha, randomBytes(16).toString('base64url'), META);
+const copiasEn = (persona = 'victor') => [...blob.blobs.keys()].filter(k => k.startsWith(`copias/${persona}/`));
 const json = (cuerpo, codigo = 'secreto') => llamar({ cuerpo, codigo });
 
 // ── Puerta ──
@@ -74,6 +78,9 @@ test('un error de «almacén no encontrado» del SDK también es 503; otro fallo
   const r = await json({ accion: 'listar', persona: 'victor' });
   assert.equal(r.codigo, 502);
   assert.doesNotMatch(JSON.stringify(r.cuerpo), /CRUDO|token/);
+  // En el registro, solo el tipo de error, nunca su mensaje.
+  assert.doesNotMatch(errores.join('\n'), /CRUDO|token_vercel|almacén no encontrado/);
+  assert.match(errores.join('\n'), /"tipo":"(Error|BlobStoreNotFoundError)"/);
 });
 
 // ── Validación ──
@@ -110,21 +117,28 @@ test('solo acepta bytes con forma de copia cifrada: un JSON en claro → 400', a
 });
 
 // ── Subir, listar, bajar ──
-test('subir: guarda privado, en copias/<persona>/<fecha>_s<n>_u<día>.bin, los mismos bytes y sin caché', async () => {
+test('subir: guarda privado, en copias/<persona>/<fecha>_k<sal>_m<meta>.bin, los mismos bytes y sin caché', async () => {
   const bytes = cifrado(500);
-  const r = await subir(bytes, { sesiones: '42', ultima: '2026-11-19' });
+  const r = await subir(bytes);
   assert.equal(r.codigo, 200);
   assert.equal(r.cabeceras['cache-control'], 'no-store');
-  const [g] = [...blob.blobs.values()];
-  assert.match(g.pathname, /^copias\/victor\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z_s42_u2026-11-19\.bin$/);
+  const g = blob.blobs.get(copiasEn()[0]);
+  assert.match(g.pathname, /^copias\/victor\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z_k[\w-]{22}_m[\w-]{40,200}\.bin$/);
+  const i = g.pathname.indexOf('Z_k') + 3;
+  assert.equal(g.pathname.slice(i, i + 22), salDe(bytes));
   assert.equal(g.opciones.access, 'private');
   assert.equal(g.opciones.allowOverwrite, false);
   assert.deepEqual(g.bytes, bytes);
-  assert.equal(r.cuerpo.copia.sesiones, 42);
-  // Metadatos raros: se limpian.
-  await subir(cifrado(), { persona: 'virginia', sesiones: '-5<script>', ultima: '"><img>' });
-  const v = [...blob.blobs.keys()].find(k => k.startsWith('copias/virginia/'));
-  assert.match(v, /_s0_u-\.bin$/);
+  // Sin datos en claro en el nombre: ni sesiones ni fechas de sesión.
+  assert.doesNotMatch(g.pathname.slice(0, i), /_s\d|_u\d/);
+  assert.equal(g.pathname.slice(i + 22, i + 24), '_m');
+});
+
+test('subir: sal que no es la del archivo, o metadatos que faltan o no son base64url → 400', async () => {
+  for (const op of [{ sal: randomBytes(16).toString('base64url') }, { sal: 'corta' }, { meta: '' }, { meta: 'x'.repeat(20) }, { meta: 'a b'.repeat(20) }, { meta: 'x'.repeat(201) }]) {
+    assert.equal((await subir(cifrado(), op)).codigo, 400, JSON.stringify(op));
+  }
+  assert.equal(copiasEn().length, 0);
 });
 
 test('el servidor solo ve bytes cifrados: lo guardado es exactamente lo que llegó y el registro no lleva contenido', async () => {
@@ -136,18 +150,22 @@ test('el servidor solo ve bytes cifrados: lo guardado es exactamente lo que lleg
   assert.doesNotMatch(registros.join('\n'), /victor|virginia/);
 });
 
-test('listar: solo las de esa persona, de más nueva a más vieja, con fecha, sesiones y última sesión', async () => {
-  blob.blobs.set(nombreCopia('victor', new Date('2026-11-01T10:00:00Z'), 3, '2026-10-31'), { pathname: nombreCopia('victor', new Date('2026-11-01T10:00:00Z'), 3, '2026-10-31'), bytes: cifrado(), uploadedAt: new Date() });
-  await subir(cifrado(), { sesiones: '9', ultima: '2026-11-19' });
+test('listar: solo las de esa persona, de más nueva a más vieja; las v2 con sal y meta, las v1 con sus datos', async () => {
+  const v1 = nombreCopiaV1('victor', new Date('2026-11-01T10:00:00Z'), 3, '2026-10-31');
+  blob.blobs.set(v1, { pathname: v1, bytes: cifrado(), uploadedAt: new Date() });
+  const bytes = cifrado();
+  await subir(bytes);
   await subir(cifrado(), { persona: 'virginia' });
   blob.blobs.set('copias/victor/basura.txt', { pathname: 'copias/victor/basura.txt', bytes: Buffer.from('x'), uploadedAt: new Date() });
   const r = await json({ accion: 'listar', persona: 'victor' });
   assert.equal(r.codigo, 200);
   assert.equal(r.cuerpo.copias.length, 2);
-  assert.equal(r.cuerpo.copias[0].sesiones, 9);
-  assert.equal(r.cuerpo.copias[1].fecha, '2026-11-01T10:00:00.000Z');
-  assert.equal(r.cuerpo.copias[1].ultima, '2026-10-31');
-  assert.ok(r.cuerpo.copias.every(c => c.nombre.startsWith('copias/victor/')));
+  const [nueva, vieja] = r.cuerpo.copias;
+  assert.equal(nueva.sal, salDe(bytes)); assert.equal(nueva.meta, META);
+  assert.equal(nueva.sesiones, undefined);
+  assert.equal(vieja.fecha, '2026-11-01T10:00:00.000Z');
+  assert.equal(vieja.sesiones, 3); assert.equal(vieja.ultima, '2026-10-31');
+  assert.ok(r.cuerpo.copias.every(c => c.nombre.startsWith('copias/victor/') && !('persona' in c)));
 });
 
 test('bajar: devuelve los bytes; una copia de la otra persona o un nombre raro → 400; si no está → 404', async () => {
@@ -160,18 +178,18 @@ test('bajar: devuelve los bytes; una copia de la otra persona o un nombre raro �
   assert.deepEqual(r.bytes, bytes);
   assert.equal((await json({ accion: 'bajar', persona: 'virginia', nombre })).codigo, 400);
   for (const n of ['../copias/victor/x.bin', 'copias/victor/../../secreto', '', null, 42]) assert.equal((await json({ accion: 'bajar', persona: 'victor', nombre: n })).codigo, 400);
-  assert.equal((await json({ accion: 'bajar', persona: 'victor', nombre: nombreCopia('victor', new Date('2020-01-01T00:00:00Z'), 1, null) })).codigo, 404);
+  assert.equal((await json({ accion: 'bajar', persona: 'victor', nombre: v2('victor', new Date('2020-01-01T00:00:00Z')) })).codigo, 404);
 });
 
 // ── Retención ──
-test('retención con un calendario simulado: 14 días todas, 3 meses una por semana, 2 años una por mes', () => {
+test('retención con un calendario simulado: 14 días (horas distintas) todas, 3 meses una por semana, 2 años una por mes', () => {
   const ahora = Date.parse('2026-11-20T12:00:00Z');
   const copias = [];
   // Cuatro copias al día durante 3 años hacia atrás.
   for (let d = 0; d < 3 * 365; d++) for (const hora of [8, 12, 18, 22]) {
     const f = new Date(ahora - d * 864e5); f.setUTCHours(hora, 0, 0, 0);
     if (f.getTime() > ahora) continue;
-    copias.push({ nombre: nombreCopia('victor', f, d, null), fecha: f.toISOString() });
+    copias.push({ nombre: v2('victor', f), fecha: f.toISOString() });
   }
   const fuera = new Set(sobrantes(copias, ahora));
   const quedan = copias.filter(c => !fuera.has(c.nombre));
@@ -203,14 +221,14 @@ test('retención: la única copia (aunque tenga 3 años) no se borra nunca', () 
 
 test('al subir se borran las que sobran (solo de esa persona) y borrar-viejas hace lo mismo', async () => {
   const viejo = new Date(Date.now() - 800 * 864e5);
-  const pon = (p, f) => { const n = nombreCopia(p, f, 1, null); blob.blobs.set(n, { pathname: n, bytes: cifrado(), uploadedAt: f }); return n; };
-  const v1 = pon('victor', viejo), v2 = pon('virginia', viejo);
+  const pon = (p, f) => { const n = v2(p, f); blob.blobs.set(n, { pathname: n, bytes: cifrado(), uploadedAt: f }); return n; };
+  const vic = pon('victor', viejo), vir = pon('virginia', viejo);
   const r = await subir();
   assert.equal(r.cuerpo.borradas, 1);
-  assert.ok(!blob.blobs.has(v1));
-  assert.ok(blob.blobs.has(v2), 'la de la otra persona no se toca');
+  assert.ok(!blob.blobs.has(vic));
+  assert.ok(blob.blobs.has(vir), 'la de la otra persona no se toca');
   await subir(cifrado(), { persona: 'virginia' });
-  assert.ok(!blob.blobs.has(v2));
+  assert.ok(!blob.blobs.has(vir));
   const v3 = pon('victor', new Date(Date.now() - 900 * 864e5));
   const b = await json({ accion: 'borrar-viejas', persona: 'victor' });
   assert.equal(b.codigo, 200);
@@ -218,11 +236,14 @@ test('al subir se borran las que sobran (solo de esa persona) y borrar-viejas ha
   assert.ok(!blob.blobs.has(v3));
 });
 
-test('nombres: ida y vuelta y rechazo de lo que no encaja', () => {
+test('nombres: ida y vuelta (v2 y v1) y rechazo de lo que no encaja', () => {
   const f = new Date('2026-11-20T18:40:05.123Z');
-  const n = nombreCopia('virginia', f, 7, '2026-11-20');
-  assert.deepEqual(leerNombre(n), { nombre: n, persona: 'virginia', fecha: f.toISOString(), sesiones: 7, ultima: '2026-11-20' });
-  for (const x of ['copias/otro/' + n.split('/')[2], n.replace('.bin', '.txt'), n + '/x', 'x' + n]) assert.equal(leerNombre(x), null);
+  const sal = randomBytes(16).toString('base64url');
+  const n = nombreCopia('virginia', f, sal, META);
+  assert.deepEqual(leerNombre(n), { nombre: n, persona: 'virginia', fecha: f.toISOString(), sal, meta: META });
+  const n1 = nombreCopiaV1('virginia', f, 7, '2026-11-20');
+  assert.deepEqual(leerNombre(n1), { nombre: n1, persona: 'virginia', fecha: f.toISOString(), sesiones: 7, ultima: '2026-11-20' });
+  for (const x of ['copias/otro/' + n.split('/')[2], n.replace('.bin', '.txt'), n + '/x', 'x' + n, n.replace('_k', '_q')]) assert.equal(leerNombre(x), null);
 });
 
 // ── Ritmo ──
@@ -233,4 +254,38 @@ test('ritmo: un móvil en bucle recibe 429 tras 20 subidas en 10 minutos', async
   assert.equal(codigos[21], 429);
   // La otra persona no se ve afectada.
   assert.equal((await subir(cifrado(), { persona: 'virginia' })).codigo, 200);
+});
+
+test('retención en los últimos 14 días: como mucho la última de cada hora y 10 por día', () => {
+  const ahora = Date.parse('2026-11-20T23:59:00Z');
+  const copias = [];
+  // Hoy y hace 3 días: una copia cada 10 minutos de 6:00 a 23:50 (18 horas, 6 por hora).
+  for (const d of [0, 3]) for (let m = 6 * 60; m < 24 * 60; m += 10) {
+    const f = new Date(ahora - d * 864e5); f.setUTCHours(0, m, 0, 0);
+    if (f.getTime() <= ahora) copias.push({ nombre: 'c' + d + '-' + m, fecha: f.toISOString() });
+  }
+  const fuera = new Set(sobrantes(copias, ahora));
+  const quedan = copias.filter(c => !fuera.has(c.nombre));
+  for (const dia of ['2026-11-20', '2026-11-17']) {
+    const delDia = quedan.filter(c => c.fecha.startsWith(dia));
+    assert.equal(delDia.length, 10, dia);
+    assert.equal(new Set(delDia.map(c => c.fecha.slice(0, 13))).size, 10, 'una por hora');
+    // Las que quedan son las últimas de su hora (xx:50) y de las últimas horas del día.
+    assert.ok(delDia.every(c => c.fecha.slice(14, 16) === '50'));
+    assert.equal(delDia.map(c => c.fecha.slice(11, 13)).sort()[0], '14');
+  }
+});
+
+test('tope de 30 subidas al día por persona (contador en el Blob, aunque la retención borre copias)', async () => {
+  const codigos = [];
+  for (let i = 0; i < SUBIDAS_DIA + 2; i++) { reiniciarRitmo(); codigos.push((await subir()).codigo); }
+  assert.deepEqual(codigos.slice(0, SUBIDAS_DIA), Array(SUBIDAS_DIA).fill(200));
+  assert.equal(codigos[SUBIDAS_DIA], 429);
+  assert.ok(copiasEn().length <= 10, 'la retención deja como mucho 10 de hoy');
+  reiniciarRitmo();
+  assert.equal((await subir(cifrado(), { persona: 'virginia' })).codigo, 200);
+  // Los contadores de otros días se limpian al subir.
+  blob.blobs.set('cuentas/virginia/2020-01-01.json', { pathname: 'cuentas/virginia/2020-01-01.json', bytes: Buffer.from('{"n":3}'), uploadedAt: new Date() });
+  reiniciarRitmo(); await subir(cifrado(), { persona: 'virginia' });
+  assert.ok(!blob.blobs.has('cuentas/virginia/2020-01-01.json'));
 });
