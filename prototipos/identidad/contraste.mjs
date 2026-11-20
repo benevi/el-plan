@@ -11,7 +11,7 @@ import { contraste, simular, distancia } from './color.mjs';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const DOC = path.resolve(AQUI, '../../docs/diseno/identidad.md');
-const DIRS = { tiza: 'Tiza', carril: 'Carril', hierro: 'Hierro' };
+const DIRS = { tiza: 'Tiza', carril: 'Carril', hierro: 'Hierro', 'carril-2': 'Carril 2' };
 
 function tokens(css, selector) {
   const i = css.indexOf(selector + ' {');
@@ -31,6 +31,9 @@ const PARES = [
   ['sobre-acento', 'acento', ALARMA, 'Texto del botón principal y de la alarma (R08: ≥ 7:1)'],
   ['borde-control', 'fondo', CONTROL, 'Borde de control'], ['borde-control', 'sup', CONTROL, 'Borde de control en panel'], ['borde-control', 'sup-2', CONTROL, 'Borde de control en descanso'],
   ['acento', 'fondo', CONTROL, 'Botón principal (relleno) sobre el fondo'],
+  // Solo si la dirección tiene fondo de «agua» (Carril 2: el final de sesión)
+  ['texto', 'agua', TEXTO, 'Texto del final sobre el agua'], ['texto-2', 'agua', TEXTO, 'Texto secundario del final sobre el agua'],
+  ['acento', 'agua', CONTROL, 'Sello y botón del final sobre el agua'], ['borde-control', 'agua', CONTROL, 'Filete del final sobre el agua'],
   ['texto', 'acento', 0, null], // marcador: no se mide (el texto claro nunca va sobre el acento)
 ].filter(p => p[3]);
 
@@ -46,6 +49,7 @@ for (const [dir, nombre] of Object.entries(DIRS)) {
   let filas = ''; let min = Infinity; let n = 0; let mal = 0;
   for (const [fg, bg, req, uso] of PARES) {
     const usaAcento = fg === 'acento' || bg === 'acento';
+    if (!base[fg] && fg !== 'acento' || !base[bg] && bg !== 'acento') continue; // par que esta dirección no usa
     for (const [quien, t] of Object.entries(personas)) {
       if (!usaAcento && quien === 'Virginia') continue; // igual para los dos
       const c = contraste(t[fg], t[bg]);
@@ -78,6 +82,18 @@ for (const [dir, nombre] of Object.entries(DIRS)) {
     `| Visión | Víctor / Virginia | ΔE | Contraste con el fondo | Cumple |\n|---|---|---|---|---|\n${cvd}\n` +
     `Fuentes: ${fuentes.join(', ')} (${kb.toFixed(1).replace('.', ',')} KB de 150). Iconos PNG: ${pngTxt.join(', ')}.\n`;
 }
+
+// Iconos de las propuestas de logo
+let logosTxt = '';
+try {
+  for (const id of (await readdir(path.join(AQUI, 'logos'), { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)) {
+    const pngs = (await readdir(path.join(AQUI, 'logos', id))).filter(f => f.endsWith('.png'));
+    const t = [];
+    for (const f of pngs) { const k = (await stat(path.join(AQUI, 'logos', id, f))).size / 1024; if (k > 50) fallos++; t.push(k.toFixed(1).replace('.', ',') + ' KB'); }
+    logosTxt += `| ${id} | ${t.join(', ')} |\n`;
+  }
+} catch { /* sin carpeta de logos */ }
+if (logosTxt) md += `\n#### Propuestas de logo (PNG 192, 512 y maskable 512; máximo 50 KB)\n\n| Propuesta | PNG |\n|---|---|\n${logosTxt}`;
 
 const tabla = `| Dirección | Pares que cumplen | Contraste mínimo medido | ΔE mínimo entre personas | Fuentes | PNG (192, 512, maskable) |\n|---|---|---|---|---|---|\n${resumen.join('\n')}\n`;
 const salida = `<!-- contraste:inicio -->\n_Generado con \`node prototipos/identidad/contraste.mjs --escribir\`. No editar a mano._\n\n${tabla}${md}<!-- contraste:fin -->`;

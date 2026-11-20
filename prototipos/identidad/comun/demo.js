@@ -15,7 +15,7 @@ function leerPersona() {
   return 'victor';
 }
 
-export function iniciar({ nombre, pantallas }) {
+export function iniciar({ nombre, pantallas, salida = false }) {
   const raiz = document.documentElement;
   const app = document.getElementById('app');
   const capa = document.getElementById('capa');
@@ -87,6 +87,22 @@ export function iniciar({ nombre, pantallas }) {
     if (destino === 'sesion' && !ses) nuevaSesion();
     document.body.classList.toggle('sin-nav', destino === 'sesion');
     nav.querySelectorAll('[data-tab]').forEach(a => a.toggleAttribute('aria-current', a.dataset.tab === destino));
+    // Con «salida», la pantalla anterior no desaparece de golpe: se queda en una capa fija que sale animada
+    // mientras entra la nueva (solo transform y opacity). Con movimiento reducido, cambio directo.
+    if (salida && antes !== null && antes !== destino && !reducido()) {
+      document.querySelectorAll('.saliente').forEach(n => n.remove());
+      const capaSal = document.createElement('div');
+      capaSal.className = 'saliente'; capaSal.setAttribute('aria-hidden', 'true'); capaSal.inert = true;
+      const dentro = document.createElement('div');
+      dentro.className = 'saliente-dentro';
+      dentro.style.marginTop = `${-window.scrollY}px`;
+      dentro.append(...app.childNodes);
+      capaSal.append(dentro);
+      document.body.append(capaSal);
+      const quitar = () => capaSal.remove();
+      capaSal.addEventListener('animationend', quitar, { once: true });
+      setTimeout(quitar, 600);
+    }
     pintar();
     if (antes !== null && !reducido()) {
       app.classList.remove('entra'); void app.offsetWidth; app.classList.add('entra');
@@ -101,7 +117,7 @@ export function iniciar({ nombre, pantallas }) {
     app.innerHTML = vista === 'sesion' ? pantallas.sesion(d, ses) : pantallas[vista](d);
     app.querySelector('h1')?.setAttribute('tabindex', '-1');
     aplicarVars(app);
-    pantallas.despues?.(app, vista, d, ses);
+    pantallas.despues?.(app, vista, d, ses, { reducido: reducido() || CAPTURA });
     if (vista === 'sesion') pintarReloj();
   }
 
@@ -112,7 +128,7 @@ export function iniciar({ nombre, pantallas }) {
     const { restante, total, activo } = ses.descanso;
     r.hidden = !activo && !r.classList.contains('alarma');
     r.style.setProperty('--p', String(Math.max(0, restante) / total));
-    r.querySelectorAll('[data-reloj]').forEach(n => { n.textContent = mmss(restante); });
+    r.querySelectorAll('[data-reloj]').forEach(n => { if (pantallas.reloj) pantallas.reloj(n, restante); else n.textContent = mmss(restante); });
   }
   function arrancarReloj() {
     pararReloj();
@@ -153,6 +169,7 @@ export function iniciar({ nombre, pantallas }) {
     app.inert = true; nav.inert = true;
     capa.classList.remove('celebra'); void capa.offsetWidth; capa.classList.add('celebra');
     capa.querySelector('h2')?.focus({ preventScroll: true });
+    pantallas.alAbrirCierre?.(capa, { reducido: reducido() || CAPTURA });
     // Las cifras cuentan hacia arriba; con movimiento reducido salen directamente con su valor.
     capa.querySelectorAll('[data-cuenta]').forEach(n => {
       const fin = Number(n.dataset.cuenta);

@@ -1,20 +1,18 @@
 // Pasa los iconos SVG de cada dirección a PNG (192, 512 y maskable 512) con Chromium.
 // Uso: node prototipos/identidad/herramientas/iconos.mjs
-import { createRequire } from 'node:module';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { arrancar } from './servidor.mjs';
+import { arrancar, lanzarChromium } from './servidor.mjs';
 
-const require = createRequire(import.meta.url);
-let playwright;
-try { playwright = require('playwright'); } catch { playwright = require('/opt/node22/lib/node_modules/playwright'); }
 const AQUI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const { srv, url } = await arrancar();
-const nav = await playwright.chromium.launch();
+const nav = await lanzarChromium();
 const pag = await nav.newPage();
-for (const dir of ['tiza', 'carril', 'hierro']) {
+const CARPETAS = ['tiza', 'carril', 'hierro', 'carril-2', 'logos/giro', 'logos/marea', 'logos/trazo', 'logos/duo', 'logos/nivel'];
+const solo = process.argv.slice(2);
+for (const dir of CARPETAS.filter(c => !solo.length || solo.includes(c))) {
   for (const [svg, png, lado] of [['icono.svg', 'icono-192.png', 192], ['icono.svg', 'icono-512.png', 512], ['icono-maskable.svg', 'icono-maskable-512.png', 512]]) {
     await pag.setViewportSize({ width: lado, height: lado });
     await pag.setContent(`<style>html,body{margin:0;background:transparent}img{display:block;width:${lado}px;height:${lado}px}</style><img src="${url}/prototipos/identidad/${dir}/${svg}">`);

@@ -3,24 +3,20 @@
 // - Comprobaciones en 360×640 y 320×568: sin desplazamiento horizontal, serie actual visible sin desplazarse (R03),
 //   zonas táctiles (R01), cifras de la sesión ≥ 28 px (R06), ninguna petición fuera del sitio y ningún error de consola.
 // Uso: node prototipos/identidad/herramientas/capturas.mjs [--solo tiza]
-import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { arrancar } from './servidor.mjs';
+import { arrancar, lanzarChromium } from './servidor.mjs';
 
-const require = createRequire(import.meta.url);
-let playwright;
-try { playwright = require('playwright'); } catch { playwright = require('/opt/node22/lib/node_modules/playwright'); }
 const AQUI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = path.join(AQUI, 'capturas');
 const solo = process.argv.includes('--solo') ? process.argv[process.argv.indexOf('--solo') + 1] : null;
-const DIRS = ['tiza', 'carril', 'hierro'].filter(d => !solo || d === solo);
+const DIRS = ['tiza', 'carril', 'hierro', 'carril-2'].filter(d => !solo || d === solo);
 const VISTAS = ['hoy', 'sesion', 'progreso'];
 
 await mkdir(SALIDA, { recursive: true });
 const { srv, url } = await arrancar();
-const nav = await playwright.chromium.launch();
+const nav = await lanzarChromium();
 const fallos = [];
 
 async function abrir(ctx, ruta) {
@@ -109,6 +105,49 @@ for (const dir of DIRS) {
   }
 }
 
+// Carril 2: fotogramas del movimiento (se congelan las animaciones en un instante con la Web Animations API)
+// y fluidez con la CPU 4 veces más lenta (fotogramas medidos con requestAnimationFrame).
+if (!solo || solo === 'carril-2') {
+  const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const congelar = (pag, ms) => pag.evaluate(t => new Promise(ok => requestAnimationFrame(() => { document.getAnimations().forEach(a => { a.pause(); a.currentTime = t; }); requestAnimationFrame(ok); })), ms);
+  // Final a mitad de la subida del agua y con las ondas
+  for (const [ms, nombre] of [[450, 'agua'], [1150, 'ondas']]) {
+    const pag = await ctx.newPage();
+    await pag.goto(`${url}/prototipos/identidad/carril-2/?marco&p=virginia&cierre#sesion`);
+    await pag.evaluate(() => document.fonts.ready);
+    await congelar(pag, ms);
+    await pag.screenshot({ path: path.join(SALIDA, `carril-2-movimiento-final-${nombre}.png`) });
+    await pag.close();
+  }
+  // Cambio de pantalla Hoy → Progreso a mitad
+  {
+    const pag = await ctx.newPage();
+    await pag.goto(`${url}/prototipos/identidad/carril-2/?marco&p=victor#hoy`);
+    await pag.evaluate(() => document.fonts.ready);
+    await pag.click('.pestanas [data-tab="progreso"]');
+    await pag.waitForSelector('.saliente', { state: 'attached' });
+    await congelar(pag, 160);
+    await pag.screenshot({ path: path.join(SALIDA, 'carril-2-movimiento-cambio.png') });
+    await pag.close();
+  }
+  // Fluidez
+  const pag = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(pag);
+  await pag.goto(`${url}/prototipos/identidad/carril-2/?marco&p=victor#hoy`);
+  await pag.evaluate(() => document.fonts.ready);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  const medir = () => pag.evaluate(() => new Promise(ok => {
+    const t = []; let ant = performance.now(); const fin = ant + 1500;
+    const paso = ahora => { t.push(ahora - ant); ant = ahora; if (ahora < fin) requestAnimationFrame(paso); else ok(t); };
+    requestAnimationFrame(paso);
+  }));
+  const informe = (n, t) => { const m = t.reduce((a, b) => a + b, 0) / t.length; console.log(`carril-2 fluidez ${n}: ${(1000 / m).toFixed(0)} fps de media, ${t.filter(x => x > 34).length} fotogramas de más de 34 ms (CPU ×4)`); };
+  let p1 = medir(); await pag.click('.pestanas [data-tab="progreso"]'); informe('cambio a Progreso', await p1);
+  await pag.goto(`${url}/prototipos/identidad/carril-2/?marco&p=victor#sesion`); await pag.waitForTimeout(300);
+  p1 = medir(); await pag.click('.barra-sesion [data-act="terminar"]'); informe('final', await p1);
+  await ctx.close();
+}
+
 // Índice
 {
   const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
@@ -117,6 +156,10 @@ for (const dir of DIRS) {
     await pag.waitForTimeout(600);
     await pag.screenshot({ path: path.join(SALIDA, 'indice.png'), fullPage: true });
     if (errores.length) fallos.push('índice: ' + errores.join(' | '));
+    const l = await abrir(ctx, '/prototipos/identidad/logos/');
+    await l.pag.waitForTimeout(600);
+    await l.pag.screenshot({ path: path.join(SALIDA, 'logos.png'), fullPage: true });
+    if (l.errores.length) fallos.push('logos: ' + l.errores.join(' | '));
   }
   await ctx.close();
 }

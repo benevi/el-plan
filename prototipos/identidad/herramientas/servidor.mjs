@@ -21,3 +21,13 @@ export function arrancar(puerto = 0) {
   });
   return new Promise(ok => srv.listen(puerto, '127.0.0.1', () => ok({ srv, url: `http://127.0.0.1:${srv.address().port}` })));
 }
+
+// Abre Chromium con el Playwright del proyecto y, si su navegador no está instalado, con el global.
+import { createRequire } from 'node:module';
+const requerir = createRequire(import.meta.url);
+export async function lanzarChromium() {
+  for (const ruta of ['playwright', '/opt/node22/lib/node_modules/playwright']) {
+    try { return await requerir(ruta).chromium.launch(); } catch { /* prueba el siguiente */ }
+  }
+  throw new Error('No encuentro Chromium para Playwright (npx playwright install chromium)');
+}

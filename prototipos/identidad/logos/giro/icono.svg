@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" rx="112" fill="#081723"/>
+<g fill="#EDF3F7" fill-rule="evenodd">
+  <rect x="228" y="96" width="56" height="320" rx="6"/>
+  <path d="M284 96 A88 88 0 0 1 284 272 H228 V96 Z M284 148 V220 A36 36 0 0 0 284 148 Z"/>
+  <path d="M284 96 A88 88 0 0 1 284 272 H228 V96 Z M284 148 V220 A36 36 0 0 0 284 148 Z" transform="rotate(180 256 256)"/>
+</g>
+</svg>

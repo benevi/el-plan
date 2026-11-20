@@ -56,31 +56,35 @@ DIRECCIONES = {
                  fuente='hierro/fuentes/sofia-sans-extra-condensed.woff2', ejes={'wght': 600}, esp=1),
 }
 
-for nombre, d in DIRECCIONES.items():
-    sim = d['simbolo'].format(c=d['marca'], f=d['fondo'])
-    icono = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
-<rect width="512" height="512" rx="112" fill="{d['fondo']}"/>
-{sim}
-</svg>
-'''
-    # Maskable: fondo a sangre y símbolo reducido al 80 % para quedar dentro de la zona segura (círculo de radio 0,4).
-    mask = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
-<rect width="512" height="512" fill="{d['fondo']}"/>
-<g transform="translate(256 256) scale(.8) translate(-256 -256)">
-{sim}
-</g>
-</svg>
-'''
-    # Logo horizontal: símbolo sin fondo (alto 120) y nombre en curvas.
-    trazado, ancho = texto_a_trazado(d['fuente'], d['ejes'], 'Pipos Fitness', 76, 150, 88, d['esp'])
-    total = int(150 + ancho + 8)
-    logo = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total} 120" role="img" aria-label="Pipos Fitness">
-<g transform="translate(-38 -40) scale(.38)">{sim}</g>
-<path fill="{d['marca']}" d="{trazado}"/>
-</svg>
-'''
-    # El símbolo del logo va en el color de la marca sobre fondo transparente; en Hierro los huecos del disco usan el fondo.
-    for archivo, txt in (('icono.svg', icono), ('icono-maskable.svg', mask), ('logo.svg', logo)):
-        with open(os.path.join(AQUI, nombre, archivo), 'w') as fh:
-            fh.write(txt)
-    print(nombre, 'ok', total)
+def generar():
+    for nombre, d in DIRECCIONES.items():
+        sim = d['simbolo'].format(c=d['marca'], f=d['fondo'])
+        icono = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+    <rect width="512" height="512" rx="112" fill="{d['fondo']}"/>
+    {sim}
+    </svg>
+    '''
+        # Maskable: fondo a sangre y símbolo reducido al 80 % para quedar dentro de la zona segura (círculo de radio 0,4).
+        mask = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+    <rect width="512" height="512" fill="{d['fondo']}"/>
+    <g transform="translate(256 256) scale(.8) translate(-256 -256)">
+    {sim}
+    </g>
+    </svg>
+    '''
+        # Logo horizontal: símbolo sin fondo (alto 120) y nombre en curvas.
+        trazado, ancho = texto_a_trazado(d['fuente'], d['ejes'], 'Pipos Fitness', 76, 150, 88, d['esp'])
+        total = int(150 + ancho + 8)
+        logo = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total} 120" role="img" aria-label="Pipos Fitness">
+    <g transform="translate(-38 -40) scale(.38)">{sim}</g>
+    <path fill="{d['marca']}" d="{trazado}"/>
+    </svg>
+    '''
+        # El símbolo del logo va en el color de la marca sobre fondo transparente; en Hierro los huecos del disco usan el fondo.
+        for archivo, txt in (('icono.svg', icono), ('icono-maskable.svg', mask), ('logo.svg', logo)):
+            with open(os.path.join(AQUI, nombre, archivo), 'w') as fh:
+                fh.write(txt)
+        print(nombre, 'ok', total)
+
+if __name__ == '__main__':
+    generar()

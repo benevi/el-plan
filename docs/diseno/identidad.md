@@ -2,7 +2,7 @@
 
 Segunda entrega de la fase D. Tres direcciones de identidad **claramente distintas** para Pipos Fitness, solo en tema oscuro, para que Víctor elija una (o una mezcla) desde el móvil. El nombre se mantiene; todo lo demás es nuevo: logo, iconos, colores, letra y movimiento.
 
-**Estado:** pendiente de elección.
+**Estado:** primera vuelta vista por Víctor: Carril es la que más se acerca, «sin maravillarme». Segunda vuelta (Carril 2 y cinco logos) pendiente de su opinión.
 **Dónde verlo:** en la vista previa de Vercel de la rama `diseno-prototipos`, ruta **`/prototipos/identidad/`** (con la barra final). La página índice permite comparar la misma pantalla en las tres direcciones, con Víctor o Virginia, a 360 × 640 o 390 × 844.
 
 ---
@@ -63,6 +63,49 @@ Lo que **no** se está eligiendo aquí: el orden de las pantallas ni su contenid
 - **Durante la serie no se mueve nada** salvo el contador del descanso.
 - **Alarma de fin de descanso**: el bloque del descanso pasa al color de la persona con texto oscuro (≥ 7:1 en todos los fotogramas, R08: solo se mueve el bloque, nunca cambia la legibilidad), vibra (`300-120-300 ms`), se anuncia por lector de pantalla y se cierra sola a los 8 s o al marcar la serie.
 
+## Segunda vuelta: Carril 2
+
+**Lo que pidió Víctor sobre Carril:** más sobria y elegante (menos piscina literal, más aire, jerarquía más fina, letra más refinada), más movimiento (transiciones y celebraciones más vistosas, a 60 fps, con alternativa reducida) y un logo más original y profesional. Está en `/prototipos/identidad/carril-2/` y los logos en `/prototipos/identidad/logos/`. Las tres direcciones originales no se han tocado.
+
+### Qué cambia y por qué
+
+| Antes (Carril) | Ahora (Carril 2) | Por qué |
+|---|---|---|
+| Corcheras como separador, azulejos para la semana, T de la pared, cifras de marcador | Fuera. Separación por aire (28-36 px entre bloques) y filetes finos; semana con círculos (lleno = hecha, anillo = hoy, discontinuo = prevista); la piscina queda en tres alusiones: la línea del agua del logo, el nivel que sube (descanso, constancia, final) y las ondas | Era un disfraz: muchas formas compitiendo. La alusión se entiende sin explicarla y no ensucia |
+| Saira (técnica, de marcador), pesos 500-600 en todo | **Instrument Sans** (OFL, 56 KB, una sola familia con eje de anchura): títulos en 500 con interletraje −0,02 em, cifras en 400 al 75 % de ancho | Una grotesca fina y contenida da la elegancia; las cifras estrechas y ligeras siguen grandes (56 px kilos, 48 px descanso) sin gritar |
+| Lima `#C6F04D` y rosa `#FF7EB6` saturados | Lima suave `#C9E77E` y rosa suave `#F29BC2`; fondo noche `#081723` | Menos saturación = más sobrio; siguen distinguiéndose con daltonismo (ΔE ≥ 0,15) y el texto oscuro sobre ellos pasa de 8,8:1 |
+| Botones rectos de 8 px de radio | Botón principal en píldora; selectores ± en píldora partida | Forma más amable y coherente; una sola forma para lo que se pulsa |
+| Etiquetas y cifras del mismo peso | Jerarquía por tamaño y color (título 30 px, secciones 14 px en gris, datos 15-16 px) | Una cosa que mirar por bloque |
+| En 320 × 568 el descanso tapaba el final de la serie | Por debajo de 340 px de ancho o 600 px de alto: título 22 px, cifras 44 px, descanso más bajo y sin la línea «Ejercicio n de m» (ya está en la barra de avance). Además, tras marcar una serie, la siguiente se desplaza para quedar siempre por encima del descanso | R03: la serie actual queda entera con 24 px de margen en 320 × 568 (36 px en 360 × 640) |
+
+### Movimiento de Carril 2
+
+Todo con `transform` y `opacity`. Medido con la CPU 4 veces más lenta (Playwright, `requestAnimationFrame`): **59-60 fps** de media en el cambio de pantalla y en el final, como mucho 1 fotograma de más de 34 ms.
+
+- **Entre pantallas (eje horizontal compartido):** la pantalla que se va sale 24 px y se desvanece (150 ms); la nueva llega 40 px desde el lado contrario (300 ms) y sus bloques suben en cascada (50 ms entre ellos). La cabecera no se mueve. Al volver, al revés.
+- **Hoy:** la barra de la sesión se llena tramo a tramo (600 ms, 90 ms entre tramos) y los días aparecen uno tras otro.
+- **Progreso:** los vasos de constancia se llenan de agua (600 ms, en cascada), el gráfico de fuerza se descubre de izquierda a derecha (900 ms) y la cifra «+5» fluye.
+- **Serie marcada:** la marca de «Hecha» aparece con una onda pequeña.
+- **Descanso:** el nivel baja segundo a segundo y cada dígito del reloj se desliza al cambiar. **Es lo único que se mueve durante la serie.**
+- **Alarma:** el bloque pasa al color de la persona (texto ≥ 7:1 todo el rato), sube 8 px y lanza tres ecos desde el reloj; vibra y se cierra sola.
+- **Final:** sube el agua desde abajo con su ola (900 ms), el sello de «hecho» aparece y lanza tres ondas, el título y los datos entran en cascada y **las cifras fluyen** dígito a dígito hasta su valor.
+- **Movimiento reducido:** todo pasa directamente al estado final (agua ya arriba, cifras con su valor, sin ondas, ola ni ecos) y la información es la misma.
+- Duraciones: 100/200/300 ms para la interfaz; 600 y 900 ms solo en progreso y celebraciones (excepción documentada: lo pidió Víctor para que se vea).
+
+Fotogramas congelados para revisar: `capturas/carril-2-movimiento-cambio.png`, `carril-2-movimiento-final-agua.png` y `carril-2-movimiento-final-ondas.png`.
+
+### Logos: cinco propuestas y dos finalistas
+
+En `/prototipos/identidad/logos/`: cada propuesta a 16, 24, 32, 48, 64 y 128 px, sobre fondo oscuro y claro, en versión maskable y entre otros iconos de una pantalla de inicio (redondeados y en círculo). Cada una tiene `simbolo.svg`, `icono.svg`, `icono-maskable.svg`, `logo.svg` (nombre en curvas con Instrument Sans) y PNG 192, 512 y maskable 512 (todos ≤ 30 KB).
+
+| Propuesta | Idea | Valoración |
+|---|---|---|
+| **Giro** (finalista 1, la que va en Carril 2) | Dos P que comparten el asta y giran media vuelta | P de Pipos, dos personas y un ciclo (constancia) en una sola forma. Simetría por giro: memorable, se reconoce del revés y a 16 px. No conozco ninguna marca con esta forma, pero no he podido comprobarlo contra todas: conviene revisarlo antes de cerrarla |
+| **Marea** (finalista 2) | Una P sólida con la línea del agua a media altura | La alusión a la piscina mejor resuelta y la más legible pequeña. Menos propia; el segundo tono desaparece a 16 px |
+| Trazo | Una P de un solo trazo con el cuenco abierto | Limpia, pero a tamaño de icono parece una P cualquiera |
+| Dúo | La P en dos piezas separadas por una calle | Correcta y profesional; la idea de «pareja» no se lee sin explicarla |
+| Nivel | Un círculo que se llena de agua | Muy legible, pero genérica (podría ser de cualquier app de agua) |
+
 ---
 
 ## Contraste, daltonismo y pesos
@@ -77,6 +120,7 @@ _Generado con `node prototipos/identidad/contraste.mjs --escribir`. No editar a 
 | Tiza | 24 de 24 | 3,09:1 | 0,18 | 73,6 KB | 8,2 KB, 26,2 KB, 17,1 KB |
 | Carril | 24 de 24 | 3,20:1 | 0,21 | 96,6 KB | 4,9 KB, 16,6 KB, 9,4 KB |
 | Hierro | 24 de 24 | 3,07:1 | 0,16 | 72,5 KB | 8,9 KB, 27,3 KB, 17,8 KB |
+| Carril 2 | 29 de 29 | 3,40:1 | 0,15 | 56,0 KB | 5,6 KB, 19,0 KB, 11,2 KB |
 
 #### Tiza
 
@@ -197,6 +241,61 @@ Colores de persona con daltonismo (simulación de Machado et al., 2009; ΔE OKLa
 | Tritanopia | `#ff9f9a` / `#94aec1` | 0,16 | 8,06:1 | Sí |
 
 Fuentes: onest.woff2, sofia-sans-extra-condensed.woff2 (72,5 KB de 150). Iconos PNG: icono-192.png 8,9 KB, icono-512.png 27,3 KB, icono-maskable-512.png 17,8 KB.
+
+#### Carril 2
+
+| Uso | Par | Contraste | Mínimo | Cumple |
+|---|---|---|---|---|
+| Texto principal | `#EDF3F7` sobre `#081723` | 16,22:1 | 4,5:1 | Sí |
+| Texto principal en panel | `#EDF3F7` sobre `#0D1F2E` | 14,98:1 | 4,5:1 | Sí |
+| Texto en control y descanso | `#EDF3F7` sobre `#16293B` | 13,27:1 | 4,5:1 | Sí |
+| Texto secundario | `#AFC1CF` sobre `#081723` | 9,81:1 | 4,5:1 | Sí |
+| Texto secundario en panel | `#AFC1CF` sobre `#0D1F2E` | 9,06:1 | 4,5:1 | Sí |
+| Texto secundario en descanso | `#AFC1CF` sobre `#16293B` | 8,03:1 | 4,5:1 | Sí |
+| Texto terciario y pestaña inactiva | `#88A2B6` sobre `#081723` | 6,82:1 | 4,5:1 | Sí |
+| Texto terciario en panel | `#88A2B6` sobre `#0D1F2E` | 6,30:1 | 4,5:1 | Sí |
+| Texto terciario en control | `#88A2B6` sobre `#16293B` | 5,58:1 | 4,5:1 | Sí |
+| Estado «Hecha» | `#93DDB8` sobre `#081723` | 11,47:1 | 4,5:1 | Sí |
+| Estado «Hecha» en panel | `#93DDB8` sobre `#0D1F2E` | 10,60:1 | 4,5:1 | Sí |
+| Color de la persona como texto o cifra (Víctor) | `#C9E77E` sobre `#081723` | 13,15:1 | 4,5:1 | Sí |
+| Color de la persona como texto o cifra (Virginia) | `#F29BC2` sobre `#081723` | 8,85:1 | 4,5:1 | Sí |
+| Color de la persona en panel (Víctor) | `#C9E77E` sobre `#0D1F2E` | 12,15:1 | 4,5:1 | Sí |
+| Color de la persona en panel (Virginia) | `#F29BC2` sobre `#0D1F2E` | 8,18:1 | 4,5:1 | Sí |
+| Color de la persona en descanso (Víctor) | `#C9E77E` sobre `#16293B` | 10,76:1 | 4,5:1 | Sí |
+| Color de la persona en descanso (Virginia) | `#F29BC2` sobre `#16293B` | 7,24:1 | 4,5:1 | Sí |
+| Texto del botón principal y de la alarma (R08: ≥ 7:1) (Víctor) | `#081723` sobre `#C9E77E` | 13,15:1 | 7:1 | Sí |
+| Texto del botón principal y de la alarma (R08: ≥ 7:1) (Virginia) | `#081723` sobre `#F29BC2` | 8,85:1 | 7:1 | Sí |
+| Borde de control | `#5E7F98` sobre `#081723` | 4,29:1 | 3:1 | Sí |
+| Borde de control en panel | `#5E7F98` sobre `#0D1F2E` | 3,96:1 | 3:1 | Sí |
+| Borde de control en descanso | `#5E7F98` sobre `#16293B` | 3,51:1 | 3:1 | Sí |
+| Botón principal (relleno) sobre el fondo (Víctor) | `#C9E77E` sobre `#081723` | 13,15:1 | 3:1 | Sí |
+| Botón principal (relleno) sobre el fondo (Virginia) | `#F29BC2` sobre `#081723` | 8,85:1 | 3:1 | Sí |
+| Texto del final sobre el agua | `#EDF3F7` sobre `#0F2C42` | 12,86:1 | 4,5:1 | Sí |
+| Texto secundario del final sobre el agua | `#AFC1CF` sobre `#0F2C42` | 7,78:1 | 4,5:1 | Sí |
+| Sello y botón del final sobre el agua (Víctor) | `#C9E77E` sobre `#0F2C42` | 10,43:1 | 3:1 | Sí |
+| Sello y botón del final sobre el agua (Virginia) | `#F29BC2` sobre `#0F2C42` | 7,02:1 | 3:1 | Sí |
+| Filete del final sobre el agua | `#5E7F98` sobre `#0F2C42` | 3,40:1 | 3:1 | Sí |
+
+Colores de persona con daltonismo (simulación de Machado et al., 2009; ΔE OKLab ≥ 0,10 se distinguen bien) y su contraste mínimo sobre el fondo:
+
+| Visión | Víctor / Virginia | ΔE | Contraste con el fondo | Cumple |
+|---|---|---|---|---|
+| Visión normal | `#C9E77E` / `#F29BC2` | 0,25 | 8,85:1 | Sí |
+| Protanopia | `#f2dc75` / `#a4acc3` | 0,22 | 8,01:1 | Sí |
+| Deuteranopia | `#eedb84` / `#b9bbc0` | 0,15 | 9,45:1 | Sí |
+| Tritanopia | `#d1dece` / `#fe98a9` | 0,17 | 8,88:1 | Sí |
+
+Fuentes: instrument-sans.woff2 (56,0 KB de 150). Iconos PNG: icono-192.png 5,6 KB, icono-512.png 19,0 KB, icono-maskable-512.png 11,2 KB.
+
+#### Propuestas de logo (PNG 192, 512 y maskable 512; máximo 50 KB)
+
+| Propuesta | PNG |
+|---|---|
+| duo | 5,2 KB, 17,3 KB, 9,9 KB |
+| giro | 5,6 KB, 19,0 KB, 11,2 KB |
+| marea | 5,9 KB, 19,4 KB, 11,3 KB |
+| nivel | 8,9 KB, 29,7 KB, 18,7 KB |
+| trazo | 6,2 KB, 20,6 KB, 12,2 KB |
 <!-- contraste:fin -->
 
 ### Otras comprobaciones (Playwright)
@@ -223,21 +322,24 @@ Cada página lleva una CSP sin `'unsafe-inline'` (ni `<script>` en línea, ni `o
 | Ruta | Qué es |
 |---|---|
 | `prototipos/identidad/index.html`, `indice.css`, `indice.js` | Índice y comparador (neutro, con la letra del sistema, para no inclinar la elección) |
+| `prototipos/identidad/carril-2/` | Segunda vuelta (misma estructura que las demás; usa el logo Giro) |
+| `prototipos/identidad/logos/` | Página de logos y una carpeta por propuesta (`giro`, `marea`, `trazo`, `duo`, `nivel`) |
 | `prototipos/identidad/{tiza,carril,hierro}/` | Cada dirección: `index.html`, `estilo.css` (tokens y estilo), `pantallas.js` (cómo pinta Hoy, Sesión, Progreso y el final), `logo.svg`, `icono.svg`, `icono-maskable.svg`, `icono-192.png`, `icono-512.png`, `icono-maskable-512.png` y `fuentes/` (woff2 + licencia OFL) |
 | `prototipos/identidad/comun/` | Datos de ejemplo (`datos.js`), motor común (`demo.js`: persona, rutas, series, descanso, alarma y celebración) y `base.css` |
 | `prototipos/identidad/contraste.mjs`, `color.mjs` | Medida de contraste y daltonismo; `--escribir` actualiza la tabla de arriba |
-| `prototipos/identidad/herramientas/` | `marcas.py` (genera logos e iconos SVG; el nombre va en curvas con fontTools), `iconos.mjs` (PNG con Chromium), `capturas.mjs` (capturas y comprobaciones), `servidor.mjs` |
+| `prototipos/identidad/herramientas/` | `logos.py` (propuestas de logo de Carril 2), `marcas.py` (genera logos e iconos SVG; el nombre va en curvas con fontTools), `iconos.mjs` (PNG con Chromium), `capturas.mjs` (capturas y comprobaciones), `servidor.mjs` |
 | `prototipos/identidad/capturas/` | Capturas a 390 × 844 (escala 2): `{dirección}-{hoy,sesion,progreso,celebracion}-{victor,virginia}.png`, `{dirección}-alarma-victor.png` e `indice.png` |
 
 **Fuentes** (todas SIL Open Font License 1.1, descargadas de los paquetes `@fontsource-variable/*` de npm y alojadas en el repositorio; subconjunto latino, que cubre el español): Bricolage Grotesque, Atkinson Hyperlegible Next, Saira, Sofia Sans Extra Condensed y Onest.
 
-**Vista previa:** `vercel.json` solo añade cabeceras, así que `/prototipos/identidad/` se sirve como estático. El `sw.js` de la app capturaba cualquier navegación y devolvía (y sobrescribía) el `index.html` de la app; ahora deja pasar `/prototipos/` a la red. Si un móvil ya tenía instalada la app de esta vista previa, la primera visita puede enseñar la app: recarga una vez y ya sale el prototipo. Esta rama no se fusiona, así que el cambio no llega a producción.
+**Vista previa:** `vercel.json` solo añade cabeceras, así que `/prototipos/identidad/` se sirve como estático. El `sw.js` actual (tras unir `pipos-v2`) solo responde a las navegaciones de rutas de la app y deja las demás páginas del sitio a la red, así que no captura `/prototipos/` (comprobado con Playwright en la primera vuelta). Esta rama no se fusiona, así que el cambio no llega a producción.
 
 ## Volver a generar
 
 ```
 pip install fonttools brotli                         # solo para regenerar logos
 python3 prototipos/identidad/herramientas/marcas.py
+python3 prototipos/identidad/herramientas/logos.py
 node prototipos/identidad/herramientas/iconos.mjs
 node prototipos/identidad/herramientas/capturas.mjs
 node prototipos/identidad/contraste.mjs --escribir
