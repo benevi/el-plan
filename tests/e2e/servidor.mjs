@@ -3,7 +3,8 @@
 // Uso: node tests/e2e/servidor.mjs [puerto]   (por defecto 8781 o PUERTO_E2E)
 // Las pruebas del service worker lo crean en su propio puerto con crearServidor() y lo controlan:
 // cambiar la raíz (otra «versión desplegada»), servir rutas concretas de otra raíz (un despliegue a
-// mitad de la descarga), cortar o retrasar archivos concretos y ver qué se pidió.
+// mitad de la descarga), cortar o retrasar archivos concretos y ver qué se pidió. Con control.api = (req, res)
+// atienden /api/* (p. ej. la función real api/entrenador.js con una IA simulada, en espera.spec.mjs).
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,10 +19,11 @@ const TIPOS = {
 };
 
 export function crearServidor({ raiz = RAIZ } = {}) {
-  const control = { raiz, porRuta: {}, cortar: [], retrasar: {}, peticiones: [] };
+  const control = { raiz, porRuta: {}, cortar: [], retrasar: {}, peticiones: [], api: null };
   const servidor = http.createServer((q, s) => {
     const u = new URL(q.url, 'http://localhost');
     control.peticiones.push(u.pathname);
+    if (control.api && u.pathname.startsWith('/api/')) return control.api(q, s);
     // Simula cobertura a medias: corta la conexión de los archivos indicados.
     if (control.cortar.some(x => u.pathname.includes(x))) { q.socket.destroy(); return; }
     const ms = Object.entries(control.retrasar).find(([x]) => u.pathname.includes(x));

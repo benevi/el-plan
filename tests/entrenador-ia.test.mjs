@@ -59,7 +59,9 @@ test('si la red falla, la sesión la hace la app y lo dice', async () => {
   respuesta = new TypeError('Failed to fetch');
   const { sesion, aviso } = await ent.crearSesionHoy({ ...ci0 });
   assert.notEqual(sesion.fuente, 'ia');
-  assert.equal(aviso, 'Sesión ajustada por la app (sin conexión con el servidor).');
+  assert.equal(aviso, 'La ha hecho la app porque no hay conexión con el servidor.');
+  // PR 12: la nota fija queda en la sesión, con «Reintentar con IA».
+  assert.deepEqual(sesion.iaFallo, { motivo: 'no hay conexión con el servidor', diaPlan: null, reintentable: true });
 });
 
 test('sin ejercicios válidos de la IA (perfil músculo) la hace la app', async () => {

@@ -10,6 +10,7 @@ import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
+import { notaFallo } from '../entrenador/indice.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio', principal: '' };
@@ -116,8 +117,10 @@ function vista([id]) {
       <button data-act="sesion.modo" data-v="lista" class="${modoFoco ? '' : 'on'}" aria-pressed="${!modoFoco}">Toda la sesión</button></div>` : ''}`;
   // Por qué: la primera frase (resumen del día) siempre a la vista; el resto, plegado.
   const [resumenDia, ...razones] = s.explicacion || [];
-  const porque = resumenDia ? `<section class="tarjeta porque">
-      <p class="porque-resumen">${ICONOS.ia}<span>${h(resumenDia)}</span></p>
+  // Si la hizo la app porque falló la IA, la nota con «Reintentar con IA» va aquí arriba (PR 12).
+  const porque = resumenDia || s.iaFallo ? `<section class="tarjeta porque">
+      ${notaFallo(s)}
+      ${resumenDia ? `<p class="porque-resumen">${ICONOS.ia}<span>${h(resumenDia)}</span></p>` : ''}
       ${razones.length ? `<details class="plegable"><summary>Por qué cada decisión</summary><ul>${razones.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>` : ''}
     </section>` : '';
 

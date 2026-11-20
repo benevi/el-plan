@@ -170,11 +170,11 @@ export function ajustarAlCheckin(S, dia, ci) {
 // modo del perfil: 'auto' (por defecto) · 'siempre' · 'ahorro'. Con dolor de hoy ≥ 7 nunca (D2, C-DOLOR-4).
 export function motivoIA(S, ci, dia) {
   const modo = S.perfil.usoIA || 'auto';
-  if (maxDolorHoy(ci.dolorHoy) >= 7) return { usar: false, motivo: 'Con dolor de 7 o más, la sesión la prepara la app sin IA.' };
-  if (restriccionesSalud(S).soloSuave) return { usar: false, motivo: 'Por tus datos de salud, hoy la sesión suave la prepara la app.' };
-  if (!enLinea()) return { usar: false, motivo: 'Sin conexión: lo ajusta la app con sus reglas.' };
+  if (maxDolorHoy(ci.dolorHoy) >= 7) return { usar: false, por: 'dolor', motivo: 'Con dolor de 7 o más, la sesión la prepara la app sin IA.' };
+  if (restriccionesSalud(S).soloSuave) return { usar: false, por: 'salud', motivo: 'Por tus datos de salud, hoy la sesión suave la prepara la app.' };
+  if (!enLinea()) return { usar: false, por: 'red', motivo: 'Sin conexión: lo ajusta la app con sus reglas.' };
   if (ci.forzarIA) return { usar: true, motivo: 'Se lo pides al entrenador IA.' };
-  if (modo === 'ahorro') return { usar: false, motivo: 'Modo ahorro: la IA solo hace el plan semanal.' };
+  if (modo === 'ahorro') return { usar: false, por: 'ahorro', motivo: 'Modo ahorro: la IA solo hace el plan semanal.' };
   if (modo === 'siempre') return { usar: true, motivo: 'Modo «siempre IA».' };
   const lesion = Object.fromEntries(S.perfil.lesiones.filter(l => l.activa).map(l => [l.zona, +l.dolor]));
   const r = [];

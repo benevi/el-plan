@@ -236,3 +236,7 @@ body::after, body[data-persona="virginia"]::after { opacity: .8; background: rad
 
 /* Miniaturas de ejercicio con más color */
 .mini { background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--acc) 45%, transparent), transparent 70%), linear-gradient(135deg, var(--surface-3), color-mix(in srgb, var(--acc-otro) 18%, var(--surface-3))); color: #fff; }
+/* Nota «La ha hecho la app porque…» y espera de la IA (PR 12; el aspecto final llega con el rediseño) */
+.nota-fallo p { margin: 0 0 6px; }
+.nota-fallo .btn { margin-top: 4px; }
+.cargando.espera { padding-bottom: 12px; }

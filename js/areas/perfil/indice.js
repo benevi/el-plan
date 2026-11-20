@@ -2,7 +2,7 @@
 // Objetivos (varios), nivel, lesiones y dolor, disponibilidad de la semana, lugares, material de casa,
 // datos personales, notas para el entrenador y ajustes del móvil (código de acceso, vibración, copia).
 
-import { rutas, acciones, pestaña, pintar } from '../../nucleo/router.js';
+import { rutas, acciones, pestaña, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
   infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
@@ -284,6 +284,8 @@ const alternar = (lista, v) => { const i = lista.indexOf(v); if (i >= 0) lista.s
 
 acciones({
   'perfil.grupo': el => { grupo = el.dataset.v; pintar(); window.scrollTo(0, 0); },
+  // Desde otras pantallas (p. ej. la nota «el código de acceso no es correcto»): Perfil › Ajustes.
+  'perfil.irAjustes': () => { grupo = 'ajustes'; cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
   'perfil.acompañado': el => cambiar(S => { S.perfil.acompañado = el.checked; }, 'perfil-silencio'),
   'perfil.nadar25': el => cambiar(S => { if (el.checked) S.perfil.nadar25 = true; else delete S.perfil.nadar25; }, 'perfil'),
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),

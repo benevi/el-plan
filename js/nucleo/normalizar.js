@@ -232,7 +232,23 @@ function sesion(s, clave) {
     estado: enLista(s.estado, ESTADOS, 'pendiente'), empezada: fechaISO(s.empezada), terminada,
     cierre: cierre ? { esfuerzo: numero(cierre.esfuerzo, 1, 5, null, { entero: true }), dolor: dolorPorZona(cierre.dolor), comentario: texto(cierre.comentario, 1000) } : null,
     ...(['suave', 'dolorAlto'].includes(s.tipo) ? { tipo: s.tipo } : {}), // los de TIPOS_SESION (modelo.js)
+    ...iaFalloSesion(s.iaFallo),
   };
+}
+// Nota «La ha hecho la app porque…» (PR 12; misma forma que iaFalloSesion e iaFalloPlan de modelo.js).
+function iaFalloSesion(f) {
+  if (!esObjeto(f)) return {};
+  const motivo = texto(f.motivo, 300); if (!motivo) return {};
+  const peticion = texto(f.peticion, 300);
+  return { iaFallo: { motivo, ...(peticion ? { peticion } : {}), diaPlan: numero(f.diaPlan, 1, 7, null, { entero: true }), reintentable: f.reintentable !== false } };
+}
+function iaFalloPlan(f) {
+  if (!esObjeto(f) || !esObjeto(f.semana)) return {};
+  const motivo = texto(f.motivo, 300);
+  const dias = [...new Set(lista(f.semana.dias, 7).map(d => numero(d, 1, 7, null, { entero: true })).filter(d => d != null))].sort();
+  const lugares = [...new Set(lista(f.semana.lugares, 6).filter(l => typeof l === 'string' && Object.prototype.hasOwnProperty.call(LUGARES, l)))];
+  if (!motivo || !dias.length || !lugares.length) return {};
+  return { iaFallo: { motivo, semana: { dias, minutos: numero(f.semana.minutos, 15, 180, 60, { entero: true }), lugares } } };
 }
 
 function diaPlan(d) {
@@ -262,6 +278,7 @@ function plan(p, sesiones) {
   const out = {
     semana: p.semana, creado: fechaISO(p.creado) || new Date().toISOString(), fuente: enLista(p.fuente, ['ia', 'reglas'], 'reglas'),
     resumen: texto(p.resumen, 2000), criterios: texto(p.criterios, 3000), progresion: texto(p.progresion, 2000), dias, hechos,
+    ...iaFalloPlan(p.iaFallo),
   };
   if (Array.isArray(p.cambios)) out.cambios = lista(p.cambios, 50).filter(esObjeto).map(c => ({ fecha: fechaISO(c.fecha), texto: texto(c.texto, 600) })).filter(c => c.fecha && c.texto);
   return out;

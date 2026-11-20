@@ -8,7 +8,7 @@ import { estado, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, fechaLarga } from '../../nucleo/ui.js';
 import { sesionDeHoy, diaSemana } from '../../nucleo/modelo.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
-import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias } from '../entrenador/indice.js';
+import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo } from '../entrenador/indice.js';
 import { siguientePendiente, tiempoSesion, sinEntrenarHoy, T2 } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
 import { recordatorioCopia } from '../perfil/indice.js';
@@ -47,6 +47,7 @@ function tarjetaHoy(S) {
       <h2>${h(s.nombre)}</h2>
       <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${+s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
       ${porque(s)}
+      ${notaFallo(s)}
       ${hechas ? `<div class="barra"><i style="width:${Math.round(hechas / total * 100)}%"></i></div>` : ''}
       <a class="btn grande" href="#sesion/${h(s.id)}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
       ${s.estado === 'pendiente' ? '<button class="enlace" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}</section>`;
