@@ -3,6 +3,8 @@
 
 import { EJERCICIOS } from '../datos/ejercicios.js';
 import { ZONAS } from '../datos/lesiones.js';
+// Rehabilitación por fases, detalle de la lesión, techo de dolor y notas (docs/criterio.md, sección 12).
+export { fasesDe, rehabPorFase, detalleDe, riesgoDetalle, techoDolor, notaRehab } from '../datos/lesiones.js';
 
 const POR_ID = Object.fromEntries(EJERCICIOS.map(e => [e.id, e]));
 export const ex = id => POR_ID[id] || null;
@@ -45,10 +47,12 @@ export function disponibles(perfil, lugar, { dolorHoy = {}, nivelMax } = {}) {
     e.niv <= tope && (perfil.gustos || {})[e.id] !== 'rechazo');
 }
 
-// Alternativa segura para cambiar un ejercicio (mismo músculo, material parecido).
+// Alternativa segura para cambiar un ejercicio (mismo músculo, material parecido, mismo tipo).
+// Un ejercicio de dosis propia (rehabilitación, movilidad…) solo sustituye a uno de fuerza si no hay otro.
+const puntosTipo = (e, orig) => (e.tipo === orig.tipo ? 4 : 0) - (e.tipo === 'propia' && orig.tipo !== 'propia' ? 8 : 0);
 export function alternativas(orig, lugar, perfil, { excluir = [], dolorHoy = {} } = {}) {
   const mat = new Set(orig.mat);
   return disponibles(perfil, lugar, { dolorHoy }).filter(e => e.id !== orig.id && !excluir.includes(e.id) && (e.m[0] === orig.m[0] || orig.m.includes(e.m[0])))
-    .map(e => ({ e, p: (e.m[0] === orig.m[0] ? 10 : 0) + e.mat.filter(m => mat.has(m)).length * 3 + (e.t === orig.t ? 2 : 0) - Math.abs(e.niv - orig.niv) + ((perfil.gustos || {})[e.id] === 'gusta' ? 3 : 0) - ((perfil.gustos || {})[e.id] === 'nogusta' ? 4 : 0) }))
+    .map(e => ({ e, p: (e.m[0] === orig.m[0] ? 10 : 0) + e.mat.filter(m => mat.has(m)).length * 3 + (e.t === orig.t ? 2 : 0) + puntosTipo(e, orig) - Math.abs(e.niv - orig.niv) + ((perfil.gustos || {})[e.id] === 'gusta' ? 3 : 0) - ((perfil.gustos || {})[e.id] === 'nogusta' ? 4 : 0) }))
     .sort((a, b) => b.p - a.p).map(x => x.e);
 }

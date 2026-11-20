@@ -5,8 +5,9 @@ export const PERSONAS = {
   virginia: { nombre: 'Virginia', color: '#C77DFF', color2: '#9D4EDD' },
 };
 
+// «antebrazo» (decisión 9 de docs/criterio.md) es solo para la rehabilitación de codo y muñeca: sin volumen semanal propio.
 export const MUSCULOS = {
-  pecho: 'Pecho', espalda: 'Espalda', hombro: 'Hombro', biceps: 'Bíceps', triceps: 'Tríceps', core: 'Core',
+  pecho: 'Pecho', espalda: 'Espalda', hombro: 'Hombro', biceps: 'Bíceps', triceps: 'Tríceps', antebrazo: 'Antebrazo', core: 'Core',
   gluteo: 'Glúteo', cuadriceps: 'Cuádriceps', isquios: 'Isquios', gemelo: 'Gemelo',
   cardio: 'Cardio', movilidad: 'Movilidad', natacion: 'Natación',
 };
@@ -15,10 +16,10 @@ export const MATERIAL = {
   maquina: 'Máquina', polea: 'Polea', mancuernas: 'Mancuernas', barra: 'Barra', 'barra fija': 'Barra fija',
   banda: 'Banda elástica', banco: 'Banco', botellas: 'Botellas o mochila', 'peso corporal': 'Sin material',
   paralelas: 'Paralelas', comba: 'Comba', rueda: 'Rueda abdominal', agua: 'Agua', tabla: 'Tabla',
-  'pull buoy': 'Pull buoy', aletas: 'Aletas',
+  'pull buoy': 'Pull buoy', aletas: 'Aletas', bici: 'Bici estática',
 };
 // Material que puede haber en casa (el gimnasio y la piscina del centro lo tienen todo).
-export const MATERIAL_CASA = ['mancuernas', 'banda', 'banco', 'botellas', 'barra fija', 'comba', 'rueda'];
+export const MATERIAL_CASA = ['mancuernas', 'banda', 'banco', 'botellas', 'barra fija', 'comba', 'rueda', 'bici'];
 
 export const LUGARES = { gym: 'Gimnasio', piscina: 'Piscina', casa: 'Casa', calle: 'Calle' };
 
