@@ -82,4 +82,8 @@ export const PERFILES = [
   { nombre: 'modo siempre IA, petición de pierna', perfil: { objetivos: ['fuerza'], nivel: 2, lugares: ['gym', 'casa'], materialCasa: ['mancuernas'], usoIA: 'siempre', disponibilidad: disp(4, 60) }, plan: true, ci: { lugar: 'gym', minutos: 60, peticion: 'Hoy quiero pierna' } },
   { nombre: 'cambio de lugar al check-in', perfil: { objetivos: ['musculo'], nivel: 2, lugares: ['gym', 'casa'], materialCasa: ['banda'], disponibilidad: disp(3, 60, [1, 3, 5]) }, plan: true, ci: { lugar: 'casa', minutos: 40 } },
   { nombre: 'perder con rodilla y comentarios', perfil: { objetivos: ['perder', 'salud'], nivel: 1, lugares: ['gym', 'calle'], lesiones: [lesion('rodilla', 2)], disponibilidad: disp(4, 50) }, historial: 'molesta', medidas: pesoQuieto, dolor: dolorSube, plan: true, ci: { lugar: 'calle', minutos: 50 } },
+  // Dolor alto hoy con objetivos que piden cardio (añadidos tras la revisión del PR 6).
+  { nombre: 'perder con lumbar a 8 en gym', perfil: { objetivos: ['perder'], nivel: 1, lugares: ['gym'], lesiones: [lesion('lumbar', 3)], disponibilidad: disp(3, 60) }, plan: true, ci: { lugar: 'gym', minutos: 60, dolorHoy: { lumbar: 8 } } },
+  { nombre: 'resistencia con lumbar a 8 en gym', perfil: { objetivos: ['resistencia'], nivel: 2, lugares: ['gym'], lesiones: [lesion('lumbar', 3)], disponibilidad: disp(3, 45) }, ci: { lugar: 'gym', minutos: 45, dolorHoy: { lumbar: 8 } } },
+  { nombre: 'perder con lumbar a 8 en piscina', perfil: { objetivos: ['perder'], nivel: 1, lugares: ['piscina'], lesiones: [lesion('lumbar', 3)], disponibilidad: disp(3, 45) }, plan: true, ci: { lugar: 'piscina', minutos: 45, dolorHoy: { lumbar: 8 } } },
 ].map(p => ({ ...p, historial: p.historial ? HIST[p.historial] : [] }));

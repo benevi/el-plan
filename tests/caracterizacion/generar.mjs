@@ -195,6 +195,10 @@ export const GRUPOS = {
     await plan('ia', PLAN_IA([3, 5]), { dias: [1, 3, 5, 7] });
     await plan('iaTodaLaSemana', PLAN_IA([4, 6]), { dias: [1, 2, 3, 4, 5, 6, 7], lugares: ['gym', 'casa'] });
     await plan('pasado', FALLA, { dias: [1, 2] });
+    // Respuestas de IA que dejan el plan vacío: hoy la app completa los días con reglas (o cae al catch).
+    await plan('iaSinDias', { plan: { resumen: 'Vacío.', dias: [] } }, { dias: [3, 5] });
+    await plan('iaSinEjerciciosValidos', { plan: { dias: [{ diaSemana: 3, lugar: 'gym', ejercicios: [{ id: 'no-existe' }] }, { diaSemana: 5, lugar: 'gym', ejercicios: [] }] } }, { dias: [3, 5] });
+    await plan('iaPlanNulo', { plan: null }, { dias: [3, 5] });
     return out;
   },
 };
