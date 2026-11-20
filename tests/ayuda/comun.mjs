@@ -13,13 +13,15 @@ export const modulo = rel => pathToFileURL(ruta(rel)).href;
 
 // ── Reloj ──
 // fijarFecha('2026-11-19T23:40') sustituye Date por uno cuyo «ahora» empieza en esa fecha (hora local)
-// y avanza con el reloj real. Devuelve { avanzar(ms), restaurar() }.
+// y avanza con el reloj real. Con { quieto: true } solo avanza con avanzar(ms): sirve para instantáneas
+// exactas (marcas de tiempo e ids iguales en cada ejecución). Devuelve { avanzar(ms), restaurar() }.
 const DateReal = globalThis.Date;
-export function fijarFecha(cuando) {
-  let desfase = new DateReal(cuando).getTime() - DateReal.now();
+export function fijarFecha(cuando, { quieto = false } = {}) {
+  const real = () => (quieto ? 0 : DateReal.now());
+  let desfase = new DateReal(cuando).getTime() - real();
   class DateFalso extends DateReal {
-    constructor(...a) { if (a.length) super(...a); else super(DateReal.now() + desfase); }
-    static now() { return DateReal.now() + desfase; }
+    constructor(...a) { if (a.length) super(...a); else super(real() + desfase); }
+    static now() { return real() + desfase; }
   }
   globalThis.Date = DateFalso;
   return {
