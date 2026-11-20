@@ -1229,7 +1229,7 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 
 ## 20. Decisiones para el dueño
 
-Puedes contestar «todas según recomendación» o cambiar alguna por su número.
+**Aprobado por el dueño el 20 de noviembre de 2026: «todas según recomendación».** Las 12 decisiones quedan aprobadas tal como están abajo y el documento entero pasa a ser la especificación de los PR 8-11.
 
 1. **D4 · Datos de salud en el perfil** (sección 16, con prótesis, epilepsia, asma y equilibrio): **aprobar**.
 2. **D5 · Con 3 días, cuerpo completo × 3 para todos los niveles**: **aprobar**.
