@@ -466,3 +466,12 @@ test('C-DOSIS-1: un ejercicio solo de rehabilitación (tipo propia con `rehab`) 
   assert.equal(ent.soloRehab({ ...base, m: ['pecho'], tipo: 'compuesto', rehab: { hombro: 3 } }), false);
   assert.equal(ent.soloRehab({ ...base, m: ['gluteo'], tipo: 'corporal', rehab: { rodilla: 2 } }), false);
 });
+
+test('C-REC-2: con el músculo cargado (ayer 4 series), como mucho 2 series con 3 de margen', () => {
+  const S = nuevoS({ objetivos: ['musculo'], nivel: 2 });
+  hecha(S, 1, [{ id: 'press-pecho-maquina', sets: [[40, 10], [40, 10], [40, 10], [40, 10]] }, { id: 'press-inclinado-maquina', sets: [[30, 10], [30, 10], [30, 10], [30, 10]] }]);
+  const d = { nombre: 'x', lugar: 'gym', minutos: 60, tipo: 'torso', explicacion: [], calentamiento: [], vuelta: [], ejercicios: [{ id: 'press-banca-mancuernas', rol: 'principal', series: 4, reps: '8-12', descanso: 120 }, { id: 'jalon-pecho', rol: 'principal', series: 4, reps: '8-12', descanso: 120 }, { id: 'remo-sentado-polea', rol: 'principal', series: 4, reps: '8-12', descanso: 120 }] };
+  const r = ent.ajustarAlCheckin(S, d, ci());
+  const pecho = r.datos.ejercicios.filter(x => x.rol === 'principal' && cat.ex(x.id).m[0] === 'pecho');
+  assert.ok(pecho.length && pecho.every(x => x.series <= 2 && /3 repeticiones de margen/.test(x.nota)), JSON.stringify(pecho));
+});

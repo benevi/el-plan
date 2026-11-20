@@ -107,8 +107,9 @@ export function ajustarAlCheckin(S, dia, ci) {
   const carga = cargaMuscular(S);
   const cargados = [...new Set(ej.filter(x => x.rol === 'principal' && carga[ex(x.id).m[0]] && carga[ex(x.id).m[0]].estado === 'cargado').map(x => ex(x.id).m[0]))];
   if (cargados.length) {
-    ej.forEach(x => { if (x.rol === 'principal' && cargados.includes(ex(x.id).m[0]) && x.series > 2) x.series--; });
-    cambios.push(`${lista(cargados.map(m => MUSCULOS[m]))} aún se recupera${cargados.length > 1 ? 'n' : ''}: una serie menos y sin subir peso.`);
+    // C-REC-2: músculo cargado → como mucho 2 series, con 3 repeticiones de margen y sin subir.
+    ej.forEach(x => { if (x.rol === 'principal' && cargados.includes(ex(x.id).m[0])) { x.series = Math.min(x.series, 2); x.nota = [x.nota, 'Hoy deja 3 repeticiones de margen: este músculo aún se recupera.'].filter(Boolean).join(' '); } });
+    cambios.push(`${lista(cargados.map(m => MUSCULOS[m]))} aún se recupera${cargados.length > 1 ? 'n' : ''}: como mucho 2 series con 3 de margen y sin subir peso.`);
   }
 
   // Energía (C-ENERGIA-1): el cardio se queda en su mínimo de D3 a esfuerzo 3, nunca por debajo (C-CARDIO-3).
@@ -130,7 +131,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   let t = tiempoSesion({ ...base, ejercicios: ej });
   if (t < minutos - 15 && energia > 2) {
     const extra = montarDia(S, { lugar: ci.lugar, minutos: minutos + 30, tipo: tipoHoy, dolorHoy, energia, k: diaSemana() + 1 }).ejercicios
-      .filter(x => x.rol === 'principal' && !ej.some(y => y.id === x.id));
+      .filter(x => x.rol === 'principal' && !ej.some(y => y.id === x.id) && !cargados.includes(ex(x.id).m[0]));
     const añadidos = [];
     while (extra.length && t < minutos - 10) { const x = extra.shift(); const pos = ej.map(y => y.rol).lastIndexOf('principal') + 1; ej.splice(pos, 0, x); añadidos.push(ex(x.id).n.toLowerCase()); t = tiempoSesion({ ...base, ejercicios: ej }); }
     if (añadidos.length) cambios.push(`Tienes ${minutos} minutos: añado ${lista(añadidos)}.`);

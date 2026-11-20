@@ -19,7 +19,7 @@
 //  8. Tiempo ≤ pedido + 10 % con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
 
 import { ex, riesgo, hayMaterial } from '../../reglas/catalogo.js';
-import { rango, acotarKg, sesionesHechas } from '../../reglas/progresion.js';
+import { rango, acotarKg, sesionesHechas, cargaMuscular } from '../../reglas/progresion.js';
 import {
   contextoDia, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
@@ -273,6 +273,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
 
   // 6. Dosis.
   let iPrin = 0;
+  // Contexto del check-in para el tope de kilos de la progresión (C-PROG-5, PR 10).
+  const ctxKg = { energia: ctx.energia, dolorHoy, niveles: ctx.niveles, carga: ctx.futuro ? {} : cargaMuscular(S) };
   ejs.forEach(x => {
     const e = ex(x.id);
     const i = x.rol === 'principal' ? iPrin++ : 0;
@@ -302,7 +304,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Kilos: nulos sin historial (C-PROG-1); con historial, el tope de la progresión (C-PROG-5, PR 10).
     if (x.kg != null && +x.kg > 0) {
       if (!conKg.has(x.id)) { cambios.push(`${nombre(e)} sin kilos: es la primera vez, elige un peso con el que te sobren 3 repeticiones`); delete x.kg; }
-      else x.kg = acotarKg(S, x.id, +x.kg, { dolorHoy, energia: ctx.energia });
+      else x.kg = acotarKg(S, x.id, +x.kg, ctxKg);
     } else delete x.kg; // sin kilos: el campo no va (forma del plan); crearSesion lo deja en null
     if (x.kg == null) delete x.kg;
     delete x.zona;
