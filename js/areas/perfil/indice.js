@@ -4,7 +4,7 @@
 
 import { rutas, acciones, pestaña, pintar } from '../../nucleo/router.js';
 import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
-  infoAntesDeImportar, deshacerImportar, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
+  infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
@@ -41,13 +41,19 @@ function vista() {
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
 const SEXO = { h: 'Hombre', m: 'Mujer' };
+// Lo más probable para cada persona (se marca, pero se pregunta igual).
+const SEXO_PROBABLE = { victor: 'h', virginia: 'm' };
 // Lo que quedó pendiente de la migración desde la app anterior: preguntar en vez de adivinar.
+// Qué pasa exactamente al cambiar de dueño (js/nucleo/migracion.js: retirar y reponer).
+const QUEDA = 'Se queda, para la nueva persona, todo lo hecho en esta app: sesiones, plan, objetivos, nivel, lesiones y medidas apuntadas aquí. Sexo, altura y año de nacimiento se guardan aparte y se reponen si vuelves. ¿Seguir?';
+const TEXTO_CAMBIO_DUEÑO = '¿Cambiar de quién es este móvil? Lo traído de la app anterior se guarda aparte (con tus cambios) y se trae lo de la persona que elijas. ' + QUEDA;
+export { QUEDA };
 function avisosMigracion(S) {
   const m = S.migracion || {};
   const porRevisar = S.perfil.lesiones.filter(l => l.activa && l.dolorRevisar).length;
   return `${m.sexoRevisar ? `<section class="tarjeta aviso-nota revisar-sexo">
       <p>Al pasar tus datos de la app anterior el sexo pudo quedar cambiado. Ahora pone <b>${h(SEXO[S.perfil.datos.sexo] || 'nada')}</b>. ¿Cuál es el correcto?</p>
-      <div class="fila-botones"><button class="btn sec" data-act="perfil.sexoRevisado" data-v="h">Hombre</button><button class="btn sec" data-act="perfil.sexoRevisado" data-v="m">Mujer</button></div></section>` : ''}
+      <div class="fila-botones">${[['h', 'Hombre'], ['m', 'Mujer']].map(([k, n]) => `<button class="btn ${k === SEXO_PROBABLE[S.dueño] ? 'probable' : 'sec'}" data-act="perfil.sexoRevisado" data-v="${k}">${n}</button>`).join('')}</div></section>` : ''}
     ${migracionDeOtro() ? `<section class="tarjeta aviso-nota migracion-otro">
       <p>Lo que se trajo de la app anterior es de ${h(nombre(m.dueño))}, no de ${h(nombre(S.dueño))}.</p>
       <button class="btn sec" data-act="perfil.rehacerMigracion">Traer lo de ${h(nombre(S.dueño))}</button></section>` : ''}
@@ -165,8 +171,8 @@ function bloqueCopia() {
 function bloqueDeshacer() {
   const a = infoAntesDeImportar();
   if (!a) return '';
-  return `<p class="tenue deshacer-importar">Antes de cargar la última copia (${h(fechaCorta(a.fecha))}) tus datos quedaron apartados.
-    <button class="enlace" data-act="perfil.deshacerImportar">Volver a ellos</button></p>`;
+  return `<p class="tenue deshacer-importar">Antes de cargar la última copia (${h(fechaCorta(a.fecha))}) tus datos quedaron apartados (se borran solos a los 7 días).
+    <button class="enlace" data-act="perfil.deshacerImportar">Volver a ellos</button> · <button class="enlace" data-act="perfil.descartarAntes">Descartar</button></p>`;
 }
 
 // ── Guardar y cargar copias ──
@@ -308,14 +314,18 @@ acciones({
     if (!await confirmar(`¿Volver a los datos que había antes de cargar la última copia (${fechaCorta(a.fecha)})? Lo de ahora queda apartado en su lugar.`, { si: 'Volver a ellos' })) return;
     try { deshacerImportar(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
   },
+  'perfil.descartarAntes': async () => {
+    if (!await confirmar('¿Descartar los datos de antes de la última copia? Ya no podrás volver a ellos.', { si: 'Descartar', peligro: true })) return;
+    descartarAntesDeImportar(); pintar();
+  },
   'perfil.cambiarDueño': async () => {
-    if (!await confirmar('¿Cambiar de quién es este móvil? Lo que hayas hecho en esta app se queda. Lo traído de la app anterior se quita y se trae lo de la persona que elijas.', { si: 'Cambiar' })) return;
+    if (!await confirmar(TEXTO_CAMBIO_DUEÑO, { si: 'Cambiar' })) return;
     soltarDueño();
   },
   'perfil.sexoRevisado': el => { confirmarSexo(el.dataset.v); aviso('Gracias, apuntado'); },
   'perfil.rehacerMigracion': async () => {
     const S = estado();
-    if (!await confirmar(`Se quitará lo traído de la app anterior de ${nombre(S.migracion.dueño)} y se traerá lo de ${nombre(S.dueño)}. Lo que hayas hecho en esta app se queda. ¿Seguir?`, { si: 'Seguir' })) return;
+    if (!await confirmar(`Se quitará lo traído de la app anterior de ${nombre(S.migracion.dueño)} y se traerá lo de ${nombre(S.dueño)}. ${QUEDA}`, { si: 'Seguir' })) return;
     cambiar(X => { migrarDeViejo(X.dueño); }, 'perfil');
     const r = resultadoMigracion();
     aviso(`He traído ${r ? r.sesiones : 0} sesiones de la app anterior`);

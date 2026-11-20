@@ -176,3 +176,35 @@ test('corrección única: quien nunca migró o ya lo arregló a mano no ve nada'
   assert.equal(est.estado().migracion.sexoRevisar, false);
   assert.equal(est.estado().migracion.version, 2);
 });
+
+// ── Cambiar de dueño y volver (revisión del PR 4) ──
+test('cambiar de dueño y volver repone lo migrado con sus cambios y no mezcla los datos personales', async () => {
+  const { viejoReal } = await import('./ayuda/viejo-real.mjs');
+  cargarCon({ elplan2: viejoReal() });
+  est.cambiar(S => { S.dueño = 'victor'; est.migrarDeViejo('victor'); });
+  est.cambiar(S => {
+    Object.assign(S.perfil.lesiones[0], { nota: 'Menisco operado', activa: false }); delete S.perfil.lesiones[0].dolorRevisar;
+    S.sesiones['v-h0'].cierre.comentario = 'EDIT';
+    delete S.sesiones['v-h1'];
+    S.sesiones.nueva1 = { ...JSON.parse(JSON.stringify(S.sesiones['v-h2'])), id: 'nueva1', fuente: 'reglas' };
+    S.perfil.datos.nacimiento = '1985';
+  });
+  est.soltarDueño();
+  est.cambiar(S => { S.dueño = 'virginia'; est.migrarDeViejo('virginia'); });
+  let S = est.estado();
+  assert.deepEqual(Object.keys(S.sesiones).sort(), ['nueva1', 'v-m0', 'v-m1', 'v-m2', 'v-m3', 'v-m4', 'v-m5'], 'lo hecho en esta app se queda; lo de Víctor se aparta');
+  assert.deepEqual(S.perfil.lesiones.map(l => l.nota), ['Trocanteritis']);
+  assert.deepEqual(S.perfil.datos, { sexo: 'm', altura: 165, nacimiento: '' }, 'el nacimiento de Víctor no pasa a Virginia');
+  assert.equal(JSON.parse(est.exportar()).migracion.porDueño, undefined, 'lo apartado de Víctor no sale en la copia de Virginia');
+  est.guardarYa();
+  est.cargar(); // sobrevive a recargar
+  est.soltarDueño();
+  est.cambiar(X => { X.dueño = 'victor'; est.migrarDeViejo('victor'); });
+  S = est.estado();
+  assert.deepEqual(Object.keys(S.sesiones).sort(), ['nueva1', 'v-h0', 'v-h2', 'v-h3', 'v-h4', 'v-h5'], 'la borrada no vuelve');
+  assert.equal(S.sesiones['v-h0'].cierre.comentario, 'EDIT');
+  assert.deepEqual(S.perfil.lesiones.map(l => `${l.nota}:${l.activa}`), ['Menisco operado:false'], 'la curada sigue curada');
+  assert.deepEqual(S.perfil.datos, { sexo: 'h', altura: 180, nacimiento: '1985' });
+  assert.ok(S.migracion.porDueño && S.migracion.porDueño.virginia, 'ahora lo apartado es lo de Virginia');
+  assert.equal(S.migracion.porDueño.victor, undefined);
+});

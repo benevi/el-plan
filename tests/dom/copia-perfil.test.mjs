@@ -28,6 +28,9 @@ test('quien migró con el fallo y tiene «m» ve la pregunta del sexo; al respon
   await a.ir('perfil');
   const caja = await a.esperar(() => a.doc.querySelector('.revisar-sexo'));
   assert.match(caja.textContent, /Ahora pone Mujer/);
+  // Para Víctor se marca «Hombre» como lo probable, pero se sigue preguntando.
+  assert.ok(caja.querySelector('[data-v="h"]').classList.contains('probable'));
+  assert.ok(!caja.querySelector('[data-v="m"]').classList.contains('probable'));
   a.clic('.revisar-sexo [data-act="perfil.sexoRevisado"][data-v="h"]');
   await a.tic();
   assert.equal(a.estado.estado().perfil.datos.sexo, 'h');

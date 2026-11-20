@@ -227,3 +227,80 @@ test('una copia de la app anterior sin dueño elegido se rechaza con explicació
   cargarCon();
   assert.throws(() => est.importar(JSON.stringify(copiaV3())), e => e.codigo === 'vieja-sin-dueño' && /Elige primero/.test(e.message));
 });
+
+// ── Revisión del PR 4 ──
+test('rescate: cargar un archivo no pierde la copia interna del espejo (queda en pipos4-antes-de-importar)', async () => {
+  const reg = { txt: JSON.stringify(estadoBase({ sesiones: { nueva: sesionDemo('nueva', { estado: 'hecha' }) } })), rev: 9, fecha: new Date().toISOString() };
+  const espejo = { reg, async leer() { return this.reg; }, async escribir(r) { this.reg = r; }, async apartar() { return false; } };
+  est.usarEspejo(espejo);
+  try {
+    cargarCon({}); // pipos4 vacío (p. ej. el navegador lo borró)
+    assert.equal((await est.revisarEspejo()).motivo, 'vacio');
+    est.importar(JSON.stringify(estadoBase()));
+    await new Promise(r => setTimeout(r, 10));
+    assert.equal(JSON.parse(espejo.reg.txt).sesiones.nueva, undefined, 'el espejo ya tiene lo cargado');
+    assert.ok(est.infoAntesDeImportar(), 'pero se puede volver');
+    assert.ok(JSON.parse(N.almacen.getItem('pipos4-antes-de-importar')).estado.sesiones.nueva);
+    est.deshacerImportar();
+    assert.ok(est.estado().sesiones.nueva);
+  } finally { est.usarEspejo(null); }
+});
+
+test('cuota justa: si pipos4 no acepta la copia, no se finge que se cargó (se deshace y se avisa)', () => {
+  cargarCon({ pipos4: conSesion() });
+  const antes = N.almacen.getItem('pipos4');
+  const real = N.almacen.setItem.bind(N.almacen);
+  N.almacen.setItem = (k, v) => { if (k === 'pipos4') { const e = new Error('lleno'); e.name = 'QuotaExceededError'; throw e; } return real(k, v); };
+  const errorReal = console.error; console.error = () => {};
+  try {
+    assert.throws(() => est.importar(JSON.stringify(estadoBase({ medidas: [{ fecha: '2026-11-01', peso: 70 }] }))), e => e.codigo === 'sin-espacio' && /siguen como estaban/.test(e.message));
+  } finally { console.error = errorReal; N.almacen.setItem = real; }
+  assert.ok(est.estado().sesiones.s1, 'en memoria sigue lo de antes');
+  assert.equal(est.estado().medidas.length, 0);
+  assert.equal(N.almacen.getItem('pipos4'), antes);
+  assert.equal(N.almacen.getItem('pipos4-antes-de-importar'), null, 'no queda una copia «de antes» que no corresponde');
+  assert.equal(est.estadoGuardado().error, null, 'no deja aviso de error de guardado');
+});
+
+test('lo de antes de importar caduca a los 7 días y se puede descartar', () => {
+  cargarCon({ pipos4: conSesion() });
+  est.importar(JSON.stringify(estadoBase()));
+  assert.ok(est.infoAntesDeImportar());
+  assert.equal(est.infoAntesDeImportar(Date.now() + 8 * 864e5), null);
+  assert.equal(N.almacen.getItem('pipos4-antes-de-importar'), null);
+  est.importar(JSON.stringify(estadoBase()));
+  est.descartarAntesDeImportar();
+  assert.equal(est.infoAntesDeImportar(), null);
+});
+
+test('una copia de más de 10 MB se rechaza con un mensaje claro', () => {
+  cargarCon({ pipos4: conSesion() });
+  assert.throws(() => est.importar(' '.repeat(10 * 1024 * 1024 + 1) + '{}'), e => e.codigo === 'grande' && /10 MB/.test(e.message));
+});
+
+test('una copia cuyo migrado es de otra persona no retira nada sin preguntar', () => {
+  cargarCon({ pipos4: conSesion(), elplan2: viejoDemo() });
+  const copia = estadoBase({ migracion: { version: 2, dueño: 'virginia', claves: ['s:k2'], sexoRevisar: false } });
+  copia.sesiones = { 'v-k2': { ...sesionDemo('v-k2', { estado: 'hecha' }), fuente: 'anterior' } };
+  est.importar(JSON.stringify(copia));
+  assert.equal(est.ponerAlDiaMigracion(), null);
+  assert.equal(est.migracionDeOtro(), true);
+  assert.ok(est.estado().sesiones['v-k2']);
+  assert.throws(() => est.importar(JSON.stringify(viejoDemo())), e => e.codigo === 'migracion-de-otro');
+  assert.ok(est.estado().sesiones['v-k2']);
+});
+
+test('ida y vuelta: un estado largo generado por la app sale y vuelve idéntico (salvo el código)', async () => {
+  const { generarEstadoLargo } = await import('./ayuda/estado-largo.mjs');
+  cargarCon({ elplan2: viejoDemo() });
+  await generarEstadoLargo(est, ent);
+  const antes = JSON.parse(JSON.stringify(est.estado()));
+  assert.ok(Object.keys(antes.sesiones).length >= 18 && antes.plan, 'el estado es largo de verdad');
+  const txt = est.exportar();
+  assert.doesNotMatch(txt, /secreto|Trocanteritis|"viejo"/, 'ni el código, ni lo de la otra persona, ni la app anterior');
+  const r = est.importar(txt);
+  assert.deepEqual(r.avisos, []);
+  const despues = JSON.parse(JSON.stringify(est.estado()));
+  delete antes.ajustes.codigo; delete despues.ajustes.codigo;
+  assert.deepEqual(despues, antes);
+});

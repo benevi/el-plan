@@ -133,24 +133,57 @@ function deUsuario(v, u) {
   return { workouts, injuries, body, pain, perfil };
 }
 
-// ── Retirar lo migrado (al cambiar de dueño) ──
-function retirar(S) {
-  for (const [k, s] of Object.entries(S.sesiones)) if (s && s.fuente === 'anterior') delete S.sesiones[k];
+// ── Retirar lo migrado (al cambiar de dueño) y reponerlo (al volver) ──
+// Lo retirado se guarda tal como estaba (con lo que la persona cambió: lesión curada, comentarios…) en
+// `S.migracion.porDueño[dueño]`, junto con sus claves y sus datos personales. Así, si vuelve a ese dueño,
+// se repone y no se pierde nada ni resucita lo que borró. Lo hecho en esta app (sesiones, plan, objetivos,
+// medidas apuntadas aquí) se queda siempre: es de quien usa el móvil. No va en las copias exportadas.
+const DATOS = ['sexo', 'altura', 'nacimiento'];
+function retirar(S, de) {
+  const guardado = { claves: S.migracion.claves.slice(), sesiones: {}, lesiones: [], medidas: [], dolor: [], datos: {} };
+  for (const [k, s] of Object.entries(S.sesiones)) if (s && s.fuente === 'anterior') { guardado.sesiones[k] = s; delete S.sesiones[k]; }
+  guardado.lesiones = S.perfil.lesiones.filter(l => l.vid);
+  guardado.medidas = S.medidas.filter(m => m.vid);
+  guardado.dolor = S.dolor.filter(d => d.vid);
   S.perfil.lesiones = S.perfil.lesiones.filter(l => !l.vid);
   S.medidas = S.medidas.filter(m => !m.vid);
   S.dolor = S.dolor.filter(d => !d.vid);
+  for (const k of DATOS) { guardado.datos[k] = S.perfil.datos[k]; S.perfil.datos[k] = k === 'altura' ? null : ''; }
+  if (de) { S.migracion.porDueño = { ...(obj(S.migracion.porDueño) ? S.migracion.porDueño : {}), [de]: guardado }; }
   S.migracion.claves = [];
   S.migracion.sexoRevisar = false;
 }
+function reponer(S, a) {
+  const pd = obj(S.migracion.porDueño) ? S.migracion.porDueño : {};
+  const g = pd[a];
+  if (!obj(g)) return false;
+  for (const [k, s] of Object.entries(obj(g.sesiones) ? g.sesiones : {})) if (!S.sesiones[k]) S.sesiones[k] = s;
+  const ids = new Set(S.perfil.lesiones.map(l => l.id));
+  (Array.isArray(g.lesiones) ? g.lesiones : []).forEach(l => { if (!ids.has(l.id)) S.perfil.lesiones.push(l); });
+  const dias = new Set(S.medidas.map(m => m.fecha));
+  (Array.isArray(g.medidas) ? g.medidas : []).forEach(m => { if (!dias.has(m.fecha)) S.medidas.push(m); });
+  (Array.isArray(g.dolor) ? g.dolor : []).forEach(d => S.dolor.push(d));
+  if (obj(g.datos)) for (const k of DATOS) if (g.datos[k] !== undefined) S.perfil.datos[k] = g.datos[k];
+  S.migracion.claves = Array.isArray(g.claves) ? g.claves.slice() : [];
+  delete pd[a];
+  if (!Object.keys(pd).length) delete S.migracion.porDueño;
+  return true;
+}
 
 // ── Corrección única de lo migrado con la versión con fallos (S.migracion.version < 2) ──
-// Apunta como migrado lo que ya está (para no duplicarlo), marca lo migrado para poder retirarlo
-// y arregla el sexo cruzado. Si no se puede saber con certeza, deja `sexoRevisar` para preguntar en Perfil.
+// Aquella versión, al elegir dueño, traía TODO lo de esa persona que hubiera en elplan2 en ese momento.
+// Por eso, si hay pruebas de esa migración, todo lo del dueño en elplan2 hasta la fecha de lo último
+// emparejado cuenta como ya migrado, aunque la persona lo haya borrado o cambiado después (no resucita ni se
+// duplica); solo se traerá lo posterior. Además: sexo cruzado (si no se puede saber, se pregunta en Perfil),
+// fecha local en las sesiones migradas y `vid` en lo que casa para poder retirarlo.
+const tiempo = x => { const t = Date.parse(x); return Number.isNaN(t) ? null : t; };
 export function corregirAntigua(S, v) {
   const m = S.migracion;
   if (m.version >= VERSION_MIGRACION) return false;
   m.version = VERSION_MIGRACION;
   const anteriores = Object.values(S.sesiones).filter(s => s && s.fuente === 'anterior');
+  // Fecha local en las sesiones migradas (la versión con fallos cortaba la fecha UTC).
+  anteriores.forEach(s => { const f = diaLocal(s.terminada || s.creada); if (f) s.fecha = f; });
   if (!anteriores.length && !v) return true; // nunca hubo nada que migrar
   // ¿De quién se migró? De quien tenga entrenos que casen con las sesiones migradas; si no, el dueño actual.
   let dueño = S.dueño;
@@ -167,23 +200,32 @@ export function corregirAntigua(S, v) {
   if (v) {
     const d = deUsuario(v, USUARIO[dueño]);
     const creadas = new Set(anteriores.map(s => s.creada));
-    d.workouts.forEach(([k, w]) => { if (creadas.has(w.date) || S.sesiones[idSesion(k)]) claves.add(claveSesion(k)); });
+    // Pruebas de la migración y su fecha límite: lo último que casa (sesiones, lesiones o medidas).
+    let limite = null, hayPrueba = false;
+    const subir = t => { if (t != null) limite = limite == null ? t : Math.max(limite, t); };
+    d.workouts.forEach(([, w]) => { if (creadas.has(w.date)) { hayPrueba = true; subir(tiempo(w.completedAt)); subir(tiempo(w.date)); } });
     d.injuries.forEach(i => {
       const z = zona(i.zoneKey), desde = String(i.since || '').slice(0, 10), nota = i.note || '';
       const l = S.perfil.lesiones.find(x => !x.vid && x.zona === z && (x.desde || '') === desde && (x.nota || '') === nota);
-      if (l) { l.vid = claveLesion(i); claves.add(l.vid); }
+      if (l) { l.vid = claveLesion(i); hayPrueba = true; }
     });
     d.body.forEach(b => {
-      const fecha = String(b.date || '').slice(0, 10); // la versión con fallos cortaba la fecha UTC
+      const fecha = String(b.date || '').slice(0, 10);
       const x = S.medidas.find(y => !y.vid && y.fecha === fecha && (y.peso || null) === (b.weight || null));
-      if (x) { x.vid = 'm:' + fecha; claves.add(x.vid); claves.add('m:' + diaLocal(b.date)); }
+      if (x) { x.vid = 'm:' + fecha; hayPrueba = true; }
     });
-    if (anteriores.length || claves.size) claves.add('p');
+    if (hayPrueba) {
+      const hasta = t => limite == null || (t != null && t <= limite) || t == null; // sin sesiones emparejadas: todo
+      d.workouts.forEach(([k, w]) => { if (hasta(tiempo(w.completedAt || w.date))) claves.add(claveSesion(k)); });
+      d.injuries.forEach(i => { if (hasta(tiempo(i.since))) claves.add(claveLesion(i)); });
+      d.body.forEach(b => { if (hasta(tiempo(b.date))) { claves.add('m:' + String(b.date || '').slice(0, 10)); claves.add('m:' + diaLocal(b.date)); } });
+      claves.add('p');
+    }
     // Sexo: la versión con fallos copiaba 'm'/'f' tal cual. 'f' no existe en esta app → seguro que es el fallo.
     // 'm' es válido aquí (mujer): pudo ser el fallo o una elección → se pregunta.
     const viejoSexo = d.perfil ? sexoConFallo(d.perfil.sex) : '';
     if (sexo === 'f') S.perfil.datos.sexo = 'm';
-    else if (sexo === 'm' && viejoSexo === 'm' && claves.has('p')) m.sexoRevisar = true;
+    else if (sexo === 'm' && viejoSexo === 'm' && hayPrueba) m.sexoRevisar = true;
   } else {
     // Sin la app anterior a mano no se puede comparar: 'f' se arregla; 'm' se pregunta.
     claves.add('p');
@@ -192,6 +234,14 @@ export function corregirAntigua(S, v) {
   }
   m.claves = [...claves];
   return true;
+}
+
+// Id de la sesión de esta app que corresponde a un entreno viejo: la migrada con id estable o, si se
+// migró con la versión con fallos (id al azar), la que tiene su misma hora de inicio.
+function idDeEntreno(S, k, w) {
+  if (S.sesiones[idSesion(k)]) return idSesion(k);
+  const s = Object.values(S.sesiones).find(x => x && x.fuente === 'anterior' && x.creada === w.date);
+  return s ? s.id : null;
 }
 
 // ── Migrar ──
@@ -204,7 +254,7 @@ export function migrar(S, v, dueño) {
   r.cambió = corregirAntigua(S, v) || r.cambió;
   if (!esViejo(v)) return r;
   const m = S.migracion;
-  if (m.dueño && m.dueño !== dueño) { retirar(S); r.retirado = true; r.cambió = true; }
+  if (m.dueño && m.dueño !== dueño) { retirar(S, m.dueño); r.retirado = true; r.cambió = true; r.repuesto = reponer(S, dueño); }
   const claves = new Set(m.claves);
   const nueva = c => { if (claves.has(c)) return false; claves.add(c); return true; };
   const d = deUsuario(v, u);
@@ -229,11 +279,15 @@ export function migrar(S, v, dueño) {
     if (S.medidas.some(y => y.fecha === x.fecha)) return; // ya hay medidas de ese día en esta app: se respetan
     S.medidas.push(x); r.medidas++;
   });
+  // painLog → registro de dolor, enlazado con el entreno que acabó a la vez (±5 min), buscado por minuto.
+  const porMinuto = new Map();
+  d.workouts.forEach(e => { const t = tiempo(e[1].completedAt || e[1].date); if (t != null) porMinuto.set(Math.round(t / 60e3), e); });
+  const entrenoDe = t => { const mm = Math.round(t / 60e3); for (let k = 0; k <= 5; k++) { const e = porMinuto.get(mm - k) || porMinuto.get(mm + k); if (e) return e; } return null; };
   d.pain.forEach(p => {
     const c = 'd:' + limpio(p.date + '|' + u, 120);
     if (!nueva(c)) return;
     const fecha = diaLocal(p.date), t = Date.parse(p.date);
-    const w = d.workouts.find(([, x]) => Math.abs(Date.parse(x.completedAt || x.date) - t) < 5 * 60e3);
+    const w = entrenoDe(t);
     for (const [momento, valores] of [['antes', p.antes], ['despues', p.despues]]) {
       if (!obj(valores)) continue;
       for (const [zk, val] of Object.entries(valores)) {
@@ -241,15 +295,16 @@ export function migrar(S, v, dueño) {
         if (!z) { r.descartadas.push(`dolor de la zona «${txt(zk, 30)}», que esta app no conoce`); continue; }
         if (!Number.isFinite(n)) continue;
         const reg = { fecha, zona: z, dolor: Math.max(0, Math.min(10, n)), momento, vid: c };
-        if (w) reg.sesion = idSesion(w[0]);
+        const sid = w && idDeEntreno(S, w[0], w[1]);
+        if (sid) reg.sesion = sid;
         S.dolor.push(reg); r.dolor++;
       }
     }
   });
-  if (d.perfil && (nueva('p') || r.retirado)) {
+  if (d.perfil && nueva('p')) {
     const datos = S.perfil.datos, sexo = traducirSexo(d.perfil.sex), alt = numPos(d.perfil.height, 250);
-    if (r.retirado || !datos.sexo) datos.sexo = sexo || (r.retirado ? '' : datos.sexo);
-    if (r.retirado || !datos.altura) datos.altura = alt || (r.retirado ? null : datos.altura);
+    if (!datos.sexo && sexo) datos.sexo = sexo;
+    if (!datos.altura && alt) datos.altura = alt;
     r.cambió = true;
   }
   const cambiaron = r.sesiones + r.lesiones + r.medidas + r.dolor > 0 || claves.size !== m.claves.length || m.dueño !== dueño;

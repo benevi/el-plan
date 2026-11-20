@@ -4,6 +4,7 @@ import { rutas, acciones, antesDeCadaRuta, ir } from '../../nucleo/router.js';
 import { estado, cambiar, migrarDeViejo, resultadoMigracion, dueñoSoltadoConConfirmacion } from '../../nucleo/estado.js';
 import { h, aviso, confirmar } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
+import { QUEDA } from './indice.js';
 
 antesDeCadaRuta(r => (estado().dueño ? null : 'bienvenida'));
 
@@ -28,7 +29,7 @@ acciones({
     // (salvo si se acaba de confirmar en Perfil → «cambiar»).
     const m = estado().migracion, antes = m && m.dueño;
     if (antes && antes !== v && !dueñoSoltadoConConfirmacion()) {
-      const ok = await confirmar(`Lo traído de la app anterior es de ${PERSONAS[antes].nombre}. Si eliges ${PERSONAS[v].nombre}, se quita y se trae lo de ${PERSONAS[v].nombre}. Lo hecho en esta app se queda. ¿Seguir?`, { si: 'Seguir' });
+      const ok = await confirmar(`Lo traído de la app anterior es de ${PERSONAS[antes].nombre}. Si eliges ${PERSONAS[v].nombre}, se quita y se trae lo de ${PERSONAS[v].nombre}. ${QUEDA}`, { si: 'Seguir' });
       if (!ok) return;
     }
     cambiar(S => { S.dueño = v; migrarDeViejo(v); }, 'dueño');

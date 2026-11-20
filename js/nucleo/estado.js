@@ -168,6 +168,7 @@ export function cargar() {
     }
   }
   S = x ? preparar(x) : nuevoConViejo();
+  infoAntesDeImportar(); // borra lo de antes de la última copia si ya tiene más de 7 días
   return S;
 }
 
@@ -207,7 +208,9 @@ export function escucharGuardado(fn) { oyentesGuardado.add(fn); return () => oye
 
 // Escribe S con una revisión mayor que `revMin`, que la propia y que la del espejo (el espejo no acepta
 // revisiones menores que la suya). Devuelve true si localStorage lo aceptó.
-function escribir(revMin = rev) {
+// Con `estricto` (al cargar una copia), si localStorage no lo acepta no se toca nada más (ni el espejo):
+// quien llama deshace y avisa.
+function escribir(revMin = rev, { estricto = false } = {}) {
   clearTimeout(temporizadorGuardar);
   const nueva = Math.max(rev, revMin, revEspejo) + 1;
   const txt = JSON.stringify(S);
@@ -220,6 +223,7 @@ function escribir(revMin = rev) {
     almacen().setItem(CLAVE, txt);
   } catch (e) {
     console.error('No se pudo guardar', e);
+    if (estricto) return false;
     sucio = true; errorGuardar = e;
     alEspejo(); // el espejo sigue guardando aunque localStorage falle
     avisarGuardado({ tipo: 'error', error: e });
@@ -342,6 +346,7 @@ export function exportar() {
   const x = JSON.parse(JSON.stringify(S));
   x.ajustes = { ...x.ajustes, codigo: '' };
   delete x.ajustes.apiUrl; delete x.viejo;
+  if (esObjeto(x.migracion)) delete x.migracion.porDueño; // lo retirado de la otra persona no sale del móvil
   return JSON.stringify(x, null, 1);
 }
 
@@ -353,10 +358,14 @@ export function exportar() {
 // - Si la copia es de la otra persona, lanza ErrorCopia con código 'otra-persona' salvo con `otraPersona: true`
 //   (la interfaz pide confirmación explícita y vuelve a llamar).
 // - Antes de guardar: se prueba a pintar todas las pantallas con los datos nuevos (si alguna falla, no se
-//   carga nada) y se guarda lo actual en `pipos4-antes-de-importar` (deshacerImportar() lo recupera).
+//   carga nada) y se guarda lo actual en `pipos4-antes-de-importar` (deshacerImportar() lo recupera; caduca
+//   a los 7 días o se descarta a mano). En el rescate, lo que se guarda ahí es la copia interna del espejo
+//   (lo único que quedaba) y, si había pipos4 legible, este se aparta además como conflicto.
+// - Si localStorage no acepta los datos nuevos, se deshace todo y se avisa (no se finge que se cargó).
 // Errores: ErrorCopia con un mensaje en español para la persona. Devuelve { tipo, avisos, sesiones? }.
 const CLAVE_ANTES = CLAVE + '-antes-de-importar';
-const TAMAÑO_MAX_COPIA = 20 * 1024 * 1024;
+const TAMAÑO_MAX_COPIA = 10 * 1024 * 1024;
+const DIAS_ANTES = 7;
 let pruebaDePintado = null;
 let probando = false;
 // La interfaz registra aquí cómo pintar todas las pantallas (router.probarPantallas) para probar una copia.
@@ -364,7 +373,7 @@ export function usarPruebaDePintado(fn) { pruebaDePintado = typeof fn === 'funct
 
 function leerCopia(txt) {
   if (typeof txt !== 'string' || !txt.trim()) throw new ErrorCopia('El archivo está vacío: no es una copia de Pipos Fitness.');
-  if (txt.length > TAMAÑO_MAX_COPIA) throw new ErrorCopia('El archivo es demasiado grande para ser una copia de Pipos Fitness.');
+  if (txt.length > TAMAÑO_MAX_COPIA) throw new ErrorCopia('El archivo pesa más de 10 MB: es demasiado grande para ser una copia de Pipos Fitness (las copias suelen ocupar menos de 1 MB).', 'grande');
   try { return JSON.parse(txt); } catch { throw new ErrorCopia('No es una copia de Pipos Fitness: el archivo no se puede leer (está dañado o es de otra cosa).'); }
 }
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : 'otra persona');
@@ -385,9 +394,11 @@ export function importar(txt, { otraPersona = false, interno = false } = {}) {
   let candidato, avisos, info = { tipo: 'copia' };
   if (esViejo(x)) {
     if (!S.dueño) throw new ErrorCopia('Es una copia de la app anterior. Elige primero de quién es este móvil y cárgala después desde Perfil → Ajustes.', 'vieja-sin-dueño');
+    if (migracionDeOtro()) throw new ErrorCopia(`Lo traído de la app anterior a este móvil es de ${nombre(S.migracion.dueño)}. Resuélvelo primero en Perfil («Traer lo de ${nombre(S.dueño)}») y vuelve a cargar la copia.`, 'migracion-de-otro');
     const base = JSON.parse(JSON.stringify(S));
     const r = migrar(base, x, S.dueño);
     candidato = normalizarEstado(base).estado;
+    if (esObjeto(base.migracion) && esObjeto(base.migracion.porDueño)) candidato.migracion.porDueño = base.migracion.porDueño; // propio del móvil
     candidato.ajustes.codigo = S.ajustes.codigo || '';
     info = { tipo: 'anterior', sesiones: r.sesiones, lesiones: r.lesiones, medidas: r.medidas, dolor: r.dolor };
     avisos = r.descartadas.map(t => 'No se ha traído ' + t);
@@ -409,24 +420,45 @@ export function importar(txt, { otraPersona = false, interno = false } = {}) {
     const crudo = leerCrudo(); if (crudo) apartarRoto(crudo);
   }
   probarPintado(candidato);
-  // Lo de ahora, aparte, por si la copia no era la buena (solo si hay algo que guardar: no en rescate ni sin dueño).
-  if (!rescate && S.dueño) {
-    try { almacen().setItem(CLAVE_ANTES, JSON.stringify({ fecha: new Date().toISOString(), estado: S })); } catch (e) {
+  // Lo de ahora, aparte, por si la copia no era la buena. En el rescate, lo de ahora es la copia interna del
+  // espejo (que se va a sobrescribir); sin rescate, el estado si ya tiene dueño.
+  let deAntes = null;
+  if (rescate && regEspejo) { try { deAntes = JSON.parse(regEspejo.txt); } catch { deAntes = null; } }
+  if (!deAntes && S.dueño) deAntes = S;
+  const antesGuardado = (() => { try { return almacen().getItem(CLAVE_ANTES); } catch { return null; } })();
+  if (deAntes) {
+    try { almacen().setItem(CLAVE_ANTES, JSON.stringify({ fecha: new Date().toISOString(), estado: deAntes })); } catch (e) {
       console.error('No se pudo apartar el estado actual antes de importar', e);
       throw new ErrorCopia('No queda espacio en el móvil para apartar antes tus datos actuales, así que no he cargado la copia. Guarda una copia de lo actual y libera espacio.', 'sin-espacio');
     }
   }
+  // Rescate porque el espejo era más nuevo que pipos4: pipos4 (legible) también se aparta, como conflicto.
+  if (rescate && rescate.motivo === 'espejo' && regEspejo && S.dueño) apartarConflicto(JSON.stringify(S));
+  const previo = { S, rescate, regEspejo, dueñoSoltado };
   S = ponerViejo(candidato);
   rescate = null; regEspejo = null; dueñoSoltado = false;
-  escribir(Math.max(leerRev(), revEspejo));
+  // La copia interna (rescate o deshacer) entra aunque localStorage esté lleno: el espejo la guarda y se avisa.
+  if (!escribir(Math.max(leerRev(), revEspejo), { estricto: !interno })) {
+    if (interno) { avisar('importar'); return { ...info, avisos }; }
+    ({ S, rescate, regEspejo, dueñoSoltado } = previo);
+    try { if (antesGuardado == null) almacen().removeItem(CLAVE_ANTES); else almacen().setItem(CLAVE_ANTES, antesGuardado); } catch { /* nada */ }
+    throw new ErrorCopia('No he cargado la copia: no cabe en el almacenamiento del móvil. Tus datos siguen como estaban. Libera espacio (o descarta los datos de antes de la última copia) y vuelve a intentarlo.', 'sin-espacio');
+  }
   avisar('importar');
   return { ...info, avisos };
 }
 
-// Lo que había antes de la última copia cargada: { fecha } o null.
-export function infoAntesDeImportar() {
-  try { const c = JSON.parse(almacen().getItem(CLAVE_ANTES) || 'null'); return c && typeof c.fecha === 'string' && esObjeto(c.estado) ? { fecha: c.fecha, dueño: c.estado.dueño || null } : null; } catch { return null; }
+// Lo que había antes de la última copia cargada: { fecha, dueño } o null. Pasados 7 días se borra sola.
+export function infoAntesDeImportar(ahora = Date.now()) {
+  let c;
+  try { c = JSON.parse(almacen().getItem(CLAVE_ANTES) || 'null'); } catch { c = null; }
+  if (!c || typeof c.fecha !== 'string' || !esObjeto(c.estado)) return null;
+  const t = Date.parse(c.fecha);
+  if (Number.isNaN(t) || ahora - t > DIAS_ANTES * 864e5) { descartarAntesDeImportar(); return null; }
+  return { fecha: c.fecha, dueño: c.estado.dueño || null };
 }
+// «Descartar»: libera el espacio de lo que había antes de la última copia.
+export function descartarAntesDeImportar() { try { almacen().removeItem(CLAVE_ANTES); } catch { /* nada */ } }
 // Vuelve a lo que había antes de la última copia cargada (pasa por importar: validado y reversible).
 export function deshacerImportar() {
   let c;
