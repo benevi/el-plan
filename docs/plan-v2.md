@@ -73,13 +73,13 @@ No dispongo de una valoración pública de skills. He elegido las más específi
 
 ## 4. Decisiones que necesito de ti
 
-Llevan mi recomendación. Las marcadas con ★ bloquean su fase.
+Llevan mi recomendación. Plan aprobado el 20 de noviembre de 2026; D1-D3, D14 y D15 decididas según la recomendación. D4-D9 siguen abiertas: se preguntan cuando su fase las necesite.
 
 | # | Decisión | Opciones | Recomiendo |
 |---|---|---|---|
-| D1 ★ | Almacenamiento | (a) localStorage + espejo en IndexedDB, como tenía `main`; (b) pasar todo a IndexedDB | **(a)**: menos riesgo ahora; el espejo protege y da margen a la cuota. (b) más adelante si hace falta |
-| D2 ★ | Día con dolor ≥ 7 | (a) nunca llamar a la IA: sesión fija de movilidad, cardio suave sin impacto y estiramientos; (b) llamar con un catálogo reducido a eso | **(a)**: es el caso donde menos se gana con la IA y más se arriesga |
-| D3 ★ | Cardio mínimo por objetivo | Tabla propuesta: músculo/fuerza 8-10 min; salud 10-15; perder grasa 15-25; resistencia 15-30. En piscina, bloque de nado continuo o aquajogging de 10-20 min; con dolor ≥ 7, cardio suave sin impacto en la zona | La tabla tal cual |
+| D1 | Almacenamiento | (a) localStorage + espejo en IndexedDB, como tenía `main`; (b) pasar todo a IndexedDB | **Decidido: (a): menos riesgo ahora; el espejo protege y da margen a la cuota. (b) más adelante si hace falta** |
+| D2 | Día con dolor ≥ 7 | (a) nunca llamar a la IA: sesión fija de movilidad, cardio suave sin impacto y estiramientos; (b) llamar con un catálogo reducido a eso | **Decidido: (a): es el caso donde menos se gana con la IA y más se arriesga** |
+| D3 | Cardio mínimo por objetivo | Tabla propuesta: músculo/fuerza 8-10 min; salud 10-15; perder grasa 15-25; resistencia 15-30. En piscina, bloque de nado continuo o aquajogging de 10-20 min; con dolor ≥ 7, cardio suave sin impacto en la zona | **Decidido: la tabla tal cual** |
 | D4 | Datos de salud estructurados en el perfil (hipertensión, embarazo/posparto, medicación, cardiopatía, diabetes, osteoporosis) | (a) añadirlos, con un aviso de que se envían a la IA; (b) seguir solo con notas libres | **(a)**, con todos opcionales |
 | D5 | Reparto con 3 días | (a) cuerpo completo ×3; (b) dejar empuje/tirón/pierna | **(a)** para vuestro nivel |
 | D6 | Espera del plan semanal | (a) enviar la respuesta en streaming al móvil, con progreso; (b) generar el plan día a día en llamadas cortas | **(a)**: menos cambios y la misma calidad |
@@ -90,8 +90,8 @@ Llevan mi recomendación. Las marcadas con ★ bloquean su fase.
 | D11 | Identidad | — | **Decidido: identidad nueva entera** (logo, colores por persona, tipografía e iconos). Doy por hecho que el nombre «Pipos Fitness» se mantiene; dime si no |
 | D12 | Ambición visual | — | **Decidido: expresiva**, con presupuesto de rendimiento y alternativa con movimiento reducido |
 | D13 | Revisión de prototipos | — | **Decidido: página navegable en la vista previa de Vercel** de la rama `diseno-prototipos` |
-| D14 ★ | Dónde van las copias automáticas (anexo B) | (a) Vercel Blob privado; (b) Supabase; (c) Google Drive compartido | **(a)**, cifradas en el móvil |
-| D15 ★ | Frase de recuperación de las copias | (a) una por persona; (b) una común para los dos | **(a)**: cada uno solo puede abrir sus copias. Guardadla en un gestor de contraseñas: **sin la frase, las copias de la nube no se pueden abrir** |
+| D14 | Dónde van las copias automáticas (anexo B) | (a) Vercel Blob privado; (b) Supabase; (c) Google Drive compartido | **Decidido: (a), cifradas en el móvil** |
+| D15 | Frase de recuperación de las copias | (a) una por persona; (b) una común para los dos | **Decidido: (a): cada uno solo puede abrir sus copias. Guardadla en un gestor de contraseñas: sin la frase, las copias de la nube no se pueden abrir** |
 
 ---
 
