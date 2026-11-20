@@ -13,14 +13,14 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 | Área | Archivos | Qué hace |
 |---|---|---|
 | **Núcleo** (integrador) | `index.html`, `js/arranque.js`, `js/main.js`, `js/nucleo/estado.js`, `js/nucleo/router.js`, `js/nucleo/ui.js`, `js/nucleo/api.js`, `js/nucleo/modelo.js`, `js/nucleo/version.js`, `sw.js`, `scripts/version.mjs`, `manifest.webmanifest` | Arranque y vigilante de arranque, datos y guardado, navegación, piezas de interfaz, llamadas al servidor, forma de sesión y plan, modo sin conexión y aviso de versión nueva |
-| **Entrenador IA** | `js/areas/entrenador/` (`entrenador.js` lógica, `indice.js` check-in y plan), `api/entrenador.js`, `api/_comun.js`, `js/reglas/contexto.js` | Sesión de hoy y plan semanal con IA; si falla, reglas |
+| **Entrenador IA** | `js/areas/entrenador/` (`entrenador.js` fachada de la lógica: `dia.js` sesión con reglas, `plan.js` semana, `checkin.js` ajuste al check-in, `ia.js` puente con la IA, `validar.js` validador; `indice.js` check-in y plan), `api/entrenador.js`, `api/_comun.js`, `js/reglas/contexto.js` | Sesión de hoy y plan semanal con IA; si falla, reglas |
 | **Perfil** | `js/areas/perfil/` (`indice.js`, `bienvenida.js`) | Objetivos, nivel, lesiones, disponibilidad, lugares, material, gustos, ajustes, copia |
 | **Sesión** | `js/areas/sesion/` (`indice.js`, `temporizador.js`) | Hacer la sesión: series, descansos con alarma visual y vibración, tiempo, modo uno a uno, cambiar ejercicio, cierre |
 | **Progreso** | `js/areas/progreso/indice.js` | Constancia, fuerza, medidas, dolor, historial |
 | **Hoy** | `js/areas/hoy/indice.js` | Pantalla de inicio |
 | **Ejercicios** | `js/areas/ejercicios/indice.js` | Catálogo, ficha técnica, me gusta / no me gusta / no lo quiero |
 | **Aspecto** | `css/base.css`, `css/componentes.css`, `css/areas.css`, `icons/`, `fonts/`, `js/aspecto/` | Colores, tipografía, componentes, movimiento y confeti; color por persona en `--acc` |
-| **Datos y reglas** (compartido) | `js/datos/` (catálogo de 159 ejercicios, lesiones, constantes), `js/reglas/` (catálogo y seguridad, progresión, generador sin IA) | Barandillas que usan todas las áreas |
+| **Datos y reglas** (compartido) | `js/datos/` (catálogo de 159 ejercicios, lesiones, constantes), `js/reglas/` (catálogo y seguridad, progresión, contexto para la IA) | Barandillas que usan todas las áreas |
 
 ## Cómo se añade algo
 - Cada área se registra sola en su `indice.js`: `rutas({...})`, `acciones({'area.accion': fn})`, `pestaña({...})`. Los botones usan `data-act="area.accion"`; los campos `data-cambio="area.accion"`.

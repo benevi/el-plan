@@ -8,7 +8,7 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION la escribe `npm run version` (scripts/version.mjs) con el hash de APP: no la cambies a mano.
-const VERSION = 'pipos-app-a1f1933f49ae';
+const VERSION = 'pipos-app-2ce37c419650';
 const PREFIJO = 'pipos-app-';
 const APP = [
   './',
@@ -29,8 +29,13 @@ const APP = [
   './index.html',
   './js/arranque.js',
   './js/areas/ejercicios/indice.js',
+  './js/areas/entrenador/checkin.js',
+  './js/areas/entrenador/dia.js',
   './js/areas/entrenador/entrenador.js',
+  './js/areas/entrenador/ia.js',
   './js/areas/entrenador/indice.js',
+  './js/areas/entrenador/plan.js',
+  './js/areas/entrenador/validar.js',
   './js/areas/hoy/indice.js',
   './js/areas/perfil/bienvenida.js',
   './js/areas/perfil/indice.js',
@@ -51,7 +56,6 @@ const APP = [
   './js/nucleo/version.js',
   './js/reglas/catalogo.js',
   './js/reglas/contexto.js',
-  './js/reglas/generador.js',
   './js/reglas/progresion.js',
   './manifest.webmanifest',
 ];

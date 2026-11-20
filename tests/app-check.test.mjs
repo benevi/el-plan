@@ -83,7 +83,7 @@ test('index.html carga los scripts como archivos (sin <script> en línea, para l
 
 // ── Fallos demostrados por la auditoría (PR 5) ──
 
-test('APP solo precarga JS que la app usa (sin generador.js)', { todo: 'PR 5: generador.js en la precarga' }, () => {
+test('APP solo precarga JS que la app usa (sin generador.js)', () => {
   // js/arranque.js es un script clásico que carga index.html, no un módulo de main.js.
   const html = fs.readFileSync(ruta('index.html'), 'utf8');
   assert.deepEqual(APP.filter(a => a.endsWith('.js') && !alcanzables.has(a) && !html.includes(`src="${a}"`)), []);
