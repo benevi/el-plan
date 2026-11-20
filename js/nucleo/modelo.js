@@ -12,7 +12,8 @@
 //     id, rol: 'principal' | 'rehab' | 'cardio', series, reps: '8-12'|'30-45s'|'25 m', descanso (s), kg|null,
 //     nota, motivo,                               // nota del entrenador · motivo de la progresión
 //     sets: [{ kg|null, valor: '12'|'40'|'1:30', hecha }],
-//     gusto: 'rechazo'|'nogusta'|'gusta'|null, comentario
+//     gusto: 'rechazo'|'nogusta'|'gusta'|null, comentario,
+//     superserie?: true                         // va en pareja con el siguiente (último recurso de tiempo)
 //   }],
 //   estado: 'pendiente' | 'en_curso' | 'hecha', empezada, terminada,
 //   cierre: { esfuerzo 1-5, dolor: { zona: 0-10 }, comentario } | null,
@@ -38,6 +39,7 @@ export function crearEjercicio(x) {
     kg, nota: String(x.nota || '').slice(0, 300), motivo: String(x.motivo || '').slice(0, 300),
     sets: Array.from({ length: series }, () => ({ kg, valor: '', hecha: false })),
     gusto: null, comentario: '',
+    ...(x.superserie === true ? { superserie: true } : {}),
   };
 }
 

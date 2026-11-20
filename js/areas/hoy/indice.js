@@ -9,7 +9,7 @@ import { h, ICONOS, fechaLarga } from '../../nucleo/ui.js';
 import { sesionDeHoy, diaSemana } from '../../nucleo/modelo.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
 import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias } from '../entrenador/indice.js';
-import { siguientePendiente, tiempoSesion } from '../entrenador/entrenador.js';
+import { siguientePendiente, tiempoSesion, sinEntrenarHoy, T2 } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
 import { recordatorioCopia } from '../perfil/indice.js';
 
@@ -26,6 +26,10 @@ function tiraSemana(S) {
 }
 
 function tarjetaHoy(S) {
+  // Señal de alarma de hoy: día sin entrenar por precaución (C-ALAR-1).
+  if (sinEntrenarHoy(S) && !sesionDeHoy(S)) {
+    return `<section class="tarjeta destacada alarma"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}</section>`;
+  }
   const s = sesionDeHoy(S);
   if (s && s.estado === 'hecha') {
     const series = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);

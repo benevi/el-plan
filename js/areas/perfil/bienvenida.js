@@ -4,6 +4,7 @@ import { rutas, acciones, antesDeCadaRuta, ir } from '../../nucleo/router.js';
 import { estado, cambiar, migrarDeViejo, resultadoMigracion, dueñoSoltadoConConfirmacion } from '../../nucleo/estado.js';
 import { h, aviso, confirmar } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
+import { T1 } from '../entrenador/alarma.js';
 import { QUEDA } from './indice.js';
 
 antesDeCadaRuta(r => (estado().dueño ? null : 'bienvenida'));
@@ -17,6 +18,7 @@ rutas({
       <p class="tenue">Tu entrenador personal. Cada uno usa su móvil y ve solo lo suyo.</p>
       <p><b>¿De quién es este móvil?</b></p>
       <div class="dueños">${Object.entries(PERSONAS).map(([k, p]) => `<button class="dueño" style="--c:${p.color}" data-act="bienvenida.elegir" data-v="${k}">${h(p.nombre)}</button>`).join('')}</div>
+      <section class="aviso-salud">${T1.map(t => `<p class="tenue">${h(t)}</p>`).join('')}</section>
     </div>`,
   },
 });

@@ -304,3 +304,25 @@ test('ida y vuelta: un estado largo generado por la app sale y vuelve idéntico 
   delete antes.ajustes.codigo; delete despues.ajustes.codigo;
   assert.deepEqual(despues, antes);
 });
+
+test('ida y vuelta de los campos opcionales del PR 8: salud, nadar25, alarmas y superserie', () => {
+  const S = estadoBase();
+  S.perfil.nadar25 = true;
+  S.perfil.salud = { hipertension: 'controlada', embarazo: 20, medicacion: ['betabloqueantes'], asma: true, osteoporosis: 'sin_fracturas', vistoBueno: { embarazo: true } };
+  S.alarmas = [{ fecha: '2026-11-18', respuesta: 'no', frase: 'me mareé al acabar la cinta' }];
+  S.sesiones.s1 = sesionDemo('s1');
+  S.sesiones.s1.ejercicios[0].superserie = true;
+  S.plan = { semana: '2026-W47', creado: '2026-11-16T10:00:00.000Z', fuente: 'reglas', resumen: '', criterios: '', progresion: '', hechos: {},
+    dias: [{ diaSemana: 3, nombre: 'D', foco: '', lugar: 'gym', minutos: 30, tipo: 'fullA', explicacion: [], calentamiento: [], vuelta: [], ejercicios: [{ id: 'press-pecho-maquina', rol: 'principal', series: 2, reps: '10-12', descanso: 0, nota: '', superserie: true }] }] };
+  const { estado: n, avisos } = norm.normalizarEstado(JSON.parse(JSON.stringify(S)));
+  assert.deepEqual(avisos, []);
+  assert.deepEqual(n.perfil.salud, S.perfil.salud);
+  assert.equal(n.perfil.nadar25, true);
+  assert.deepEqual(n.alarmas, S.alarmas);
+  assert.equal(n.sesiones.s1.ejercicios[0].superserie, true);
+  assert.equal(n.plan.dias[0].ejercicios[0].superserie, true);
+  // Lo desconocido no pasa.
+  const raro = norm.normalizarEstado({ ...JSON.parse(JSON.stringify(S)), perfil: { ...S.perfil, salud: { hipertension: 'mucha', __proto__x: 1, diabetes: 'si' } }, alarmas: [{ fecha: 'x', respuesta: 'si' }] }).estado;
+  assert.equal(raro.perfil.salud, undefined);
+  assert.equal(raro.alarmas, undefined);
+});

@@ -3,7 +3,7 @@
 
 import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, aviso, $, es } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, es } from '../../nucleo/ui.js';
 import { enLinea } from '../../nucleo/api.js';
 import { diaSemana } from '../../nucleo/modelo.js';
 import { LUGARES, DIAS, DIAS_CORTOS, MUSCULOS, NIVELES } from '../../datos/constantes.js';
@@ -12,7 +12,7 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, SEÑALES, T2, DESDE,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -28,6 +28,9 @@ function hojaCheckin() {
   // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
   const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   const otras = Object.keys(ZONAS).filter(z => !zonas.includes(z));
+  // Antes de nada: alarma en un texto libre o lesión sin «desde» (C-ALAR-4, C-LES-6). No se genera nada.
+  const pregunta = preguntaAntes(S, ci);
+  if (pregunta) return hojaPregunta(pregunta);
   const pv = previaCheckin(ci);
   const dia = pv.dia;
   abrirHoja(`<h2>Antes de empezar</h2>
@@ -38,6 +41,8 @@ function hojaCheckin() {
     ${zonas.map(z => `<label class="campo col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
       <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>`).join('')}
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
+    <div class="campo col alarma-ci"><label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto algo de esto</b></span></label>
+      <details class="plegable"><summary>Qué cuenta</summary><ul class="tenue">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details></div>
     <label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>
     <section class="previa" aria-live="polite">
       <h3>Con lo que me dices</h3>
@@ -46,9 +51,35 @@ function hojaCheckin() {
       <p class="tenue">${ICONOS.ia} ${h(ci.forzarIA ? 'Se lo pides al entrenador IA.' : pv.ia.motivo)}</p>
       ${enLinea() && !pv.ia.usar ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
     </section>
-    <button class="btn grande" data-act="entrenador.crearHoy">${ICONOS.play} Preparar mi sesión</button>`, { clase: 'checkin' });
+    <button class="btn grande" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : `${ICONOS.play} Preparar mi sesión`}</button>`, { clase: 'checkin' });
   $('#ci-peticion').addEventListener('input', e => { ci.peticion = e.target.value; });
   $('#ci-peticion').addEventListener('change', () => hojaCheckin());
+}
+
+// Pregunta que bloquea el check-in hasta contestarla: alarma en un texto (C-ALAR-4) o «¿desde cuándo?» (C-LES-6).
+function hojaPregunta(p) {
+  if (p.tipo === 'alarma') {
+    abrirHoja(`<h2>Antes de preparar nada</h2>
+      <p>${h(p.texto)}</p>
+      <ul class="tenue">${SEÑALES.slice(0, 4).map(t => `<li>${h(t)}</li>`).join('')}</ul>
+      <div class="fila-botones"><button class="btn sec" data-act="entrenador.ciRespAlarma" data-v="no">No, hoy no noto nada de eso</button><button class="btn" data-act="entrenador.ciRespAlarma" data-v="si">Sí, lo noto</button></div>`, { clase: 'checkin' });
+    return;
+  }
+  abrirHoja(`<h2>${h(p.texto)}</h2>
+    ${p.zonas.map(z => `<div class="campo col"><span>${h(ZONAS[z] ? ZONAS[z].corta : z)}</span><div class="chips">${Object.entries(DESDE).map(([k, [n]]) => `<button class="chip ${(ci.desde || {})[z] === k ? 'on' : ''}" data-act="entrenador.ciDesde" data-z="${h(z)}" data-v="${k}">${h(n)}</button>`).join('')}</div></div>`).join('')}
+    <p class="tenue">Lo guardo en tu lesión. «No lo sé» la trata como reciente, que es lo más prudente.</p>`, { clase: 'checkin' });
+}
+function hojaAlarma() {
+  abrirHoja(`<h2>Hoy no toca entrenar</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="btn" data-act="entrenador.cerrarAlarma">Entendido</button>`, { clase: 'checkin alarma' });
+}
+
+// Dolor con que se rellena el check-in (C-DOLOR-0): el último de un check-in de hace ≤ 3 días; si no, el de
+// la ficha con tope 6 (así una ficha a 9 no lleva sola al día de dolor alto).
+function dolorInicial(S, l) {
+  const limite = Date.now() - 3 * 864e5;
+  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[l.zona] != null && new Date(s.creada || s.fecha) >= limite)
+    .sort((a, b) => String(b.creada).localeCompare(String(a.creada)))[0];
+  return ult ? +ult.checkin.dolor[l.zona] : Math.min(6, +l.dolor || 0);
 }
 
 export function abrirCheckin(diaPlan = null) {
@@ -57,8 +88,14 @@ export function abrirCheckin(diaPlan = null) {
   ci = { diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: '', forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
-  S.perfil.lesiones.filter(l => l.activa).forEach(l => { ci.dolorHoy[l.zona] = l.dolor; });
+  S.perfil.lesiones.filter(l => l.activa).forEach(l => { ci.dolorHoy[l.zona] = dolorInicial(S, l); });
   hojaCheckin();
+}
+
+// Señal de alarma marcada o confirmada: se apunta y no se prepara nada (C-ALAR-1).
+async function crearConAlarma() {
+  const r = await crearSesionHoy({ ...ci, alarma: !!ci.alarma });
+  if (r.alarma) hojaAlarma();
 }
 
 function cargando(txt) {
@@ -185,14 +222,30 @@ escuchar(motivo => {
 acciones({
   'entrenador.prepararHoy': () => abrirCheckin(),
   'entrenador.ci': el => { const k = el.dataset.k; ci[k] = k === 'lugar' ? el.dataset.v : +el.dataset.v; hojaCheckin(); },
-  'entrenador.ciDolor': el => { ci.dolorHoy[el.dataset.z] = +el.value; hojaCheckin(); },
+  'entrenador.ciDolor': async el => {
+    const v = +el.value, antes = +ci.dolorHoy[el.dataset.z] || 0;
+    // Pasar a 7 o más lleva al día de dolor alto: se confirma (C-DOLOR-0).
+    if (v >= 7 && antes < 7 && !await confirmar('¿Hoy de verdad 7 o más?', { si: 'Sí, 7 o más', no: 'No' })) { hojaCheckin(); return; }
+    ci.dolorHoy[el.dataset.z] = v; hojaCheckin();
+  },
+  'entrenador.ciAlarma': el => { ci.alarma = el.checked; hojaCheckin(); },
+  'entrenador.ciRespAlarma': el => {
+    const p = preguntaAntes(estado(), ci);
+    if (el.dataset.v === 'si') { ci.alarmaRespuesta = 'si'; ci.alarmaFrase = p && p.frase; crearConAlarma(); return; }
+    ci.alarmaRespuesta = 'no'; ci.alarmaFrase = p && p.frase; hojaCheckin();
+  },
+  'entrenador.ciDesde': el => { ci.desde = { ...(ci.desde || {}), [el.dataset.z]: el.dataset.v }; hojaCheckin(); },
+  'entrenador.cerrarAlarma': () => { cerrarHoja(); ir('hoy'); },
   'entrenador.ciZona': el => { ci.dolorHoy[el.dataset.v] = 3; hojaCheckin(); },
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };
+    if (datos.alarma) { crearConAlarma(); return; }
     const pv = previaCheckin(datos);
     if (pv.ia.usar || datos.forzarIA) cargando('Tu entrenador está preparando la sesión…');
-    const { sesion, aviso: a, motivo } = await crearSesionHoy(datos);
+    const { sesion, aviso: a, motivo, pregunta, alarma } = await crearSesionHoy(datos);
+    if (alarma) { hojaAlarma(); return; }
+    if (pregunta) { ci.peticion = datos.peticion; hojaPregunta(pregunta); return; }
     cerrarHoja();
     if (a) aviso(a, 'info'); else if (motivo) aviso(motivo, 'info');
     ir('sesion/' + sesion.id);

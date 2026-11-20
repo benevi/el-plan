@@ -9,8 +9,8 @@ const { EJERCICIOS, ZONAS, ex } = cat;
 const { MUSCULOS, MATERIAL, LUGARES, MATERIAL_CASA } = K;
 const repetidos = a => a.filter((x, i) => a.indexOf(x) !== i);
 
-test('el catálogo tiene 159 ejercicios', () => {
-  assert.equal(EJERCICIOS.length, 159);
+test('el catálogo tiene 163 ejercicios', () => {
+  assert.equal(EJERCICIOS.length, 163);
 });
 
 test('ids y nombres únicos; ids en minúsculas con guiones', () => {

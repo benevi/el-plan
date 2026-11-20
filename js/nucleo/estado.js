@@ -40,6 +40,7 @@ export function perfilVacio() {
     gustos: {},               // { idEjercicio: 'rechazo' | 'nogusta' | 'gusta' }
     datos: { sexo: '', altura: null, nacimiento: '' },
     notas: '',                // lo que quiera contarle al entrenador
+    // salud?: datos de salud (D4, opcional; ver areas/entrenador/salud.js) · nadar25?: sabe nadar 2 × 25 m seguidos
   };
 }
 
@@ -52,6 +53,7 @@ export function nuevo() {
     sesiones: {},             // { id: sesión } (ver areas/sesion/modelo.js)
     medidas: [],              // { fecha, peso, cintura, cadera, cuello, pecho, brazo, muslo, grasa, vid? }
     dolor: [],                // { fecha, zona, dolor, momento: 'antes'|'despues'|'dia'|'perfil', sesion, vid? }
+    // alarmas?: [{ fecha, respuesta 'si'|'no', frase }]  señales de alarma apuntadas (opcional, PR 8)
     ajustes: { codigo: '', vibrar: true, sonido: true }, // la URL de la API es siempre relativa (/api/…)
     // Lo traído de la app anterior (ver js/nucleo/migracion.js): versión de los datos, de quién y claves ya migradas.
     migracion: { version: VERSION_MIGRACION, dueño: null, claves: [], sexoRevisar: false },
