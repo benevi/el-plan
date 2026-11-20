@@ -1,6 +1,6 @@
 // Sobrecarga progresiva y recuperación. Son las barandillas del entrenador:
 // - lo que propone la IA se compara con esto (kilos y series razonables),
-// - y sin conexión o sin IA, el generador usa esto directamente.
+// - y sin conexión o sin IA, las reglas del entrenador usan esto directamente.
 //
 // Doble progresión: con kilos, cuando llegas al tope del rango en todas las series se sube el paso mínimo
 // del material; si dos sesiones seguidas no llegas al mínimo, se baja un 10 %. Sin kilos se progresa en

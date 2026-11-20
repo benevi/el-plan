@@ -10,7 +10,7 @@ export default [
     languageOptions: { ecmaVersion: 2023, sourceType: 'module' },
     rules: {
       ...js.configs.recommended.rules,
-      // Asignaciones que nadie lee: hoy son inofensivas (estado.js, entrenador.js, temporizador.js); aviso, no error.
+      // Asignaciones que nadie lee: hoy son inofensivas (estado.js, temporizador.js); aviso, no error.
       'no-useless-assignment': 'warn',
       'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
     },

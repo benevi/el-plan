@@ -56,7 +56,7 @@ export function comprobar(req, res) {
 
 // ── Saneado del cuerpo ──
 // Solo pasan las claves que usa el servidor; textos, listas y profundidad acotados. Con los datos que
-// arma el móvil (js/reglas/contexto.js y peticionBase en js/areas/entrenador/entrenador.js) no cambia nada:
+// arma el móvil (js/reglas/contexto.js y peticionBase en js/areas/entrenador/ia.js) no cambia nada:
 // lo comprueba tests/api/saneado.test.mjs.
 export const CLAVES = ['modo', 'perfil', 'lesiones', 'historial', 'analisis', 'hoy', 'diaSemana', 'catalogo', 'checkin', 'planDeHoy', 'ajusteReglas', 'semana'];
 // Los textos libres pueden contar algo de seguridad (dolor, molestias): límites holgados, el tope de

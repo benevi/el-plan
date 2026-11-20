@@ -61,7 +61,7 @@ test('todo el material de casa lo usa algún ejercicio de casa, y todo material 
 });
 
 test('los ids de ejercicio citados en el entrenador y en las reglas existen', () => {
-  for (const f of ['js/areas/entrenador/entrenador.js', 'js/reglas/generador.js', 'js/reglas/progresion.js', 'js/reglas/contexto.js']) {
+  for (const f of ['dia.js', 'plan.js', 'checkin.js', 'ia.js'].map(f => 'js/areas/entrenador/' + f).concat(['js/reglas/progresion.js', 'js/reglas/contexto.js'])) {
     const t = fs.readFileSync(ruta(f), 'utf8');
     // ids entre comillas con al menos una letra (así no cuentan dosis como '8-12')
     const citados = [...new Set([...t.matchAll(/'([a-z0-9]+(?:-[a-z0-9]+)+)'/g)].map(m => m[1]).filter(id => /[a-z]/.test(id)))];
