@@ -61,7 +61,9 @@ test('si la red falla, la sesión la hace la app y lo dice', async () => {
   assert.notEqual(sesion.fuente, 'ia');
   assert.equal(aviso, 'La ha hecho la app porque no hay conexión con el servidor.');
   // PR 12: la nota fija queda en la sesión, con «Reintentar con IA».
-  assert.deepEqual(sesion.iaFallo, { motivo: 'no hay conexión con el servidor', diaPlan: null, reintentable: true });
+  const { huella, ...f } = sesion.iaFallo;
+  assert.match(huella, /^[a-z0-9]+$/);
+  assert.deepEqual(f, { motivo: 'no hay conexión con el servidor', diaPlan: null, reintentable: true });
 });
 
 test('sin ejercicios válidos de la IA (perfil músculo) la hace la app', async () => {

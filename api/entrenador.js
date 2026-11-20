@@ -192,11 +192,15 @@ function pruebasDe(req, modo) {
 
 // Progreso a partir del texto que va escribiendo Claude: cuántos ejercicios (sesión) o días (plan) lleva.
 // Es una estimación para que la persona vea que avanza; el resultado de verdad es el de «fin».
-function contador(modo, alCambiar) {
-  let texto = '', fase = 'pensando', ultimo = '';
-  const cuenta = re => (texto.match(re) || []).length;
+// Cuenta solo sobre el trozo nuevo más una cola corta (lo que pudo quedar partido entre dos trozos), así
+// que el coste es lineal en lo que escribe Claude, no cuadrático.
+export function contador(modo, alCambiar) {
+  const patron = modo === 'plan' ? /"diaSemana"\s*:/g : /"rol"\s*:/g;
+  const COLA = 24;
+  let cola = '', n = 0, fase = 'pensando', ultimo = '';
+  const cuenta = t => (t.match(patron) || []).length;
   const avisar = () => {
-    const p = { fase, ...(modo === 'plan' ? { dias: cuenta(/"diaSemana"\s*:/g) } : { ejercicios: cuenta(/"rol"\s*:/g) }) };
+    const p = { fase, ...(modo === 'plan' ? { dias: n } : { ejercicios: n }) };
     const clave = JSON.stringify(p);
     if (clave !== ultimo) { ultimo = clave; alCambiar(p); }
   };
@@ -204,12 +208,14 @@ function contador(modo, alCambiar) {
     if (!ev || typeof ev !== 'object') return;
     if (ev.type === 'content_block_start' && ev.content_block) {
       if (ev.content_block.type === 'thinking') fase = 'pensando';
-      if (ev.content_block.type === 'fallback') texto = ''; // el modelo de respaldo puede empezar de nuevo
+      if (ev.content_block.type === 'fallback') { cola = ''; n = 0; } // el modelo de respaldo puede empezar de nuevo
       if (ev.content_block.type === 'text') fase = 'escribiendo';
     }
     if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta' && typeof ev.delta.text === 'string') {
       fase = 'escribiendo';
-      texto += ev.delta.text;
+      const ventana = cola + ev.delta.text;
+      n += cuenta(ventana) - cuenta(cola);
+      cola = ventana.slice(-COLA);
     }
     avisar();
   };

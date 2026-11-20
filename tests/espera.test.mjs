@@ -10,6 +10,7 @@ import { nuevoS, ent, est, ponerRed } from './ayuda/node.mjs';
 fijarFecha('2026-11-18T10:00'); // miércoles
 const api = await import(modulo('js/nucleo/api.js'));
 const { llamarEnVivo, ErrorApi, textoError } = api;
+const modelo = await import(modulo('js/nucleo/modelo.js'));
 
 // ── Respuestas simuladas ──
 const sse = o => 'data: ' + JSON.stringify(o) + '\n\n';
@@ -125,6 +126,8 @@ const T = (n, d = '5 min') => ({ id: '', nombre: n, detalle: '', duracion: d });
 const E = id => ({ id, rol: 'principal', series: 3, reps: '8-12', descanso: 90, kg: 0, nota: 'Nota suficientemente larga para no ser genérica, con 30 kg.' });
 const BUENA = { nombre: 'Torso', foco: 'x', cambios: [], explicacion: ['Porque sí.'], calentamiento: [T('Bici'), T('Movilidad')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')], vueltaCalma: [T('Estirar pecho', '1 min'), T('Estiramiento de cuádriceps', '1 min')] };
 const sesiones = () => Object.values(est.estado().sesiones);
+// La nota sin su huella (la huella se prueba aparte, en sesionTocada).
+const nota = s => { const { huella, ...resto } = s.iaFallo || {}; assert.match(huella || '', /^[a-z0-9]+$/); return resto; };
 
 test('cancelar la espera deja la sesión de las reglas al momento, con la nota y la petición', async () => {
   red(enVivo([sse({ t: 'inicio' }), { colgar: true }]));
@@ -134,7 +137,7 @@ test('cancelar la espera deja la sesión de las reglas al momento, con la nota y
   const r = await p;
   assert.equal(r.sesion.fuente !== 'ia', true);
   assert.equal(r.aviso, 'La ha hecho la app porque cancelaste la espera.');
-  assert.deepEqual(r.sesion.iaFallo, { motivo: 'cancelaste la espera', peticion: 'hoy sin máquinas de pierna', diaPlan: null, reintentable: true });
+  assert.deepEqual(nota(r.sesion), { motivo: 'cancelaste la espera', peticion: 'hoy sin máquinas de pierna', diaPlan: null, reintentable: true });
   assert.equal(sesiones().length, 1);
 });
 
@@ -147,7 +150,7 @@ test('401: la nota lo dice en claro (sin texto crudo)', async () => {
 test('sin conexión y con una petición escrita: se guarda y se dice que no se pudo atender', async () => {
   ponerRed(false);
   const r = await ent.crearSesionHoy({ ...ci0, forzarIA: false, peticion: 'la prensa está ocupada' });
-  assert.deepEqual(r.sesion.iaFallo, { motivo: 'no había conexión', peticion: 'la prensa está ocupada', diaPlan: null, reintentable: true });
+  assert.deepEqual(nota(r.sesion), { motivo: 'no había conexión', peticion: 'la prensa está ocupada', diaPlan: null, reintentable: true });
   // Sin petición y sin IA no hay nota: no ha fallado nada.
   const r2 = await ent.crearSesionHoy({ ...ci0, forzarIA: false });
   assert.equal(r2.sesion.iaFallo, undefined);
@@ -197,7 +200,8 @@ test('la nota sobrevive a una copia (normalizador)', async () => {
   await ent.crearSesionHoy({ ...ci0, forzarIA: false, peticion: 'la prensa está ocupada' });
   const copia = est.exportar();
   const n = (await import(modulo('js/nucleo/normalizar.js'))).normalizarEstado(JSON.parse(copia)).estado;
-  assert.deepEqual(Object.values(n.sesiones)[0].iaFallo, { motivo: 'no había conexión', peticion: 'la prensa está ocupada', diaPlan: null, reintentable: true });
+  assert.equal(modelo.sesionTocada(Object.values(n.sesiones)[0]), false, 'cargar una copia no la da por tocada');
+  assert.deepEqual(nota(Object.values(n.sesiones)[0]), { motivo: 'no había conexión', peticion: 'la prensa está ocupada', diaPlan: null, reintentable: true });
 });
 
 // ── Plan de la semana ──
@@ -221,4 +225,58 @@ test('plan: si la semana cambia mientras se espera, la respuesta tardía se desc
   const r = await p;
   assert.equal(r.descartada, true);
   assert.equal(est.estado().plan.creado, antes);
+});
+
+// ── Revisión del PR 12 ──
+test('parser: líneas con \\r\\n y un último evento sin línea en blanco al cerrar', async () => {
+  red(enVivo(['data: {"t":"inicio"}\r', '\n\r\ndata: {"t":"progreso","fase":"escribiendo","ejercicios":1}\r\n\r\n', 'data: {"t":"fin","sesion":{"nombre":"x"}}']));
+  const vistos = [];
+  assert.deepEqual(await llamarEnVivo('entrenador', {}, { alProgreso: p => vistos.push(p.ejercicios) }), { sesion: { nombre: 'x' } });
+  assert.deepEqual(vistos, [1]);
+});
+
+test('sesionTocada: kilos, lo apuntado, comentario, ejercicio cambiado, serie de más o tareas hechas', async () => {
+  ponerRed(false);
+  const { sesion } = await ent.crearSesionHoy({ ...ci0, forzarIA: false, peticion: 'la prensa está ocupada' });
+  assert.equal(modelo.sesionTocada(sesion), false);
+  const cambios = [
+    s => { s.ejercicios[0].sets[0].kg = 42.5; },
+    s => { s.ejercicios[0].sets[0].valor = '10'; },
+    s => { s.ejercicios[0].comentario = 'me molesta'; },
+    s => { s.ejercicios[0].id = 'jalon-pecho'; },
+    s => { s.ejercicios[0].sets.push({ kg: null, valor: '', hecha: false }); s.ejercicios[0].series++; },
+    s => { s.calentamiento[0].hecho = true; },
+    s => { s.ejercicios[0].gusto = 'gusta'; },
+  ];
+  for (const f of cambios) { const c = structuredClone(sesion); f(c); assert.equal(modelo.sesionTocada(c), true, String(f)); }
+  // Sin huella (sesiones de antes): la heurística también lo ve.
+  const sin = structuredClone(sesion); delete sin.iaFallo.huella; sin.ejercicios[0].sets[0].valor = '8';
+  assert.equal(modelo.sesionTocada(sin), true);
+});
+
+test('«Reintentar con IA» no pisa una sesión en la que se apuntó algo mientras se esperaba', async () => {
+  ponerRed(false);
+  const a = await ent.crearSesionHoy({ ...ci0, forzarIA: false, peticion: 'algo de core' });
+  let soltar;
+  red(async () => { await new Promise(r => { soltar = r; }); return new Response(JSON.stringify({ sesion: BUENA }), { headers: { 'content-type': 'application/json' } }); });
+  const p = ent.crearSesionHoy({ ...ci0, peticion: 'algo de core' }, { reintento: a.sesion.id });
+  await new Promise(r => setTimeout(r, 5));
+  est.cambiar(S => { S.sesiones[a.sesion.id].ejercicios[0].sets[0].kg = 50; }, 'sesion'); // apunta kilos (sigue «pendiente»)
+  soltar();
+  const r = await p;
+  assert.equal(r.descartada, true);
+  assert.deepEqual(sesiones().map(s => [s.id, s.ejercicios[0].sets[0].kg]), [[a.sesion.id, 50]]);
+  // Y ya tocada, un reintento ni llama a la IA.
+  peticiones = [];
+  const r2 = await ent.crearSesionHoy({ ...ci0 }, { reintento: a.sesion.id });
+  assert.equal(r2.descartada, true);
+  assert.equal(peticiones.length, 0);
+});
+
+test('reorganizar la semana quita la nota de la IA (el reintento ya no la pisaría)', async () => {
+  red(json({ error: 'x' }, 529));
+  await ent.crearPlanSemana({ dias: [3, 5, 7], minutos: 60, lugares: ['gym'] });
+  assert.ok(est.estado().plan.iaFallo);
+  ent.reorganizar([4, 6]);
+  assert.equal(est.estado().plan.iaFallo, undefined);
 });

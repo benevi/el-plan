@@ -240,7 +240,8 @@ function iaFalloSesion(f) {
   if (!esObjeto(f)) return {};
   const motivo = texto(f.motivo, 300); if (!motivo) return {};
   const peticion = texto(f.peticion, 300);
-  return { iaFallo: { motivo, ...(peticion ? { peticion } : {}), diaPlan: numero(f.diaPlan, 1, 7, null, { entero: true }), reintentable: f.reintentable !== false } };
+  const huella = typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {};
+  return { iaFallo: { motivo, ...(peticion ? { peticion } : {}), diaPlan: numero(f.diaPlan, 1, 7, null, { entero: true }), reintentable: f.reintentable !== false, ...huella } };
 }
 function iaFalloPlan(f) {
   if (!esObjeto(f) || !esObjeto(f.semana)) return {};

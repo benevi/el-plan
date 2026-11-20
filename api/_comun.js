@@ -155,14 +155,21 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
   const cortar = quien => { if (!ctrl.signal.aborted) { cortadoPor = quien; ctrl.abort(); } };
   const alAbortar = () => cortar('movil');
   if (signal) { if (signal.aborted) cortar('movil'); else signal.addEventListener('abort', alAbortar, { once: true }); }
-  let vigia = null;
+  // El vigilante solo cuenta el silencio cuando Claude ya escribe: mientras razona (bloque «thinking» con el
+  // razonamiento omitido no manda nada y el SDK descarta los «ping») o antes del primer bloque de texto, no
+  // hay eventos que esperar; ahí corta el tope de la función (LIMITE_MS en entrenador.js).
+  let vigia = null, escribiendo = false;
   const vigilar = () => {
-    if (!inactividadMs) return;
     clearTimeout(vigia);
+    if (!inactividadMs || !escribiendo) return;
     vigia = setTimeout(() => cortar('inactividad'), inactividadMs);
     if (vigia.unref) vigia.unref(); // la petición abierta ya mantiene viva la función
   };
-  vigilar();
+  const alEventoDelStream = ev => {
+    if (ev && ev.type === 'content_block_start' && ev.content_block) escribiendo = ev.content_block.type !== 'thinking' && ev.content_block.type !== 'redacted_thinking';
+    else if (ev && ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') escribiendo = true;
+    vigilar();
+  };
   let msg;
   try {
     const stream = client.beta.messages.stream({
@@ -177,9 +184,8 @@ export async function pedirJSON(client, { sistema, usuario, esquema, esfuerzo = 
       messages: [{ role: 'user', content: usuario }],
     }, { signal: ctrl.signal });
     if (stream && typeof stream.on === 'function') {
-      stream.on('connect', vigilar);
       stream.on('streamEvent', ev => {
-        vigilar();
+        alEventoDelStream(ev);
         if (alEvento) { try { alEvento(ev); } catch (e) { /* el progreso nunca rompe la respuesta */ } }
       });
     }

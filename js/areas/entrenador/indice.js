@@ -5,7 +5,8 @@ import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, es, mmss } from '../../nucleo/ui.js';
 import { enLinea } from '../../nucleo/api.js';
-import { diaSemana, sesionDeHoy } from '../../nucleo/modelo.js';
+import { diaSemana, sesionDeHoy, sesionTocada } from '../../nucleo/modelo.js';
+import { info as cronometro } from '../sesion/temporizador.js';
 import { LUGARES, DIAS, DIAS_CORTOS, MUSCULOS, NIVELES } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/contexto.js';
@@ -143,16 +144,17 @@ const mismaPantalla = hash => location.hash === hash;
 // Prepara la sesión de hoy (con o sin IA) y lleva a ella. op.reintento: id de la sesión de la app a rehacer.
 async function prepararSesion(datos, op = {}) {
   const pv = previaCheckin(datos);
-  const usaIA = (pv.ia.usar || datos.forzarIA) && enLinea();
+  const usaIA = pv.ia.usar && enLinea(); // ya cuenta forzarIA, salvo con dolor ≥ 7 o salud (C-DOLOR-4)
   const hash = location.hash;
   const r = usaIA
     ? await conEspera('sesion', 'Tu entrenador está preparando la sesión', o => crearSesionHoy(datos, { ...o, ...op }))
     : await crearSesionHoy(datos, op);
   if (!r) return;
   if (r.alarma) { hojaAlarma(); return; }
-  if (r.pregunta) { ci = { ...datos }; hojaPregunta(r.pregunta); return; }
+  // Si antes hay que preguntar algo, el reintento sigue en ci: al contestar se sustituye la misma sesión.
+  if (r.pregunta) { ci = { ...datos, ...(op.reintento ? { reintento: op.reintento } : {}) }; hojaPregunta(r.pregunta); return; }
   if ($('.hoja.checkin')) cerrarHoja();
-  if (r.descartada) { aviso('Mientras tanto ya tenías otra sesión de hoy: la dejo como está.', 'info'); return; }
+  if (r.descartada) { aviso(op.reintento ? 'Ya has empezado a apuntar en esta sesión: la dejo como está.' : 'Mientras tanto ya tenías otra sesión de hoy: la dejo como está.', 'info'); return; }
   if (r.aviso) aviso(r.aviso, 'info'); else if (r.motivo) aviso(r.motivo, 'info');
   if (r.sesion && (mismaPantalla(hash) || !usaIA)) ir('sesion/' + r.sesion.id);
   else if (r.sesion) aviso('Tu sesión está lista en Hoy.', 'info');
@@ -163,7 +165,9 @@ const enlaceCodigo = motivo => /código de acceso/.test(motivo) ? ' <button clas
 export function notaFallo(s) {
   const f = s && s.iaFallo;
   if (!f) return '';
-  const tocada = s.ejercicios.some(x => x.sets.some(z => z.hecha));
+  // Nada de rehacerla si ya ha apuntado algo (kilos, series, comentarios, cambios) o tiene el cronómetro en marcha.
+  const crono = cronometro();
+  const tocada = sesionTocada(s) || !!(crono && crono.meta && crono.meta.sesion === s.id);
   const puede = s.estado === 'pendiente' && !tocada && f.reintentable !== false;
   return `<div class="nota aviso-nota nota-fallo" role="note">
     <p>La ha hecho la app porque ${h(f.motivo)}.${enlaceCodigo(f.motivo)}</p>
@@ -333,7 +337,7 @@ acciones({
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };
     if (datos.alarma) { crearConAlarma(); return; }
-    await prepararSesion(datos);
+    await prepararSesion(datos, datos.reintento ? { reintento: datos.reintento } : {});
   },
   'entrenador.cancelarIA': () => {
     if (!enCurso) return;

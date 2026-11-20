@@ -17,7 +17,7 @@
 //   }],
 //   estado: 'pendiente' | 'en_curso' | 'hecha', empezada, terminada,
 //   cierre: { esfuerzo 1-5, dolor: { zona: 0-10 }, comentario } | null,
-//   iaFallo?: { motivo, peticion?, diaPlan 1-7|null, reintentable }  // la hizo la app sin la IA (PR 12):
+//   iaFallo?: { motivo, peticion?, diaPlan 1-7|null, reintentable, huella }  (huella: huellaSesion al crearla)  // la hizo la app sin la IA (PR 12):
 //            motivo completa «La ha hecho la app porque…»; peticion = lo pedido en el check-in sin atender
 // }
 //
@@ -47,7 +47,7 @@ export function crearEjercicio(x) {
 }
 
 export function crearSesion(d) {
-  return {
+  const s = {
     id: uid(), fecha: d.fecha || hoyISO(), creada: new Date().toISOString(), fuente: d.fuente || 'reglas',
     nombre: String(d.nombre || 'Sesión').slice(0, 60), foco: String(d.foco || '').slice(0, 80), lugar: d.lugar || 'gym', minutos: +d.minutos || null,
     explicacion: (Array.isArray(d.explicacion) ? d.explicacion : d.explicacion ? [d.explicacion] : []).map(x => String(x).slice(0, 400)).filter(Boolean).slice(0, 8),
@@ -58,14 +58,34 @@ export function crearSesion(d) {
     estado: 'pendiente', empezada: null, terminada: null, cierre: null,
     // Opcional: el tipo de día que cambia lo que se comprueba (día suave del reparto, día de dolor alto).
     ...(TIPOS_SESION.includes(d.tipo) ? { tipo: d.tipo } : {}),
-    ...(d.iaFallo ? { iaFallo: iaFalloSesion(d.iaFallo) } : {}),
   };
+  const f = d.iaFallo ? iaFalloSesion(d.iaFallo) : undefined;
+  // La huella de cómo quedó al crearla: si luego cambia (kilos, series, comentarios…), ya no se rehace.
+  if (f) s.iaFallo = { ...f, huella: huellaSesion(s) };
+  return s;
+}
+// Huella de lo que la persona puede cambiar en una sesión: estado, tareas hechas y, por ejercicio, cuál es,
+// series, kilos, lo apuntado, gusto y comentario. Corta (djb2 en base 36); no lleva iaFallo.
+export function huellaSesion(s) {
+  const t = JSON.stringify([s.estado, (s.calentamiento || []).map(x => !!x.hecho), (s.vuelta || []).map(x => !!x.hecho), s.cierre || null,
+    (s.ejercicios || []).map(x => [x.id, x.rol, x.series, x.reps, x.descanso, x.kg, (x.sets || []).map(z => [z.kg, z.valor, !!z.hecha]), x.gusto || null, x.comentario || ''])]);
+  let n = 5381;
+  for (let i = 0; i < t.length; i++) n = ((n * 33) ^ t.charCodeAt(i)) >>> 0;
+  return n.toString(36);
+}
+// ¿Ha tocado la persona esta sesión desde que la hizo la app? (entonces «Reintentar con IA» ya no se ofrece).
+export function sesionTocada(s) {
+  if (!s || s.estado !== 'pendiente') return true;
+  if (s.iaFallo && s.iaFallo.huella) return huellaSesion(s) !== s.iaFallo.huella;
+  return (s.calentamiento || []).some(t => t.hecho) || (s.vuelta || []).some(t => t.hecho) ||
+    (s.ejercicios || []).some(x => x.comentario || x.gusto || x.sets.length !== x.series || x.sets.some(z => z.hecha || (z.valor != null && z.valor !== '') || z.kg !== x.kg));
 }
 // Forma de la nota «La ha hecho la app porque…» (la usan crearSesion y el normalizador de copias).
 export function iaFalloSesion(f) {
   if (!f || typeof f !== 'object' || typeof f.motivo !== 'string' || !f.motivo.trim()) return undefined;
   const ds = Number.isInteger(f.diaPlan) && f.diaPlan >= 1 && f.diaPlan <= 7 ? f.diaPlan : null;
-  return { motivo: f.motivo.slice(0, 300), ...(typeof f.peticion === 'string' && f.peticion.trim() ? { peticion: f.peticion.slice(0, 300) } : {}), diaPlan: ds, reintentable: f.reintentable !== false };
+  return { motivo: f.motivo.slice(0, 300), ...(typeof f.peticion === 'string' && f.peticion.trim() ? { peticion: f.peticion.slice(0, 300) } : {}), diaPlan: ds, reintentable: f.reintentable !== false,
+    ...(typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {}) };
 }
 export const TIPOS_SESION = ['suave', 'dolorAlto'];
 

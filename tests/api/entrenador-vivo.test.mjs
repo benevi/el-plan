@@ -4,7 +4,7 @@
 import { test, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Respuesta, peticion, mensaje, clienteSimulado, clienteEnVivo, espera, delta } from './_simulado.mjs';
-import handler, { ponerTiempos } from '../../api/entrenador.js';
+import handler, { ponerTiempos, contador } from '../../api/entrenador.js';
 import { ponerClienteIA, Anthropic } from '../../api/_comun.js';
 
 const cuerpoMinimo = { modo: 'sesion', catalogo: [{ id: 'remo', m: ['espalda'], l: ['gym'], niv: 1, t: 'reps' }], perfil: { notas: 'nada' } };
@@ -85,12 +85,52 @@ test('corte por inactividad, no por tiempo total: lo largo que sigue llegando no
 
 test('sin eventos de Claude en el tiempo de inactividad → error 504 y la llamada a Claude se aborta', async () => {
   ponerTiempos({ inactividad: 60 });
-  const cliente = clienteEnVivo(async emitir => { emitir({ type: 'message_start', message: {} }); await new Promise(() => {}); }, Anthropic.APIUserAbortError);
+  // Ya escribiendo, deja de mandar nada.
+  const cliente = clienteEnVivo(async emitir => { emitir({ type: 'message_start', message: {} }); emitir({ type: 'content_block_start', index: 0, content_block: { type: 'text' } }); emitir(delta('{"nombre"')); await new Promise(() => {}); }, Anthropic.APIUserAbortError);
   const res = await llamar(cliente);
   assert.deepEqual(res.eventos().at(-1), { t: 'error', status: 504, error: 'la IA ha dejado de responder' });
   assert.equal(cliente.llamadas[0].opciones.signal.aborted, true);
   assert.equal(res.writableEnded, true);
   assert.equal(registro()[0].resultado, 'inactividad');
+});
+
+// El razonamiento (bloque «thinking» con el razonamiento omitido) no manda eventos y el SDK descarta los ping:
+// ese silencio no es inactividad. A escala: «piensa 200 s» con el vigilante a 150 s → 200 ms con 50 ms.
+test('pensar 200 s sin eventos (a escala) no es inactividad: llega la respuesta', async () => {
+  ponerTiempos({ inactividad: 50, latido: 1000, limite: 5000 });
+  const cliente = clienteEnVivo(async emitir => {
+    emitir({ type: 'message_start', message: {} });
+    emitir({ type: 'content_block_start', index: 0, content_block: { type: 'thinking' } });
+    await espera(200);
+    emitir({ type: 'content_block_stop', index: 0 });
+    emitir({ type: 'content_block_start', index: 1, content_block: { type: 'text' } });
+    emitir(delta(JSON.stringify(sesionIA)));
+    return mensaje(sesionIA);
+  }, Anthropic.APIUserAbortError);
+  const res = await llamar(cliente);
+  assert.equal(res.eventos().at(-1).t, 'fin');
+  assert.equal(cliente.llamadas[0].opciones.signal.aborted, false);
+});
+test('antes del primer evento tampoco se arma (conectar y pensar): corta el tope de la función', async () => {
+  ponerTiempos({ inactividad: 30, latido: 1000, limite: 150 });
+  const cliente = clienteEnVivo(async () => { await new Promise(() => {}); }, Anthropic.APIUserAbortError);
+  const t0 = Date.now();
+  const res = await llamar(cliente);
+  assert.ok(Date.now() - t0 >= 140, 'no lo corta el vigilante de 30 ms');
+  assert.deepEqual(res.eventos().at(-1), { t: 'error', status: 504, error: 'la IA ha dejado de responder' });
+});
+test('el contador de progreso es lineal y no se pierde lo partido entre trozos', () => {
+  const ej = '{"id":"remo","rol":"principal","series":3},';
+  const texto = '{"ejercicios":[' + ej.repeat(1500) + ']}'; // ~66 000 caracteres
+  let ultimo = null;
+  const c = contador('sesion', p => { ultimo = p; });
+  const t0 = Date.now();
+  for (const ch of texto) c({ type: 'content_block_delta', delta: { type: 'text_delta', text: ch } });
+  assert.equal(ultimo.ejercicios, 1500);
+  assert.ok(Date.now() - t0 < 1500, `tardó ${Date.now() - t0} ms`);
+  const p = contador('plan', x => { ultimo = x; });
+  for (const t of ['{"dias":[{"dia', 'Semana" :3},{"diaSemana":5}]}']) p({ type: 'content_block_delta', delta: { type: 'text_delta', text: t } });
+  assert.equal(ultimo.dias, 2);
 });
 
 test('latidos mientras la IA piensa', async () => {

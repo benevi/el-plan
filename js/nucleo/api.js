@@ -95,24 +95,37 @@ export async function llamarEnVivo(nombre, cuerpo, { signal, alProgreso = () => 
     }
     const lector = r.body.getReader();
     const dec = new TextDecoder();
-    let resto = '';
+    let resto = '', cr = ''; // cr: un «\r» al final de un trozo, por si el «\n» llega en el siguiente
+    const normal = t => { t = cr + t; cr = ''; if (t.endsWith('\r')) { cr = '\r'; t = t.slice(0, -1); } return t.replace(/\r\n?/g, '\n'); };
+    // Un evento SSE: líneas «data:» hasta una línea en blanco. Devuelve el resultado si es «fin».
+    const evento = bloque => {
+      const datos = bloque.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('');
+      if (!datos) return null;
+      let ev; try { ev = JSON.parse(datos); } catch (e) { return null; }
+      if (!ev || typeof ev !== 'object') return null;
+      if (ev.t === 'progreso') { try { alProgreso(ev); } catch (e) { /* la pantalla nunca rompe la llamada */ } }
+      if (ev.t === 'error') throw errorDeRespuesta(Number.isInteger(ev.status) ? ev.status : 502, ev);
+      if (ev.t === 'fin') { delete ev.t; return ev; }
+      return null;
+    };
     for (;;) {
       let trozo;
       try { trozo = await lector.read(); } catch (e) { throw errorDeCorte() || new ErrorApi('conexión cortada', { tipo: 'corte' }); }
       if (errorDeCorte()) throw errorDeCorte();
-      if (trozo.done) break;
+      if (trozo.done) {
+        // Último evento sin línea en blanco detrás: también vale.
+        const ultimo = resto + normal(dec.decode()) + (cr ? '\n' : '');
+        const fin = evento(ultimo.trim());
+        if (fin) return fin;
+        break;
+      }
       vigilar();
-      resto += dec.decode(trozo.value, { stream: true });
+      resto += normal(dec.decode(trozo.value, { stream: true }));
       let i;
       while ((i = resto.indexOf('\n\n')) >= 0) {
         const bloque = resto.slice(0, i); resto = resto.slice(i + 2);
-        const datos = bloque.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('');
-        if (!datos) continue;
-        let ev; try { ev = JSON.parse(datos); } catch (e) { continue; }
-        if (!ev || typeof ev !== 'object') continue;
-        if (ev.t === 'progreso') { try { alProgreso(ev); } catch (e) { /* la pantalla nunca rompe la llamada */ } }
-        if (ev.t === 'error') throw errorDeRespuesta(Number.isInteger(ev.status) ? ev.status : 502, ev);
-        if (ev.t === 'fin') { delete ev.t; lector.cancel().catch(() => {}); return ev; }
+        const fin = evento(bloque);
+        if (fin) { lector.cancel().catch(() => {}); return fin; }
       }
     }
     throw errorDeCorte() || new ErrorApi('la respuesta se cortó', { tipo: 'corte' });

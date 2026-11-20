@@ -6,7 +6,7 @@
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamarEnVivo, enLinea, textoError } from '../../nucleo/api.js';
-import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
+import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
@@ -134,6 +134,10 @@ export async function crearSesionHoy(ci, op = {}) {
   const decide = motivoIA(S, ci, dia);
   let datos = local.datos, aviso = '', fallo = '';
   const inicio = new Date().toISOString();
+  // Reintento: solo si la sesión de la app sigue sin tocar; si cambia mientras se espera, no se pisa.
+  const viejaAntes = op.reintento ? S.sesiones[op.reintento] : null;
+  if (op.reintento && sesionTocada(viejaAntes)) return { sesion: viejaAntes || null, descartada: true, aviso: '', motivo: '' };
+  const huellaAntes = viejaAntes ? huellaSesion(viejaAntes) : '';
   const peticion = recortarIA(ci.peticion, 300).trim();
   if (decide.usar) {
     try {
@@ -180,7 +184,7 @@ export async function crearSesionHoy(ci, op = {}) {
   // Nada pisa una sesión de hoy que se haya creado, empezado o terminado mientras se esperaba.
   const otra = Object.values(S1.sesiones).find(x => x.fecha === hoyISO() && x.id !== op.reintento && ((x.creada || '') > inicio || (x.empezada || '') > inicio || (x.terminada || '') > inicio));
   const vieja = op.reintento ? S1.sesiones[op.reintento] : null;
-  if (otra || (op.reintento && (!vieja || vieja.estado !== 'pendiente'))) return { sesion: otra || vieja || null, descartada: true, aviso: '', motivo: '' };
+  if (otra || (op.reintento && (!vieja || vieja.estado !== 'pendiente' || huellaSesion(vieja) !== huellaAntes))) return { sesion: otra || vieja || null, descartada: true, aviso: '', motivo: '' };
   // Reintento que vuelve a fallar: se queda la sesión de la app que ya había, con el motivo nuevo.
   if (vieja && fallo) {
     cambiar(S2 => { const v = S2.sesiones[vieja.id]; if (v) v.iaFallo = { ...(v.iaFallo || {}), ...iaFallo, peticion: (v.iaFallo || {}).peticion || iaFallo.peticion }; }, 'sesion');

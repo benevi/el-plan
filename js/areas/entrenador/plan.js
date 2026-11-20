@@ -420,6 +420,7 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
     const pl = S2.plan;
     pl.dias = [...hechos.map(d => p.dias.find(x => x.diaSemana === d.diaSemana) || d), ...nuevos.map(({ estado: _e, sesion: _s, ...d }) => d)].sort((a, b) => a.diaSemana - b.diaSemana);
     pl.cambios = [...(pl.cambios || []), { fecha: new Date().toISOString(), texto: nota }];
+    delete pl.iaFallo; // reorganizada a mano: «Reintentar con IA» ya no la pisaría (PR 12)
   }, 'plan');
   return nota;
 }
