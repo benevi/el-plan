@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-18dadb4be5de';
+const VERSION = 'pipos-app-379aaabe0e85';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-9uNAhz3kZQ9uJPYO7IS2ZyOIPGu/u3bbx9KIVMi2Zj8=',
+  './': 'sha256-ZR9u0doQYmThckBehtx13ToVuwC9xu+vwz7zhlfCl1o=',
   './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
   './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
   './css/componentes.css': 'sha256-qcAHPb9HeaqPt++g/W85R/j7MGEaJSCdwQE1kHdbsFw=',
@@ -28,8 +28,8 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
   './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
   './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
-  './index.html': 'sha256-9uNAhz3kZQ9uJPYO7IS2ZyOIPGu/u3bbx9KIVMi2Zj8=',
-  './js/arranque.js': 'sha256-Y+wo7mgETmoZVY2B5y4EaVCBSAzq3DMYSTkwpiIuEJY=',
+  './index.html': 'sha256-ZR9u0doQYmThckBehtx13ToVuwC9xu+vwz7zhlfCl1o=',
+  './js/arranque.js': 'sha256-FY4jDwXB/NYydVPPBDDohoLfSKNFw2RNc2B1oG8JFio=',
   './js/areas/ejercicios/indice.js': 'sha256-uTRWT8hDPOXYUn9+fRLQ+mOqc5g4vgFLbww55sdtmiI=',
   './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
   './js/areas/entrenador/dia.js': 'sha256-YfkZAhTpuP3GcKDdwMoJjXIDM04XOIoCMpAP14bNMQQ=',
@@ -188,6 +188,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (url.searchParams.has('comprobar-red')) return; // js/arranque.js mira si la red sirve de verdad
   if (req.mode === 'navigate') {
     if (esRutaDeApp(url.pathname)) e.respondWith(desdeCache('./index.html', req));
     return; // otra página del sitio: directa a la red, sin tocar la caché

@@ -2,8 +2,9 @@
 // 1) Aviso de red: la sesión ya creada funciona sin conexión; crear una nueva usa las reglas.
 // 2) Vigilante de arranque: si main.js no marca el arranque (<html data-arrancado> y el evento
 //    «pipos:arrancado») en unos segundos, o un módulo no llega, en vez de dejar la pantalla en blanco:
-//    - con red y un service worker que controla la página, una sola vez por pestaña (marca en
-//      sessionStorage): borra las cachés pipos-app-*, da de baja el service worker y recarga desde la red;
+//    - con un service worker que controla la página y una red que de verdad sirve la app (se comprueba
+//      pidiendo index.html, máx. 4,5 s), una sola vez por pestaña (marca en sessionStorage): borra las
+//      cachés pipos-app-*, da de baja el service worker y recarga desde la red;
 //    - si no, «No se pudo actualizar: conéctate y vuelve a abrir» con «Volver a intentar» (que activa
 //      la versión que esté esperando, si la hay).
 //    Si la página aún no la controla un service worker de esta app (primera instalación o paso desde
@@ -12,6 +13,7 @@
   'use strict';
   var ESPERA = 6000;
   var ESPERA_LARGA = 20000;
+  var ESPERA_RED = 4500;
   var MARCA_RESCATE = 'pipos-rescate';
 
   function red() {
@@ -99,12 +101,28 @@
     Promise.all([borrar, baja]).catch(function () {}).then(function () { location.reload(); });
   }
 
+  // ¿La red sirve de verdad? navigator.onLine miente a menudo (wifi del gimnasio sin salida). Pide
+  // index.html saltándose el service worker (?comprobar-red, ver sw.js) y sin caché, con límite de tiempo.
+  function redDeVerdad() {
+    if (typeof fetch === 'undefined') return Promise.resolve(false);
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var limite = new Promise(function (res) { setTimeout(function () { if (ctl) ctl.abort(); res(false); }, ESPERA_RED); });
+    var pedida = fetch('./index.html?comprobar-red=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.status === 200 ? r.text() : ''; })
+      .then(function (t) { return t.indexOf('<meta name="pipos-version"') !== -1; })
+      .catch(function () { return false; });
+    return Promise.race([pedida, limite]);
+  }
+
   function fallo() {
     if (decidido || arrancado()) return;
     decidido = true;
     clearTimeout(tLargo);
-    if (sw && sw.controller && navigator.onLine !== false && typeof caches !== 'undefined' && !marca()) { rescatar(); return; }
-    pintar('No se pudo actualizar: conéctate y vuelve a abrir.', true);
+    var error = function () { pintar('No se pudo actualizar: conéctate y vuelve a abrir.', true); };
+    if (!(sw && sw.controller && navigator.onLine !== false && typeof caches !== 'undefined' && !marca())) { error(); return; }
+    // Solo se tira la caché si la red sirve la app: si no, se quedaría sin app y sin conexión.
+    pintar('Comprobando la conexión…', false);
+    redDeVerdad().then(function (ok) { if (arrancado()) return; if (ok) rescatar(); else error(); });
   }
 
   // Pasó el plazo corto: error, salvo que la app todavía se esté instalando por primera vez.

@@ -230,6 +230,67 @@ test('caché estropeada: con red, el vigilante la tira y recarga desde la red; s
   await context.setOffline(false);
 });
 
+test('«red que miente» (onLine sin respuesta) y la app no arranca por otra causa: no tira la caché', async ({ page, context }) => {
+  // rev-pr5/liefi.mjs: antes el rescate borraba cachés y SW y la app pasaba a ser la página de error.
+  await instalar(page);
+  // Un fallo de arranque que no es de la caché (como un error de JS con ciertos datos), a voluntad.
+  await context.addInitScript(() => {
+    if (!localStorage.getItem('romper-arranque')) return;
+    const o = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (n, v) { if (n === 'data-arrancado') throw new Error('fallo simulado'); return o.call(this, n, v); };
+  });
+  const antes = await page.evaluate(async () => ({ caches: await caches.keys(), regs: (await navigator.serviceWorker.getRegistrations()).length }));
+  await page.evaluate(() => localStorage.setItem('romper-arranque', '1'));
+  srv.control.retrasar = { '/': 120000 }; // el servidor no contesta
+  await page.reload();
+  await expect(page.locator('#fallo-arranque')).toContainText('No se pudo actualizar', { timeout: 15000 });
+  expect(await page.evaluate(async () => ({ caches: await caches.keys(), regs: (await navigator.serviceWorker.getRegistrations()).length }))).toEqual(antes);
+  expect(await page.evaluate(() => !!localStorage.getItem('pipos4'))).toBe(true);
+  // La app sigue ahí sin conexión.
+  srv.control.retrasar = {};
+  await page.evaluate(() => localStorage.removeItem('romper-arranque'));
+  await context.setOffline(true);
+  await page.reload();
+  await appEntera(page, 'A');
+  await context.setOffline(false);
+});
+
+test('Outfit 400, 500 y 600 se cargan y se usan donde el CSS los pide', async ({ page }) => {
+  await instalar(page);
+  const pesos = async () => page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts].filter(f => f.family.replace(/"/g, '') === 'Outfit' && f.status === 'loaded').map(f => f.weight).sort();
+  });
+  // Hoy y Perfil pintan texto normal (400), etiquetas (500/600) y botones (600) en Outfit.
+  await page.click('#nav a[href="#perfil"]');
+  await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+  await page.click('#nav a[href="#hoy"]');
+  await expect.poll(pesos).toEqual(['400', '500', '600']);
+  // Y cada peso dibuja distinto (si 600 no cargara, se sintetizaría desde 500 y mediría lo mismo).
+  // 700 sí mide como 600: no hay Outfit 700 (tampoco lo había con Google) y se sintetiza desde 600.
+  const anchos = await page.evaluate(() => [400, 500, 600].map(w => {
+    const s = document.createElement('span');
+    s.textContent = 'Pipos Fitness ñáé 0123456789';
+    s.style.font = `${w} 40px Outfit`;
+    s.style.position = 'absolute';
+    s.style.whiteSpace = 'nowrap';
+    document.body.append(s);
+    const x = s.getBoundingClientRect().width;
+    s.remove();
+    return x;
+  }));
+  expect(new Set(anchos).size).toBe(3);
+  // Los pesos de Outfit que pide el CSS en Hoy y en Perfil → Ajustes: 400 y 600 al menos, y todos cargados.
+  const usados = () => page.evaluate(() => [...new Set([...document.querySelectorAll('body *')].map(e => getComputedStyle(e))
+    .filter(c => c.fontFamily.startsWith('Outfit') && +c.fontWeight <= 600).map(c => c.fontWeight))]);
+  const pedidos = new Set(await usados());
+  await page.click('#nav a[href="#perfil"]');
+  await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+  for (const w of await usados()) pedidos.add(w);
+  expect([...pedidos]).toEqual(expect.arrayContaining(['400', '600']));
+  for (const w of pedidos) expect(await page.evaluate(w => document.fonts.check(`${w} 16px Outfit`), w)).toBe(true);
+});
+
 test('al volver a primer plano avisa de la versión nueva; con una sesión en curso, no', async ({ page, browser }) => {
   await instalar(page);
   srv.control.raiz = vB;
