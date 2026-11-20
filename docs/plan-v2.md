@@ -287,6 +287,7 @@ Cuatro entregas en cadena, cada una con tu OK antes de pasar a la siguiente: DIS
   - PNG comprimidos por debajo de 50 KB.
   - Se quita `generador.js` de `APP`.
   - Versión visible en Perfil.
+  - `crossorigin="use-credentials"` en el `<link rel="manifest">`, para que la instalación funcione en las vistas previas protegidas de Vercel (visto al probar el PR 2: el manifiesto se redirige al inicio de sesión de Vercel y se bloquea).
 - **Se acepta si:** pasan las pruebas de Playwright de versiones mezcladas, modo avión, actualización y paso desde la app de `main` (de `t2.js`/`t3.js` de la auditoría), es decir, T5.
 - **Quién:** Operator implementa; Skeptic revisa.
 - **Depende de:** PR 1. Puede ir en paralelo a los PR 3 y 4.
