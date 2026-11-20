@@ -4,8 +4,9 @@ App privada de entrenamiento de Víctor y Virginia. Cada uno usa su móvil y ve 
 PWA sin paso de compilación (HTML + módulos JS + CSS), alojada en Vercel. La IA va en funciones del servidor (`/api`), la clave nunca sale de Vercel.
 
 ## Variables en Vercel (Production y Preview)
+Las dos son **obligatorias** y hay que darlas de alta en **Production y en Preview** (en Preview también, o las vistas previas no tendrán IA).
 - `ANTHROPIC_API_KEY`: clave de la API de Claude.
-- `APP_CODE`: código de acceso; se escribe en la app en **Perfil → Ajustes del móvil**.
+- `APP_CODE`: código de acceso; se escribe en la app en **Perfil → Ajustes del móvil**. Sin ella el servidor falla cerrado: `/api/*` responde 500 («el servidor no está configurado») a todo el mundo y la app sigue con las reglas, sin IA. Con ella, un código distinto en el móvil da 401.
 
 ## Mapa por áreas
 
