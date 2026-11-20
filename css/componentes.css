@@ -91,6 +91,9 @@ body.con-hoja { overflow: hidden; }
 .aviso.ver { opacity: 1; transform: translate(-50%, 0); }
 .aviso.error { background: color-mix(in srgb, var(--bad) 30%, var(--surface-3)); }
 .aviso.info { background: color-mix(in srgb, var(--warn) 20%, var(--surface-3)); }
+.aviso.fijo { pointer-events: auto; width: auto; }
+.aviso.fijo p { margin: 0 0 8px; }
+.aviso.fijo .btn { margin-top: 2px; }
 body.con-temporizador .aviso { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 100px); }
 body.sin-nav .aviso { bottom: calc(env(safe-area-inset-bottom) + 16px); }
 body.sin-nav.con-temporizador .aviso { bottom: calc(env(safe-area-inset-bottom) + 100px); }
