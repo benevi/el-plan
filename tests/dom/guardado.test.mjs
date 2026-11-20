@@ -2,13 +2,14 @@
 // Arreglado en el PR 3 (rescate, revisión entre pestañas y aviso persistente).
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { estadoBase, sesionDemo } from '../ayuda/comun.mjs';
+import { estadoBase, sesionDemo, modulo } from '../ayuda/comun.mjs';
 import { montar } from '../ayuda/dom.mjs';
 
 const bueno = JSON.stringify(estadoBase({ sesiones: { s1: sesionDemo('s1', { estado: 'hecha' }) } }));
 const roto = bueno.slice(0, -20); // datos reales con el JSON cortado
 const a = await montar({ ls: { pipos4: roto } });
 after(() => a.cerrar());
+const ui = await import(modulo('js/nucleo/ui.js')); // el mismo módulo que usa la app
 
 // Vuelve a un estado bueno conocido (para las pruebas que no van de JSON roto).
 async function reiniciar(datos) {
@@ -35,6 +36,7 @@ test('la pantalla de rescate ofrece cargar copia y empezar de cero, sin pestaña
   assert.ok(a.doc.querySelector('[data-act="perfil.importar"]'), 'falta «Cargar copia»');
   assert.ok(a.doc.querySelector('[data-act="rescate.descartar"]'), 'falta «Empezar de cero»');
   assert.equal(a.doc.querySelector('[data-act="rescate.espejo"]'), null, 'sin espejo no se ofrece recuperarlo');
+  assert.ok(a.doc.querySelector('[data-act="rescate.descargarRoto"]'), 'falta «Descargar los datos ilegibles»');
   assert.ok(a.doc.body.classList.contains('sin-nav'));
   await a.ir('perfil');
   assert.equal(a.doc.title, 'Rescatar datos · Pipos Fitness', 'no se puede salir del rescate navegando');
@@ -122,5 +124,6 @@ test('al volver a poder guardar, el siguiente cambio se guarda y el aviso persis
   a.clic('[data-act="sesion.serie"][data-e="0"][data-s="1"]');
   await a.esperar(() => a.guardado().sesiones.s1.ejercicios[0].sets[1].hecha, { que: 'el reintento' });
   assert.equal(a.guardado().sesiones.s1.ejercicios[0].sets[0].hecha, true, 'se guarda también lo que falló antes');
-  assert.ok(!a.doc.querySelector('#aviso.fijo'), 'el aviso persistente sigue ahí');
+  // El aviso breve «Ya se guarda de nuevo» tapa el fijo unos segundos: hay que mirar si el fijo sigue activo.
+  assert.equal(ui.hayAvisoFijo(), false, 'el aviso persistente sigue activo y volvería a salir');
 });

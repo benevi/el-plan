@@ -15,6 +15,12 @@ async function ajustes() {
   await a.tic();
 }
 
+test('sin navigator.storage (jsdom no lo tiene) la app arranca igual', () => {
+  assert.equal(a.w.navigator.storage, undefined);
+  assert.ok(a.doc.querySelector('#nav a'));
+  assert.deepEqual(a.errores, []);
+});
+
 test('Perfil → Ajustes muestra lo que ocupan los datos y que aún no hay copia', async () => {
   await ajustes();
   assert.match(a.doc.querySelector('.uso-almacen').textContent, /ocupan [\d,.]+ (B|KB|MB), (menos del 1 %|\d+ %) de unos 5 MB/);
