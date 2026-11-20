@@ -14,7 +14,7 @@ import { LUGARES, DIAS } from '../../datos/constantes.js';
 import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
-import { validarSesion } from './validar.js';
+import { validarSesion, esUltimoRecurso } from './validar.js';
 import { alarmaPendiente, preguntaAlarma, T2 } from './alarma.js';
 import { etiquetasSalud } from './salud.js';
 
@@ -116,7 +116,8 @@ export async function crearSesionHoy(ci) {
           const ex0 = d.sesion.explicacion || [];
           datos = {
             ...d.sesion, fuente: 'ia', lugar: ci.lugar, minutos, checkin: local.datos.checkin,
-            explicacion: [...ex0.slice(0, 1), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...d.cambios.map(c => 'Ajustado por la app: ' + c), ...ex0.slice(1)].slice(0, 8),
+            // El último recurso de tiempo va arriba: explica por qué hay menos de 3 principales (C-TIEMPO-2).
+            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...d.cambios.map(c => 'Ajustado por la app: ' + c), ...ex0.slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
           };
         }
       }

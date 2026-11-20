@@ -13,7 +13,7 @@ import { nivelesZona, ex, riesgo } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion } from './dia.js';
 import { diaDolorAlto } from './dolor-alto.js';
-import { validarSesion } from './validar.js';
+import { validarSesion, esUltimoRecurso } from './validar.js';
 import { avisosConsulta, T8 } from './alarma.js';
 import { restriccionesSalud } from './salud.js';
 import { planDeLaSemana, diaElegido } from './plan.js';
@@ -155,7 +155,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   const datos = {
     ...v.sesion, fuente: base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',
     lugar: ci.lugar, minutos,
-    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1)].slice(0, 8),
+    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(v.sesion.explicacion || []).slice(1).filter(esUltimoRecurso), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
     checkin,
   };
   return { datos, cambios: todos };
