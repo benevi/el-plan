@@ -1,0 +1,220 @@
+/* Dirección «Tiza» · la pizarra del gimnasio.
+   Verde pizarra mate, tiza blanca para el texto y una tiza de color por persona. Lo expresivo es el trazo:
+   palotes de constancia, subrayados hechos a mano y el tachón que cierra la semana o la sesión. */
+@font-face { font-family: 'Bricolage Grotesque'; src: url('fuentes/bricolage-grotesque.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible Next'; src: url('fuentes/atkinson-hyperlegible-next.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+
+:root {
+  /* Superficies */
+  --fondo: #1A221E;        /* pizarra */
+  --sup: #222B26;          /* panel (L1) */
+  --sup-2: #2D3832;        /* control y capa (L2) */
+  /* Texto: tiza */
+  --texto: #EEEDE6;
+  --texto-2: #C3C8C0;
+  --texto-3: #9DA79E;
+  --borde: #33403A;        /* línea fina decorativa entre filas */
+  --borde-control: #74847A;/* borde de controles: ≥ 3:1 */
+  --ok: #A8DCA8;
+  /* Persona (se cambia con data-persona) */
+  --acento: #8CC8F2;       /* Víctor: tiza azul */
+  --sobre-acento: #1A221E;
+  /* Tipografía */
+  --f-titulo: 'Bricolage Grotesque', system-ui, sans-serif;
+  --f-texto: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  /* Movimiento */
+  --t-1: 100ms; --t-2: 200ms; --t-3: 300ms;
+  --sale: cubic-bezier(.16, 1, .3, 1);
+  --entra: cubic-bezier(.7, 0, .84, 0);
+  --nav: 64px;
+}
+[data-persona="virginia"] { --acento: #F2D04E; } /* Virginia: tiza amarilla */
+
+body { font: 400 16px/1.55 var(--f-texto); padding-bottom: calc(var(--nav) + 96px + env(safe-area-inset-bottom)); }
+body.sin-nav { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+main { max-width: 560px; margin: 0 auto; padding: 0 16px; outline: none; }
+
+/* ---- piezas comunes ---- */
+.cab { padding: 16px 0 8px; }
+.cab img { display: block; height: 28px; width: auto; }
+.titulo { position: relative; display: inline-block; font: 600 36px/1.15 var(--f-titulo); letter-spacing: -.01em; margin-top: 4px; padding-bottom: 10px; }
+.subrayado { position: absolute; left: 0; bottom: 0; width: min(100%, 220px); height: 12px; fill: none; stroke: var(--acento); stroke-width: 3.5; stroke-linecap: round; transform-origin: left center; }
+.panel { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(238, 237, 230, .05); }
+.sec { font: 600 20px/1.2 var(--f-titulo); margin: 28px 0 10px; }
+.pie { color: var(--texto-2); font-size: 14px; line-height: 1.5; }
+
+.boton-principal {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 56px; padding: 0 20px;
+  border-radius: 14px; background: var(--acento); color: var(--sobre-acento); font: 600 18px/1 var(--f-titulo);
+  transition: transform var(--t-1) var(--sale);
+}
+.boton-principal:active { transform: scale(.98); }
+
+/* ---- pestañas ---- */
+.pestanas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; height: calc(var(--nav) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom); background: var(--fondo); border-top: 1px solid var(--borde);
+}
+body.sin-nav .pestanas { display: none; }
+.pestanas a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--texto-3); font-size: 12px; font-weight: 500; }
+.pestanas svg { width: 24px; height: 24px; }
+.pestanas a[aria-current] { color: var(--texto); }
+.pestanas a[aria-current] svg { color: var(--acento); }
+.pestanas a[aria-current] span { text-decoration: underline 2px var(--acento); text-underline-offset: 4px; }
+
+/* ---- Hoy ---- */
+.fecha { color: var(--texto-2); font-size: 14px; margin-top: 8px; }
+.meta { color: var(--texto-2); margin-top: 6px; }
+.semana { margin-top: 20px; padding: 12px 8px 14px; }
+.dias { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.dia { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dia-letra { font-size: 12px; color: var(--texto-3); }
+.dia-num { font: 600 16px/1.2 var(--f-titulo); }
+.dia svg { width: 12px; height: 36px; fill: none; stroke-width: 4; stroke-linecap: round; margin-top: 4px; }
+.d-hecho svg { stroke: var(--acento); }
+.m-hoy { stroke: var(--texto); }
+.d-hoy .dia-num { color: var(--sobre-acento); background: var(--acento); border-radius: 8px; padding: 0 6px; }
+.m-plan { stroke: var(--texto-3); stroke-dasharray: 4 5; }
+.punto { width: 6px; height: 6px; border-radius: 50%; background: var(--borde-control); margin: 19px 0 15px; }
+.semana-pie { margin-top: 10px; text-align: center; color: var(--texto-2); font-size: 14px; }
+.semana-pie b { color: var(--texto); font-weight: 600; }
+.porque { margin-top: 24px; }
+.porque h2 { font: 600 16px/1.3 var(--f-titulo); color: var(--texto-2); }
+.porque p { margin-top: 4px; max-width: 34em; }
+.partes { list-style: none; margin: 20px 0 0; padding: 0 16px; }
+.partes li { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.partes li + li { border-top: 1px dashed var(--borde-control); }
+.partes div { flex: 1; display: flex; flex-direction: column; }
+.partes b { font-weight: 600; }
+.partes div span { color: var(--texto-2); font-size: 14px; }
+.min { font: 600 18px/1 var(--f-titulo); }
+.accion { position: fixed; left: 0; right: 0; bottom: calc(var(--nav) + env(safe-area-inset-bottom)); z-index: 25; padding: 12px 16px; background: linear-gradient(to top, var(--fondo) 70%, transparent); }
+.accion .boton-principal { max-width: 528px; margin: 0 auto; }
+
+/* ---- Sesión ---- */
+.barra-sesion { display: flex; align-items: center; gap: 8px; min-height: 56px; margin: 0 -8px; color: var(--texto-2); font-size: 14px; }
+.barra-sesion > span { flex: 1; text-align: center; }
+.volver, .terminar { display: grid; place-items: center; min-width: 48px; min-height: 48px; border-radius: 12px; }
+.volver svg { width: 24px; height: 24px; fill: none; stroke: var(--texto); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.terminar { padding: 0 14px; border: 1px solid var(--borde-control); color: var(--texto); font-weight: 500; }
+.ejercicio { font: 600 28px/1.15 var(--f-titulo); letter-spacing: -.01em; }
+.objetivo { margin-top: 6px; }
+.ultima { color: var(--texto-2); font-size: 14px; }
+.series { list-style: none; margin: 14px 0 0; padding: 0; overflow: hidden; }
+.serie { display: grid; grid-template-columns: 32px 1fr 1fr auto; align-items: center; gap: 8px; min-height: 52px; padding: 0 14px; }
+.serie + .serie { border-top: 1px solid var(--borde); }
+.serie-n { font: 600 16px/1 var(--f-titulo); color: var(--texto-3); }
+.serie.hecha { color: var(--texto-2); }
+.serie-estado { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--texto-3); }
+.serie.hecha .serie-estado { color: var(--ok); }
+.serie-estado svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.serie.pendiente { color: var(--texto-3); }
+.serie.actual { display: block; padding: 12px 14px 14px; background: var(--sup-2); border-left: 4px solid var(--acento); }
+.serie-cab { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.serie-cab .serie-n { color: var(--acento); }
+.selectores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 12px; }
+.selector { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "v v" "m p"; border: 1px solid var(--borde-control); border-radius: 12px; overflow: hidden; }
+.selector button { min-height: 48px; font: 400 26px/1 var(--f-texto); color: var(--texto); border-top: 1px solid var(--borde-control); }
+.selector button:first-of-type { grid-area: m; border-right: 1px solid var(--borde-control); }
+.selector button:last-of-type { grid-area: p; }
+.selector button:active { background: var(--sup); }
+.selector output { grid-area: v; text-align: center; display: flex; align-items: baseline; justify-content: center; gap: 4px; padding: 10px 0 8px; line-height: 1; }
+.selector output b { font: 600 32px/1 var(--f-titulo); font-variant-numeric: tabular-nums; }
+.selector output small { font-size: 14px; color: var(--texto-2); }
+.todo-hecho { margin: 16px 0 10px; }
+.tecnica { margin-top: 16px; border-top: 1px dashed var(--borde-control); }
+.tecnica summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 600; list-style: none; }
+.tecnica summary::after { content: '+'; margin-left: auto; font-size: 22px; color: var(--texto-2); }
+.tecnica[open] summary::after { content: '−'; }
+.tecnica p { color: var(--texto-2); padding-bottom: 8px; }
+.siguiente { color: var(--texto-3); font-size: 14px; margin-top: 8px; }
+
+/* Descanso: abajo, al alcance del pulgar; nunca tapa la serie (el cuerpo reserva su alto) */
+.descanso {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 0 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--sup-2); border-top: 1px solid var(--borde-control);
+}
+.descanso-linea { height: 4px; margin: 0 -16px; background: var(--borde); }
+.descanso-linea span { display: block; height: 100%; background: var(--acento); transform-origin: left; transform: scaleX(var(--p, 1)); transition: transform 1000ms linear; }
+.descanso-fila { display: flex; align-items: center; gap: 8px; max-width: 528px; margin: 0 auto; padding-top: 10px; }
+.descanso-txt { flex: 1; display: flex; flex-direction: column; }
+.descanso-et, .descanso-fin { font-size: 14px; color: var(--texto-2); }
+.descanso-fin { display: none; }
+.descanso b { font: 600 48px/1 var(--f-titulo); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.descanso button { min-height: 52px; min-width: 64px; padding: 0 14px; border: 1px solid var(--borde-control); border-radius: 12px; font-weight: 500; }
+/* Alarma: el fondo pasa a la tiza de la persona y parpadea tres veces; el texto no cambia de contraste */
+.descanso.alarma { background: var(--acento); color: var(--sobre-acento); border-color: var(--acento); animation: tiza-alarma 300ms var(--sale) 3 alternate; }
+.descanso.alarma .descanso-et { display: none; }
+.descanso.alarma .descanso-fin { display: block; color: var(--sobre-acento); font-weight: 600; }
+.descanso.alarma button { border-color: var(--sobre-acento); }
+.descanso.alarma .descanso-linea span { background: var(--sobre-acento); }
+@keyframes tiza-alarma { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+
+/* ---- Progreso ---- */
+.semanas { list-style: none; margin: 0; padding: 14px 10px 4px; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 14px; }
+.semanas li { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; color: var(--texto-3); }
+.palotes { fill: none; stroke-linecap: round; overflow: visible; }
+.p-hecha { stroke: var(--texto); stroke-width: 4; }
+.p-prevista { stroke: var(--texto-3); stroke-width: 2.5; stroke-dasharray: 3 5; }
+.p-tachon { stroke: var(--acento); stroke-width: 4.5; }
+.panel > .pie { padding: 4px 14px 14px; }
+.fuerza { padding: 16px 14px 6px; }
+.fuerza > .pie { padding: 0; }
+.grande { font: 600 32px/1.1 var(--f-titulo); }
+.grafico { width: 100%; height: auto; margin: 10px 0 6px; overflow: visible; }
+.g-base { stroke: var(--borde-control); stroke-width: 1; stroke-dasharray: 2 4; }
+.g-linea { fill: none; stroke: var(--acento); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.grafico circle { fill: var(--sup); stroke: var(--acento); stroke-width: 2.5; }
+.grafico text { fill: var(--texto-2); font: 400 13px var(--f-texto); }
+.otros { list-style: none; margin: 4px 0 0; padding: 0; }
+.otros li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--borde); font-size: 15px; }
+.otros b { font-weight: 600; }
+.salud { padding: 14px; }
+.salud .pie { margin-top: 2px; }
+.dolor { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 76px; }
+.dolor li { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 12px; color: var(--texto-2); }
+.barra-dolor { width: 14px; height: 48px; border-radius: 4px; background: var(--texto-3); transform-origin: bottom; transform: scaleY(var(--v)); }
+
+/* ---- Cierre ---- */
+.capa { position: fixed; inset: 0; z-index: 50; background: var(--fondo); overflow: auto; }
+.cierre { position: relative; max-width: 480px; margin: 0 auto; min-height: 100%; padding: 56px 20px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.cierre-palotes { width: 180px; height: 144px; fill: none; stroke-linecap: round; stroke: var(--texto); stroke-width: 7; }
+.cierre-palotes .c-tachon { stroke: var(--acento); stroke-width: 8; }
+.cierre h2 { font: 600 40px/1.1 var(--f-titulo); letter-spacing: -.01em; margin-top: 20px; }
+.cierre-semana { color: var(--texto-2); margin-top: 6px; }
+.cierre-datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 28px 0 0; border-top: 1px dashed var(--borde-control); border-bottom: 1px dashed var(--borde-control); padding: 16px 0; }
+.cierre-datos dt { font-size: 14px; color: var(--texto-2); }
+.cierre-datos dd { margin: 2px 0 0; font: 600 28px/1.1 var(--f-titulo); font-variant-numeric: tabular-nums; }
+.cierre-marca { margin: 20px 0 auto; padding-bottom: 28px; }
+.cierre-marca::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--acento); margin-right: 8px; }
+.polvo { position: absolute; left: 186px; top: 72px; width: 1px; height: 1px; }
+.polvo i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--texto-2); opacity: 0; }
+
+/* ---- Movimiento ----
+   Entrada de pantalla: aparece y sube 6 px; el subrayado de tiza se dibuja de izquierda a derecha.
+   Celebración: los palotes se escriben uno a uno, el tachón cruza y suelta un poco de polvo de tiza. */
+main.entra { animation: tiza-entra var(--t-2) var(--sale) both; }
+main.entra .subrayado { animation: tiza-trazo var(--t-3) var(--sale) var(--t-1) both; }
+@keyframes tiza-entra { from { opacity: 0; transform: translateY(6px); } }
+@keyframes tiza-trazo { from { transform: scaleX(0); } }
+
+.celebra .cierre-palotes path { transform-box: fill-box; transform-origin: top; animation: tiza-palote var(--t-2) var(--sale) both; animation-delay: calc(var(--i) * 100ms); }
+.celebra .cierre-palotes .c-tachon { transform-origin: left bottom; animation: tiza-tachon var(--t-3) var(--sale) 450ms both; }
+.celebra .polvo i { animation: tiza-polvo var(--t-3) var(--sale) 650ms both; }
+.celebra .polvo i:nth-child(1) { --x: -24px; --y: -30px; } .celebra .polvo i:nth-child(2) { --x: 18px; --y: -40px; }
+.celebra .polvo i:nth-child(3) { --x: 34px; --y: -12px; } .celebra .polvo i:nth-child(4) { --x: 28px; --y: 16px; }
+.celebra .polvo i:nth-child(5) { --x: -8px; --y: 26px; } .celebra .polvo i:nth-child(6) { --x: 44px; --y: -28px; }
+.celebra .polvo i:nth-child(7) { --x: 8px; --y: -52px; }
+.celebra h2, .celebra .cierre-semana, .celebra .cierre-datos, .celebra .cierre-marca { animation: tiza-entra var(--t-3) var(--sale) both; animation-delay: 700ms; }
+@keyframes tiza-palote { from { transform: scaleY(0); } }
+@keyframes tiza-tachon { from { transform: scaleX(0); } }
+@keyframes tiza-polvo { 0% { opacity: .9; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(var(--x), var(--y)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .descanso-linea span { transition: none; }
+  .celebra .polvo i { display: none; }
+}
+@media (max-width: 340px) {
+  .titulo { font-size: 28px; }
+  .descanso b { font-size: 40px; }
+}

@@ -53,6 +53,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
+  // Los prototipos de diseño (solo en la rama diseno-prototipos) van siempre a la red: si no, la navegación
+  // a /prototipos/ recibiría el index.html de la app y, peor, lo sobrescribiría en la caché.
+  if (url.origin === location.origin && url.pathname.startsWith('/prototipos/')) return;
   const mismo = url.origin === location.origin;
   const fuentes = /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
   if (!mismo && !fuentes) return;
