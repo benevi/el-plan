@@ -375,7 +375,7 @@ function ajustarTiempo(S, s, ctx, cambios) {
   if (dos.length === 2) {
     dos.forEach(x => { x.series = 2; delete x.superserie; });
     dos[0].superserie = true; dos[0].descanso = 0;
-    dos[1].descanso = Math.max(60, pausa(dos[1]));
+    dos[1].descanso = 60; // entre parejas, como en el cálculo de C-TIEMPO-4
     dos[0].nota = `En superserie con ${nombre(ex(dos[1].id))}: una serie de cada uno seguidas y descansa ${dos[1].descanso} s. ${dos[0].nota || ''}`.slice(0, 300);
     s.ejercicios.splice(s.ejercicios.indexOf(dos[1]), 1);
     s.ejercicios.splice(s.ejercicios.indexOf(dos[0]) + 1, 0, dos[1]);

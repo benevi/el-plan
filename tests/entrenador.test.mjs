@@ -145,7 +145,7 @@ test('con dolor 9 no se sube de peso en ningún ejercicio', () => {
 
 test('al sustituir un ejercicio por dolor, la dosis sigue el tipo del nuevo (reps ↔ tiempo)', () => {
   const S = nuevoS({ objetivos: ['musculo'], nivel: 2 });
-  const d = { nombre: 'x', lugar: 'gym', minutos: 60, tipo: 'fullA', calentamiento: [{ nombre: 'a' }], vuelta: [{ nombre: 'b' }], explicacion: [], ejercicios: [{ id: 'plancha', rol: 'principal', series: 4, reps: '6-10', descanso: 120 }] };
+  const d = { nombre: 'x', lugar: 'gym', minutos: 60, tipo: 'fullA', calentamiento: [{ nombre: 'a' }], vuelta: [{ nombre: 'b' }], explicacion: [], ejercicios: [{ id: 'crunch', rol: 'principal', series: 4, reps: '30-45 s', descanso: 120 }] };
   const r = ent.ajustarAlCheckin(S, d, ci({ dolorHoy: { lumbar: 5 }, minutos: 30 }));
   const x = r.datos.ejercicios.find(x => /en lugar de/i.test(x.nota || ''));
   assert.ok(x, 'no hubo sustitución');

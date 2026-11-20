@@ -252,7 +252,10 @@ export function cardioDelDia(S, ctx, k = 0, extra = 0) {
   if (!opciones.length) return null;
   const an = ctx.an || {};
   const orden = opciones.map((e, i) => ({ e, p: -i + preferencia(an, e.id) })).sort((a, b) => b.p - a.p).map(x => x.e);
-  const e = orden[k % Math.min(orden.length, ctx.lugar === 'gym' ? 3 : 2)];
+  // Con una zona activa manda el orden de su ficha (C-CARDIO-6); en la piscina, el bloque continuo de siempre.
+  const pref = Object.keys(ctx.bandas).flatMap(z => (((ZONAS[z] || {}).cardio || {}).preferente || {})[ctx.lugar] || []);
+  const fijo = ctx.lugar === 'piscina' || opciones.some(e => pref.includes(e.id));
+  const e = fijo ? opciones[0] : orden[k % Math.min(orden.length, ctx.lugar === 'gym' ? 3 : 2)];
   const min = regla.minutos + (ctx.energia <= 2 ? 0 : extra);
   return { id: e.id, rol: 'cardio', series: 1, reps: `${min} min`, descanso: 0, nota: notaCardio(S, ctx, e, min, regla, extra, orden) };
 }
@@ -606,7 +609,7 @@ export function tiempoEj(x, nivel = 2) {
   const series = +x.series || 1, desc = (+x.descanso || 0) / 60;
   if (x.rol === 'cardio' || e.t === 'tiempo' && minDe(x.reps) >= 3) return minDe(x.reps) * series;
   if (e.t === 'distancia') return series * (metros(x.reps) / 100 * (RITMO_100M[nivel] || 2.5) + desc) + 0.5;
-  if (e.t === 'tiempo') return series * (Math.max(0.25, minDe(x.reps)) + desc) + 0.5;
+  if (e.t === 'tiempo') { const r = rango(x.reps); const lo = !r ? 0 : r.u === 'min' ? r.lo : r.lo / 60; return series * (Math.max(0.25, lo) + desc) + 0.5; } // isométricos: con el mínimo del rango (C-TIEMPO-1)
   return series * (0.7 + desc) + (x.rol === 'rehab' ? 0.5 : 1);
 }
 // Minutos de una lista de tareas («5 min», «30 s», «2-3 min»); null si ninguna dice su duración.
