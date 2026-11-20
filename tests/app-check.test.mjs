@@ -42,7 +42,7 @@ test('todo archivo de la app (css, js, icons, fuentes, index, manifest) está en
 // (también una carpeta nueva de recursos) tiene que estar en APP, o añadirse aquí a sabiendas.
 const FUERA_DE_APP = [
   /^api\//, /^tests\//, /^scripts\//, /^docs\//, /^\.github\//, /^fonts\/OFL-[\w-]+\.txt$/,
-  /^(\.gitignore|\.vercelignore|LEEME\.md|eslint\.config\.js|playwright\.config\.js|package\.json|package-lock\.json|vercel\.json|sw\.js)$/,
+  /^(\.gitignore|\.vercelignore|LEEME\.md|CLAUDE\.md|eslint\.config\.js|playwright\.config\.js|package\.json|package-lock\.json|vercel\.json|sw\.js)$/,
 ];
 test('todo archivo servible está en APP salvo lo excluido a sabiendas (VERSION cubre toda la app)', () => {
   const todo = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
