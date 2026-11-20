@@ -4,7 +4,7 @@
 // Se importa en main.js ANTES que la bienvenida: su guardia manda sobre la de elegir dueño.
 
 import { rutas, acciones, antesDeCadaRuta, ir } from './router.js';
-import { estadoGuardado, recuperarDelEspejo, descartarRescate } from './estado.js';
+import { estadoGuardado, recuperarDelEspejo, descartarRescate, textoRoto } from './estado.js';
 import { h, aviso, confirmar } from './ui.js';
 import { PERSONAS } from '../datos/constantes.js';
 
@@ -32,7 +32,8 @@ function vista() {
     <p>${h(TEXTOS[r.motivo] || TEXTOS.roto)}</p>
     ${r.motivo === 'roto' ? (r.copia
       ? `<p class="tenue">El contenido original queda apartado en este móvil (${h(r.copia)}).</p>`
-      : '<p class="tenue">No he podido apartar una copia del contenido original (no queda espacio).</p>') : ''}
+      : '<p class="tenue">No he podido apartar una copia del contenido original (no queda espacio).</p>')
+      + '<button class="btn sec" data-act="rescate.descargarRoto">Descargar los datos ilegibles</button>' : ''}
     ${e ? `<p class="nota">Copia interna${nombre ? ' de ' + h(nombre) : ''} del ${h(fecha(e.fecha))}: ${e.sesiones} sesiones hechas.</p>
       <button class="btn grande" data-act="rescate.espejo">Recuperar la copia interna</button>` : ''}
     <button class="btn ${e ? 'sec' : 'grande'}" data-act="perfil.importar">Cargar copia</button>
@@ -44,6 +45,13 @@ function vista() {
 rutas({ rescate: { titulo: 'Rescatar datos', sinNav: true, vista } });
 
 acciones({
+  'rescate.descargarRoto': () => {
+    const txt = textoRoto();
+    if (!txt) { aviso('No hay datos ilegibles que descargar', 'error'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+    a.download = `pipos-fitness-ilegible-${new Date().toISOString().slice(0, 10)}.txt`; a.click();
+  },
   'rescate.espejo': () => {
     try { recuperarDelEspejo(); aviso('Datos recuperados'); ir('hoy'); } catch (e) { aviso(e.message, 'error'); }
   },
@@ -55,7 +63,6 @@ acciones({
         ? 'No se pudo apartar una copia de los datos ilegibles: si empiezas de cero, se perderán. ¿Seguro?'
         : `Empezarás con la app vacía${r.espejo ? ' y se perderá la copia interna' : ''}${r.copia ? '. Lo ilegible sigue apartado en el móvil' : ''}. ¿Seguro?`;
     if (!await confirmar(txt, { si: r.motivo === 'espejo' ? 'Seguir' : 'Empezar de cero', peligro: true })) return;
-    descartarRescate();
-    ir('hoy');
+    if (descartarRescate()) ir('hoy');
   },
 });

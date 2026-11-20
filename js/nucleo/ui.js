@@ -51,6 +51,7 @@ export function avisoFijo(html) {
   clearTimeout(tAviso);
   mostrarFijo();
 }
+export const hayAvisoFijo = () => !!fijo;
 export function quitarAvisoFijo() {
   if (!fijo) return;
   fijo = null;

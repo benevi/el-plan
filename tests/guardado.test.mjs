@@ -14,10 +14,21 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 
 // Espejo falso: guarda lo que se le escribe (con la misma regla que el real: no pisa una revisión más nueva).
 class EspejoFalso {
-  constructor(reg = null) { this.reg = reg; this.escrituras = []; }
+  constructor(reg = null) { this.reg = reg; this.escrituras = []; this.conflicto = null; }
   async leer() { return this.reg; }
   async escribir(r) { this.escrituras.push(r); if (!this.reg || this.reg.rev <= r.rev) this.reg = r; }
+  async apartar(r) { this.conflicto = r; return true; }
 }
+// Hace que setItem lance «cuota llena» para esas claves. Devuelve la función que lo deshace.
+function lleno(claves) {
+  const real = N.almacen.setItem.bind(N.almacen);
+  const ceReal = console.error, cwReal = console.warn;
+  console.error = () => {}; console.warn = () => {};
+  N.almacen.setItem = (k, v) => { if (claves.includes(k)) { const e = new Error('lleno'); e.name = 'QuotaExceededError'; throw e; } return real(k, v); };
+  return () => { N.almacen.setItem = real; console.error = ceReal; console.warn = cwReal; };
+}
+const notasEspejo = () => JSON.parse(espejo.reg.txt).perfil.notas;
+const conNotas = notas => estadoBase({ perfil: { ...estadoBase().perfil, notas } });
 const regDe = (datos, rev = 5, fecha = '2026-11-18T19:00:00.000Z') => ({ txt: JSON.stringify(datos), rev, fecha });
 
 let espejo;
@@ -164,7 +175,7 @@ test('cada guardado sube la revisión en pipos4-rev (sin tocar la forma de pipos
   assert.deepEqual(Object.keys(guardado()).sort(), Object.keys(estadoBase()).sort());
 });
 
-test('una pestaña con revisión vieja no pisa la nueva: carga lo de la otra y aparta lo suyo', () => {
+test('una pestaña con revisión vieja no pisa la nueva: carga lo de la otra y aparta lo suyo en el espejo', async () => {
   cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '4' });
   const motivos = [], eventos = [];
   const q1 = est.escuchar(m => motivos.push(m)), q2 = est.escucharGuardado(e => eventos.push(e));
@@ -175,13 +186,44 @@ test('una pestaña con revisión vieja no pisa la nueva: carga lo de la otra y a
     // Esta pestaña, que iba por la 4, cambia algo y guarda.
     est.cambiar(S => { S.perfil.notas = 'de la pestaña vieja'; }, 'perfil-silencio');
     assert.equal(est.guardarYa(), false);
+    await espera(0);
   } finally { q1(); q2(); }
   assert.equal(guardado().medidas.length, 1, 'lo de la otra pestaña sigue ahí');
   assert.equal(leer('pipos4-rev'), '5');
   assert.equal(est.estado().medidas.length, 1, 'en memoria está lo nuevo');
-  assert.equal(JSON.parse(leer('pipos4-conflicto')).perfil.notas, 'de la pestaña vieja');
+  assert.equal(JSON.parse(espejo.conflicto.txt).perfil.notas, 'de la pestaña vieja', 'apartado en IndexedDB');
+  assert.equal(leer('pipos4-conflicto'), null, 'no ocupa sitio en localStorage');
   assert.ok(motivos.includes('externo'));
-  assert.deepEqual(eventos.at(-1), { tipo: 'externo', apartado: true });
+  assert.deepEqual(eventos.at(-1), { tipo: 'externo', apartado: true, perdido: false });
+});
+
+test('conflicto sin espejo: se aparta en pipos4-conflicto; si tampoco cabe, se avisa de que se perdió', async () => {
+  for (const [cabe, esperado] of [[true, { apartado: true, perdido: false }], [false, { apartado: false, perdido: true }]]) {
+    cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '1' });
+    est.usarEspejo({ leer: async () => null, escribir: async () => {}, apartar: async () => false });
+    const eventos = [];
+    const q = est.escucharGuardado(e => eventos.push(e));
+    const deshacer = cabe ? () => {} : lleno(['pipos4-conflicto']);
+    try {
+      N.almacen.setItem('pipos4', JSON.stringify(estadoBase({ dueño: 'virginia' })));
+      N.almacen.setItem('pipos4-rev', '2');
+      est.cambiar(S => { S.perfil.notas = 'mío'; }, 'perfil-silencio');
+      est.guardarYa();
+      await espera(0);
+    } finally { q(); deshacer(); }
+    assert.deepEqual(eventos.at(-1), { tipo: 'externo', ...esperado });
+    assert.equal(leer('pipos4-conflicto') !== null, cabe);
+  }
+});
+
+test('E: otra pestaña escribió pipos4 pero aún no su revisión: no se pisa (se compara el texto)', async () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '3' });
+  N.almacen.setItem('pipos4', JSON.stringify(estadoBase({ medidas: [{ fecha: '2026-11-19', peso: 81 }] })));
+  est.cambiar(S => { S.perfil.notas = 'aquí'; }, 'perfil-silencio');
+  assert.equal(est.guardarYa(), false);
+  await espera(0);
+  assert.equal(guardado().medidas.length, 1);
+  assert.equal(est.estado().medidas.length, 1);
 });
 
 test('comprobarOtraPestaña (evento storage) recarga solo si la revisión es más nueva', () => {
@@ -197,12 +239,22 @@ test('comprobarOtraPestaña (evento storage) recarga solo si la revisión es má
   assert.equal(leer('pipos4-rev'), '4');
 });
 
-test('importar siempre escribe por encima de la revisión que haya', () => {
+test('importar escribe por encima de la revisión del espejo', async () => {
   cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '1' });
-  N.almacen.setItem('pipos4-rev', '9');
+  espejo.reg = regDe(estadoBase(), 9);
+  await est.revisarEspejo();
   est.importar(JSON.stringify(bueno()));
   assert.equal(leer('pipos4-rev'), '10');
   assert.equal(guardado().sesiones.s1.estado, 'hecha');
+});
+
+test('importar no pisa lo que otra pestaña acaba de guardar: lo carga y pide repetir', () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '1' });
+  N.almacen.setItem('pipos4', JSON.stringify(estadoBase({ dueño: 'virginia' })));
+  N.almacen.setItem('pipos4-rev', '2');
+  assert.throws(() => est.importar(JSON.stringify(bueno())), /Otra ventana/);
+  assert.equal(guardado().dueño, 'virginia');
+  assert.equal(est.estado().dueño, 'virginia');
 });
 
 // ── Fallo al guardar ──
@@ -267,9 +319,105 @@ test('recordatorio de copia: a partir de 10 sesiones terminadas desde la última
   assert.equal(guardado().copia, undefined, 'la fecha va en una clave aparte');
 });
 
-test('uso del almacenamiento: tamaño de pipos4 y porcentaje de unos 5 MB', () => {
-  cargarCon({ pipos4: estadoBase() });
+test('uso del almacenamiento: suma todas las claves pipos4* y da el porcentaje de unos 5 MB', () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-roto-2026-11-01T00:00:00.000Z': 'x'.repeat(1000), elplan2: 'y'.repeat(500), otra: 'z' });
+  est.guardarYa();
   const u = est.usoAlmacen();
-  assert.equal(u.bytes, leer('pipos4').length);
+  const esperado = Object.entries(N.almacen.datos).filter(([k]) => k.startsWith('pipos4')).reduce((n, [k, v]) => n + k.length + v.length, 0);
+  assert.equal(u.bytes, esperado);
+  assert.equal(u.principal, leer('pipos4').length);
+  assert.ok(u.bytes > 1000);
   assert.ok(Math.abs(u.porcentaje - u.bytes / (5 * 1024 * 1024) * 100) < 1e-9);
+});
+
+// ── Casos de la revisión adversarial (A-D, F) ──
+
+test('A: con la cuota llena, tras «Recuperar la copia interna» los cambios siguientes llegan al espejo', async () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '3' });
+  espejo.reg = regDe(conNotas('espejo4'), 4);
+  assert.equal((await est.revisarEspejo()).motivo, 'espejo');
+  const deshacer = lleno(['pipos4']);
+  try {
+    est.recuperarDelEspejo();
+    await espera(0);
+    assert.equal(notasEspejo(), 'espejo4');
+    est.cambiar(S => { S.perfil.notas = 'nuevo tras recuperar'; }, 'perfil-silencio');
+    est.guardarYa();
+    await espera(0);
+    assert.equal(notasEspejo(), 'nuevo tras recuperar');
+  } finally { deshacer(); }
+});
+
+test('B: con la cuota llena, tras «Seguir con lo guardado» los cambios llegan al espejo', async () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '3' });
+  espejo.reg = regDe(conNotas('espejo4'), 4);
+  await est.revisarEspejo();
+  const deshacer = lleno(['pipos4']);
+  try {
+    est.descartarRescate();
+    est.cambiar(S => { S.perfil.notas = 'trabajo de hoy'; }, 'perfil-silencio');
+    est.guardarYa();
+    await espera(0);
+    assert.equal(notasEspejo(), 'trabajo de hoy');
+  } finally { deshacer(); }
+});
+
+test('B bis: una lectura del espejo que llega después del tope también cuenta para la revisión', async () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '3' });
+  let soltar;
+  const lento = new Promise(r => { soltar = r; });
+  const falso = new EspejoFalso();
+  falso.leer = () => lento;
+  est.usarEspejo(falso);
+  assert.equal(await est.revisarEspejo({ max: 10 }), null);
+  soltar(regDe(conNotas('viejo'), 20));
+  await espera(0);
+  est.cambiar(S => { S.perfil.notas = 'después'; }, 'perfil-silencio');
+  est.guardarYa();
+  await espera(0);
+  assert.ok(falso.escrituras.at(-1).rev > 20, `rev ${falso.escrituras.at(-1).rev}`);
+});
+
+test('C: si solo falla pipos4-rev, al recargar no se ofrece un falso rescate «espejo»', async () => {
+  cargarCon({ pipos4: estadoBase(), 'pipos4-rev': '3' });
+  const deshacer = lleno(['pipos4-rev']);
+  try { est.cambiar(S => { S.perfil.notas = 'x'; }, 'perfil-silencio'); est.guardarYa(); } finally { deshacer(); }
+  await espera(0);
+  est.cargar();
+  assert.equal(await est.revisarEspejo(), null);
+});
+
+test('D: una pestaña en rescate no pisa lo que otra ya resolvió (evento storage y «Empezar de cero»)', () => {
+  cargarCon({ pipos4: '{roto' });
+  const resuelto = JSON.stringify(bueno());
+  N.almacen.setItem('pipos4', resuelto);
+  N.almacen.setItem('pipos4-rev', '1');
+  assert.equal(est.descartarRescate(), false, 'no escribe: carga lo de la otra pestaña');
+  assert.equal(leer('pipos4'), resuelto);
+  assert.equal(est.estadoGuardado().rescate, null);
+  assert.equal(est.estado().sesiones.s1.estado, 'hecha');
+  // Y por el evento storage: otra vez en rescate, llega el aviso de la otra pestaña.
+  cargarCon({ pipos4: '{roto' });
+  N.almacen.setItem('pipos4', resuelto);
+  N.almacen.setItem('pipos4-rev', '1');
+  assert.equal(est.comprobarOtraPestaña(), true);
+  assert.equal(est.estadoGuardado().rescate, null);
+  assert.equal(est.estado().sesiones.s1.estado, 'hecha');
+});
+
+test('F: sin pipos4, con espejo y con la app anterior: «Empezar de cero» conserva lo de la app anterior', async () => {
+  cargarCon({ elplan2: JSON.stringify({ workouts: {} }) });
+  espejo.reg = regDe(estadoBase(), 9);
+  assert.equal((await est.revisarEspejo()).motivo, 'vacio');
+  assert.equal(est.descartarRescate(), true);
+  assert.ok(guardado().viejo, 'se pierde elplan2 para migrar');
+  assert.ok(+leer('pipos4-rev') > 9);
+});
+
+test('textoRoto: en el rescate devuelve el texto ilegible para descargarlo', () => {
+  const crudo = roto();
+  cargarCon({ pipos4: crudo });
+  assert.equal(est.textoRoto(), crudo);
+  cargarCon({ pipos4: estadoBase() });
+  assert.equal(est.textoRoto(), null);
 });

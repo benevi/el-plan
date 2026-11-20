@@ -44,7 +44,8 @@ escucharGuardado(ev => {
   } else if (ev.tipo === 'ok') {
     quitarAvisoFijo(); aviso('Ya se guarda de nuevo');
   } else if (ev.tipo === 'externo') {
-    aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado.' : 'Se han cargado los cambios guardados en otra ventana', 'info');
+    if (ev.perdido) aviso('Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo guardar ni apartar y se ha perdido.', 'error');
+    else aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado.' : 'Se han cargado los cambios guardados en otra ventana', 'info');
   }
 });
 arrancar();

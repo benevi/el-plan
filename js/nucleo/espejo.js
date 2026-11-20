@@ -4,12 +4,14 @@
 //
 // Una base pequeña ('pipos-espejo'), un almacén ('estado') y un único registro ('pipos4'):
 //   { txt: JSON del estado, rev: revisión, fecha: ISO }
+// Aparte, el registro 'conflicto' guarda los cambios de una pestaña que otra se adelantó a guardar.
 // Nada de esto bloquea la interfaz: las escrituras se encolan y solo se escribe la última pendiente.
 // Si el navegador no tiene IndexedDB (o falla), todo es un «no hace nada» silencioso.
 
 const NOMBRE = 'pipos-espejo';
 const TABLA = 'estado';
 const ID = 'pipos4';
+const CONFLICTO = 'conflicto';
 
 let bd = null; // Promise<IDBDatabase|null>
 
@@ -25,6 +27,7 @@ function abrir() {
     r.onsuccess = () => {
       const db = r.result;
       db.onversionchange = () => { db.close(); bd = null; };
+      db.onclose = () => { bd = null; }; // iOS puede cerrar la base por su cuenta: se reabre la próxima vez
       res(db);
     };
     r.onerror = () => { bd = null; res(null); };
@@ -42,7 +45,7 @@ export async function leer() {
       const q = db.transaction(TABLA, 'readonly').objectStore(TABLA).get(ID);
       q.onsuccess = () => res(q.result || null);
       q.onerror = () => res(null);
-    } catch { res(null); }
+    } catch { bd = null; res(null); }
   });
 }
 
@@ -62,7 +65,21 @@ async function poner(reg) {
       };
       t.oncomplete = () => res(true);
       t.onerror = t.onabort = () => res(false);
-    } catch { res(false); }
+    } catch { bd = null; res(false); }
+  });
+}
+
+// Guarda aparte (registro 'conflicto') los cambios de esta pestaña que no se pudieron guardar. Devuelve si se pudo.
+export async function apartar(reg) {
+  const db = await abrir();
+  if (!db) return false;
+  return new Promise(res => {
+    try {
+      const t = db.transaction(TABLA, 'readwrite');
+      t.objectStore(TABLA).put(reg, CONFLICTO);
+      t.oncomplete = () => res(true);
+      t.onerror = t.onabort = () => res(false);
+    } catch { bd = null; res(false); }
   });
 }
 

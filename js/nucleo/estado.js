@@ -77,7 +77,8 @@ function rellenar(base, x) {
 // - `pipos4` guarda el estado tal cual (su forma no cambia). Lo demás va en claves aparte:
 //   `pipos4-rev` (revisión, para que una pestaña vieja no pise a una nueva), `pipos4-roto-<fecha ISO>`
 //   (lo que no se pudo leer, intacto), `pipos4-conflicto` (cambios de esta pestaña que otra se adelantó a guardar)
-//   y `pipos4-copia` (fecha de la última copia exportada).
+//   y `pipos4-copia` (fecha de la última copia exportada). Los cambios de una pestaña que otra se adelantó a
+//   guardar se apartan primero en el espejo (registro 'conflicto') y, si no se puede, en `pipos4-conflicto`.
 // - Solo se escribe si hay cambios pendientes (`sucio`), salvo `guardarYa()`, que escribe siempre.
 // - Si lo guardado no se puede leer, la app queda «en rescate»: no escribe nada en `pipos4` ni en el espejo
 //   hasta que la persona elija (cargar copia, recuperar del espejo o empezar de cero).
@@ -95,10 +96,15 @@ let rescate = null;        // null | { motivo: 'roto'|'vacio'|'espejo', copia: c
 let errorGuardar = null;   // último error de setItem (se limpia al guardar bien)
 let cargadoVacio = false;  // al cargar no había nada en pipos4
 let regEspejo = null;      // registro válido del espejo que se ofrece en el rescate
-let revEspejo = 0;         // revisión del espejo leída al arrancar
+let revEspejo = 0;         // revisión más alta conocida del espejo (leída al arrancar o enviada después)
+let textoDisco = null;     // el texto de pipos4 tal como lo leímos o escribimos por última vez
 const oyentesGuardado = new Set();
 
 const esObjeto = x => !!x && typeof x === 'object' && !Array.isArray(x);
+function leerCrudo() { try { return almacen().getItem(CLAVE); } catch { return null; } }
+// ¿Alguien (otra pestaña) ha escrito pipos4 desde que lo leímos o escribimos? Por la revisión o, si aún no
+// se ve la revisión (se escribe justo después), porque el texto ya no es el mismo.
+const discoCambió = () => leerRev() > rev || leerCrudo() !== textoDisco;
 function leerRev() { try { return Math.max(0, parseInt(almacen().getItem(CLAVE_REV), 10) || 0); } catch { return 0; } }
 function claves() {
   const a = almacen(), r = [];
@@ -131,8 +137,8 @@ function preparar(x) {
 export function cargar() {
   clearTimeout(temporizadorGuardar); // un guardado pendiente del estado anterior no debe escribir sobre el nuevo
   sucio = false; rescate = null; regEspejo = null; revEspejo = 0; cargadoVacio = false;
-  let crudo;
-  try { crudo = almacen().getItem(CLAVE); } catch { crudo = null; }
+  const crudo = leerCrudo();
+  textoDisco = crudo;
   rev = leerRev();
   let x = null;
   if (crudo == null || crudo === '') cargadoVacio = true;
@@ -153,20 +159,21 @@ export function cargar() {
 // ofreciendo el espejo. Devuelve el rescate (o null).
 export async function revisarEspejo({ max = 1500 } = {}) {
   let reg, t = null;
+  const lectura = Promise.resolve().then(() => espejo.leer());
+  // Aunque la lectura llegue tarde (después del tope), su revisión cuenta para escribir siempre por encima.
+  lectura.then(r => { if (r) revEspejo = Math.max(revEspejo, +r.rev || 0); }, () => {});
   try {
-    reg = await Promise.race([
-      Promise.resolve().then(() => espejo.leer()),
-      new Promise(r => { t = setTimeout(() => r(null), max); }),
-    ]);
+    reg = await Promise.race([lectura, new Promise(r => { t = setTimeout(() => r(null), max); })]);
   } catch { reg = null; }
   clearTimeout(t);
+  if (reg) revEspejo = Math.max(revEspejo, +reg.rev || 0);
   let x;
   try { x = reg && typeof reg.txt === 'string' ? JSON.parse(reg.txt) : null; } catch { x = null; }
   if (!esObjeto(x) || x.version !== VERSION || !esObjeto(x.perfil) || !x.dueño) return rescate;
-  revEspejo = +reg.rev || 0;
-  const info = { fecha: reg.fecha || null, dueño: x.dueño, sesiones: hechas(x).length, rev: revEspejo };
+  const info = { fecha: reg.fecha || null, dueño: x.dueño, sesiones: hechas(x).length, rev: +reg.rev || 0 };
   if (rescate) { rescate.espejo = info; regEspejo = reg; }
-  else if (!sucio && (cargadoVacio || revEspejo > rev)) {
+  // Si el espejo tiene el mismo texto que pipos4 no hay nada que rescatar (aunque no se escribiera pipos4-rev).
+  else if (!sucio && (cargadoVacio || (info.rev > rev && reg.txt !== textoDisco))) {
     rescate = { motivo: cargadoVacio ? 'vacio' : 'espejo', copia: null, espejo: info };
     regEspejo = reg;
   }
@@ -177,16 +184,21 @@ export const estado = () => S;
 // Cómo va el guardado: { sucio, rev, error, rescate }.
 export const estadoGuardado = () => ({ sucio, rev, error: errorGuardar, rescate });
 // fn({ tipo: 'error', error }) si falla escribir; fn({ tipo: 'ok' }) al volver a guardar bien tras un fallo;
-// fn({ tipo: 'externo', apartado }) si se cargó lo que guardó otra pestaña.
+// fn({ tipo: 'externo', apartado, perdido }) si se cargó lo que guardó otra pestaña (apartado: los cambios de
+// aquí sin guardar se apartaron; perdido: había cambios sin guardar y no se pudieron apartar).
 export function escucharGuardado(fn) { oyentesGuardado.add(fn); return () => oyentesGuardado.delete(fn); }
 
-// Escribe S con una revisión mayor que `revMin` y que la propia. Devuelve true si localStorage lo aceptó.
+// Escribe S con una revisión mayor que `revMin`, que la propia y que la del espejo (el espejo no acepta
+// revisiones menores que la suya). Devuelve true si localStorage lo aceptó.
 function escribir(revMin = rev) {
   clearTimeout(temporizadorGuardar);
-  const nueva = Math.max(rev, revMin) + 1;
+  const nueva = Math.max(rev, revMin, revEspejo) + 1;
   const txt = JSON.stringify(S);
   const reg = { txt, rev: nueva, fecha: new Date().toISOString() };
-  const alEspejo = () => { try { Promise.resolve(espejo.escribir(reg)).catch(() => {}); } catch { /* nada */ } };
+  const alEspejo = () => {
+    revEspejo = Math.max(revEspejo, nueva);
+    try { Promise.resolve(espejo.escribir(reg)).catch(() => {}); } catch { /* nada */ }
+  };
   try {
     almacen().setItem(CLAVE, txt);
   } catch (e) {
@@ -196,7 +208,7 @@ function escribir(revMin = rev) {
     avisarGuardado({ tipo: 'error', error: e });
     return false;
   }
-  rev = nueva;
+  rev = nueva; textoDisco = txt;
   try { almacen().setItem(CLAVE_REV, String(rev)); } catch (e) { console.warn('No se pudo guardar la revisión', e); }
   sucio = false;
   alEspejo();
@@ -204,25 +216,44 @@ function escribir(revMin = rev) {
   return true;
 }
 
-// Carga lo que otra pestaña guardó en pipos4. Si aquí había cambios sin guardar, se apartan en pipos4-conflicto.
+// Aparta los cambios de esta pestaña que no se pudieron guardar: en el espejo (IndexedDB, donde suele haber
+// sitio cuando localStorage está lleno) o, si no, en pipos4-conflicto. Devuelve si se pudo.
+async function apartarConflicto(txt) {
+  const reg = { txt, fecha: new Date().toISOString() };
+  try { if (typeof espejo.apartar === 'function' && await espejo.apartar(reg)) return true; } catch { /* sigue */ }
+  try { almacen().setItem(CLAVE_CONFLICTO, txt); return true; } catch (e) { console.error('No se pudieron apartar los cambios de esta pestaña', e); return false; }
+}
+
+// Carga lo que otra pestaña guardó en pipos4. Si aquí había cambios sin guardar, se apartan (apartarConflicto).
 function recargarDeDisco() {
+  const crudo = leerCrudo();
   let x;
-  try { x = JSON.parse(almacen().getItem(CLAVE)); } catch { x = null; }
+  try { x = JSON.parse(crudo); } catch { x = null; }
   if (!esObjeto(x)) return false;
-  let apartado = false;
-  if (sucio) {
-    try { almacen().setItem(CLAVE_CONFLICTO, JSON.stringify(S)); apartado = true; } catch (e) { console.error('No se pudieron apartar los cambios de esta pestaña', e); }
-  }
+  const mio = sucio ? JSON.stringify(S) : null;
   clearTimeout(temporizadorGuardar);
-  S = preparar(x); rev = leerRev(); sucio = false;
+  S = preparar(x); rev = leerRev(); textoDisco = crudo; sucio = false;
   avisar('externo');
-  avisarGuardado({ tipo: 'externo', apartado });
+  if (!mio) avisarGuardado({ tipo: 'externo', apartado: false, perdido: false });
+  else apartarConflicto(mio).then(ok => avisarGuardado({ tipo: 'externo', apartado: ok, perdido: !ok }));
   return true;
+}
+
+// En rescate, otra pestaña ha escrito pipos4: se vuelve a cargar (puede que ya esté resuelto) y a mirar el espejo.
+function recargarEnRescate() {
+  cargar();
+  avisar('externo');
+  avisarGuardado({ tipo: 'externo', apartado: false, perdido: false });
+  revisarEspejo().then(r => { if (r) avisar('rescate'); }, () => {});
 }
 
 // Si otra pestaña guardó una revisión más nueva, la carga en memoria (y avisa con el motivo 'externo').
 export function comprobarOtraPestaña() {
-  if (rescate) return false;
+  if (rescate) {
+    if (!discoCambió()) return false;
+    recargarEnRescate();
+    return true;
+  }
   if (leerRev() <= rev) return false;
   return recargarDeDisco();
 }
@@ -232,10 +263,10 @@ export function guardarYa() {
   clearTimeout(temporizadorGuardar);
   if (rescate) return false; // en rescate no se escribe nada hasta que la persona decida
   const enDisco = leerRev();
-  if (enDisco > rev) {
+  if (discoCambió()) {
     if (recargarDeDisco()) return false;
-    // Lo más nuevo del disco no se puede leer: se aparta intacto y se escribe lo de aquí.
-    try { const crudo = almacen().getItem(CLAVE); if (crudo) apartarRoto(crudo); } catch { /* nada */ }
+    // Lo que hay en el disco no se puede leer: se aparta intacto y se escribe lo de aquí.
+    const crudo = leerCrudo(); if (crudo) apartarRoto(crudo);
   }
   return escribir(enDisco);
 }
@@ -270,12 +301,20 @@ export function recuperarDelEspejo() {
 // «Empezar de cero» (datos ilegibles o vacíos) o «Seguir con lo guardado» (espejo más nuevo): sale del rescate
 // y escribe ya, con una revisión por encima de la del espejo para que no se vuelva a ofrecer.
 // Lo ilegible sigue apartado en pipos4-roto-<fecha>.
+// Si mientras tanto otra pestaña guardó algo, no se escribe: se carga lo suyo. Devuelve si se descartó.
 export function descartarRescate() {
-  if (!rescate) return;
+  if (!rescate) return false;
+  if (discoCambió()) { recargarEnRescate(); return false; }
   if (rescate.motivo === 'roto') S = nuevoConViejo();
   rescate = null; regEspejo = null;
   escribir(Math.max(leerRev(), revEspejo));
   avisar('rescate');
+  return true;
+}
+// El texto ilegible (para descargarlo desde el rescate): la copia apartada o, si no se pudo apartar, pipos4 tal cual.
+export function textoRoto() {
+  if (!rescate || rescate.motivo !== 'roto') return null;
+  try { return (rescate.copia && almacen().getItem(rescate.copia)) || leerCrudo(); } catch { return null; }
 }
 
 // ── Copia de seguridad ──
@@ -284,6 +323,13 @@ export function importar(txt) {
   const x = JSON.parse(txt);
   if (!x || x.version !== VERSION || !x.perfil) throw new Error('No es una copia de Pipos Fitness');
   clearTimeout(temporizadorGuardar);
+  // Si otra pestaña acaba de guardar, se carga lo suyo y no se pisa: que la persona lo vuelva a intentar.
+  if (discoCambió()) {
+    const AVISO = 'Otra ventana acaba de guardar cambios y se han cargado. Si aún quieres esta copia, vuelve a cargarla.';
+    if (rescate) { recargarEnRescate(); throw new Error(AVISO); }
+    if (recargarDeDisco()) throw new Error(AVISO);
+    const crudo = leerCrudo(); if (crudo) apartarRoto(crudo);
+  }
   S = rellenar(nuevo(), x);
   rescate = null; regEspejo = null;
   escribir(Math.max(leerRev(), revEspejo));
@@ -301,11 +347,16 @@ export function infoCopia() {
   const desde = hechas(S).filter(s => !fecha || String(s.terminada || s.fecha || '') > fecha).length;
   return { fecha, sesionesDesde: desde, toca: desde >= SESIONES_RECORDATORIO };
 }
-// Lo que ocupa pipos4 (caracteres ≈ bytes) y el porcentaje aproximado de unos 5 MB.
+// Lo que ocupan todas las claves pipos4* (caracteres de clave y valor ≈ bytes), lo de pipos4 solo,
+// y el porcentaje aproximado de unos 5 MB.
 export function usoAlmacen() {
-  let n;
-  try { n = (almacen().getItem(CLAVE) || '').length; } catch { n = 0; }
-  return { bytes: n, porcentaje: n / CAPACIDAD_APROX * 100 };
+  let n = 0;
+  for (const k of claves()) {
+    if (!k || !k.startsWith(CLAVE)) continue;
+    try { n += k.length + (almacen().getItem(k) || '').length; } catch { /* nada */ }
+  }
+  const principal = (leerCrudo() || '').length;
+  return { bytes: n, principal, porcentaje: n / CAPACIDAD_APROX * 100 };
 }
 
 // ── Migración desde la app anterior (clave 'elplan2', con las dos personas juntas) ──
