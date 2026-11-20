@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-3cc86a29c261';
+const VERSION = 'pipos-app-ef0a7b8bcf34';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-+VAvU1bytA8mkoKszVNW4au/dygbHwIInewWb8K58gA=',
+  './': 'sha256-4aICxprbt262+efLMSDdfLSNxhJQ5Jg4d5/Ba787fdY=',
   './css/areas.css': 'sha256-Hcx2CJ/w3ZeMyJnVf0t4tm7nG6iYjTOhRiOSERGlKVM=',
   './css/base.css': 'sha256-t1TGiTYMCAdF3xTohIrxh/zYk3KGyGNfcuTwc7YBe7s=',
   './css/componentes.css': 'sha256-qcAHPb9HeaqPt++g/W85R/j7MGEaJSCdwQE1kHdbsFw=',
@@ -28,7 +28,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-aUggqLqOaPKt5bJunqc5bLMaaip7+6bHSNPUV7+zjuY=',
   './icons/marca-fondo.svg': 'sha256-2d1uHx/UzqcnPU5eATOl5mle/t4ZeKUj2eMkk1Y0CfE=',
   './icons/maskable-512.png': 'sha256-Wg7q3cskSBqhJrXE7gGW0UIks2gd7DYmselYqumbAcE=',
-  './index.html': 'sha256-+VAvU1bytA8mkoKszVNW4au/dygbHwIInewWb8K58gA=',
+  './index.html': 'sha256-4aICxprbt262+efLMSDdfLSNxhJQ5Jg4d5/Ba787fdY=',
   './js/arranque.js': 'sha256-FY4jDwXB/NYydVPPBDDohoLfSKNFw2RNc2B1oG8JFio=',
   './js/areas/ejercicios/indice.js': 'sha256-1dNwpWu3kCieSdNnYOFKfqrH7+iu0Mumcz4HQ/hOL2A=',
   './js/areas/entrenador/checkin.js': 'sha256-IlY4AVaDrd89BffWGhijVF8Z682h4WcA+BIHz479DOg=',
@@ -40,7 +40,7 @@ const HUELLAS = {
   './js/areas/entrenador/validar.js': 'sha256-+waeNOcaEYnWSKcgF7vzj6IlrvUNYgSFkzBXPnCWUag=',
   './js/areas/hoy/indice.js': 'sha256-5NjAmPjWWvpDctLRZvh5bcCzsT8osw+R9umEnsvCBoo=',
   './js/areas/perfil/bienvenida.js': 'sha256-vBSfVuWCABRvMxTlPfVtZQn6Oiq6sWk7YfqBm0czmko=',
-  './js/areas/perfil/indice.js': 'sha256-C6gPIujtkycdkt9EVQPzHJMEnvzv9P15YFyov+x/xjU=',
+  './js/areas/perfil/indice.js': 'sha256-DGYWtdjz6O0rduAwVMJPd2j/Ww/4Nub/ldTPlT3Zm+A=',
   './js/areas/perfil/nube.js': 'sha256-fIbFFHjClReMFn/F2or7At0yk0pqUxPa+4g29y/1Jjg=',
   './js/areas/progreso/analisis.js': 'sha256-ERUbRDIg94+Mk5E6y/GcWb4ksCLP5CW1snvghmIv5Gc=',
   './js/areas/progreso/indice.js': 'sha256-0PCKCaJQOr3a5D3wk0UPSkeblEodUXvn97VpL709Rto=',
@@ -48,8 +48,8 @@ const HUELLAS = {
   './js/areas/sesion/temporizador.js': 'sha256-YIkvTD96PCmz3EcQEps19vXzU6QPXxwVs45YqoV1J/s=',
   './js/aspecto/vida.js': 'sha256-/74osN4/qqoNl5u68jwOdl+bDD9Akhk8tropIhhRyT8=',
   './js/datos/constantes.js': 'sha256-N0S9PWBCcP6HMXzcJWsnTL+GqCq+3U41RngvLLSr91s=',
-  './js/datos/ejercicios.js': 'sha256-Pq6RbQ77J1P5E7FTG/wg/oPO+OuzoSNiTKwqV4Z2UD0=',
-  './js/datos/lesiones.js': 'sha256-0bige51UJyZl9T1xrGXdVG3EZn73mnnyHS9Pda7ZbV0=',
+  './js/datos/ejercicios.js': 'sha256-EcVITkg6elQcLg7uTb1f712sbx/lwmRPqRSB7OPmBVE=',
+  './js/datos/lesiones.js': 'sha256-H+rawcjrPpMYPKDzoKWMXW5z9HJccoKsC9ISKtzRdSQ=',
   './js/datos/palabras.js': 'sha256-uNIKPRAkULGKC90yvFVDChjrk/Xymx0tBE8BuAulTF0=',
   './js/main.js': 'sha256-HGRZ9zo5/U73KCvqEE+FWLtC90SEXTpuha+lhoPhgi8=',
   './js/nucleo/api.js': 'sha256-v9hN8+9rp5/5hfnDIG5bVauFFdL0Y2ISdQNjUxBp0TE=',
@@ -63,7 +63,7 @@ const HUELLAS = {
   './js/nucleo/router.js': 'sha256-yMtffyf5KI/fj2UoTGk+rBMohWY7aHuXofjRXEbyluQ=',
   './js/nucleo/ui.js': 'sha256-u4LkYrLJD/uYHweHnTn9lYbB+7YvITO72E2fSkRJBSM=',
   './js/nucleo/version.js': 'sha256-/F3bhqZEQ2dGPs+qYrdQEawe6YM2+5h+/ypcXWxHHiY=',
-  './js/reglas/catalogo.js': 'sha256-cYZ5EMopy0cyB1rAyvBmrvTqWHnt1lH4oNfBtOyLlRI=',
+  './js/reglas/catalogo.js': 'sha256-EsPEiWQjkndM6gsik32/ocVD4UqGWSrfZh0u8sNJxPM=',
   './js/reglas/contexto.js': 'sha256-CN6N1hA9J1o1NrAa7bpg+XaADWQ0yeDc8wkylSJZh5g=',
   './js/reglas/progresion.js': 'sha256-INGcRYa5QoEeZ77v00ScJqD6rO3UFFkhvIepWfkr2GA=',
   './manifest.webmanifest': 'sha256-OmIi8iwSpWN8kvG0ZzJf0w9au0bwrlMnVTMsxQltZPA=',
