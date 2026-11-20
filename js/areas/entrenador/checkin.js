@@ -11,12 +11,13 @@ import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
 import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga } from '../../reglas/progresion.js';
 import { nivelesZona, ex } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
-import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion } from './dia.js';
+import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
 import { diaDolorAlto } from './dolor-alto.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
 import { avisosConsulta, T8 } from './alarma.js';
 import { restriccionesSalud } from './salud.js';
 import { planDeLaSemana, diaElegido } from './plan.js';
+import { miaDe, miaComoDia } from './mias.js';
 
 const SEMANA = 7 * 864e5;
 // Avisos del dolor de hoy: dolor nuevo sin lesión (C-LES-3), lesión nueva (T8, C-LES-2), peor que de costumbre
@@ -38,9 +39,12 @@ function avisosDolor(S, dolorHoy) {
 }
 
 // ── Check-in: lo que cambia del día planificado con cómo estás hoy ──
-// ci: { lugar, minutos, energia 1-5, dolorHoy {zona:n}, peticion }
+// ci: { lugar, minutos, energia 1-5, dolorHoy {zona:n}, peticion, mia? }
+// Con ci.mia (id de «Mis sesiones») la base es esa sesión guardada y no el día del plan (que solo se ocupa):
+// no se rehace por lugar ni se rellena por tiempo; lo que no valga hoy lo cambia el validador y lo explica.
 // Devuelve { datos (para crearSesion), cambios [texto] }.
 export function ajustarAlCheckin(S, dia, ci) {
+  const mia = miaDe(S, ci.mia);
   const cambios = [];
   const energia = +ci.energia || 3;
   const dolorHoy = ci.dolorHoy || {};
@@ -57,19 +61,22 @@ export function ajustarAlCheckin(S, dia, ci) {
     const base = diaDolorAlto(S, { lugar: ci.lugar, minutos, dolorHoy }, { motivo: maxDolor >= 7 ? undefined : salud.soloSuave });
     cambios.push(base.explicacion[0], ...avisosDolor(S, dolorHoy));
     const v = validarSesion(S, base, ctxV);
-    const datos = { ...v.sesion, fuente: dia ? 'plan' : 'reglas', lugar: ci.lugar, minutos, checkin, explicacion: [...v.sesion.explicacion, ...cambios.slice(1).map(c => 'Por tu check-in: ' + c)].slice(0, 8) };
+    // Una sesión guardada no se salta la seguridad: hoy manda el día de dolor alto (o el suave por salud).
+    const noMia = mia ? `Hoy no haces «${mia.nombre}»: ${maxDolor >= 7 ? 'con dolor de 7 o más toca la sesión suave del día de dolor alto' : 'por tus datos de salud hoy toca la sesión suave'}.` : '';
+    if (noMia) cambios.splice(1, 0, noMia);
+    const datos = { ...v.sesion, fuente: dia && !mia ? 'plan' : 'reglas', lugar: ci.lugar, minutos, checkin, explicacion: [...v.sesion.explicacion.slice(0, 1), ...(noMia ? [noMia] : []), ...v.sesion.explicacion.slice(1), ...cambios.slice(noMia ? 2 : 1).map(c => 'Por tu check-in: ' + c)].slice(0, 8) };
     return { datos, cambios };
   }
 
-  let base = dia ? JSON.parse(JSON.stringify(dia)) : null;
+  let base = mia ? miaComoDia(mia) : dia ? JSON.parse(JSON.stringify(dia)) : null;
   const tipoDe = d => (d && d.tipo) || 'fullA';
-  // Petición concreta que las reglas entienden.
+  // Petición concreta que las reglas entienden (con una sesión guardada no hay petición).
   let tipo = tipoDe(base);
-  if (/superior|torso|brazo|pecho|espalda/.test(pet) && !/pierna|inferior/.test(pet)) { tipo = 'torso'; cambios.push('Pides tren superior: hoy torso.'); }
+  if (mia) { /* manda la sesión guardada */ } else if (/superior|torso|brazo|pecho|espalda/.test(pet) && !/pierna|inferior/.test(pet)) { tipo = 'torso'; cambios.push('Pides tren superior: hoy torso.'); }
   else if (/inferior|pierna|gl[uú]teo/.test(pet)) { tipo = 'pierna'; cambios.push('Pides tren inferior: hoy pierna y glúteo.'); }
   // Cambio de lugar: con la plantilla del destino (piscina ↔ seco, C-PISC-1).
   const tipoHoy = tipoParaLugar(tipo, ci.lugar);
-  if (!base || ci.lugar !== base.lugar || tipoHoy !== tipoDe(base)) {
+  if (!mia && (!base || ci.lugar !== base.lugar || tipoHoy !== tipoDe(base))) {
     if (base && ci.lugar !== base.lugar) cambios.push(`Hoy entrenas en ${minus(LUGARES[ci.lugar])} en vez de ${minus(LUGARES[base.lugar])}: ${(ci.lugar === 'piscina') !== (base.lugar === 'piscina') ? 'sesión de ese lugar' : 'misma idea, con lo que hay allí'}.`);
     const mismoMedio = base && (base.lugar === 'piscina') === (ci.lugar === 'piscina');
     const huecos = mismoMedio && tipoHoy === tipoDe(base) && ci.lugar !== 'piscina' ? base.ejercicios.filter(x => x.rol === 'principal' && ex(x.id)).map(x => ex(x.id).m[0]) : null;
@@ -85,7 +92,8 @@ export function ajustarAlCheckin(S, dia, ci) {
   const ctx = contextoDia(S, { lugar: ci.lugar, minutos, dolorHoy, energia });
   ej = ej.map((x, idx) => {
     const e = ex(x.id); if (!e || x.rol !== 'principal') return x;
-    const peligro = riesgoHoy(e, ctx.niveles, ctx.bandas) === 'evitar';
+    // En una sesión guardada, lo que choca con el dolor de hoy lo cambia el validador («Ajustado por la app»).
+    const peligro = !mia && riesgoHoy(e, ctx.niveles, ctx.bandas) === 'evitar';
     const molesta = an[x.id] && (an[x.id].estado === 'molesta' || an[x.id].gusto === 'rechazo');
     if (!peligro && !molesta) return x;
     const excluir = ej.map(y => y.id);
@@ -119,7 +127,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   // Energía (C-ENERGIA-1): el cardio se queda en su mínimo de D3 a esfuerzo 3, nunca por debajo (C-CARDIO-3).
   if (energia <= 2) {
     const antes = ej.filter(x => x.rol === 'principal').length;
-    const tope = energia === 1 ? 3 : 4;
+    const tope = mia ? Infinity : energia === 1 ? 3 : 4; // una de «Mis sesiones» no pierde ejercicios (C-MIA-1)
     ej.forEach(x => { if (x.rol === 'principal' && x.series > 2) x.series--; });
     const prin = ej.filter(x => x.rol === 'principal');
     if (prin.length > tope) { const quitar = prin.slice(tope).map(x => x.id); ej = ej.filter(x => !quitar.includes(x.id)); }
@@ -133,7 +141,7 @@ export function ajustarAlCheckin(S, dia, ci) {
 
   // Tiempo disponible: si sobra mucho, más principales (si falta, lo cuadra el validador con C-TIEMPO-2).
   let t = tiempoSesion({ ...base, ejercicios: ej });
-  if (t < minutos - 15 && energia > 2 && tipoHoy !== 'suave') {
+  if (!mia && t < minutos - 15 && energia > 2 && tipoHoy !== 'suave') {
     const extra = montarDia(S, { lugar: ci.lugar, minutos: minutos + 30, tipo: tipoHoy, dolorHoy, energia, k: diaSemana() + 1 }).ejercicios
       .filter(x => x.rol === 'principal' && !ej.some(y => y.id === x.id) && !cargados.has(ex(x.id).m[0]));
     const añadidos = [];
@@ -153,15 +161,25 @@ export function ajustarAlCheckin(S, dia, ci) {
   if (subidas.length) cambios.push(`Subes en ${lista(subidas)}: llegaste al tope la última vez.`);
   if (bajadas.length) cambios.push(`Bajas un poco en ${lista(bajadas)} para recuperar el ritmo.`);
 
+  // Sesión guardada: calentamiento y vuelta a la calma de hoy (lugar, dolor y lo que se va a trabajar).
+  if (mia) {
+    const prin = ej.filter(x => x.rol === 'principal' && ex(x.id) && permitidoBase(S, ex(x.id), ctx)).map(x => ex(x.id));
+    base.calentamiento = calentamientoDe(S, ctx, prin);
+    base.vuelta = vueltaDe(S, ctx, prin);
+  }
   // Validador único con el perfil y el dolor de hoy.
-  const v = validarSesion(S, { ...base, lugar: ci.lugar, minutos, ejercicios: ej }, { ...ctxV, tipo: tipoHoy });
+  const v = validarSesion(S, { ...base, lugar: ci.lugar, minutos, ejercicios: ej }, { ...ctxV, tipo: tipoHoy, ...(mia ? { mia: true } : {}) });
   const ajustes = v.cambios.map(c => frase(c));
+  // Tu sesión tal cual (C-MIA-1): si dura más de lo marcado, se dice en vez de recortarla.
+  const dura = mia ? tiempoSesion(v.sesion) : 0;
+  if (mia && dura > minutos * 1.1) cambios.push(`Tu sesión dura unos ${dura} minutos, más de los ${minutos} que marcas: la dejo entera.`);
   const todos = [...cambios, ...ajustes];
   const datos = {
-    ...v.sesion, fuente: base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',
+    ...v.sesion, fuente: mia ? 'reglas' : base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',
     lugar: ci.lugar, minutos,
-    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(v.sesion.explicacion || []).slice(1).filter(esUltimoRecurso), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
+    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(v.sesion.explicacion || []).slice(1).filter(esUltimoRecurso), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : [mia ? 'Nada que ajustar: haces tu sesión tal como la guardaste.' : 'Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
     checkin,
+    ...(mia ? { origen: { tipo: 'mia', id: mia.id } } : {}),
   };
   return { datos, cambios: todos };
 }
@@ -172,6 +190,7 @@ export function motivoIA(S, ci, dia) {
   const modo = S.perfil.usoIA || 'auto';
   if (maxDolorHoy(ci.dolorHoy) >= 7) return { usar: false, por: 'dolor', motivo: 'Con dolor de 7 o más, la sesión la prepara la app sin IA.' };
   if (restriccionesSalud(S).soloSuave) return { usar: false, por: 'salud', motivo: 'Por tus datos de salud, hoy la sesión suave la prepara la app.' };
+  if (miaDe(S, ci.mia)) return { usar: false, por: 'mia', motivo: 'Es una de tus sesiones: la ajusta la app con tu check-in, sin gastar IA.' };
   if (!enLinea()) return { usar: false, por: 'red', motivo: 'Sin conexión: lo ajusta la app con sus reglas.' };
   if (ci.forzarIA) return { usar: true, motivo: 'Se lo pides al entrenador IA.' };
   if (modo === 'ahorro') return { usar: false, por: 'ahorro', motivo: 'Modo ahorro: la IA solo hace el plan semanal.' };

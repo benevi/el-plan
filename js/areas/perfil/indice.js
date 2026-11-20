@@ -10,6 +10,7 @@ import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCo
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
+import { misSesiones, miaDe, renombrarMia, borrarMia, LARGO_NOMBRE_MIA, MAX_MIAS } from '../entrenador/entrenador.js';
 import { versionApp } from '../../nucleo/version.js';
 import { grupoCopias, avisoNube, siVisible } from './nube.js';
 import { grupoSalud } from './salud.js';
@@ -112,6 +113,7 @@ function grupoEntreno(S) {
     <label class="interruptor"><input type="checkbox" data-cambio="perfil.acompañado" ${p.acompañado ? 'checked' : ''}><span>Entreno a la vez que otra persona</span></label>
     ${p.lugares.includes('piscina') ? `<label class="interruptor"><input type="checkbox" data-cambio="perfil.nadar25" ${p.nadar25 ? 'checked' : ''}><span>Sé nadar 2 × 25 m seguidos</span></label>` : ''}
   </section>
+  ${tarjetaMias(S)}
   <section class="tarjeta">
     <h2>Ejercicios que has valorado</h2>
     ${gustos.length ? `<ul class="lista">${gustos.map(([id, g]) => `<li><button class="fila" data-act="perfil.quitarGusto" data-id="${h(id)}"><span class="grow"><b>${h(ex(id) ? ex(id).n : id)}</b><span class="tenue">${GUSTOS[g] ? GUSTOS[g].icono + ' ' + h(GUSTOS[g].nombre) : ''}</span></span><span class="tenue">Quitar</span></button></li>`).join('')}</ul>`
@@ -122,6 +124,26 @@ function grupoEntreno(S) {
     <div class="segmentos">${Object.entries(USO_IA).map(([k, [n]]) => `<button class="${(p.usoIA || 'auto') === k ? 'on' : ''}" data-act="perfil.usoIA" data-v="${k}">${h(n)}</button>`).join('')}</div>
     <p class="tenue">${h(USO_IA[p.usoIA || 'auto'][1])}</p>
   </section>`;
+}
+
+// «Mis sesiones»: las guardadas para repetir (se eligen en el check-in). Aquí se ven, se renombran y se borran.
+function tarjetaMias(S) {
+  const mias = misSesiones(S);
+  return `<section class="tarjeta mis-sesiones">
+    <h2>Mis sesiones <small>${+mias.length} de ${+MAX_MIAS}</small></h2>
+    ${mias.length ? `<ul class="lista">${mias.map(m => `<li><button class="fila" data-act="perfil.mia" data-id="${h(m.id)}">
+      <span class="grow"><b>${h(m.nombre)}</b><span class="tenue">${+m.ejercicios.length} ejercicios · ${h(LUGARES[m.lugar] || '')}</span></span>${ICONOS.editar}</button></li>`).join('')}</ul>
+      <p class="tenue">Para repetir una, elígela en «Antes de empezar».</p>`
+    : '<p class="tenue">Al preparar o terminar una sesión, toca «Guardar como mía» y podrás repetirla otro día desde «Antes de empezar».</p>'}
+  </section>`;
+}
+function hojaMia(m) {
+  abrirHoja(`<h2>${h(m.nombre)}</h2>
+    <p class="tenue">${h(LUGARES[m.lugar] || '')}${m.minutos ? ` · unos ${+m.minutos} min` : ''}</p>
+    <ul>${m.ejercicios.map(x => `<li>${h(ex(x.id) ? ex(x.id).n : x.id)} <span class="tenue">· ${+x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ' · rehabilitación' : x.rol === 'cardio' ? ' · cardio' : ''}</span></li>`).join('')}</ul>
+    <p class="tenue">Al hacerla se le añaden calentamiento, cardio y estiramientos, y se cambia lo que ese día no valga por tu dolor, el lugar o el material.</p>
+    <label class="campo col"><span>Nombre</span><input id="mia-nombre" maxlength="${+LARGO_NOMBRE_MIA}" value="${h(m.nombre)}"></label>
+    <div class="fila-botones"><button class="btn sec peligro" data-act="perfil.borrarMia" data-id="${h(m.id)}">Borrar</button><button class="btn" data-act="perfil.renombrarMia" data-id="${h(m.id)}">Guardar nombre</button></div>`);
 }
 
 function grupoDatos(S) {
@@ -307,6 +329,17 @@ acciones({
     if (a4) a4.style.display = el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia ? '' : 'none';
   },
   'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.style.display = c.dataset.detalle === el.value ? '' : 'none'; }),
+  'perfil.mia': el => { const m = miaDe(estado(), el.dataset.id); if (m) hojaMia(m); },
+  'perfil.renombrarMia': el => {
+    const r = renombrarMia(el.dataset.id, ($('#mia-nombre') || {}).value || '');
+    if (r.error) { aviso(r.error, 'error'); return; }
+    cerrarHoja(); aviso('Nombre cambiado');
+  },
+  'perfil.borrarMia': async el => {
+    const m = miaDe(estado(), el.dataset.id); if (!m) return;
+    if (!await confirmar(`¿Borrar «${m.nombre}» de tus sesiones? Las sesiones que ya hiciste con ella se quedan.`, { si: 'Borrar', peligro: true })) return;
+    borrarMia(m.id); aviso('Borrada');
+  },
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),
   'perfil.guardarLesion': el => {
     const datos = { tipo: ($('#l-tipo .chip.on') || { dataset: { v: 'lesion' } }).dataset.v, zona: $('#l-zona').value, dolor: +$('#l-dolor').value, desde: $('#l-desde').value, nota: $('#l-nota').value.trim(), activa: $('#l-activa') ? $('#l-activa').checked : true };

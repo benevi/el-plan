@@ -2,7 +2,11 @@
 // Toda sesión pasa por aquí antes de guardarse, venga de la IA, de las reglas o de un día del plan:
 //   validarSesion(S, sesion, ctx) → { sesion (corregida), cambios: [texto explicable], valida, ultimoRecurso }
 //   problemasSesion(S, sesion, ctx) → [texto]: lo que aún incumple (vacío si está bien). Lo usan las pruebas.
-// ctx: { lugar, minutos, dolorHoy, energia, futuro (día de plan), origen: 'ia'|'reglas'|'plan', k, tipo }
+// ctx: { lugar, minutos, dolorHoy, energia, futuro (día de plan), origen: 'ia'|'reglas'|'plan', k, tipo, mia }
+// ctx.mia (solo una de «Mis sesiones», excepciones aprobadas por Víctor el 20-11-2026): C-MIA-1, no se rellena
+// hasta 3 principales ni se quitan por energía o tiempo; C-MIA-2, un principal de nivel superior se queda con
+// nota de técnica (C-DOSIS-10 no se aplica). Dolor, lesiones, lugar, material, rechazos, salud, calentamiento,
+// cardio y vuelta con estiramientos mandan igual. Nunca llega desde el plan ni desde la IA.
 //
 // Qué comprueba y corrige, en este orden:
 //  1. Día de dolor alto (dolor de hoy ≥ 7, C-DOLOR-4) o día «solo suave» por salud (C-SALUD-0): plantilla fija.
@@ -33,6 +37,8 @@ const copia = x => JSON.parse(JSON.stringify(x));
 const nombre = e => minus(e.n);
 const ROLES = ['principal', 'rehab', 'cardio'];
 export const ULTIMO_RECURSO = 'último recurso';
+// Nota de técnica de un principal de nivel superior que se mantiene en una de «Mis sesiones» (C-MIA-2).
+export const NOTA_NIVEL = 'Es de un nivel más alto que el tuyo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
 // La explicación lleva el último recurso (y así el validador acepta menos de 3 principales, C-TIEMPO-2).
 export const esUltimoRecurso = t => /\(último recurso\)|no caben tu cardio/.test(String(t));
 const LUGAR_TXT = { gym: 'el gimnasio', casa: 'casa', calle: 'la calle', piscina: 'la piscina' };
@@ -139,7 +145,8 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   if (vue.length < 2 || !vue.some(esEstiramiento)) out.push('vuelta sin estiramientos');
   [...cal, ...vue].forEach(t => { if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); });
   if (!alto && !suave) {
-    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || sesion.tipo === 'suave'; // el día suave lo marca su tipo, no un texto
+    // Una de «Mis sesiones» se respeta tal cual: ni mínimo de principales ni tope de tiempo (C-MIA-1).
+    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || sesion.tipo === 'suave' || !!ctxIn.mia; // el día suave lo marca su tipo, no un texto
     const prin = ejs.filter(x => x.rol === 'principal').length;
     if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) out.push(`${prin} principales`);
     zonasRehab(ctx).forEach(z => {
@@ -217,7 +224,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Principal: que valga como tal y de su nivel si lo hay (C-DOSIS-10).
     if (x.rol === 'principal') {
       if (!valePrincipal(S, e, ctx)) { cambios.push(`quito ${nombre(e)}: no es un ejercicio principal`); continue; }
-      if (e.niv > ctx.nivel && !(lugar === 'piscina' && S.perfil.nadar25 && ['crol', 'espalda'].includes(e.id))) {
+      if (e.niv > ctx.nivel && ctxIn.mia) {
+        // C-MIA-2: en una sesión guardada se mantiene, con una nota de técnica (C-DOSIS-10 no se aplica).
+        if (!String(x.nota || '').includes(NOTA_NIVEL)) x.nota = `${NOTA_NIVEL} ${x.nota || ''}`.trim().slice(0, 300);
+      } else if (e.niv > ctx.nivel && !(lugar === 'piscina' && S.perfil.nadar25 && ['crol', 'espalda'].includes(e.id))) {
         const alt = alternativa(S, ctx, e, [...vistos, ...propuestos], ejs);
         if (alt && alt.niv <= ctx.nivel) { cambios.push(`cambio ${nombre(e)} por ${nombre(alt)}: es de un nivel más alto que el tuyo`); Object.assign(x, { id: alt.id, ...dosis(S, alt, nPrin(), lugar) }); delete x.kg; e = alt; }
       }
@@ -266,7 +276,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   }
 
   // 5. Principales: ≥ 3 (como mucho 3 con energía 1 y 4 con energía 2, C-ENERGIA-1); 2 con riesgo por zona.
-  const maximo = ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : 9;
+  const maximo = ctxIn.mia ? 99 : ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : 9; // C-MIA-1: no se quita por energía
   ejs.filter(x => x.rol === 'principal').slice(maximo).forEach(x => { ejs.splice(ejs.indexOf(x), 1); cambios.push(`quito ${nombre(ex(x.id))}: hoy tienes poca energía`); });
   Object.keys(ctx.bandas).forEach(z => {
     ejs.filter(x => x.rol === 'principal' && (ex(x.id).r || {})[z]).slice(2).forEach(x => {
@@ -276,7 +286,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     });
   });
   const suaveDelPlan = (ctxIn.tipo || s.tipo) === 'suave' && nPrin() === 0; // día suave del reparto (C-REP-2): sin fuerza
-  const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan ? 0 : Math.min(3, maximo) - nPrin();
+  const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan || ctxIn.mia ? 0 : Math.min(3, maximo) - nPrin(); // C-MIA-1
   if (faltan > 0) {
     const tipo = tipoParaLugar(ctxIn.tipo || s.tipo, lugar);
     const nuevos = elegirPrincipales(S, ctx, { huecos: PLANTILLAS[tipo].huecos, presupuesto: Infinity, k: ctxIn.k || 0, excluir: ejs.map(x => x.id), maximo: faltan });
@@ -393,8 +403,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   s.ejercicios = ejs;
   notasSalud(s, ctx);
 
-  // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2).
-  const ultimo = ajustarTiempo(S, s, ctx, cambios);
+  // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
+  const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
   if (ultimo) s.explicacion.splice(1, 0, ultimo);
   const valida = problemasSesion(S, s, { ...ctxIn, lugar, minutos, dolorHoy }).length === 0;
   return { sesion: s, cambios, valida, ultimoRecurso: !!ultimo };

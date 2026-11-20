@@ -11,6 +11,7 @@ import { rango, registros } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
+import { guardarMia, miaDe, LARGO_NOMBRE_MIA } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio', principal: '' };
@@ -91,6 +92,14 @@ function tarjetaEjercicio(s, x, i, grande = false) {
   </article>`;
 }
 
+// «Guardar como mía» (o de cuál de tus sesiones sale). Va al principio en «uno a uno» y al final en la lista.
+function pieMia(S, s) {
+  const m = s.origen && miaDe(S, s.origen.id);
+  if (m) return `<p class="tenue centro mia-origen">De tus sesiones: «${h(m.nombre)}»</p>`;
+  if (s.tipo === 'dolorAlto' || !s.ejercicios.some(x => ex(x.id))) return '';
+  return `<button class="enlace centro" data-act="sesion.guardarMia">${ICONOS.mas} Guardar como mía para repetirla</button>`;
+}
+
 // Pasos del modo «uno a uno»: calentamiento, cada ejercicio y vuelta a la calma.
 function pasos(s) {
   return [...(s.calentamiento.length ? [{ k: 'calentamiento' }] : []), ...s.ejercicios.map((_, i) => ({ k: 'ej', i })), ...(s.vuelta.length ? [{ k: 'vuelta' }] : [])];
@@ -132,7 +141,7 @@ function vista([id]) {
       : tareas(s, p.k, p.k === 'calentamiento' ? 'Calentamiento' : 'Vuelta a la calma', true);
     const ultimo = k === P.length - 1;
     return `${cab}${tira}
-      ${k === 0 ? porque : ''}
+      ${k === 0 ? porque + pieMia(S, s) : ''}
       ${cuerpo}
       <div class="fila-botones"><button class="btn sec" data-act="sesion.foco" data-v="-1" ${k === 0 ? 'disabled' : ''}>${ICONOS.atras} Anterior</button>
       ${!ultimo ? `<button class="btn" data-act="sesion.foco" data-v="1">Siguiente ${ICONOS.sig}</button>` : `<button class="btn" data-act="sesion.terminar">${ICONOS.check} Terminar</button>`}</div>`;
@@ -144,8 +153,8 @@ function vista([id]) {
     ${s.ejercicios.map((x, i) => abierta && x.sets.every(z => z.hecha) ? tarjetaPlegada(x, i) : tarjetaEjercicio(s, x, i)).join('')}
     ${tareas(s, 'vuelta', 'Vuelta a la calma')}
     ${!abierta
-      ? `<section class="tarjeta"><h2>Cierre</h2><p>Esfuerzo ${s.cierre && s.cierre.esfuerzo ? +s.cierre.esfuerzo + '/5' : '—'}</p>${s.cierre && s.cierre.comentario ? `<p class="comentario">«${h(s.cierre.comentario)}»</p>` : ''}</section>`
-      : `<button class="btn grande" data-act="sesion.terminar">${ICONOS.check} Terminar sesión</button>
+      ? `<section class="tarjeta"><h2>Cierre</h2><p>Esfuerzo ${s.cierre && s.cierre.esfuerzo ? +s.cierre.esfuerzo + '/5' : '—'}</p>${s.cierre && s.cierre.comentario ? `<p class="comentario">«${h(s.cierre.comentario)}»</p>` : ''}</section>${pieMia(S, s)}`
+      : `${pieMia(S, s)}<button class="btn grande" data-act="sesion.terminar">${ICONOS.check} Terminar sesión</button>
          <button class="enlace peligro centro" data-act="sesion.descartar">Descartar esta sesión</button>`}`;
 }
 
@@ -256,6 +265,20 @@ acciones({
       s.ejercicios[i] = nuevo;
     });
     cerrarHoja();
+  },
+  'sesion.guardarMia': () => {
+    const s = sesion(idActual()); if (!s) return;
+    abrirHoja(`<h2>Guardar como mía</h2>
+      <p class="tenue">Guardo sus ejercicios con sus series, repeticiones y descansos, y el lugar. Los kilos no: se calculan cada vez con tu progreso.</p>
+      <p class="tenue">Para repetirla, elígela en «Antes de empezar». Se ajusta al dolor, lugar y material de ese día, y siempre lleva calentamiento, cardio y estiramientos.</p>
+      <label class="campo col"><span>Nombre</span><input id="mia-nombre" maxlength="${+LARGO_NOMBRE_MIA}" value="${h(String(s.nombre || '').slice(0, LARGO_NOMBRE_MIA))}" placeholder="Ej.: Abdominales y flexiones"></label>
+      <button class="btn grande" data-act="sesion.guardarMiaOk">Guardar</button>`);
+  },
+  'sesion.guardarMiaOk': () => {
+    const nombre = ($('#mia-nombre') || {}).value || '';
+    const r = guardarMia(idActual(), nombre);
+    if (r.error) { aviso(r.error, 'error'); return; }
+    cerrarHoja(); aviso(`Guardada en tus sesiones: «${r.mia.nombre}»`);
   },
   'sesion.terminar': () => hojaCierre(),
   'sesion.cerrar': () => {
