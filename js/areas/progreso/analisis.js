@@ -2,8 +2,8 @@
 // Funciones puras: las usa la pestaña Progreso, la pantalla Hoy (constancia) y el entrenador IA (analisisParaEntrenador).
 // Nada de puntos ni logros inventados: cada número sale de un dato guardado y se explica cómo se calcula.
 
-import { semanaISO } from '../../nucleo/modelo.js';
-import { sesionesHechas, registros, rango, valor } from '../../reglas/progresion.js';
+import { sesionesHechas, registros, rango, valor, tendenciaDolor } from '../../reglas/progresion.js';
+import { semanasCalendario, cumplimiento, objetivoSemanal, tendenciaPeso, tendenciaCintura } from '../../reglas/contexto.js';
 import { ex, ZONAS } from '../../reglas/catalogo.js';
 
 const DIA = 864e5;
@@ -13,30 +13,22 @@ const r1 = v => Math.round(v * 10) / 10;
 
 // ── Constancia ──
 // Sesiones terminadas por semana (lunes a domingo) frente a los días que la persona dice tener.
-// La racha cuenta semanas seguidas cumpliendo; la semana en curso no la rompe mientras no haya acabado.
+// Las semanas se cuentan con el calendario (el cambio de hora no salta ninguna). La racha cuenta semanas
+// seguidas cumpliendo; la semana en curso no la rompe mientras no haya acabado. El cumplimiento mira las
+// 4 últimas semanas cerradas y la primera semana de uso no cuenta como incumplida (C-ANA-7).
 export function constancia(S, semanasAtras = 8) {
   const hechas = sesionesHechas(S);
-  const objetivo = Math.max(1, +(S.perfil.disponibilidad && S.perfil.disponibilidad.dias) || 3);
-  const porSemana = {};
-  hechas.forEach(s => { const k = semanaISO(fechaDe(s)); porSemana[k] = (porSemana[k] || 0) + 1; });
-  const semanas = [];
-  for (let k = semanasAtras - 1; k >= 0; k--) {
-    const d = new Date(Date.now() - k * 7 * DIA), sem = semanaISO(d);
-    semanas.push({ sem, n: porSemana[sem] || 0, actual: k === 0 });
-  }
-  let racha = 0;
-  const actual = porSemana[semanaISO()] || 0;
-  if (actual >= objetivo) racha++;
-  for (let k = 1; k < 520; k++) { if ((porSemana[semanaISO(new Date(Date.now() - k * 7 * DIA))] || 0) >= objetivo) racha++; else break; }
-  // Cumplimiento de las 4 últimas semanas cerradas (no castiga la semana en curso).
-  const cerradas = semanas.filter(s => !s.actual).slice(-4);
+  const objetivo = objetivoSemanal(S);
+  const semanas = semanasCalendario(S, semanasAtras);
+  const actual = semanas[semanas.length - 1].n;
+  let racha = actual >= objetivo ? 1 : 0;
+  const atras = semanasCalendario(S, 521);
+  for (let k = atras.length - 2; k >= 0 && atras[k].n >= objetivo; k--) racha++;
   const primera = hechas.length ? fechaDe(hechas[0]) : null;
   const semanasActivo = primera ? Math.max(1, Math.ceil((Date.now() - primera) / (7 * DIA))) : 0;
-  const cuentan = cerradas.slice(-Math.max(0, Math.min(4, semanasActivo - 1)));
-  const cumplimiento = cuentan.length ? Math.round(cuentan.reduce((a, s) => a + Math.min(1, s.n / objetivo), 0) / cuentan.length * 100) : null;
   const ultima = hechas[hechas.length - 1];
   const diasSin = ultima ? Math.floor((Date.now() - fechaDe(ultima)) / DIA) : null;
-  return { objetivo, semanas, estaSemana: actual, faltan: Math.max(0, objetivo - actual), racha, cumplimiento, total: hechas.length, diasSin, semanasActivo };
+  return { objetivo, semanas, estaSemana: actual, faltan: Math.max(0, objetivo - actual), racha, cumplimiento: cumplimiento(S), total: hechas.length, diasSin, semanasActivo };
 }
 
 // Frase corta para la pantalla Hoy (o para el entrenador).
@@ -89,13 +81,14 @@ export function grasaMarina(sexo, altura, cuello, cintura, cadera) {
   return r1(495 / (1.0324 - 0.19077 * L(cintura - cuello) + 0.15456 * L(altura)) - 450);
 }
 function serieMedida(S, k) { return S.medidas.filter(m => m[k] != null).sort((a, b) => a.fecha.localeCompare(b.fecha)).map(m => ({ fecha: m.fecha, v: +m[k] })); }
-function tendencia(serie, dias = 28) {
-  if (serie.length < 2) return null;
-  const ult = serie[serie.length - 1], lim = new Date(ult.fecha) - dias * DIA;
-  const ref = serie.filter(p => new Date(p.fecha) <= lim).pop() || serie[0];
-  if (ref === ult) return null;
-  const sem = Math.max(1, (new Date(ult.fecha) - new Date(ref.fecha)) / (7 * DIA));
-  return { desde: ref.fecha, delta: r1(ult.v - ref.v), porSemana: r1((ult.v - ref.v) / sem * 100) / 100, pctSemana: ref.v ? r1((ult.v - ref.v) / ref.v / sem * 100) : null };
+// Tendencias con un mínimo de datos (C-ANA-3 para el peso, C-ANA-4 para la cintura); si no, null.
+function tendenciaDe(S, k) {
+  if (k === 'peso') {
+    const t = tendenciaPeso(S.medidas);
+    return t.suficiente ? { desde: t.desde, delta: t.cambio, porSemana: r1(t.cambio / (t.dias / 7) * 100) / 100, pctSemana: t.pctSemana } : null;
+  }
+  const t = tendenciaCintura(S.medidas);
+  return t.suficiente ? { desde: t.desde, delta: t.cambio, relevante: t.relevante } : null;
 }
 
 function minutosCardio(s) {
@@ -130,8 +123,8 @@ export function salud(S) {
   const cardio = Math.round(sesionesHechas(S).filter(s => fechaDe(s) >= hace7).reduce((a, s) => a + minutosCardio(s), 0));
   return {
     altura, ich, ichNivel, imc,
-    peso: peso && { ...peso, tendencia: tendencia(serieMedida(S, 'peso')) },
-    cintura: cin && { ...cin, tendencia: tendencia(serieMedida(S, 'cintura')) },
+    peso: peso && { ...peso, tendencia: tendenciaDe(S, 'peso') },
+    cintura: cin && { ...cin, tendencia: tendenciaDe(S, 'cintura') },
     grasa: apuntada ? { v: apuntada.v, fecha: apuntada.fecha, fuente: 'apuntada' } : estimada ? { v: estimada, fecha: m.fecha, fuente: 'estimada' } : null,
     cardio, cardioObjetivo: 150,
     series: { peso: serieMedida(S, 'peso'), cintura: serieMedida(S, 'cintura') },
@@ -159,16 +152,16 @@ export function lecturaPeso(S, t) {
 }
 
 // ── Dolor ──
-// Por zona: los últimos registros, la tendencia (media de los 3 últimos frente a los 3 anteriores) y qué
-// ejercicios coinciden con las sesiones en las que el dolor subió 2 puntos o más de antes a después.
+// Por zona: los últimos registros, la tendencia (C-ANA-5: ≥ 3 registros en los últimos 14 días y ≥ 3 en los
+// 14 anteriores) y qué ejercicios coinciden con las sesiones en las que el dolor subió 2 puntos o más de antes
+// a después (solo con ≥ 3 sesiones con ese ejercicio).
 export function dolor(S) {
   const zonas = [...new Set(S.dolor.map(d => d.zona))].filter(z => ZONAS[z]);
   const hechas = sesionesHechas(S);
   return zonas.map(z => {
-    // Se mira el dolor después de entrenar y el del día a día; el de «antes» sirve para comparar con la sesión.
+    // Se enseña el dolor después de entrenar y el del día a día; el de «antes» sirve para comparar con la sesión.
     const v = S.dolor.filter(d => d.zona === z && d.momento !== 'antes');
-    const media = a => a.length ? r1(a.reduce((x, d) => x + +d.dolor, 0) / a.length) : null;
-    const ult = media(v.slice(-3)), ant = media(v.slice(-6, -3));
+    const t = tendenciaDolor(S.dolor.filter(d => d.zona === z));
     const subidas = hechas.filter(s => s.cierre && s.cierre.dolor && s.cierre.dolor[z] != null && s.checkin && s.checkin.dolor && +s.cierre.dolor[z] >= +(s.checkin.dolor[z] || 0) + 2);
     const bien = hechas.filter(s => s.cierre && s.cierre.dolor && s.cierre.dolor[z] != null && !subidas.includes(s));
     const cuenta = {};
@@ -176,9 +169,9 @@ export function dolor(S) {
     const sospechosos = Object.entries(cuenta).map(([id, n]) => {
       const total = [...subidas, ...bien].filter(s => (s.ejercicios || []).some(x => x.id === id && x.sets.some(y => y.hecha))).length;
       return { id, n, total };
-    }).filter(x => x.n >= 2 && x.n / x.total >= 0.6).sort((a, b) => b.n - a.n).slice(0, 3);
-    return { zona: z, nombre: ZONAS[z].corta, registros: v.slice(-10), ultimo: v.length ? +v[v.length - 1].dolor : null, media: ult, antes: ant,
-      tendencia: ult == null || ant == null ? null : ult <= ant - 1 ? 'baja' : ult >= ant + 1 ? 'sube' : 'igual', subidas: subidas.length, sospechosos };
+    }).filter(x => x.total >= 3 && x.n >= 2 && x.n / x.total >= 0.6).sort((a, b) => b.n - a.n).slice(0, 3);
+    return { zona: z, nombre: ZONAS[z].corta, registros: v.slice(-10), ultimo: v.length ? +v[v.length - 1].dolor : null, media: t.media14, antes: t.mediaAntes,
+      tendencia: t.tendencia === 'sin datos' ? null : t.tendencia, subidas: subidas.length, sospechosos };
   });
 }
 
