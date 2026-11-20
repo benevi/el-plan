@@ -127,7 +127,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   // Energía (C-ENERGIA-1): el cardio se queda en su mínimo de D3 a esfuerzo 3, nunca por debajo (C-CARDIO-3).
   if (energia <= 2) {
     const antes = ej.filter(x => x.rol === 'principal').length;
-    const tope = energia === 1 ? 3 : 4;
+    const tope = mia ? Infinity : energia === 1 ? 3 : 4; // una de «Mis sesiones» no pierde ejercicios (C-MIA-1)
     ej.forEach(x => { if (x.rol === 'principal' && x.series > 2) x.series--; });
     const prin = ej.filter(x => x.rol === 'principal');
     if (prin.length > tope) { const quitar = prin.slice(tope).map(x => x.id); ej = ej.filter(x => !quitar.includes(x.id)); }
@@ -168,8 +168,11 @@ export function ajustarAlCheckin(S, dia, ci) {
     base.vuelta = vueltaDe(S, ctx, prin);
   }
   // Validador único con el perfil y el dolor de hoy.
-  const v = validarSesion(S, { ...base, lugar: ci.lugar, minutos, ejercicios: ej }, { ...ctxV, tipo: tipoHoy });
+  const v = validarSesion(S, { ...base, lugar: ci.lugar, minutos, ejercicios: ej }, { ...ctxV, tipo: tipoHoy, ...(mia ? { mia: true } : {}) });
   const ajustes = v.cambios.map(c => frase(c));
+  // Tu sesión tal cual (C-MIA-1): si dura más de lo marcado, se dice en vez de recortarla.
+  const dura = mia ? tiempoSesion(v.sesion) : 0;
+  if (mia && dura > minutos * 1.1) cambios.push(`Tu sesión dura unos ${dura} minutos, más de los ${minutos} que marcas: la dejo entera.`);
   const todos = [...cambios, ...ajustes];
   const datos = {
     ...v.sesion, fuente: mia ? 'reglas' : base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',

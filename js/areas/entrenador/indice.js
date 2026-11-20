@@ -32,15 +32,18 @@ function hojaCheckin() {
   // Antes de nada: alarma en un texto libre o lesión sin «desde» (C-ALAR-4, C-LES-6). No se genera nada.
   const pregunta = preguntaAntes(S, ci);
   if (pregunta) return hojaPregunta(pregunta);
+  // Si la mía elegida ya no existe (borrada en otra pestaña…), se vuelve a lo de antes.
+  if (ci.mia && !miaDe(S, ci.mia)) elegirMia(S, null);
   const pv = previaCheckin(ci);
   const dia = pv.dia;
   const mia = miaDe(S, ci.mia), mias = misSesiones(S);
   abrirHoja(`<h2>Antes de empezar</h2>
-    ${mia ? `<p class="tenue">Haces <b>${h(mia.nombre)}</b>${dia ? `, que cuenta como el día «${h(dia.nombre)}» de tu plan` : ''}. Dime cómo estás y la ajusto a hoy.</p>`
+    ${mia ? `<p class="tenue">Haces <b>${h(mia.nombre)}</b>${dia && ci.ocuparDia ? `, que cuenta como el día «${h(dia.nombre)}» de tu plan` : ''}. Dime cómo estás y la ajusto a hoy.</p>`
     : dia ? `<p class="tenue">Toca <b>${h(dia.nombre)}</b> en ${h(minus(LUGARES[dia.lugar]))}. Dime cómo estás y lo ajusto.</p>` : '<p class="tenue">Hoy no hay día en tu plan. Te preparo una sesión con lo que te falta esta semana.</p>'}
     ${mias.length ? `<div class="campo col mis-sesiones-ci"><span>Qué sesión</span><div class="chips">
       <button class="chip ${mia ? '' : 'on'}" data-act="entrenador.ciMia" data-v="" aria-pressed="${!mia}">${dia ? 'La de mi plan' : 'La que me prepares'}</button>
-      ${mias.map(m => `<button class="chip ${mia && mia.id === m.id ? 'on' : ''}" data-act="entrenador.ciMia" data-v="${h(m.id)}" aria-pressed="${!!(mia && mia.id === m.id)}">${h(m.nombre)}</button>`).join('')}</div></div>` : ''}
+      ${mias.map(m => `<button class="chip ${mia && mia.id === m.id ? 'on' : ''}" data-act="entrenador.ciMia" data-v="${h(m.id)}" aria-pressed="${!!(mia && mia.id === m.id)}">${h(m.nombre)}</button>`).join('')}</div>
+      ${mia && dia ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciOcupar" ${ci.ocuparDia ? 'checked' : ''}><span>Cuenta como el día «${h(dia.nombre)}» del plan</span></label>` : ''}</div>` : ''}
     <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
@@ -104,19 +107,30 @@ export function abrirCheckin(diaPlan = null, op = {}) {
   // La petición que no se pudo atender en la sesión de hoy se conserva al volver a ajustarla (PR 12).
   const deHoy = sesionDeHoy(S);
   const pendiente = deHoy && deHoy.estado === 'pendiente' && deHoy.iaFallo && deHoy.iaFallo.peticion ? deHoy.iaFallo.peticion : '';
+  // «Volver a ajustarla» una sesión hecha desde una mía: se vuelve a elegir esa mía (y si ocupaba el día, sigue).
+  const deMia = deHoy && deHoy.estado === 'pendiente' && deHoy.origen && deHoy.origen.tipo === 'mia' && miaDe(S, deHoy.origen.id) ? deHoy : null;
+  const enlazado = deMia && S.plan && S.plan.hechos ? Object.entries(S.plan.hechos).find(([, id]) => id === deMia.id) : null;
   ci = { diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: pendiente, forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
   S.perfil.lesiones.filter(l => l.activa).forEach(l => { ci.dolorHoy[l.zona] = dolorInicial(S, l); });
-  if (op.mia) elegirMia(S, op.mia);
+  const mia = op.mia || (deMia && deMia.origen.id);
+  if (mia) elegirMia(S, mia);
+  if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; }
   hojaCheckin();
 }
 // Elegir (o dejar) una de «Mis sesiones» en el check-in: su lugar, si lo tienes, y su tiempo; sin petición ni IA.
+// Lo de antes (lugar, minutos, petición, IA) se aparta y vuelve al dejarla («La de mi plan»).
 const MINUTOS_CI = [30, 45, 60, 75, 90];
 function elegirMia(S, id) {
   const m = miaDe(S, id);
-  ci.mia = m ? m.id : null;
-  if (!m) return;
+  if (!m) {
+    if (ci.antesMia) Object.assign(ci, ci.antesMia);
+    ci.mia = null; ci.ocuparDia = false; delete ci.antesMia;
+    return;
+  }
+  if (!ci.antesMia) ci.antesMia = { lugar: ci.lugar, minutos: ci.minutos, peticion: ci.peticion, forzarIA: ci.forzarIA };
+  ci.mia = m.id;
   ci.peticion = ''; ci.forzarIA = false;
   if (S.perfil.lugares.includes(m.lugar)) ci.lugar = m.lugar;
   if (m.minutos) ci.minutos = MINUTOS_CI.find(x => x >= m.minutos) || 90;
@@ -354,6 +368,7 @@ acciones({
   'entrenador.ciZona': el => { ci.dolorHoy[el.dataset.v] = 3; hojaCheckin(); },
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
   'entrenador.ciMia': el => { elegirMia(estado(), el.dataset.v); hojaCheckin(); },
+  'entrenador.ciOcupar': el => { ci.ocuparDia = el.checked; hojaCheckin(); },
   'entrenador.prepararMia': () => abrirCheckin(null, { mia: (misSesiones(estado())[0] || {}).id }),
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };

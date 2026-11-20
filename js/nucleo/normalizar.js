@@ -12,6 +12,7 @@
 
 import { ZONAS } from '../datos/lesiones.js';
 import { PERSONAS, LUGARES, OBJETIVOS, MATERIAL_CASA, GUSTOS } from '../datos/constantes.js';
+import { EJERCICIOS } from '../datos/ejercicios.js';
 
 export const VERSION_DATOS = 4;
 
@@ -290,8 +291,9 @@ function plan(p, sesiones) {
 
 // ── Mis sesiones (sesiones guardadas para repetir; js/areas/entrenador/mias.js) ──
 const MAX_MIAS = 30;
+const DEL_CATALOGO = new Set(EJERCICIOS.map(e => e.id));
 function ejercicioMia(x) {
-  if (!esObjeto(x) || !idValido(x.id)) return null;
+  if (!esObjeto(x) || !idValido(x.id) || !DEL_CATALOGO.has(x.id)) return null; // solo ejercicios que existen
   return {
     id: x.id, rol: enLista(x.rol, ROLES, 'principal'), series: numero(x.series, 1, 10, 3, { entero: true }),
     reps: texto(x.reps, 24), descanso: numero(x.descanso, 0, 300, 60, { entero: true }),
@@ -305,7 +307,7 @@ function miaSesion(m, vistos) {
   vistos.add(i);
   return {
     id: i, nombre, lugar: enLista(m.lugar, Object.keys(LUGARES), 'gym'), minutos: numero(m.minutos, 10, 240, null, { entero: true }),
-    creada: fechaISO(m.creada) || new Date().toISOString(), ejercicios,
+    creada: fechaISO(m.creada) || new Date().toISOString(), ...(m.tipo === 'suave' ? { tipo: 'suave' } : {}), ejercicios,
   };
 }
 
@@ -383,8 +385,10 @@ export function normalizarEstado(x) {
   const alarmas = lista(x.alarmas, 100).map(alarma).filter(Boolean);
   if (alarmas.length) estado.alarmas = alarmas;
   const vistas = new Set();
-  const mias = lista(x.misSesiones, MAX_MIAS).map(m => miaSesion(m, vistas)).filter(Boolean);
-  if (Array.isArray(x.misSesiones) && x.misSesiones.length > MAX_MIAS) avisos.push(`Solo se traen ${MAX_MIAS} de tus sesiones guardadas`);
+  // Primero se descarta lo que no vale y después se corta a 30.
+  const validas = lista(x.misSesiones, 1000).map(m => miaSesion(m, vistas)).filter(Boolean);
+  const mias = validas.slice(0, MAX_MIAS);
+  if (validas.length > MAX_MIAS) avisos.push(`Solo se traen ${MAX_MIAS} de tus sesiones guardadas`);
   if (mias.length) estado.misSesiones = mias;
   return { estado, avisos };
 }

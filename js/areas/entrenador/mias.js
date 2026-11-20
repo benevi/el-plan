@@ -2,8 +2,10 @@
 // (p. ej. «solo abdominales y flexiones»).
 //
 // Forma (S.misSesiones, opcional; la conserva normalizar.js y va en las copias):
-//   [{ id (estable: no cambia al renombrar), nombre (≤ 40), lugar, minutos|null, creada ISO,
+//   [{ id (estable: no cambia al renombrar), nombre (≤ 40), lugar, minutos|null, creada ISO, tipo?: 'suave',
 //      ejercicios: [{ id del catálogo, rol, series, reps, descanso }] }]   // sin kilos: se recalculan
+// Excepciones aprobadas por Víctor (docs/criterio.md, C-MIA-1 y C-MIA-2): se respeta tal cual (sin rellenar
+// principales) y un ejercicio de nivel superior se queda con nota de técnica.
 //
 // Repetir una es el check-in con `ci.mia = id`: la sesión de hoy sale de ella SIN IA y pasa por lo mismo que
 // un día del plan (ajustarAlCheckin → validador único) con el dolor, lugar, material, minutos y energía de hoy.
@@ -17,7 +19,11 @@ export const MAX_MIAS = 30;
 export const LARGO_NOMBRE_MIA = 40;
 const ROLES = ['principal', 'rehab', 'cardio'];
 
-export const misSesiones = S => (Array.isArray(S && S.misSesiones) ? S.misSesiones : []);
+// Solo entradas con la forma buena (por si el estado viene de una versión rara): Perfil y el check-in no revientan.
+const valida = m => !!m && typeof m === 'object' && typeof m.id === 'string' && typeof m.nombre === 'string' && Array.isArray(m.ejercicios);
+export const misSesiones = S => (Array.isArray(S && S.misSesiones) ? S.misSesiones.filter(valida) : []);
+// Ejercicios de la mía que existen en el catálogo (los demás no se pueden hacer).
+export const ejerciciosMia = m => (m && Array.isArray(m.ejercicios) ? m.ejercicios.filter(x => x && ex(x.id)) : []);
 export const miaDe = (S, id) => (id ? misSesiones(S).find(m => m.id === id) || null : null);
 const limpiarNombre = n => String(n == null ? '' : n).replace(/\s+/g, ' ').trim().slice(0, LARGO_NOMBRE_MIA);
 
@@ -29,7 +35,8 @@ export function miaDesdeSesion(s, nombre) {
     reps: String(x.reps || ex(x.id).d[1]).slice(0, 24),
     descanso: Math.max(0, Math.min(300, Math.round(+x.descanso >= 0 ? +x.descanso : ex(x.id).d[2]))),
   }));
-  return { id: uid(), nombre: limpiarNombre(nombre), lugar: s.lugar || 'gym', minutos: Math.round(+s.minutos) || tiempoSesion(s) || null, creada: new Date().toISOString(), ejercicios };
+  return { id: uid(), nombre: limpiarNombre(nombre), lugar: s.lugar || 'gym', minutos: Math.round(+s.minutos) || tiempoSesion(s) || null, creada: new Date().toISOString(),
+    ...(s.tipo === 'suave' ? { tipo: 'suave' } : {}), ejercicios };
 }
 
 // Por qué no se puede guardar (null si se puede).
@@ -72,8 +79,9 @@ export function borrarMia(id) {
 export function miaComoDia(mia) {
   return {
     fuente: 'reglas', nombre: mia.nombre, foco: 'Tu sesión guardada', lugar: mia.lugar, minutos: mia.minutos,
+    ...(mia.tipo === 'suave' ? { tipo: 'suave' } : {}),
     explicacion: [`Tu sesión «${mia.nombre}», ajustada a hoy por la app (sin IA): calentamiento, cardio y estiramientos siempre, y lo que no valga hoy se cambia.`],
     calentamiento: [], vuelta: [],
-    ejercicios: mia.ejercicios.filter(x => ex(x.id)).map(x => ({ ...x })),
+    ejercicios: ejerciciosMia(mia).map(x => ({ ...x })),
   };
 }

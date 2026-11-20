@@ -97,13 +97,16 @@ test('normalizar: descarta lo raro de misSesiones y se queda con 30', () => {
   assert.ok(!n.misSesiones.some(m => ['../mal', 'm3', 'm4'].includes(m.id)));
   assert.equal(n.misSesiones.find(m => m.id === 'm5').lugar, 'gym');
   assert.deepEqual(n.misSesiones.find(m => m.id === 'm6').ejercicios, [{ id: 'plancha', rol: 'principal', series: 10, reps: 'x'.repeat(24), descanso: 300 }]);
-  assert.ok(n.misSesiones.length <= 30);
+  // Primero se filtra y después se corta: entran 30 buenas (las raras no gastan hueco).
+  assert.equal(n.misSesiones.length, 30);
+  assert.ok(n.misSesiones.some(m => m.id === 'm6'));
+  assert.ok(normalizarEstado(x).avisos.some(t => /Solo se traen 30/.test(t)));
   // Sin sesiones guardadas, la clave no aparece (como alarmas).
   assert.ok(!('misSesiones' in normalizarEstado(JSON.parse(JSON.stringify(S))).estado));
 });
 
 test('crear desde una mía: sin IA, con calentamiento, cardio y vuelta con estiramientos, y marca de origen', async () => {
-  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 2 }); // flexiones es de nivel 2 (C-DOSIS-10)
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 2 });
   const { mia } = ent.guardarMia(sesionAbdos(S).id, 'Abdos y flexiones');
   let llamadas = 0;
   ponerRed(true, async () => { llamadas++; throw new Error('no debe llamar a la IA'); });
@@ -191,11 +194,11 @@ test('kilos según la progresión: con historial salen acotados; sin él, nulos 
   if (remo) assert.equal(remo.kg, null);
 });
 
-test('un día del plan: la mía lo ocupa igual que «Hacer este día hoy»', async () => {
+test('un día del plan: con «Cuenta como el día…» la mía lo ocupa igual que «Hacer este día hoy»', async () => {
   const S = nuevoS({ objetivos: ['musculo'], lugares: ['gym', 'casa'] });
   await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] }, { conIA: false });
   const { mia } = ent.guardarMia(sesionAbdos(S).id, 'Abdos');
-  const { sesion } = await ent.crearSesionHoy(ci({ mia: mia.id, diaPlan: 3 }));
+  const { sesion } = await ent.crearSesionHoy(ci({ mia: mia.id, diaPlan: 3, ocuparDia: true }));
   assert.equal(est.estado().plan.hechos[3], sesion.id);
   assert.equal(sesion.fuente, 'reglas');
   // Al terminarla cuenta como cualquier otra para la constancia y el estado de la semana.
@@ -209,4 +212,91 @@ test('una mía que ya no existe no crea nada ni llama a la IA', async () => {
   const r = await ent.crearSesionHoy(ci({ mia: 'no-existe' }));
   assert.equal(r.sesion, null);
   assert.match(r.aviso, /ya no está/);
+});
+
+test('sin marcar «Cuenta como el día…», la mía no toca el plan ni marca el día como hecho', async () => {
+  const S = nuevoS({ objetivos: ['musculo'], lugares: ['gym', 'casa'], nivel: 2 });
+  await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] }, { conIA: false });
+  const { mia } = ent.guardarMia(sesionAbdos(S).id, 'Abdos');
+  const { sesion } = await ent.crearSesionHoy(ci({ mia: mia.id, diaPlan: 3 }));
+  assert.deepEqual(est.estado().plan.hechos, {});
+  est.cambiar(X => { const s = X.sesiones[sesion.id]; s.estado = 'hecha'; s.terminada = new Date().toISOString(); }, 'sesion');
+  assert.equal(ent.estadoDias(est.estado()).find(d => d.diaSemana === 3).estado, 'hoy');
+  assert.ok(prog.sesionesHechas(est.estado()).some(s => s.id === sesion.id)); // cuenta para la constancia igual
+});
+
+test('C-MIA-1: una mía con menos de 3 principales no se rellena; calentamiento, cardio y estiramientos sí', async () => {
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 2 });
+  const { mia } = ent.guardarMia(sesionAbdos(S, ['flexiones', 'crunch']).id, 'Solo dos');
+  const { sesion: s } = await ent.crearSesionHoy(ci({ mia: mia.id, energia: 1 }));
+  assert.deepEqual(s.ejercicios.filter(x => x.rol === 'principal').map(x => x.id), ['flexiones', 'crunch']);
+  assert.ok(s.ejercicios.some(x => x.rol === 'cardio'));
+  assert.ok(s.calentamiento.length >= 2 && s.vuelta.some(t => /estir|postura/i.test(t.nombre)));
+  assert.ok(!s.explicacion.some(t => /al menos 3 ejercicios principales/.test(t)));
+  assert.deepEqual(ent.problemasSesion(S, s, { lugar: 'casa', minutos: 45, dolorHoy: {}, mia: true }), []);
+});
+
+test('C-MIA-1: el plan y la IA siguen rellenando hasta 3 principales (la excepción es solo de las mías)', () => {
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 2 });
+  const d = { nombre: 'x', lugar: 'casa', minutos: 45, calentamiento: [], vuelta: [], ejercicios: [{ id: 'flexiones', rol: 'principal', series: 3, reps: '8-12', descanso: 60 }] };
+  for (const origen of ['plan', 'ia', 'reglas']) {
+    const v = ent.validarSesion(S, structuredClone(d), { lugar: 'casa', minutos: 45, origen });
+    assert.ok(v.sesion.ejercicios.filter(x => x.rol === 'principal').length >= 3, origen);
+  }
+  assert.ok(ent.problemasSesion(S, { ...d, calentamiento: [{ nombre: 'a' }, { nombre: 'b' }], vuelta: [{ nombre: 'Estirar' }, { nombre: 'r' }] }, { lugar: 'casa', minutos: 45 }).some(t => /principales/.test(t)));
+});
+
+test('C-MIA-2: un principal de nivel superior se mantiene con nota de técnica; el dolor sigue mandando', async () => {
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 1 });
+  const { mia } = ent.guardarMia(sesionAbdos(S, ['flexiones', 'flexiones-diamante', 'dead-bug']).id, 'Difícil');
+  const { sesion: s } = await ent.crearSesionHoy(ci({ mia: mia.id }));
+  for (const id of ['flexiones', 'flexiones-diamante']) {
+    const x = s.ejercicios.find(y => y.id === id);
+    assert.ok(x, id);
+    assert.match(x.nota, /nivel más alto que el tuyo: prioriza la técnica/);
+  }
+  assert.ok(!s.explicacion.some(t => /nivel más alto que el tuyo/.test(t) && /^Ajustado/.test(t)));
+  // Con dolor de muñeca de hoy las flexiones (riesgo en muñeca) se cambian igual que siempre.
+  est.cambiar(X => { X.perfil.lesiones.push({ id: 'l1', zona: 'muñeca', dolor: 5, desde: '2026-01-01', activa: true, tipo: 'recurrente' }); }, 'perfil');
+  const { sesion: s2 } = await ent.crearSesionHoy(ci({ mia: mia.id, dolorHoy: { 'muñeca': 6 } }));
+  assert.ok(!s2.ejercicios.some(x => /^flexiones/.test(x.id)), s2.ejercicios.map(x => x.id).join());
+  assert.ok(s2.explicacion.some(t => /^Ajustado por la app: (Cambio|Quito) flexiones.*muñeca/.test(t)), s2.explicacion.join('\n'));
+});
+
+test('C-MIA-2 no se aplica al plan: un principal de nivel superior se cambia', () => {
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['casa'], nivel: 1 });
+  const v = ent.validarSesion(S, { nombre: 'x', lugar: 'casa', minutos: 45, ejercicios: ['flexiones-diamante', 'dead-bug', 'puente-gluteo'].map(id => ({ id, rol: 'principal', series: 3, reps: cat.ex(id).d[1], descanso: 60 })) }, { lugar: 'casa', minutos: 45, origen: 'plan' });
+  assert.ok(!v.sesion.ejercicios.some(x => x.id === 'flexiones-diamante'));
+});
+
+test('un día suave guardado se repite como suave (sin principales añadidos)', async () => {
+  nuevoS({ objetivos: ['salud'], lugares: ['casa'] });
+  const s0 = modelo.crearSesion({ nombre: 'Suave', lugar: 'casa', minutos: 30, tipo: 'suave', ejercicios: [{ id: 'boxeo-sombra', rol: 'cardio', series: 1, reps: '20 min', descanso: 0 }, { id: 'dead-bug', rol: 'principal', series: 2, reps: '10 c/lado', descanso: 45 }] });
+  est.cambiar(X => { X.sesiones[s0.id] = s0; }, 'sesion');
+  const { mia } = ent.guardarMia(s0.id, 'Suave');
+  assert.equal(mia.tipo, 'suave');
+  const { sesion: s } = await ent.crearSesionHoy(ci({ mia: mia.id, minutos: 30 }));
+  assert.equal(s.tipo, 'suave');
+  assert.deepEqual(s.ejercicios.filter(x => x.rol === 'principal').map(x => x.id), ['dead-bug']);
+  // Y la copia lo conserva.
+  assert.equal(normalizarEstado(JSON.parse(est.exportar())).estado.misSesiones[0].tipo, 'suave');
+});
+
+test('una mía sin ejercicios del catálogo: el normalizador la descarta y crearSesionHoy no crea nada', async () => {
+  const S = nuevoS({ lugares: ['casa'] });
+  const rara = { id: 'mx', nombre: 'Rara', lugar: 'casa', minutos: 30, creada: '2026-11-01T10:00:00.000Z', ejercicios: [{ id: 'no-existe', rol: 'principal', series: 3, reps: '10', descanso: 60 }] };
+  const { estado: n } = normalizarEstado(JSON.parse(JSON.stringify({ ...S, misSesiones: [rara, { ...rara, id: 'my', ejercicios: [...rara.ejercicios, { id: 'plancha', rol: 'principal', series: 3, reps: '30s', descanso: 45 }] }] })));
+  assert.deepEqual(n.misSesiones.map(m => m.id), ['my']);
+  assert.deepEqual(n.misSesiones[0].ejercicios.map(x => x.id), ['plancha']);
+  est.cambiar(X => { X.misSesiones = [rara]; }, 'misSesiones');
+  const r = await ent.crearSesionHoy(ci({ mia: 'mx' }));
+  assert.equal(r.sesion, null);
+  assert.match(r.aviso, /ningún ejercicio que exista/);
+  assert.equal(Object.keys(est.estado().sesiones).length, 0);
+});
+
+test('misSesiones() ignora entradas con mala forma', () => {
+  const S = nuevoS();
+  S.misSesiones = [null, 3, { id: 'a', nombre: 5, ejercicios: [] }, { id: 'b', nombre: 'B', ejercicios: 'x' }, { id: 'c', nombre: 'C', ejercicios: [] }];
+  assert.deepEqual(ent.misSesiones(S).map(m => m.id), ['c']);
 });

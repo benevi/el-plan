@@ -17,7 +17,7 @@ import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
 import { alarmaPendiente, preguntaAlarma, respondidasNo, T2 } from './alarma.js';
 import { etiquetasSalud } from './salud.js';
-import { miaDe } from './mias.js';
+import { miaDe, ejerciciosMia } from './mias.js';
 
 // ── Petición a la IA ──
 // Sin el nombre de la persona, lugares con sus ids, textos libres recortados y salud solo como etiquetas
@@ -129,13 +129,16 @@ export async function crearSesionHoy(ci, op = {}) {
   const pregunta = preguntaAntes(S, ci);
   if (pregunta) return { sesion: null, pregunta, aviso: '', motivo: '' };
   // Una de «Mis sesiones»: sin IA ni petición; la base es la sesión guardada (ajustarAlCheckin, validador).
+  // Solo ocupa el día del plan si se pide (ci.ocuparDia, «Cuenta como el día X del plan»).
   if (ci.mia) {
-    if (!miaDe(S, ci.mia)) return { sesion: null, aviso: 'Esa sesión guardada ya no está: elige otra.', motivo: '' };
+    const m = miaDe(S, ci.mia);
+    if (!m) return { sesion: null, aviso: 'Esa sesión guardada ya no está: elige otra.', motivo: '' };
+    if (!ejerciciosMia(m).length) return { sesion: null, aviso: `«${m.nombre}» no tiene ningún ejercicio que exista en la app, así que no la puedo preparar. Bórrala en Perfil › Mi entreno.`, motivo: '' };
     ci = { ...ci, peticion: '', forzarIA: false };
   }
 
   const minutos = minutosSesion(ci.minutos);
-  const dia = diaElegido(S, ci.diaPlan);
+  const dia = ci.mia && !ci.ocuparDia ? null : diaElegido(S, ci.diaPlan);
   const local = ajustarAlCheckin(S, dia, ci);
   const decide = motivoIA(S, ci, dia);
   let datos = local.datos, aviso = '', fallo = '';
