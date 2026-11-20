@@ -38,6 +38,8 @@ function vista() {
       <button class="btn grande" data-act="rescate.espejo">Recuperar la copia interna</button>` : ''}
     <button class="btn ${e ? 'sec' : 'grande'}" data-act="perfil.importar">Cargar copia</button>
     <p class="tenue">«Cargar copia» usa un archivo que guardaste antes desde Perfil → Ajustes → Guardar copia.</p>
+    <button class="btn sec" data-act="nube.recuperar">Recuperar de la nube</button>
+    <p class="tenue">«Recuperar de la nube» abre tus copias automáticas con tu frase de recuperación.</p>
     <button class="btn sec peligro" data-act="rescate.descartar">${r.motivo === 'espejo' ? 'Seguir con lo guardado' : 'Empezar de cero'}</button>
   </section>`;
 }

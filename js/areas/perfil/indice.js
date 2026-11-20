@@ -11,12 +11,14 @@ import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS 
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
 import { versionApp } from '../../nucleo/version.js';
+import { grupoCopias, avisoNube, siVisible } from './nube.js';
 
 const chip = (act, val, on, txt) => `<button class="chip ${on ? 'on' : ''}" data-act="${act}" data-v="${h(val)}" aria-pressed="${on}">${h(txt)}</button>`;
 
 // El perfil va por grupos (antes era una página de 2200 px): se ve uno cada vez.
-const GRUPOS = [['objetivos', 'Objetivos y nivel'], ['lesiones', 'Lesiones'], ['entreno', 'Mi entreno'], ['datos', 'Mis datos'], ['ajustes', 'Ajustes']];
+const GRUPOS = [['objetivos', 'Objetivos y nivel'], ['lesiones', 'Lesiones'], ['entreno', 'Mi entreno'], ['datos', 'Mis datos'], ['copias', 'Copias'], ['ajustes', 'Ajustes']];
 let grupo = 'objetivos';
+siVisible(() => grupo === 'copias');
 const TIPOS_LESION = { lesion: 'Lesión diagnosticada', recurrente: 'Dolor que va y viene', puntual: 'Molestia puntual (días)' };
 const USO_IA = {
   auto: ['Automático', 'La IA monta la semana y revisa el día solo cuando hace falta (dolor nuevo, una petición, otro lugar, comentarios). Unos 0,25 € por semana y 0,10 € por día revisado.'],
@@ -35,8 +37,9 @@ function vista() {
   <h1 class="titulo">Tu perfil</h1>
   <p class="tenue">${h(resumen)}</p>
   ${avisosMigracion(S)}
+  ${grupo !== 'copias' ? avisoNube() : ''}
   <nav class="chips grupos" aria-label="Partes del perfil">${GRUPOS.map(([k, n]) => `<button class="chip ${grupo === k ? 'on' : ''}" data-act="perfil.grupo" data-v="${k}" aria-pressed="${grupo === k}">${h(n)}</button>`).join('')}</nav>
-  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, entreno: grupoEntreno, datos: grupoDatos, ajustes: grupoAjustes }[grupo] || grupoObjetivos)(S)}`;
+  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[grupo] || grupoObjetivos)(S)}`;
 }
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
@@ -156,8 +159,8 @@ function grupoAjustes(S) {
 const tamaño = b => b < 1024 ? b + ' B' : b < 1024 * 1024 ? es(b / 1024, 0) + ' KB' : es(b / 1024 / 1024, 1) + ' MB';
 export function recordatorioCopia() {
   const c = infoCopia();
-  if (!c.toca) return '';
-  return `<p class="nota aviso-nota recordatorio-copia">Llevas ${c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.
+  if (!c.toca) return avisoNube();
+  return avisoNube() + `<p class="nota aviso-nota recordatorio-copia">Llevas ${c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.
     <button class="enlace" data-act="perfil.exportar">Guardar copia</button></p>`;
 }
 function bloqueCopia() {

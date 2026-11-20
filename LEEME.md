@@ -8,13 +8,32 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 - `ANTHROPIC_API_KEY`: clave de la API de Claude.
 - `APP_CODE`: código de acceso; se escribe en la app en **Perfil → Ajustes del móvil**. Sin ella el servidor falla cerrado: `/api/*` responde 500 («el servidor no está configurado») a todo el mundo y la app sigue con las reglas, sin IA. Con ella, un código distinto en el móvil da 401.
 
+## Copias automáticas en la nube (PR 4b)
+Cada móvil sube solo una copia **cifrada en el propio móvil** a un almacén Vercel Blob **privado** del proyecto: al terminar una sesión, tras cambiar perfil, lesiones o medidas (esperando 1 minuto sin cambios) y al abrir la app si la última tiene más de 24 h. Solo con red (si no, reintenta al volver la conexión) y nunca durante el rescate. Lo que sale es `exportar()` (sin el código de acceso), comprimido con gzip y cifrado con AES-GCM de 256 bits; la clave sale de la **frase de recuperación** de cada persona (PBKDF2-SHA-256, 600 000 iteraciones, sal aleatoria). El servidor, Vercel y quien tenga el código de acceso solo ven bytes cifrados, su tamaño, su fecha y, en el nombre, el número de sesiones hechas y el día de la última (para listar sin descifrar).
+
+**Activarlas (lo hace el dueño una vez, en el panel de Vercel):**
+1. Proyecto → **Storage** → **Create Database** → **Blob** → acceso **Private** (no Public). Nombre, p. ej., `pipos-copias`; región, la de las funciones.
+2. Al crearlo, **Connect Project** → este proyecto, marcando los entornos **Production** y **Preview** (y Development si se usa `vercel dev`). Vercel añade solo `BLOB_READ_WRITE_TOKEN` (o `BLOB_STORE_ID` para OIDC) a esos entornos: no hay que copiar ninguna clave a mano.
+3. **Redesplegar** (las variables nuevas solo llegan a los despliegues posteriores).
+4. En cada móvil: **Perfil → Copias → Activar copias en la nube**, escribir la frase dos veces. Se pide una vez por móvil y **no se guarda**: el móvil guarda la clave derivada como clave no exportable de WebCrypto en IndexedDB (`pipos-copia`).
+
+Mientras no exista el almacén, `/api/copia` responde 503 («las copias en la nube aún no están activadas») y la app lo enseña como aviso en Hoy y en Perfil, sin romper nada; la copia manual a archivo sigue funcionando.
+
+**Si se pierde la frase:** las copias de la nube de esa persona **no se pueden abrir** (ni nosotros, ni Vercel: no hay recuperación). Los datos del móvil siguen intactos: en **Perfil → Copias → Cambiar la frase** se elige otra y las copias siguientes van con ella (las anteriores siguen con la frase perdida y acaban caducando). Guardad cada uno su frase en un gestor de contraseñas.
+
+**Restaurar:** Perfil → Copias → Ver copias y restaurar (en el mismo móvil) o «Recuperar de la nube» (móvil nuevo, o desde la pantalla de rescate): persona + frase (+ código de acceso si el móvil aún no lo tiene). Siempre pasa por `importar()`, que aparta antes lo actual en `pipos4-antes-de-importar`. Una frase incorrecta da un mensaje claro y no cambia nada. Tras restaurar con la frase, el móvil recuerda la clave y sigue copiando solo.
+
+**Retención** (la aplica `api/copia.js` al subir; el SDK de Blob no tiene caducidad nativa): todas las de los últimos 14 días, la más nueva de cada semana hasta 3 meses y la más nueva de cada mes hasta 2 años; la más nueva de todas no se borra nunca.
+
+**Detalles:** `api/copia.js` (POST con `x-app-code`; `subir` en `application/octet-stream`, como mucho 4 MiB porque Vercel corta los cuerpos de más de 4,5 MB; `listar`, `bajar` y `borrar-viejas` en JSON; persona `victor` | `virginia`; rutas `copias/<persona>/<fecha ISO>_s<sesiones>_u<día>.bin`; `no-store`; freno de 20 subidas y 60 peticiones cada 10 minutos por persona y por instancia; registro de una línea sin contenido) y `js/nucleo/copia.js` (formato, clave y disparadores; formato descrito al principio del archivo). Estado local de la nube (última copia, error, si el servidor dijo 503) en `localStorage['pipos4-nube']`.
+
 ## Mapa por áreas
 
 | Área | Archivos | Qué hace |
 |---|---|---|
-| **Núcleo** (integrador) | `index.html`, `js/arranque.js`, `js/main.js`, `js/nucleo/estado.js`, `js/nucleo/espejo.js`, `js/nucleo/rescate.js`, `js/nucleo/normalizar.js`, `js/nucleo/migracion.js`, `js/nucleo/router.js`, `js/nucleo/ui.js`, `js/nucleo/api.js`, `js/nucleo/modelo.js`, `js/nucleo/version.js`, `sw.js`, `scripts/version.mjs`, `manifest.webmanifest` | Arranque y vigilante de arranque, datos y guardado (con espejo en IndexedDB y pantalla de rescate), copias validadas y migración de la app anterior, navegación, piezas de interfaz, llamadas al servidor, forma de sesión y plan, modo sin conexión y aviso de versión nueva |
+| **Núcleo** (integrador) | `index.html`, `js/arranque.js`, `js/main.js`, `js/nucleo/estado.js`, `js/nucleo/espejo.js`, `js/nucleo/rescate.js`, `js/nucleo/normalizar.js`, `js/nucleo/migracion.js`, `js/nucleo/router.js`, `js/nucleo/ui.js`, `js/nucleo/api.js`, `js/nucleo/modelo.js`, `js/nucleo/version.js`, `js/nucleo/copia.js`, `api/copia.js`, `sw.js`, `scripts/version.mjs`, `manifest.webmanifest` | Arranque y vigilante de arranque, datos y guardado (con espejo en IndexedDB y pantalla de rescate), copias validadas (a archivo y cifradas en la nube) y migración de la app anterior, navegación, piezas de interfaz, llamadas al servidor, forma de sesión y plan, modo sin conexión y aviso de versión nueva |
 | **Entrenador IA** | `js/areas/entrenador/` (`entrenador.js` fachada de la lógica: `dia.js` sesión con reglas, `plan.js` semana, `checkin.js` ajuste al check-in, `ia.js` puente con la IA, `validar.js` validador; `indice.js` check-in y plan), `api/entrenador.js`, `api/_comun.js`, `js/reglas/contexto.js` | Sesión de hoy y plan semanal con IA; si falla, reglas |
-| **Perfil** | `js/areas/perfil/` (`indice.js`, `bienvenida.js`) | Objetivos, nivel, lesiones, disponibilidad, lugares, material, gustos, ajustes, copia |
+| **Perfil** | `js/areas/perfil/` (`indice.js`, `bienvenida.js`, `nube.js` copias en la nube) | Objetivos, nivel, lesiones, disponibilidad, lugares, material, gustos, ajustes, copia y copias en la nube |
 | **Sesión** | `js/areas/sesion/` (`indice.js`, `temporizador.js`) | Hacer la sesión: series, descansos con alarma visual y vibración, tiempo, modo uno a uno, cambiar ejercicio, cierre |
 | **Progreso** | `js/areas/progreso/indice.js` | Constancia, fuerza, medidas, dolor, historial |
 | **Hoy** | `js/areas/hoy/indice.js` | Pantalla de inicio |
@@ -53,7 +72,7 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 Requiere Node 24. Primero `npm ci`.
 - `npm test`: pruebas unitarias y de pantalla con `node:test` (`tests/**/*.test.mjs`, en zona horaria de Madrid). Las de pantalla montan la app real en jsdom (`tests/ayuda/dom.mjs`); las de lógica usan un almacén en memoria (`tests/ayuda/node.mjs`, que inyecta `usarAlmacen` en `estado.js`).
 - `npm run lint`: ESLint sobre `js/`, `api/`, `tests/` y `sw.js`.
-- `npm run e2e`: Playwright en un móvil emulado (`tests/e2e/`): `humo.spec.mjs` (pestañas con y sin red) y `sw.spec.mjs` (instalación y arranque sin red, actualización con un archivo que falla, despliegue a mitad de la instalación, caché estropeada, aviso de versión nueva, dos pestañas, navegación a otras URL, vigilante de arranque y paso desde `main` y marcha atrás, con el `sw.js` de `main` copiado en `tests/e2e/legado/`). `sw.spec.mjs` levanta su propio servidor en el puerto 8783. Si ya tienes Chromium: `PW_CHROMIUM=/ruta/al/chromium npm run e2e`; si no, `npx playwright install chromium` antes.
+- `npm run e2e`: Playwright en un móvil emulado (`tests/e2e/`): `humo.spec.mjs` (pestañas con y sin red) y `sw.spec.mjs` (instalación y arranque sin red, actualización con un archivo que falla, despliegue a mitad de la instalación, caché estropeada, aviso de versión nueva, dos pestañas, navegación a otras URL, vigilante de arranque y paso desde `main` y marcha atrás, con el `sw.js` de `main` copiado en `tests/e2e/legado/`). `sw.spec.mjs` levanta su propio servidor en el puerto 8783. `nube.spec.mjs`: copias en la nube de extremo a extremo con la función real `api/copia.js` y un Blob simulado (`tests/api/_blob-simulado.mjs`). Si ya tienes Chromium: `PW_CHROMIUM=/ruta/al/chromium npm run e2e`; si no, `npx playwright install chromium` antes.
 - `tests/app-check.test.mjs` comprueba que la lista `APP` de `sw.js` coincide con los archivos reales y que no hay `import` rotos; `tests/version.test.mjs`, que `VERSION`, `HUELLAS` y la meta de `index.html` están al día (si falla: `npm run version`).
 - `npm run version`: recalcula `VERSION` y `HUELLAS` en `sw.js` y la meta de `index.html`.
 
