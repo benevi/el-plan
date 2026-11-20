@@ -61,6 +61,19 @@ test('código malo o ausente → 401', async () => {
   }
 });
 
+test('el código también vale como «Authorization: Bearer» (scripts de pruebas en vivo)', async () => {
+  let r = await llamar({ cuerpo: cuerpoMinimo, codigo: null, cabeceras: { authorization: 'Bearer secreto' } });
+  assert.equal(r.res.codigo, 200);
+  for (const authorization of ['Bearer otro', 'Basic secreto', 'secreto', 'Bearer ']) {
+    r = await llamar({ cuerpo: cuerpoMinimo, codigo: null, cabeceras: { authorization } });
+    assert.equal(r.res.codigo, 401, authorization);
+    assert.equal(r.cliente.llamadas.length, 0);
+  }
+  // Un x-app-code malo no se salva con un Bearer bueno: manda el del móvil.
+  r = await llamar({ cuerpo: cuerpoMinimo, codigo: 'otro', cabeceras: { authorization: 'Bearer secreto' } });
+  assert.equal(r.res.codigo, 401);
+});
+
 test('código bueno → 200 con { sesion } y solo ids del catálogo', async () => {
   const { res, cliente } = await llamar({ cuerpo: cuerpoMinimo, tipo: 'application/json; charset=utf-8' });
   assert.equal(res.codigo, 200);

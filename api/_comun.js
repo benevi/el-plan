@@ -31,6 +31,14 @@ function codigoValido(dado, esperado) {
   return timingSafeEqual(resumen(typeof dado === 'string' ? dado : ''), resumen(esperado));
 }
 
+// El código llega en x-app-code (el móvil) o como «Authorization: Bearer …» (scripts de pruebas en vivo).
+function codigoDe(req) {
+  const directo = req.headers['x-app-code'];
+  if (typeof directo === 'string' && directo) return directo;
+  const m = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || ''));
+  return m ? m[1].trim() : '';
+}
+
 // Puerta común a todas las funciones: método POST, APP_CODE configurado y código correcto (en tiempo constante).
 // Devuelve true si se puede seguir; si no, ya ha respondido (405, 500 o 401). Siempre deja `no-store`.
 export function puerta(req, res) {
@@ -38,7 +46,7 @@ export function puerta(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Usa POST' }); return false; }
   const codigo = process.env.APP_CODE;
   if (!codigo) { console.error('servidor: falta APP_CODE'); res.status(500).json({ error: 'el servidor no está configurado' }); return false; }
-  if (!codigoValido(req.headers['x-app-code'], codigo)) { res.status(401).json({ error: 'código de acceso incorrecto' }); return false; }
+  if (!codigoValido(codigoDe(req), codigo)) { res.status(401).json({ error: 'código de acceso incorrecto' }); return false; }
   return true;
 }
 export const tipoDe = req => String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();

@@ -8,6 +8,8 @@
 //   URL_IA          la vista previa (o la URL completa de /api/entrenador). Obligatoria.
 //   APP_CODE        el código de acceso de la app. Obligatoria. No se escribe en el informe.
 //   VERCEL_BYPASS   opcional: el secreto de «Protection Bypass for Automation» si la vista previa está protegida.
+//   URL_IA también puede ser un enlace para compartir de Vercel (?_vercel_share=…): se abre una vez y se usa su galleta.
+//   CODIGO_POR_PROXY=1  sin APP_CODE: el código lo añade el proxy como «Authorization: Bearer» (nunca pasa por aquí).
 // Opciones:
 //   --solo CR-05,CR-22    solo esos casos
 //   --comparar            el modo sesión con Opus 5.5 y Sonnet 5.5, con esfuerzo medium y low (4 configuraciones;
@@ -61,8 +63,11 @@ function coste(uso) {
   return total + (uso.cacheLeida || 0) * c / 1e6;
 }
 
+let galleta = '';
 async function llamar(url, codigo, cuerpo, config) {
-  const cabeceras = { 'content-type': 'application/json', 'x-app-code': codigo, 'x-pruebas': '1' };
+  const cabeceras = { 'content-type': 'application/json', 'x-pruebas': '1' };
+  if (codigo) cabeceras['x-app-code'] = codigo; // sin APP_CODE, el código lo pone el proxy (Authorization: Bearer)
+  if (galleta) cabeceras.cookie = galleta;
   if (config.modelo) cabeceras['x-pruebas-modelo'] = config.modelo;
   if (config.esfuerzo) cabeceras['x-pruebas-esfuerzo'] = config.esfuerzo;
   if (process.env.VERCEL_BYPASS) cabeceras['x-vercel-protection-bypass'] = process.env.VERCEL_BYPASS;
@@ -158,8 +163,16 @@ function informe(filas, { url, configs, opciones: o, inicio }) {
 
 async function main() {
   const o = opciones(process.argv.slice(2));
-  let url = process.env.URL_IA, codigo = process.env.APP_CODE;
-  if (!url || !codigo) { console.error('Faltan URL_IA y APP_CODE en el entorno (usa --ayuda).'); process.exit(2); }
+  let url = process.env.URL_IA, codigo = process.env.APP_CODE || '';
+  if (!url || (!codigo && !process.env.CODIGO_POR_PROXY)) { console.error('Faltan URL_IA y APP_CODE (o CODIGO_POR_PROXY=1) en el entorno (usa --ayuda).'); process.exit(2); }
+  // Enlace para compartir de Vercel (?_vercel_share=…): se abre una vez y se guarda la galleta de acceso.
+  const u0 = new URL(url);
+  if (u0.searchParams.has('_vercel_share')) {
+    const r0 = await fetchReal(u0, { redirect: 'manual' });
+    galleta = (r0.headers.getSetCookie ? r0.headers.getSetCookie() : [r0.headers.get('set-cookie') || '']).map(c => c.split(';')[0]).filter(Boolean).join('; ');
+    if (!galleta) { console.error('El enlace para compartir no ha dado acceso (¿caducado?).'); process.exit(2); }
+    url = u0.origin;
+  }
   url = url.replace(/\/+$/, '');
   if (!/\/api\/entrenador$/.test(url)) url += '/api/entrenador';
   const casos = CASOS.filter(c => !o.solo || o.solo.includes(c.id));
