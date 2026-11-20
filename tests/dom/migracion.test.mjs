@@ -18,14 +18,14 @@ test('arranca en la bienvenida y al elegir a Víctor trae su sesión', async () 
   assert.match(a.doc.querySelector('#aviso').textContent, /He traído 1 sesiones/);
 });
 
-test('el perfil migrado de Víctor muestra «Hombre»', { todo: 'PR 4: sexo cruzado en la migración' }, async () => {
+test('el perfil migrado de Víctor muestra «Hombre»', async () => {
   await a.ir('perfil');
   a.clic('[data-act="perfil.grupo"][data-v="datos"]');
   await a.esperar(() => a.doc.querySelector('select[data-k="sexo"]'));
   assert.equal(a.doc.querySelector('select[data-k="sexo"]').selectedOptions[0].textContent, 'Hombre');
 });
 
-test('si se eligió mal, al cambiar a Virginia se ven sus datos y no los de Víctor', { todo: 'PR 4: dueño irreversible' }, async () => {
+test('si se eligió mal, al cambiar a Virginia se ven sus datos y no los de Víctor', async () => {
   await a.ir('perfil');
   a.clic('[data-act="perfil.grupo"][data-v="ajustes"]');
   a.clic('[data-act="perfil.cambiarDueño"]'); await a.esperar(() => a.doc.querySelector('.hoja [data-r="1"]'));

@@ -2,8 +2,8 @@
 // Cada área se registra sola al importarse (rutas, acciones y pestaña). Para añadir un área nueva,
 // crea js/areas/<area>/indice.js e impórtala aquí.
 
-import { cargar, estado, escuchar, escucharGuardado, revisarEspejo } from './nucleo/estado.js';
-import { arrancar, pintar } from './nucleo/router.js';
+import { cargar, estado, escuchar, escucharGuardado, revisarEspejo, usarPruebaDePintado, ponerAlDiaMigracion } from './nucleo/estado.js';
+import { arrancar, pintar, probarPantallas } from './nucleo/router.js';
 import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
 import { iniciarVersiones } from './nucleo/version.js';
@@ -26,10 +26,15 @@ function colorPersona() {
   document.body.dataset.persona = estado().dueño || '';
 }
 
+// Antes de cargar una copia se prueban todas las pantallas con sus datos (estado.importar).
+usarPruebaDePintado(probarPantallas);
 cargar();
 // Antes de pintar se mira el espejo de IndexedDB: si pipos4 está roto o vacío y el espejo tiene datos,
 // la pantalla de rescate lo ofrece. Sin IndexedDB (o si tarda) se sigue sin él.
 await revisarEspejo();
+// Lo nuevo de la app anterior (p. ej. tras una marcha atrás) y la corrección única de lo migrado con fallos.
+let migrado = null;
+try { migrado = ponerAlDiaMigracion(); } catch (e) { console.error('No se pudo poner al día lo de la app anterior', e); }
 colorPersona();
 // Repintar tras cada cambio, salvo los que vienen de escribir en un campo (perderías el foco).
 escuchar(motivo => {
@@ -50,6 +55,7 @@ escucharGuardado(ev => {
   }
 });
 arrancar();
+if (migrado && migrado.sesiones) aviso(`He traído ${migrado.sesiones} sesiones nuevas de la app anterior`, 'info');
 // Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).
 document.documentElement.setAttribute('data-arrancado', '');
 window.dispatchEvent(new Event('pipos:arrancado'));

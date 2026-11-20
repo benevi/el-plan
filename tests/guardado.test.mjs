@@ -172,7 +172,8 @@ test('cada guardado sube la revisión en pipos4-rev (sin tocar la forma de pipos
   est.guardarYa(); est.guardarYa();
   assert.equal(leer('pipos4-rev'), '2');
   assert.equal(guardado().rev, undefined);
-  assert.deepEqual(Object.keys(guardado()).sort(), Object.keys(estadoBase()).sort());
+  // La forma es la del modelo (nuevo()): nada del guardado (revisión, copia…) se mete en pipos4.
+  assert.deepEqual(Object.keys(guardado()).sort(), Object.keys(est.nuevo()).sort());
 });
 
 test('una pestaña con revisión vieja no pisa la nueva: carga lo de la otra y aparta lo suyo en el espejo', async () => {
@@ -410,7 +411,10 @@ test('F: sin pipos4, con espejo y con la app anterior: «Empezar de cero» conse
   espejo.reg = regDe(estadoBase(), 9);
   assert.equal((await est.revisarEspejo()).motivo, 'vacio');
   assert.equal(est.descartarRescate(), true);
-  assert.ok(guardado().viejo, 'se pierde elplan2 para migrar');
+  // Lo de la app anterior no se copia en pipos4 (sería duplicar elplan2): se sigue leyendo de elplan2.
+  assert.ok(est.estado().viejo, 'se pierde la app anterior para migrar');
+  assert.ok(leer('elplan2'), 'se borró elplan2');
+  assert.equal(guardado().viejo, undefined);
   assert.ok(+leer('pipos4-rev') > 9);
 });
 
