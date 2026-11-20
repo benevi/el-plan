@@ -1,0 +1,127 @@
+/* Pipos Fitness · sistema de diseño (DIS 3) · TOKENS
+   Identidad: Carril 2 + logo Trenza (DIS 2). Solo tema oscuro.
+   Tres capas: primitivos (valores en bruto, con nombre de material) → semánticos (para qué sirven) → de componente.
+   Regla: ningún componente usa un valor en bruto; si falta un token, se añade aquí. Este es el ÚNICO archivo con hex. */
+
+@font-face { font-family: 'Instrument Sans'; src: url('fuentes/instrument-sans.woff2') format('woff2'); font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+
+  /* ---------- 1. Primitivos ---------- */
+  --p-noche-950: #081723;   /* fondo */
+  --p-noche-900: #0D1F2E;   /* panel */
+  --p-noche-850: #16293B;   /* control */
+  --p-noche-800: #1D3349;   /* capa (hoja, aviso) */
+  --p-agua-900: #0F2C42;    /* final de sesión */
+  --p-noche-700: #22394F;   /* filete decorativo */
+  --p-gris-500: #6A8AA3;    /* borde de control (≥ 3:1 en todas las superficies) */
+  --p-gris-400: #88A2B6;
+  --p-gris-300: #AFC1CF;
+  --p-gris-100: #EDF3F7;
+  --p-lima-300: #C9E77E;    --p-lima-400: #ADC76C;    --p-lima-tinte: #2B3F3B;
+  --p-rosa-300: #F29BC2;    --p-rosa-400: #D085A7;    --p-rosa-tinte: #323346;
+  --p-verde-300: #93DDB8;   /* bien */
+  --p-ambar-300: #F5C76B;   /* aviso */
+  --p-coral-300: #FF8A80;   /* error */
+  --p-azul-300: #8CC8F2;    /* información */
+  --p-velo: rgba(3, 9, 15, .72); /* fondo detrás de una hoja (no lleva texto encima) */
+
+  /* ---------- 2. Semánticos ---------- */
+  /* Superficies (de abajo arriba) */
+  --sup-fondo: var(--p-noche-950);
+  --sup-panel: var(--p-noche-900);
+  --sup-control: var(--p-noche-850);
+  --sup-capa: var(--p-noche-800);
+  --sup-agua: var(--p-agua-900);
+  --sup-velo: var(--p-velo);
+  /* Texto en tres niveles (+ el que va sobre el color de la persona) */
+  --texto-1: var(--p-gris-100);   /* principal */
+  --texto-2: var(--p-gris-300);   /* secundario */
+  --texto-3: var(--p-gris-400);   /* terciario: ayudas, ejes, pendientes */
+  --texto-sobre-acento: var(--p-noche-950);
+  /* Bordes */
+  --borde-fino: var(--p-noche-700);      /* separadores de filas (decorativo) */
+  --borde-control: var(--p-gris-500);    /* contorno de controles (≥ 3:1) */
+  --borde-foco: var(--p-gris-100);       /* anillo de foco */
+  /* Estados (siempre con icono y texto: el color nunca va solo, R12) */
+  --estado-bien: var(--p-verde-300);
+  --estado-aviso: var(--p-ambar-300);
+  --estado-error: var(--p-coral-300);
+  --estado-info: var(--p-azul-300);
+  /* Acento por persona (data-persona en <html>): solo para lo interactivo y lo «tuyo» */
+  --acento: var(--p-lima-300);
+  --acento-pulsado: var(--p-lima-400);
+  --acento-tinte: var(--p-lima-tinte);
+
+  /* Tipografía: una familia; las cifras van estrechas (75 %) y con números tabulares */
+  --f-familia: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-peso-normal: 400; --f-peso-medio: 500; --f-peso-fuerte: 600;
+  --t-meta: 12px;        --t-meta-alto: 1.4;
+  --t-secundario: 14px;  --t-secundario-alto: 1.5;
+  --t-cuerpo: 16px;      --t-cuerpo-alto: 1.55;
+  --t-subtitulo: 20px;   --t-subtitulo-alto: 1.25;
+  --t-titulo: 26px;      --t-titulo-alto: 1.15;
+  --t-portada: 34px;     --t-portada-alto: 1.1;
+  --t-cifra-s: 28px;     /* mínimo de cualquier cifra de la sesión (R06) */
+  --t-cifra-m: 48px;     /* reloj del descanso */
+  --t-cifra-l: 56px;     /* kilos y repeticiones */
+  --t-cifra-xl: 96px;    /* contador a pantalla completa (R06: ≥ 64) */
+  --f-cifra-ancho: 75%;
+  --f-titulo-tracking: -.02em;
+
+  /* Espaciado, base 4 */
+  --e-1: 4px; --e-2: 8px; --e-3: 12px; --e-4: 16px; --e-5: 20px; --e-6: 24px;
+  --e-8: 32px; --e-10: 40px; --e-12: 48px; --e-16: 64px;
+  --e-margen: var(--e-5);          /* margen lateral de pantalla */
+  --e-bloque: var(--e-8);          /* entre bloques de una pantalla */
+  --ancho-lectura: 34em;
+
+  /* Tres radios */
+  --r-pequeno: 8px;     /* barras, celdas, etiquetas de gráfico */
+  --r-medio: 20px;      /* tarjetas, hojas, avisos */
+  --r-pildora: 999px;   /* todo lo que se pulsa */
+
+  /* Profundidad: borde primero; sombra solo en lo que flota */
+  --prof-0: none;
+  --prof-1: inset 0 1px 0 rgba(237, 243, 247, .05);                              /* panel */
+  --prof-2: inset 0 1px 0 rgba(237, 243, 247, .07), 0 8px 24px rgba(0, 0, 0, .35); /* aviso flotante */
+  --prof-3: inset 0 1px 0 rgba(237, 243, 247, .08), 0 -12px 40px rgba(0, 0, 0, .5); /* hoja inferior */
+
+  /* Movimiento */
+  --m-instante: 100ms;   /* respuesta a un toque */
+  --m-corto: 200ms;      /* abrir, cerrar, salir */
+  --m-medio: 300ms;      /* entrar una pantalla o una hoja */
+  --m-largo: 600ms;      /* progreso que se llena (solo fuera de la serie) */
+  --m-fluye: 900ms;      /* celebración: agua y cifras */
+  --m-escalon: 50ms;     /* cascada entre elementos (máximo 5; el resto entra a la vez) */
+  --c-sale: cubic-bezier(.16, 1, .3, 1);    /* entrar: rápido y frena */
+  --c-entra: cubic-bezier(.7, 0, .84, 0);   /* salir: arranca suave y se va */
+  --c-estandar: cubic-bezier(.4, 0, .2, 1); /* cambio dentro de la pantalla */
+  --c-agua: cubic-bezier(.3, .7, .2, 1);    /* el agua del final */
+
+  /* Tamaños táctiles */
+  --toque-min: 44px;        /* fuera de la sesión (R01) */
+  --toque-sesion: 48px;     /* sesión, descanso, contador y cierre (R01) */
+  --toque-principal: 56px;  /* acción principal */
+  --toque-separacion: 8px;  /* entre objetivos adyacentes */
+
+  /* ---------- 3. De componente ---------- */
+  --boton-alto: var(--toque-principal);
+  --boton-radio: var(--r-pildora);
+  --boton-fondo: var(--acento);
+  --boton-fondo-pulsado: var(--acento-pulsado);
+  --boton-texto: var(--texto-sobre-acento);
+  --chip-alto: var(--toque-min);
+  --tarjeta-radio: var(--r-medio);
+  --tarjeta-relleno: var(--e-4);
+  --hoja-radio: var(--r-medio);
+  --descanso-fondo: var(--sup-control);
+  --nav-alto: 64px;
+}
+
+[data-persona="virginia"] {
+  --acento: var(--p-rosa-300);
+  --acento-pulsado: var(--p-rosa-400);
+  --acento-tinte: var(--p-rosa-tinte);
+}

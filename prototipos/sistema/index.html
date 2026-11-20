@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es" data-persona="victor">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#081723">
+<title>Pipos Fitness, sistema de diseño</title>
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="preload" href="fuentes/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="componentes.css">
+<link rel="stylesheet" href="catalogo.css">
+<script type="module" src="catalogo.js"></script>
+</head>
+<body>
+<svg class="solo-lector" aria-hidden="true" focusable="false">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-menos" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-sinred" viewBox="0 0 24 24"><path d="M2.5 8.5a14 14 0 0 1 19 0M6 12a9 9 0 0 1 12 0M9.5 15.5a4 4 0 0 1 5 0M12 19h.01M3 3l18 18"/></symbol>
+  <symbol id="i-gusta" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.5 1 2.2 2.6L12.6 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-atras" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-cambiar" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></symbol>
+  <symbol id="i-hoy" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></symbol>
+  <symbol id="i-progreso" viewBox="0 0 24 24"><path d="M4 19h16M6 16l4-5 3 3 5-7"/></symbol>
+  <symbol id="i-ejercicios" viewBox="0 0 24 24"><path d="M3 12h2m14 0h2M7 8v8m10-8v8M5 10v4m14-4v4M7 12h10"/></symbol>
+  <symbol id="i-perfil" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1-4 4-5.5 7-5.5s6 1.5 7 5.5"/></symbol>
+</svg>
+
+<a class="saltar" href="#principal">Saltar al catálogo</a>
+<header class="cat-cab">
+  <img src="logo.svg" alt="Pipos Fitness" width="160" height="28">
+  <div class="segmento" role="radiogroup" aria-label="Ver con el color de">
+    <button type="button" role="radio" aria-checked="true" data-persona="victor" tabindex="0">Víctor</button>
+    <button type="button" role="radio" aria-checked="false" data-persona="virginia" tabindex="-1">Virginia</button>
+  </div>
+</header>
+
+<main id="principal" tabindex="-1">
+  <section class="cat-intro">
+    <h1>Sistema de diseño</h1>
+    <p>Carril 2 con el logo Trenza. Tokens, componentes con todos sus estados y gráficos. Cada muestra lleva su contraste medido por <code>comprobar.mjs</code> sobre la página renderizada; las de texto piden 4,5:1, las de controles y bordes 3:1 y la alarma 7:1. Las muestras quietas enseñan un estado; la marcada «En vivo» se puede tocar.</p>
+    <p class="cat-resumen" id="resumen" role="status">Cargando las medidas de contraste…</p>
+    <nav class="cat-indice" aria-label="Contenido">
+      <a href="#t-color">Color</a><a href="#t-tipo">Letra</a><a href="#t-espacio">Espacio y radios</a><a href="#t-prof">Profundidad</a><a href="#t-mov">Movimiento</a>
+      <a href="#c-boton">Botón</a><a href="#c-icono">Botón de icono</a><a href="#c-chip">Chip</a><a href="#c-segmento">Segmento</a><a href="#c-selector">Selector ±</a>
+      <a href="#c-serie">Fila de serie</a><a href="#c-tarjeta">Tarjeta de ejercicio</a><a href="#c-hoja">Hoja inferior</a><a href="#c-aviso">Aviso</a>
+      <a href="#c-descanso">Descanso y alarma</a><a href="#c-contador">Contador</a><a href="#c-semana">Semana</a><a href="#c-pestanas">Pestañas</a><a href="#c-graficos">Gráficos</a>
+    </nav>
+  </section>
+
+  <!-- ================= TOKENS ================= -->
+  <section class="cat-sec" id="t-color" aria-labelledby="t-color-t">
+    <h2 id="t-color-t">Color</h2>
+    <p class="cat-nota">Superficies de abajo arriba, texto en tres niveles, bordes, estados y el color de la persona. Cifra: contraste con el fondo.</p>
+    <div class="paleta" id="paleta"><!-- catalogo.js --></div>
+  </section>
+
+  <section class="cat-sec" id="t-tipo" aria-labelledby="t-tipo-t">
+    <h2 id="t-tipo-t">Letra</h2>
+    <p class="cat-nota">Instrument Sans (OFL, 56 KB, alojada). Pesos 400, 500 y 600. Las cifras van al 75 % de ancho y con números tabulares.</p>
+    <dl class="escala">
+      <div><dt>Portada · 34</dt><dd class="e-portada">Progreso</dd></div>
+      <div><dt>Título · 26</dt><dd class="e-titulo">Press de banca con mancuernas</dd></div>
+      <div><dt>Subtítulo · 20</dt><dd class="e-subtitulo">Esta semana</dd></div>
+      <div><dt>Cuerpo · 16</dt><dd class="e-cuerpo">Subimos 2,5 kg porque el lunes te sobraron dos repeticiones.</dd></div>
+      <div><dt>Secundario · 14</dt><dd class="e-secundario">La última vez: 20 kg, con 10, 10 y 9</dd></div>
+      <div><dt>Meta · 12</dt><dd class="e-meta">29 sep</dd></div>
+      <div><dt>Cifra S · 28 (mínimo en la sesión)</dt><dd class="e-cifra-s cifra-estrecha">22,5 kg</dd></div>
+      <div><dt>Cifra M · 48 (descanso)</dt><dd class="e-cifra-m cifra-estrecha">1:24</dd></div>
+      <div><dt>Cifra L · 56 (kilos y reps)</dt><dd class="e-cifra-l cifra-estrecha">22,5</dd></div>
+      <div><dt>Cifra XL · 96 (contador)</dt><dd class="e-cifra-xl cifra-estrecha">7:30</dd></div>
+    </dl>
+  </section>
+
+  <section class="cat-sec" id="t-espacio" aria-labelledby="t-espacio-t">
+    <h2 id="t-espacio-t">Espacio, radios y tamaños táctiles</h2>
+    <p class="cat-nota">Base 4. Dentro de un componente, 4-16; entre bloques, 32. Tres radios. Toque mínimo 44 px fuera de la sesión, 48 px dentro y 56 px la acción principal, con 8 px entre objetivos.</p>
+    <ul class="espacios" id="espacios"><!-- catalogo.js --></ul>
+    <div class="radios">
+      <figure><span class="radio-m r-pequeno"></span><figcaption>Pequeño · 8<br><span>barras y celdas</span></figcaption></figure>
+      <figure><span class="radio-m r-medio"></span><figcaption>Medio · 20<br><span>tarjetas, hojas, avisos</span></figcaption></figure>
+      <figure><span class="radio-m r-pildora"></span><figcaption>Píldora<br><span>todo lo que se pulsa</span></figcaption></figure>
+    </div>
+    <div class="toques">
+      <figure><span class="toque t44"></span><figcaption>44 · fuera de la sesión</figcaption></figure>
+      <figure><span class="toque t48"></span><figcaption>48 · sesión</figcaption></figure>
+      <figure><span class="toque t56"></span><figcaption>56 · principal</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="t-prof" aria-labelledby="t-prof-t">
+    <h2 id="t-prof-t">Profundidad</h2>
+    <p class="cat-nota">Borde primero; sombra solo en lo que flota sobre otra cosa.</p>
+    <div class="profundidades">
+      <figure><span class="prof prof-0"></span><figcaption>0 · fondo</figcaption></figure>
+      <figure><span class="prof prof-1"></span><figcaption>1 · panel (filo de luz)</figcaption></figure>
+      <figure><span class="prof prof-2"></span><figcaption>2 · aviso flotante</figcaption></figure>
+      <figure><span class="prof prof-3"></span><figcaption>3 · hoja inferior</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="t-mov" aria-labelledby="t-mov-t">
+    <h2 id="t-mov-t">Movimiento</h2>
+    <p class="cat-nota">Solo <code>transform</code> y <code>opacity</code>. Durante una serie no se mueve nada salvo el reloj del descanso. Con movimiento reducido, todo llega a su estado final sin desplazarse.</p>
+    <ul class="movs" id="movs"><!-- catalogo.js --></ul>
+  </section>
+
+  <!-- ================= COMPONENTES ================= -->
+  <section class="cat-sec" id="c-boton" aria-labelledby="c-boton-t">
+    <h2 id="c-boton-t">Botón</h2>
+    <p class="cat-nota">Principal (uno por pantalla, abajo, al alcance del pulgar), secundario, de texto y de peligro. Nunca se desactiva sin decir por qué; desactivado sigue siendo enfocable.</p>
+    <div class="estados">
+      <figure class="muestra vivo" data-medir="boton-vivo"><button type="button" class="boton" data-act="cargar">Guardar sesión</button><figcaption>Pulsa: guarda 1,5 s</figcaption></figure>
+      <figure class="muestra" data-medir="boton-normal" inert><button type="button" class="boton">Empezar sesión</button><figcaption>Normal</figcaption></figure>
+      <figure class="muestra" data-medir="boton-pulsado" inert><button type="button" class="boton es-pulsado">Empezar sesión</button><figcaption>Pulsado</figcaption></figure>
+      <figure class="muestra" data-medir="boton-foco" inert><button type="button" class="boton es-foco">Empezar sesión</button><figcaption>Foco</figcaption></figure>
+      <figure class="muestra" data-medir="boton-cargando" inert><button type="button" class="boton" aria-busy="true"><span class="giro" aria-hidden="true"></span>Guardando…</button><figcaption>Cargando</figcaption></figure>
+      <figure class="muestra" data-medir="boton-desactivado" data-exento="desactivado" inert><div><button type="button" class="boton" aria-disabled="true">Pedir plan a la IA</button><span class="boton-motivo">Necesita conexión. Tu sesión de hoy funciona sin ella.</span></div><figcaption>Desactivado (con motivo)</figcaption></figure>
+      <figure class="muestra" data-medir="boton-error" inert><div><button type="button" class="boton">Reintentar</button><p class="mensaje mensaje--error"><svg class="icono" aria-hidden="true"><use href="#i-error"/></svg>No se ha podido guardar. Lo hecho sigue en el móvil.</p></div><figcaption>Error</figcaption></figure>
+      <figure class="muestra" data-medir="boton-secundario" inert><button type="button" class="boton boton--secundario">Cambiar ejercicio</button><figcaption>Secundario</figcaption></figure>
+      <figure class="muestra" data-medir="boton-secundario-pulsado" inert><button type="button" class="boton boton--secundario es-pulsado">Cambiar ejercicio</button><figcaption>Secundario pulsado</figcaption></figure>
+      <figure class="muestra" data-medir="boton-texto" inert><button type="button" class="boton boton--texto">Saltar calentamiento</button><figcaption>De texto</figcaption></figure>
+      <figure class="muestra" data-medir="boton-peligro" inert><button type="button" class="boton boton--peligro">Descartar sesión</button><figcaption>Peligro</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-icono" aria-labelledby="c-icono-t">
+    <h2 id="c-icono-t">Botón de icono</h2>
+    <p class="cat-nota">48 × 48. Siempre con nombre accesible. Si alterna (me gusta), usa <code>aria-pressed</code> y cambia también de forma (relleno), no solo de color.</p>
+    <div class="estados">
+      <figure class="muestra vivo" data-medir="icono-vivo"><button type="button" class="boton-icono" aria-pressed="false" aria-label="Me gusta este ejercicio" data-act="alternar"><svg class="icono" aria-hidden="true"><use href="#i-gusta"/></svg></button><figcaption>Pulsa para alternar</figcaption></figure>
+      <figure class="muestra" data-medir="icono-normal" inert><button type="button" class="boton-icono" aria-label="Volver"><svg class="icono" aria-hidden="true"><use href="#i-atras"/></svg></button><figcaption>Normal</figcaption></figure>
+      <figure class="muestra" data-medir="icono-pulsado" inert><button type="button" class="boton-icono es-pulsado" aria-label="Volver"><svg class="icono" aria-hidden="true"><use href="#i-atras"/></svg></button><figcaption>Pulsado</figcaption></figure>
+      <figure class="muestra" data-medir="icono-activo" inert><button type="button" class="boton-icono" aria-pressed="true" aria-label="Me gusta este ejercicio"><svg class="icono" aria-hidden="true"><use href="#i-gusta"/></svg></button><figcaption>Activo</figcaption></figure>
+      <figure class="muestra" data-medir="icono-foco" inert><button type="button" class="boton-icono es-foco" aria-label="Cambiar ejercicio"><svg class="icono" aria-hidden="true"><use href="#i-cambiar"/></svg></button><figcaption>Foco</figcaption></figure>
+      <figure class="muestra" data-medir="icono-desactivado" data-exento="desactivado" inert><button type="button" class="boton-icono" aria-disabled="true" aria-label="Cambiar ejercicio (no hay otro con este material)"><svg class="icono" aria-hidden="true"><use href="#i-cambiar"/></svg></button><figcaption>Desactivado</figcaption></figure>
+      <figure class="muestra" data-medir="icono-cargando" inert><button type="button" class="boton-icono" aria-busy="true" aria-label="Buscando otro ejercicio"><span class="giro" aria-hidden="true"></span></button><figcaption>Cargando</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-chip" aria-labelledby="c-chip-t">
+    <h2 id="c-chip-t">Chip</h2>
+    <p class="cat-nota">Elegir varias cosas (zonas de dolor, material, me gusta). Elegido = fondo teñido, borde del color de la persona y marca ✓. Se actualiza en su sitio: nada salta (R15).</p>
+    <div class="estados">
+      <figure class="muestra vivo ancha" data-medir="chip-vivo"><div class="chips" role="group" aria-label="¿Te duele algo hoy?">
+        <button type="button" class="chip" aria-pressed="false" data-act="alternar"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Lumbar</button>
+        <button type="button" class="chip" aria-pressed="true" data-act="alternar"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Rodilla</button>
+        <button type="button" class="chip" aria-pressed="false" data-act="alternar"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Hombro</button>
+        <button type="button" class="chip" aria-pressed="false" data-act="alternar"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Nada</button></div><figcaption>Pruébalo</figcaption></figure>
+      <figure class="muestra" data-medir="chip-normal" inert><button type="button" class="chip" aria-pressed="false"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Mancuernas</button><figcaption>Normal</figcaption></figure>
+      <figure class="muestra" data-medir="chip-pulsado" inert><button type="button" class="chip es-pulsado" aria-pressed="false"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Mancuernas</button><figcaption>Pulsado</figcaption></figure>
+      <figure class="muestra" data-medir="chip-activo" inert><button type="button" class="chip" aria-pressed="true"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Mancuernas</button><figcaption>Elegido</figcaption></figure>
+      <figure class="muestra" data-medir="chip-foco" inert><button type="button" class="chip es-foco" aria-pressed="false"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Mancuernas</button><figcaption>Foco</figcaption></figure>
+      <figure class="muestra" data-medir="chip-desactivado" data-exento="desactivado" inert><button type="button" class="chip" aria-disabled="true" aria-pressed="false">Piscina (cerrada)</button><figcaption>Desactivado</figcaption></figure>
+      <figure class="muestra ancha" data-medir="chip-error" inert><div><div class="chips es-error" role="group" aria-label="Dónde entrenas hoy"><button type="button" class="chip" aria-pressed="false">Gimnasio</button><button type="button" class="chip" aria-pressed="false">Piscina</button><button type="button" class="chip" aria-pressed="false">Casa</button></div><p class="mensaje mensaje--error"><svg class="icono" aria-hidden="true"><use href="#i-error"/></svg>Elige dónde entrenas para ajustar la sesión.</p></div><figcaption>Error (falta elegir)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-segmento" aria-labelledby="c-segmento-t">
+    <h2 id="c-segmento-t">Segmento</h2>
+    <p class="cat-nota">Una opción de varias. Es un <code>radiogroup</code>: Tab entra en la elegida y las flechas cambian.</p>
+    <div class="estados">
+      <figure class="muestra vivo ancha" data-medir="segmento-vivo"><div class="segmento segmento--ancho" role="radiogroup" aria-label="Cómo ver la sesión"><button type="button" role="radio" aria-checked="true" tabindex="0">Uno a uno</button><button type="button" role="radio" aria-checked="false" tabindex="-1">Toda la sesión</button></div><figcaption>Toca o usa las flechas</figcaption></figure>
+      <figure class="muestra" data-medir="segmento-normal" inert><div class="segmento" role="radiogroup" aria-label="Energía"><button type="button" role="radio" aria-checked="false">Baja</button><button type="button" role="radio" aria-checked="true">Normal</button><button type="button" role="radio" aria-checked="false">Alta</button></div><figcaption>Normal y elegido</figcaption></figure>
+      <figure class="muestra" data-medir="segmento-pulsado" inert><div class="segmento" role="radiogroup" aria-label="Energía"><button type="button" role="radio" aria-checked="false" class="es-pulsado">Baja</button><button type="button" role="radio" aria-checked="true">Normal</button><button type="button" role="radio" aria-checked="false">Alta</button></div><figcaption>Pulsado</figcaption></figure>
+      <figure class="muestra" data-medir="segmento-foco" inert><div class="segmento" role="radiogroup" aria-label="Energía"><button type="button" role="radio" aria-checked="false">Baja</button><button type="button" role="radio" aria-checked="true" class="es-activo es-foco">Normal</button><button type="button" role="radio" aria-checked="false">Alta</button></div><figcaption>Foco</figcaption></figure>
+      <figure class="muestra" data-medir="segmento-desactivado" data-exento="desactivado" inert><div class="segmento" role="radiogroup" aria-label="Lugar"><button type="button" role="radio" aria-checked="true">Gimnasio</button><button type="button" role="radio" aria-checked="false" aria-disabled="true">Piscina</button></div><figcaption>Una opción desactivada</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-selector" aria-labelledby="c-selector-t">
+    <h2 id="c-selector-t">Selector ± de kilos y repeticiones</h2>
+    <p class="cat-nota">Sin teclado del móvil (R04). El valor es un <code>spinbutton</code>: flechas arriba/abajo cambian, Inicio/Fin van al mínimo/máximo. El paso de kilos es el de la máquina (1, 2,5 o 5). Botones de 48 px.</p>
+    <div class="estados">
+      <figure class="muestra vivo" data-medir="selector-vivo"><div class="selector" data-selector data-min="0" data-max="300" data-incremento="2.5" data-unidad="kg" data-nombre="Kilos"><span class="selector-et" id="sel-v-et">Kilos</span><div class="selector-valor" role="spinbutton" tabindex="0" aria-labelledby="sel-v-et" aria-valuemin="0" aria-valuemax="300" aria-valuenow="22.5" aria-valuetext="22,5 kilos"><b data-cifra>22,5</b><span>kg</span></div><div class="selector-pasos"><button type="button" data-paso="-1" aria-label="Menos 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" data-paso="1" aria-label="Más 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div></div><figcaption>Pruébalo</figcaption></figure>
+      <figure class="muestra" data-medir="selector-normal" inert><div class="selector"><span class="selector-et">Repeticiones</span><div class="selector-valor" role="spinbutton" aria-label="Repeticiones" aria-valuenow="10"><b data-cifra>10</b><span>reps</span></div><div class="selector-pasos"><button type="button" aria-label="Una repetición menos"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" aria-label="Una repetición más"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div></div><figcaption>Normal</figcaption></figure>
+      <figure class="muestra" data-medir="selector-pulsado" inert><div class="selector"><span class="selector-et">Repeticiones</span><div class="selector-valor" role="spinbutton" aria-label="Repeticiones" aria-valuenow="11"><b data-cifra>11</b><span>reps</span></div><div class="selector-pasos"><button type="button" aria-label="Una repetición menos"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" class="es-pulsado" aria-label="Una repetición más"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div></div><figcaption>Pulsado (+)</figcaption></figure>
+      <figure class="muestra" data-medir="selector-foco" inert><div class="selector"><span class="selector-et">Kilos</span><div class="selector-valor es-foco" role="spinbutton" aria-label="Kilos" aria-valuenow="22.5"><b data-cifra>22,5</b><span>kg</span></div><div class="selector-pasos"><button type="button" aria-label="Menos 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" aria-label="Más 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div></div><figcaption>Foco en el valor</figcaption></figure>
+      <figure class="muestra" data-medir="selector-desactivado" data-exento="desactivado" inert><div class="selector"><span class="selector-et">Kilos</span><div class="selector-valor" role="spinbutton" aria-label="Kilos" aria-valuenow="0"><b data-cifra>0</b><span>kg (peso corporal)</span></div><div class="selector-pasos"><button type="button" aria-disabled="true" aria-label="Menos 2,5 kilos (ya está en 0)"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" aria-label="Más 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div></div><figcaption>En el mínimo (− desactivado)</figcaption></figure>
+      <figure class="muestra" data-medir="selector-error" inert><div class="selector es-error"><span class="selector-et">Kilos</span><div class="selector-valor" role="spinbutton" aria-label="Kilos" aria-valuenow="60" aria-invalid="true"><b data-cifra>60</b><span>kg</span></div><div class="selector-pasos"><button type="button" aria-label="Menos 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-menos"/></svg></button><button type="button" aria-label="Más 2,5 kilos"><svg class="icono" aria-hidden="true"><use href="#i-mas"/></svg></button></div><p class="mensaje mensaje--error selector-nota"><svg class="icono" aria-hidden="true"><use href="#i-alerta"/></svg>El doble que la última vez. Revisa los kilos.</p></div><figcaption>Aviso de valor raro</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-serie" aria-labelledby="c-serie-t">
+    <h2 id="c-serie-t">Fila de serie</h2>
+    <p class="cat-nota">Repetir la serie con los mismos kilos: un toque. Los kilos de la serie hecha pasan a la siguiente (R05). La actual va entera a la vista (R03).</p>
+    <div class="estados una">
+      <figure class="muestra vivo ancha" data-medir="serie-vivo"><ol class="series" id="series-vivo"><!-- catalogo.js --></ol><figcaption>Marca series: los kilos pasan a la siguiente</figcaption></figure>
+      <figure class="muestra ancha" data-medir="serie-estados" inert><ol class="series">
+        <li class="serie serie--hecha"><span class="serie-n cifra">1</span><span class="serie-valor cifra">22,5 kg × 10</span><span class="serie-estado"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Hecha</span></li>
+        <li class="serie serie--error"><span class="serie-n cifra">2</span><span class="serie-valor cifra">22,5 kg × 9</span><span class="serie-estado"><svg class="icono" aria-hidden="true"><use href="#i-alerta"/></svg>Sin guardar</span></li>
+        <li class="serie serie--pendiente"><span class="serie-n cifra">3</span><span class="serie-valor">Pendiente</span><span></span></li>
+        <li class="serie serie--lectura"><span class="serie-n cifra">4</span><span class="serie-valor cifra">20 kg × 10</span><span class="serie-estado">Sesión cerrada</span></li>
+      </ol><figcaption>Hecha, sin guardar (error), pendiente y en modo lectura</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-tarjeta" aria-labelledby="c-tarjeta-t">
+    <h2 id="c-tarjeta-t">Tarjeta de ejercicio</h2>
+    <p class="cat-nota">Lo que se usa en cada serie va antes que lo explicativo; la técnica se pliega (R26). Cada ejercicio lleva «Cómo se hace».</p>
+    <div class="estados dos">
+      <figure class="muestra" data-medir="tarjeta-actual" inert><article class="tarjeta tarjeta--actual" aria-label="Ejercicio en curso">
+        <div class="tarjeta-cab"><div><p class="tarjeta-orden">Ejercicio 2 de 5 · en curso</p><h3 class="tarjeta-nombre">Press de banca con mancuernas</h3><p class="tarjeta-objetivo">4 series de 8 a 10 · descanso 2:00</p></div><button type="button" class="boton-icono" aria-label="Cambiar por otro ejercicio"><svg class="icono" aria-hidden="true"><use href="#i-cambiar"/></svg></button></div>
+        <details class="tecnica"><summary>Cómo se hace</summary><ol class="tecnica-texto"><li>Escápulas juntas y apoyadas.</li><li>Baja hasta que los codos queden un poco por debajo del banco.</li><li>Sube sin bloquear los codos.</li></ol></details>
+      </article><figcaption>En curso</figcaption></figure>
+      <figure class="muestra" data-medir="tarjeta-pendiente" inert><article class="tarjeta" aria-label="Ejercicio pendiente"><div class="tarjeta-cab"><div><p class="tarjeta-orden">Ejercicio 3 de 5</p><h3 class="tarjeta-nombre">Press militar sentado</h3><p class="tarjeta-objetivo">3 series de 10 a 12</p></div></div><details class="tecnica"><summary>Cómo se hace</summary><p class="tecnica-texto">Espalda pegada al respaldo; empuja en vertical.</p></details></article><figcaption>Pendiente</figcaption></figure>
+      <figure class="muestra" data-medir="tarjeta-hecha" inert><article class="tarjeta tarjeta--hecha" aria-label="Ejercicio hecho"><div class="tarjeta-cab"><div><p class="tarjeta-orden">Ejercicio 1 de 5</p><h3 class="tarjeta-nombre">Remo con mancuerna</h3><p class="tarjeta-resumen"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Hecho: 3 series, 22,5 kg</p></div></div></article><figcaption>Hecha</figcaption></figure>
+      <figure class="muestra" data-medir="tarjeta-cargando" inert><article class="tarjeta" aria-busy="true" aria-label="Cargando ejercicio"><span class="esqueleto sk-a"></span><span class="esqueleto sk-b"></span><span class="esqueleto sk-c"></span></article><figcaption>Cargando (más de 1 s: esqueleto)</figcaption></figure>
+      <figure class="muestra" data-medir="tarjeta-vacia" inert><article class="tarjeta vacio" aria-label="Sin ejercicios"><h4>Esta parte no tiene ejercicios</h4><p>El entrenador no ha propuesto ninguno para hoy.</p><button type="button" class="boton boton--secundario">Añadir un ejercicio</button></article><figcaption>Vacía</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-hoja" aria-labelledby="c-hoja-t">
+    <h2 id="c-hoja-t">Hoja inferior</h2>
+    <p class="cat-nota">Para tareas de menos de 10 s (cambiar ejercicio, comentario). <code>role="dialog"</code>, <code>aria-modal</code> y <code>aria-labelledby</code>; al abrir, el foco va al título; Escape, el botón atrás o «Cerrar» la cierran y el foco vuelve al botón que la abrió; el fondo queda <code>inert</code> (R10). No abre el teclado (R23).</p>
+    <div class="estados">
+      <figure class="muestra vivo" data-medir="hoja-vivo"><button type="button" class="boton boton--secundario" data-act="abrir-hoja">Cambiar ejercicio</button><figcaption>Abre la hoja</figcaption></figure>
+      <figure class="muestra ancha" data-medir="hoja-abierta" inert><div class="hoja hoja--muestra" role="dialog" aria-label="Muestra de hoja"><div class="hoja-asa"></div><div class="hoja-cab"><h2>Cambiar press de banca</h2><button type="button" class="boton-icono boton-icono--sin-borde" aria-label="Cerrar"><svg class="icono" aria-hidden="true"><use href="#i-cerrar"/></svg></button></div><p class="cat-p2">Tienes 1 serie hecha: se conserva.</p><div class="chips"><button type="button" class="chip" aria-pressed="true"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg>Press en máquina</button><button type="button" class="chip" aria-pressed="false">Flexiones</button></div></div><figcaption>Abierta</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-aviso" aria-labelledby="c-aviso-t">
+    <h2 id="c-aviso-t">Aviso</h2>
+    <p class="cat-nota">Información, hecho, aviso, error y sin conexión. Siempre icono + texto. Los errores dicen qué pasa y qué hacer, sin códigos (R13), y no se van solos.</p>
+    <div class="estados una">
+      <figure class="muestra vivo" data-medir="aviso-vivo"><button type="button" class="boton boton--secundario" data-act="aviso">Mostrar un aviso</button><div class="pila-avisos" id="pila-avisos" aria-live="polite"></div><figcaption>Pruébalo</figcaption></figure>
+      <figure class="muestra" data-medir="aviso-info" inert><div class="aviso aviso--info" role="status"><svg class="icono" aria-hidden="true"><use href="#i-info"/></svg><div class="aviso-texto"><b>Hoy, 50 minutos</b><p>El check-in ha recortado el cardio porque llegas con poca energía.</p></div><button type="button" class="boton-icono boton-icono--sin-borde" aria-label="Cerrar aviso"><svg class="icono" aria-hidden="true"><use href="#i-cerrar"/></svg></button></div><figcaption>Información</figcaption></figure>
+      <figure class="muestra" data-medir="aviso-bien" inert><div class="aviso aviso--bien" role="status"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg><div class="aviso-texto"><b>Sesión guardada</b><p>El entrenador la tendrá en cuenta para el sábado.</p></div><button type="button" class="boton-icono boton-icono--sin-borde" aria-label="Cerrar aviso"><svg class="icono" aria-hidden="true"><use href="#i-cerrar"/></svg></button></div><figcaption>Hecho</figcaption></figure>
+      <figure class="muestra" data-medir="aviso-aviso" inert><div class="aviso aviso--aviso" role="status"><svg class="icono" aria-hidden="true"><use href="#i-alerta"/></svg><div class="aviso-texto"><b>Te quedan 2 series</b><p>Si terminas ahora, quedan sin hacer 2 series de press militar.</p><div class="aviso-acciones"><button type="button" class="boton">Terminar igual</button><button type="button" class="boton boton--secundario">Seguir</button></div></div><span></span></div><figcaption>Aviso con decisión</figcaption></figure>
+      <figure class="muestra" data-medir="aviso-error" inert><div class="aviso aviso--error" role="alert"><svg class="icono" aria-hidden="true"><use href="#i-error"/></svg><div class="aviso-texto"><b>El entrenador no ha respondido</b><p>Tu check-in está guardado. Puedes reintentarlo o hacer la sesión con la app.</p><div class="aviso-acciones"><button type="button" class="boton">Reintentar</button><button type="button" class="boton boton--secundario">Hacerla con la app</button></div></div><span></span></div><figcaption>Error</figcaption></figure>
+      <figure class="muestra" data-medir="aviso-sinred" inert><div class="aviso" role="status"><svg class="icono" aria-hidden="true"><use href="#i-sinred"/></svg><div class="aviso-texto"><b>Sin conexión</b><p>La sesión de hoy funciona entera. Lo que necesita al entrenador espera a que vuelva la red.</p></div><span></span></div><figcaption>Sin conexión</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-descanso" aria-labelledby="c-descanso-t">
+    <h2 id="c-descanso-t">Barra de descanso y alarma</h2>
+    <p class="cat-nota">Abajo, sin tapar la serie siguiente ni la acción principal (R09). El nivel baja segundo a segundo. En los últimos 10 s el reloj toma el color de la persona. La alarma: fondo del color de la persona, texto oscuro ≥ 7:1 en todo momento (R08), vibración, aviso al lector de pantalla y se cierra sola a los 8 s.</p>
+    <div class="estados una">
+      <figure class="muestra vivo" data-medir="descanso-vivo"><div class="descanso" id="descanso-vivo" role="timer" aria-label="Descanso"><span class="descanso-nivel" aria-hidden="true"></span><div class="descanso-fila"><div class="descanso-txt"><span class="descanso-et">Descanso</span><b class="descanso-reloj" data-reloj>0:12</b><span class="eco" aria-hidden="true"></span></div><button type="button" class="boton boton--secundario" data-act="descanso-mas">+15 s</button><button type="button" class="boton boton--secundario" data-act="descanso-saltar">Saltar</button></div></div><p class="solo-lector" aria-live="assertive" id="descanso-anuncio"></p><button type="button" class="boton boton--texto" data-act="descanso-empezar">Empezar un descanso de 12 s</button><figcaption>Pruébalo</figcaption></figure>
+      <figure class="muestra" data-medir="descanso-corriendo" inert><div class="descanso" role="timer" aria-label="Descanso"><span class="descanso-nivel nivel-70" aria-hidden="true"></span><div class="descanso-fila"><div class="descanso-txt"><span class="descanso-et">Descanso</span><b class="descanso-reloj">1:24</b></div><button type="button" class="boton boton--secundario">+15 s</button><button type="button" class="boton boton--secundario">Saltar</button></div></div><figcaption>Corriendo</figcaption></figure>
+      <figure class="muestra" data-medir="descanso-ultimos" inert><div class="descanso descanso--ultimos" role="timer" aria-label="Descanso"><span class="descanso-nivel nivel-5" aria-hidden="true"></span><div class="descanso-fila"><div class="descanso-txt"><span class="descanso-et">Prepárate</span><b class="descanso-reloj">0:06</b></div><button type="button" class="boton boton--secundario">+15 s</button><button type="button" class="boton boton--secundario">Saltar</button></div></div><figcaption>Últimos 10 s</figcaption></figure>
+      <figure class="muestra" data-medir="descanso-alarma" data-minimo="7" inert><div class="descanso descanso--alarma sobre-acento" role="timer" aria-label="Descanso terminado"><span class="descanso-nivel nivel-0" aria-hidden="true"></span><div class="descanso-fila"><div class="descanso-txt"><span class="descanso-et">A por la serie 3</span><b class="descanso-reloj">0:00</b></div><button type="button" class="boton boton--secundario">+15 s</button><button type="button" class="boton boton--secundario">Cerrar</button></div></div><figcaption>Alarma (≥ 7:1)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-contador" aria-labelledby="c-contador-t">
+    <h2 id="c-contador-t">Contador a pantalla completa</h2>
+    <p class="cat-nota">Ejercicios por tiempo y cardio. Lo de 2 min o más, en mm:ss y con su propio texto (R18). El agua sube según pasa el tiempo. Cifra de 96 px (R06: ≥ 64).</p>
+    <div class="estados">
+      <figure class="muestra vivo" data-medir="contador-vivo"><div class="contador" id="contador-vivo" role="timer" aria-label="Bici estática"><span class="contador-agua" aria-hidden="true"></span><div><p class="contador-nombre">Bici estática</p><p class="contador-estado" data-estado>Listo para empezar</p></div><div><b class="contador-reloj" data-reloj>0:20</b><p class="contador-meta">Objetivo: 20 s en esta muestra (en la app, 12:00)</p></div><div class="contador-acciones"><button type="button" class="boton" data-act="contador">Empezar</button></div></div><figcaption>Pruébalo</figcaption></figure>
+      <figure class="muestra" data-medir="contador-marcha" inert><div class="contador" role="timer" aria-label="Plancha"><span class="contador-agua nivel-40" aria-hidden="true"></span><div><p class="contador-nombre">Plancha frontal</p><p class="contador-estado">En marcha</p></div><div><b class="contador-reloj">0:30</b><p class="contador-meta">Quedan 0:20</p></div><div class="contador-acciones"><button type="button" class="boton boton--secundario">Pausar</button></div></div><figcaption>En marcha</figcaption></figure>
+      <figure class="muestra" data-medir="contador-pausado" inert><div class="contador" role="timer" aria-label="Plancha"><span class="contador-agua nivel-40" aria-hidden="true"></span><div><p class="contador-nombre">Plancha frontal</p><p class="contador-estado">En pausa</p></div><div><b class="contador-reloj">0:30</b><p class="contador-meta">Quedan 0:20</p></div><div class="contador-acciones"><button type="button" class="boton">Seguir</button><button type="button" class="boton boton--secundario">Terminar</button></div></div><figcaption>En pausa</figcaption></figure>
+      <figure class="muestra" data-medir="contador-terminado" inert><div class="contador contador--terminado" role="timer" aria-label="Plancha"><span class="contador-agua nivel-100" aria-hidden="true"></span><div><p class="contador-nombre">Plancha frontal</p><p class="contador-estado">Hecho: 50 s</p></div><div><b class="contador-reloj">0:50</b><p class="contador-meta">Tu mejor marca</p></div><div class="contador-acciones"><button type="button" class="boton">Siguiente</button></div></div><figcaption>Terminado</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-semana" aria-labelledby="c-semana-t">
+    <h2 id="c-semana-t">Tira de la semana</h2>
+    <p class="cat-nota">Cada estado con forma propia (R12): lleno con ✓ = hecha; anillo = hoy; discontinuo = prevista; × = prevista que no se hizo; nada = descanso.</p>
+    <div class="estados una">
+      <figure class="muestra" data-medir="semana" inert><ol class="semana" aria-label="Semana del 17 de noviembre">
+        <li class="dia dia--hecha"><span class="dia-l">L</span><span class="dia-c"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg></span><span class="solo-lector">17, hecha</span></li>
+        <li class="dia dia--perdida"><span class="dia-l">M</span><span class="dia-c"><svg class="icono" aria-hidden="true"><use href="#i-cerrar"/></svg></span><span class="solo-lector">18, prevista y no hecha</span></li>
+        <li class="dia dia--hecha"><span class="dia-l">X</span><span class="dia-c"><svg class="icono" aria-hidden="true"><use href="#i-check"/></svg></span><span class="solo-lector">19, hecha</span></li>
+        <li class="dia dia--hoy"><span class="dia-l">J</span><span class="dia-c cifra">20</span><span class="solo-lector">hoy</span></li>
+        <li class="dia"><span class="dia-l">V</span><span class="dia-c cifra">21</span><span class="solo-lector">descanso</span></li>
+        <li class="dia dia--prevista"><span class="dia-l">S</span><span class="dia-c cifra">22</span><span class="solo-lector">prevista</span></li>
+        <li class="dia"><span class="dia-l">D</span><span class="dia-c cifra">23</span><span class="solo-lector">descanso</span></li>
+      </ol><figcaption>Hecha, no hecha, hoy, descanso y prevista</figcaption></figure>
+      <figure class="muestra" data-medir="semana-vacia" inert><div class="vacio"><h4>Aún no hay plan para esta semana</h4><p>Dile al entrenador qué días puedes y prepara la semana.</p><button type="button" class="boton">Preparar la semana</button></div><figcaption>Vacía</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-pestanas" aria-labelledby="c-pestanas-t">
+    <h2 id="c-pestanas-t">Pestañas</h2>
+    <p class="cat-nota">Navegación principal. Enlaces con <code>aria-current="page"</code>: la activa cambia de color y lleva un punto (no solo color). Desaparecen durante la sesión.</p>
+    <div class="estados una">
+      <figure class="muestra" data-medir="pestanas" inert><nav class="pestanas" aria-label="Secciones (muestra)">
+        <a class="pestana" href="#c-pestanas" aria-current="page"><svg class="icono" aria-hidden="true"><use href="#i-hoy"/></svg>Hoy</a>
+        <a class="pestana es-pulsado" href="#c-pestanas"><svg class="icono" aria-hidden="true"><use href="#i-progreso"/></svg>Progreso</a>
+        <a class="pestana es-foco" href="#c-pestanas"><svg class="icono" aria-hidden="true"><use href="#i-ejercicios"/></svg>Ejercicios</a>
+        <a class="pestana" href="#c-pestanas"><svg class="icono" aria-hidden="true"><use href="#i-perfil"/></svg>Perfil</a>
+      </nav><figcaption>Activa (Hoy), pulsada (Progreso), foco (Ejercicios) y normal (Perfil)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cat-sec" id="c-graficos" aria-labelledby="c-graficos-t">
+    <h2 id="c-graficos-t">Gráficos</h2>
+    <p class="cat-nota">Según la guía <code>dataviz</code>: una sola serie por gráfico, en el color de la persona; un solo eje; texto en tinta, nunca en el color de la serie; marcas finas; burbuja al pasar o al enfocar cada punto; y siempre la tabla con los mismos datos. Medidas y dolor van en gráficos pequeños separados (unidades distintas, nunca dos ejes).</p>
+    <div class="estados dos" id="graficos"><!-- catalogo.js / graficos.js --></div>
+  </section>
+</main>
+
+<footer class="cat-pie"><p>DIS 3 · prototipo sin compilación ni dependencias. Documento: <code>docs/diseno/sistema.md</code>.</p></footer>
+<div id="capa-hoja"></div>
+</body>
+</html>
