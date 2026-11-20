@@ -17,6 +17,7 @@ import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
 import { alarmaPendiente, preguntaAlarma, respondidasNo, T2 } from './alarma.js';
 import { etiquetasSalud } from './salud.js';
+import { miaDe } from './mias.js';
 
 // ── Petición a la IA ──
 // Sin el nombre de la persona, lugares con sus ids, textos libres recortados y salud solo como etiquetas
@@ -127,6 +128,11 @@ export async function crearSesionHoy(ci, op = {}) {
   }
   const pregunta = preguntaAntes(S, ci);
   if (pregunta) return { sesion: null, pregunta, aviso: '', motivo: '' };
+  // Una de «Mis sesiones»: sin IA ni petición; la base es la sesión guardada (ajustarAlCheckin, validador).
+  if (ci.mia) {
+    if (!miaDe(S, ci.mia)) return { sesion: null, aviso: 'Esa sesión guardada ya no está: elige otra.', motivo: '' };
+    ci = { ...ci, peticion: '', forzarIA: false };
+  }
 
   const minutos = minutosSesion(ci.minutos);
   const dia = diaElegido(S, ci.diaPlan);

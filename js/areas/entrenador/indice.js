@@ -13,7 +13,7 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, T2, DESDE,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, T2, DESDE, misSesiones, miaDe,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -34,8 +34,13 @@ function hojaCheckin() {
   if (pregunta) return hojaPregunta(pregunta);
   const pv = previaCheckin(ci);
   const dia = pv.dia;
+  const mia = miaDe(S, ci.mia), mias = misSesiones(S);
   abrirHoja(`<h2>Antes de empezar</h2>
-    ${dia ? `<p class="tenue">Toca <b>${h(dia.nombre)}</b> en ${h(minus(LUGARES[dia.lugar]))}. Dime cómo estás y lo ajusto.</p>` : '<p class="tenue">Hoy no hay día en tu plan. Te preparo una sesión con lo que te falta esta semana.</p>'}
+    ${mia ? `<p class="tenue">Haces <b>${h(mia.nombre)}</b>${dia ? `, que cuenta como el día «${h(dia.nombre)}» de tu plan` : ''}. Dime cómo estás y la ajusto a hoy.</p>`
+    : dia ? `<p class="tenue">Toca <b>${h(dia.nombre)}</b> en ${h(minus(LUGARES[dia.lugar]))}. Dime cómo estás y lo ajusto.</p>` : '<p class="tenue">Hoy no hay día en tu plan. Te preparo una sesión con lo que te falta esta semana.</p>'}
+    ${mias.length ? `<div class="campo col mis-sesiones-ci"><span>Qué sesión</span><div class="chips">
+      <button class="chip ${mia ? '' : 'on'}" data-act="entrenador.ciMia" data-v="" aria-pressed="${!mia}">${dia ? 'La de mi plan' : 'La que me prepares'}</button>
+      ${mias.map(m => `<button class="chip ${mia && mia.id === m.id ? 'on' : ''}" data-act="entrenador.ciMia" data-v="${h(m.id)}" aria-pressed="${!!(mia && mia.id === m.id)}">${h(m.nombre)}</button>`).join('')}</div></div>` : ''}
     <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
@@ -44,21 +49,23 @@ function hojaCheckin() {
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
     <div class="campo col alarma-ci"><label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto algo de esto</b></span></label>
       <details class="plegable"><summary>Qué cuenta</summary><ul class="tenue">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details></div>
-    <label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>
+    ${mia ? '' : `<label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>`}
     ${htmlPrevia(pv)}
-    <button class="btn grande" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : `${ICONOS.play} Preparar mi sesión`}</button>`, { clase: 'checkin' });
-  $('#ci-peticion').addEventListener('input', e => { ci.peticion = e.target.value; });
+    <button class="btn grande" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : `${ICONOS.play} ${mia ? `Preparar «${h(mia.nombre)}»` : 'Preparar mi sesión'}`}</button>`, { clase: 'checkin' });
+  const pet = $('#ci-peticion');
+  if (!pet) return;
+  pet.addEventListener('input', e => { ci.peticion = e.target.value; });
   // Al terminar de escribir solo se repinta la previa: repintar la hoja entera quitaba de debajo del dedo el
   // botón «Preparar mi sesión» y el toque se perdía (PR 12).
-  $('#ci-peticion').addEventListener('change', () => { const v = $('.hoja.checkin .previa'); if (v) v.outerHTML = htmlPrevia(previaCheckin(ci)); });
+  pet.addEventListener('change', () => { const v = $('.hoja.checkin .previa'); if (v) v.outerHTML = htmlPrevia(previaCheckin(ci)); });
 }
 function htmlPrevia(pv) {
   return `<section class="previa" aria-live="polite">
       <h3>Con lo que me dices</h3>
-      ${pv.cambios.length ? `<ul>${pv.cambios.map(c => `<li>${h(c)}</li>`).join('')}</ul>` : '<p class="tenue">Nada cambia: haces el día tal como estaba previsto.</p>'}
+      ${pv.cambios.length ? `<ul>${pv.cambios.map(c => `<li>${h(c)}</li>`).join('')}</ul>` : `<p class="tenue">${ci.mia ? 'Nada cambia: haces tu sesión tal como la guardaste.' : 'Nada cambia: haces el día tal como estaba previsto.'}</p>`}
       <p class="tenue">${+pv.datos.ejercicios.length} ejercicios · unos ${+pv.minutos} min con calentamiento y estiramientos.</p>
       <p class="tenue">${ICONOS.ia} ${h(ci.forzarIA ? 'Se lo pides al entrenador IA.' : pv.ia.motivo)}</p>
-      ${enLinea() && !pv.ia.usar ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
+      ${enLinea() && !pv.ia.usar && !ci.mia ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
     </section>`;
 }
 
@@ -88,7 +95,8 @@ function dolorInicial(S, l) {
   return ult ? +ult.checkin.dolor[l.zona] : Math.min(6, +l.dolor || 0);
 }
 
-export function abrirCheckin(diaPlan = null) {
+// op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy sin plan).
+export function abrirCheckin(diaPlan = null, op = {}) {
   const S = estado();
   // Alarma confirmada hoy: no hay check-in ni sesión (C-ALAR-1).
   if (sinEntrenarHoy(S)) { hojaAlarma(); return; }
@@ -100,7 +108,18 @@ export function abrirCheckin(diaPlan = null) {
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
   S.perfil.lesiones.filter(l => l.activa).forEach(l => { ci.dolorHoy[l.zona] = dolorInicial(S, l); });
+  if (op.mia) elegirMia(S, op.mia);
   hojaCheckin();
+}
+// Elegir (o dejar) una de «Mis sesiones» en el check-in: su lugar, si lo tienes, y su tiempo; sin petición ni IA.
+const MINUTOS_CI = [30, 45, 60, 75, 90];
+function elegirMia(S, id) {
+  const m = miaDe(S, id);
+  ci.mia = m ? m.id : null;
+  if (!m) return;
+  ci.peticion = ''; ci.forzarIA = false;
+  if (S.perfil.lugares.includes(m.lugar)) ci.lugar = m.lugar;
+  if (m.minutos) ci.minutos = MINUTOS_CI.find(x => x >= m.minutos) || 90;
 }
 
 // Señal de alarma marcada o confirmada: se apunta y no se prepara nada (C-ALAR-1).
@@ -334,6 +353,8 @@ acciones({
   'entrenador.cerrarAlarma': () => { cerrarHoja(); ir('hoy'); },
   'entrenador.ciZona': el => { ci.dolorHoy[el.dataset.v] = 3; hojaCheckin(); },
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
+  'entrenador.ciMia': el => { elegirMia(estado(), el.dataset.v); hojaCheckin(); },
+  'entrenador.prepararMia': () => abrirCheckin(null, { mia: (misSesiones(estado())[0] || {}).id }),
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };
     if (datos.alarma) { crearConAlarma(); return; }
