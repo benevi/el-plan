@@ -198,6 +198,24 @@ test('el normalizador no pierde nada de un estado real (plan, sesión hecha, les
   assert.deepEqual(n, x);
 });
 
+test('el detalle de la lesión (esguince, fascitis…) va y vuelve; uno que no es de esa zona se quita', () => {
+  nuevoS({ lesiones: [
+    { id: 'l1', zona: 'tobillo_pie', dolor: 2, desde: '2026-09-01', nota: '', activa: true, detalle: 'aquiles' },
+    { id: 'l2', zona: 'codo', dolor: 3, desde: '', nota: '', activa: true, detalle: 'dentro' },
+    { id: 'l3', zona: 'rodilla', dolor: 1, desde: '', nota: '', activa: true },
+  ] });
+  const x = JSON.parse(est.exportar());
+  const { estado: n, avisos } = norm.normalizarEstado(JSON.parse(JSON.stringify(x)));
+  assert.deepEqual(avisos, []);
+  assert.deepEqual(n.perfil.lesiones, x.perfil.lesiones, 'ida y vuelta sin cambios');
+  assert.equal(n.perfil.lesiones[0].detalle, 'aquiles');
+  assert.equal('detalle' in n.perfil.lesiones[2], false, 'sin detalle no se inventa uno');
+  const raro = norm.normalizarEstado({ ...x, perfil: { ...x.perfil, lesiones: [
+    { id: 'a', zona: 'rodilla', dolor: 2, detalle: 'esguince' }, { id: 'b', zona: 'lumbar', dolor: 2, detalle: '<b>x</b>' }, { id: 'c', zona: 'cervical', dolor: 2, detalle: 'irradiado' },
+  ] } }).estado.perfil.lesiones;
+  assert.deepEqual(raro.map(l => l.detalle), [undefined, undefined, 'irradiado']);
+});
+
 // ── Copias de la app anterior ──
 test('importar una copia v3 real de la app anterior: trae lo de la persona del móvil, sin claves ni URL', () => {
   cargarCon({ pipos4: estadoBase({ ajustes: { codigo: 'mio', vibrar: true, sonido: true } }) });
