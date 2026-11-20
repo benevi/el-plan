@@ -22,15 +22,41 @@ export function mmss(seg) {
 }
 
 // ── Aviso breve ──
+// aviso(txt) se ve unos 3 s. avisoFijo(html) se queda hasta quitarAvisoFijo() (p. ej. si no se puede guardar);
+// mientras haya uno fijo, los avisos breves se ven encima y luego vuelve el fijo.
 let tAviso = null;
-export function aviso(txt, tipo = '') {
+let fijo = null;
+function elAviso() {
   let el = $('#aviso');
   if (!el) { el = document.createElement('div'); el.id = 'aviso'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  return el;
+}
+function mostrarFijo() {
+  const el = elAviso();
+  el.className = 'aviso error fijo ver';
+  el.setAttribute('role', 'alert');
+  el.innerHTML = fijo;
+}
+export function aviso(txt, tipo = '') {
+  const el = elAviso();
   el.className = 'aviso ' + tipo;
+  el.setAttribute('role', 'status');
   el.textContent = txt;
   requestAnimationFrame(() => el.classList.add('ver'));
   clearTimeout(tAviso);
-  tAviso = setTimeout(() => el.classList.remove('ver'), 3200);
+  tAviso = setTimeout(() => { if (fijo) mostrarFijo(); else el.classList.remove('ver'); }, 3200);
+}
+export function avisoFijo(html) {
+  fijo = html;
+  clearTimeout(tAviso);
+  mostrarFijo();
+}
+export const hayAvisoFijo = () => !!fijo;
+export function quitarAvisoFijo() {
+  if (!fijo) return;
+  fijo = null;
+  const el = $('#aviso');
+  if (el && el.classList.contains('fijo')) { el.classList.remove('ver', 'fijo'); el.textContent = ''; }
 }
 
 // ── Hoja inferior ──

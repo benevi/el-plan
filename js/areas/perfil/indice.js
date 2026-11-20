@@ -3,8 +3,8 @@
 // datos personales, notas para el entrenador y ajustes del móvil (código de acceso, vibración, copia).
 
 import { rutas, acciones, pestaña, pintar } from '../../nucleo/router.js';
-import { estado, cambiar, uid, hoyISO, exportar, importar } from '../../nucleo/estado.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num } from '../../nucleo/ui.js';
+import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen } from '../../nucleo/estado.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
@@ -118,9 +118,26 @@ function grupoAjustes(S) {
     <label class="interruptor"><input type="checkbox" data-cambio="perfil.ajuste" data-k="vibrar" ${S.ajustes.vibrar ? 'checked' : ''}><span>Vibrar al acabar el descanso</span></label>
     <label class="interruptor"><input type="checkbox" data-cambio="perfil.ajuste" data-k="sonido" ${S.ajustes.sonido ? 'checked' : ''}><span>Pitido al acabar el descanso</span></label>
     <div class="fila-botones"><button class="btn sec" data-act="perfil.exportar">Guardar copia</button><button class="btn sec" data-act="perfil.importar">Cargar copia</button></div>
+    ${bloqueCopia()}
     <p class="tenue pie">Móvil de ${h(PERSONAS[S.dueño] ? PERSONAS[S.dueño].nombre : '—')} · <button class="enlace" data-act="perfil.cambiarDueño">cambiar</button></p>
     <p class="tenue pie version-app">Versión de la app: <span data-version-app>${h(versionApp() || '—')}</span></p>
   </section>`;
+}
+
+// Uso del almacenamiento y última copia exportada (los datos solo viven en este móvil).
+const tamaño = b => b < 1024 ? b + ' B' : b < 1024 * 1024 ? es(b / 1024, 0) + ' KB' : es(b / 1024 / 1024, 1) + ' MB';
+export function recordatorioCopia() {
+  const c = infoCopia();
+  if (!c.toca) return '';
+  return `<p class="nota aviso-nota recordatorio-copia">Llevas ${c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.
+    <button class="enlace" data-act="perfil.exportar">Guardar copia</button></p>`;
+}
+function bloqueCopia() {
+  const u = usoAlmacen(), c = infoCopia();
+  const pct = u.porcentaje < 1 ? 'menos del 1 %' : `${es(u.porcentaje, 0)} %`;
+  return `<p class="tenue uso-almacen">Tus datos ocupan ${tamaño(u.bytes)}, ${pct} de unos 5 MB que deja el navegador.</p>
+    <p class="tenue ultima-copia">${c.fecha ? `Última copia guardada: ${h(fechaCorta(c.fecha))}.` : 'Aún no has guardado ninguna copia.'}</p>
+    ${recordatorioCopia()}`;
 }
 
 function hojaLesion(l) {
@@ -174,6 +191,8 @@ acciones({
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([exportar()], { type: 'application/json' }));
     a.download = `pipos-fitness-${estado().dueño}-${hoyISO()}.json`; a.click();
+    marcarCopiaExportada();
+    pintar();
   },
   'perfil.importar': () => {
     const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json';

@@ -11,6 +11,7 @@ import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js'
 import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias } from '../entrenador/indice.js';
 import { siguientePendiente, tiempoSesion } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
+import { recordatorioCopia } from '../perfil/indice.js';
 
 const minus = t => String(t || '').toLowerCase();
 // El porqué en una frase, siempre a la vista: lo primero de la explicación del entrenador.
@@ -87,7 +88,8 @@ function vista() {
       <p class="tenue">Objetivos, nivel, lesiones, dónde entrenas y cuántos días puedes. Sin eso va a ciegas.</p>
       <a class="btn grande" href="#perfil">Completar mi perfil</a></section>`
     : plan ? `${tiraSemana(S)}${tarjetaHoy(S)}${constancia}${tarjetaPlan(S)}`
-      : `${sesionDeHoy(S) ? tarjetaHoy(S) : ''}${tarjetaSinPlan(S)}${constancia}`}`;
+      : `${sesionDeHoy(S) ? tarjetaHoy(S) : ''}${tarjetaSinPlan(S)}${constancia}`}
+  ${recordatorioCopia()}`;
 }
 
 rutas({ hoy: { titulo: 'Hoy', vista } });

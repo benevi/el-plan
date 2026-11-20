@@ -12,7 +12,11 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 
 | Área | Archivos | Qué hace |
 |---|---|---|
+<<<<<<< HEAD
 | **Núcleo** (integrador) | `index.html`, `js/arranque.js`, `js/main.js`, `js/nucleo/estado.js`, `js/nucleo/router.js`, `js/nucleo/ui.js`, `js/nucleo/api.js`, `js/nucleo/modelo.js`, `js/nucleo/version.js`, `sw.js`, `scripts/version.mjs`, `manifest.webmanifest` | Arranque y vigilante de arranque, datos y guardado, navegación, piezas de interfaz, llamadas al servidor, forma de sesión y plan, modo sin conexión y aviso de versión nueva |
+=======
+| **Núcleo** (integrador) | `index.html`, `js/main.js`, `js/nucleo/estado.js`, `js/nucleo/espejo.js`, `js/nucleo/rescate.js`, `js/nucleo/router.js`, `js/nucleo/ui.js`, `js/nucleo/api.js`, `js/nucleo/modelo.js`, `sw.js`, `manifest.webmanifest` | Arranque, datos y guardado (con espejo en IndexedDB y pantalla de rescate), navegación, piezas de interfaz, llamadas al servidor, forma de sesión y plan, modo sin conexión |
+>>>>>>> pipos-v2
 | **Entrenador IA** | `js/areas/entrenador/` (`entrenador.js` fachada de la lógica: `dia.js` sesión con reglas, `plan.js` semana, `checkin.js` ajuste al check-in, `ia.js` puente con la IA, `validar.js` validador; `indice.js` check-in y plan), `api/entrenador.js`, `api/_comun.js`, `js/reglas/contexto.js` | Sesión de hoy y plan semanal con IA; si falla, reglas |
 | **Perfil** | `js/areas/perfil/` (`indice.js`, `bienvenida.js`) | Objetivos, nivel, lesiones, disponibilidad, lugares, material, gustos, ajustes, copia |
 | **Sesión** | `js/areas/sesion/` (`indice.js`, `temporizador.js`) | Hacer la sesión: series, descansos con alarma visual y vibración, tiempo, modo uno a uno, cambiar ejercicio, cierre |
@@ -25,6 +29,7 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 ## Cómo se añade algo
 - Cada área se registra sola en su `indice.js`: `rutas({...})`, `acciones({'area.accion': fn})`, `pestaña({...})`. Los botones usan `data-act="area.accion"`; los campos `data-cambio="area.accion"`.
 - Datos: leer con `estado()`, cambiar con `cambiar(S => {...}, motivo)`. Si el motivo acaba en `-silencio` no se repinta (para campos de texto).
+- Guardado: `pipos4` es el almacén principal y su forma no cambia; lo demás va aparte (`pipos4-rev` revisión entre pestañas, `pipos4-roto-<fecha>` datos ilegibles apartados, `pipos4-conflicto`, `pipos4-copia` fecha de la última copia) y un espejo en IndexedDB (`pipos-espejo`). Si `pipos4` no se puede leer, la app enseña la pantalla de rescate y no escribe nada hasta que la persona elija.
 - La forma de una sesión y de un plan está en `js/nucleo/modelo.js`. Cambiarla afecta a todas las áreas: avisar al integrador.
 - Si añades archivos, súmalos a `APP` en `sw.js`.
 - **Tras cambiar cualquier archivo de la app, ejecuta `npm run version`** y sube el `sw.js` que cambia: `VERSION` es el hash de los archivos de `APP` (y del propio `sw.js`). No se toca a mano; si no coincide, `npm test` (y la CI) fallan.

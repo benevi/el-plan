@@ -11,6 +11,8 @@ export class AlmacenMemoria {
   setItem(k, v) { this.escrituras++; this.datos[k] = String(v); }
   removeItem(k) { delete this.datos[k]; }
   clear() { this.datos = {}; }
+  key(i) { return Object.keys(this.datos)[i] ?? null; }
+  get length() { return Object.keys(this.datos).length; }
 }
 
 // La app mira navigator.onLine; en node no existe. Por defecto, sin red (camino de reglas).
