@@ -2,9 +2,8 @@
 //   modo 'sesion' → la sesión de hoy (calentamiento, rehabilitación, principal y vuelta a la calma) con su porqué.
 //   modo 'plan'   → el plan de la semana con los días que esa persona tiene esta semana.
 // El móvil manda el catálogo ya filtrado por seguridad; aquí solo se aceptan ids de ese catálogo.
-import { Anthropic, comprobar, pedirJSON, responderError } from './_comun.js';
-
-const client = new Anthropic();
+// El cuerpo llega ya saneado (lista blanca de claves y recortes, ver _comun.js).
+import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError } from './_comun.js';
 
 const SISTEMA = `Eres el entrenador personal de Pipos Fitness: preparador físico titulado (fuerza y acondicionamiento) con formación de fisioterapeuta deportivo. Entrenas a UNA persona que va a un centro deportivo con gimnasio y piscina climatizada (y a veces entrena en casa o en la calle). Eres el cerebro de su entrenamiento: decides con su perfil, sus lesiones, lo que ha apuntado, el análisis de su progreso, lo que le gusta y lo que te ha comentado. Tiene que ser lo que pondrías a un cliente tuyo, no un listado genérico.
 
@@ -82,33 +81,65 @@ function esquemaPlan(ids, idsSuaves, lugares) {
 }
 
 export default async function handler(req, res) {
-  const body = comprobar(req, res); if (!body) return;
-  const catalogo = Array.isArray(body.catalogo) ? body.catalogo.slice(0, 200) : [];
-  const ids = [...new Set(catalogo.map(e => String(e.id)))];
+  const inicio = Date.now();
+  const crudo = comprobar(req, res); if (!crudo) return;
+  const { cuerpo: body, catalogoDescartados } = sanear(crudo);
+  const catalogo = body.catalogo;
+  const ids = [...new Set(catalogo.map(e => e.id))];
   if (!ids.length) return res.status(400).json({ error: 'no hay ejercicios que encajen con ese perfil' });
-  const idsSuaves = catalogo.filter(e => Array.isArray(e.m) && ['movilidad', 'cardio', 'natacion'].includes(e.m[0])).map(e => String(e.id));
+  const idsSuaves = catalogo.filter(e => Array.isArray(e.m) && ['movilidad', 'cardio', 'natacion'].includes(e.m[0])).map(e => e.id);
   const comun = { perfil: body.perfil, lesiones: body.lesiones || [], historial: body.historial || {}, analisis: body.analisis || {}, hoy: body.hoy, diaSemana: body.diaSemana, catalogo };
+  const modo = body.modo === 'plan' ? 'plan' : 'sesion';
+  let lugares = [];
+  if (modo === 'plan') {
+    lugares = ((body.semana && Array.isArray(body.semana.lugares) && body.semana.lugares) || []).map(l => String((l && l.id) || '')).filter(Boolean);
+    if (!lugares.length) return res.status(400).json({ error: 'faltan los lugares de la semana' });
+  }
 
+  // Una línea JSON por llamada a la IA, sin datos personales ni el cuerpo.
+  const registro = { modo, esfuerzo: modo === 'plan' ? 'medium' : body.planDeHoy ? 'low' : 'medium', ids: ids.length, catalogoDescartados };
+  // La línea se escribe una sola vez: al cancelar (con supportsCancellation Vercel puede terminar la
+  // función sin llegar al finally) o al acabar.
+  let escrito = false;
+  const escribirRegistro = () => {
+    if (escrito) return;
+    escrito = true;
+    registro.ms = Date.now() - inicio;
+    console.log(JSON.stringify({ entrenador: registro }));
+  };
+  const corte = cancelarAlCerrar(req, res, () => { registro.resultado = 'cancelada'; escribirRegistro(); });
   try {
-    if (body.modo === 'plan') {
-      const lugares = ((body.semana && body.semana.lugares) || []).map(l => String(l.id)).filter(Boolean);
-      if (!lugares.length) return res.status(400).json({ error: 'faltan los lugares de la semana' });
-      const plan = await pedirJSON(client, {
+    if (modo === 'plan') {
+      const plan = await pedirJSON(clienteIA(), {
         sistema: SISTEMA + `\n\nAhora diseñas el PLAN DE LA SEMANA: un día por cada "semana.dias" (1 lunes … 7 domingo), en esos días exactos. Si "semana.hechas" trae sesiones ya hechas esta semana, planifica lo que queda teniéndolas en cuenta (no repitas lo trabajado si no se ha recuperado y completa lo que falta). Reparto según cuántos días sean: 2 cuerpo completo; 3 cuerpo completo o empuje/tirón/pierna; 4 torso/pierna; 5-6 cada músculo grande 2 veces. 48-72 h entre sesiones que repiten músculo grande. Si tiene piscina entre sus lugares y encaja con el objetivo o las lesiones, usa la piscina algún día. Cada ejercicio debe poder hacerse en el "lugar" del día (mira "lugares" de cada ejercicio).`,
         usuario: 'Plan de la semana con estos datos (JSON):\n\n' + JSON.stringify({ ...comun, semana: body.semana }),
-        esquema: esquemaPlan(ids, idsSuaves, lugares), esfuerzo: 'medium', maxTokens: 48000,
+        esquema: esquemaPlan(ids, idsSuaves, lugares), esfuerzo: registro.esfuerzo, maxTokens: 48000, signal: corte.signal, registro,
       });
-      (plan.dias || []).forEach(d => { d.ejercicios = (d.ejercicios || []).filter(e => ids.includes(e.id)); });
+      let descartados = 0;
+      (Array.isArray(plan.dias) ? plan.dias : []).forEach(d => {
+        const antes = (d.ejercicios || []).length;
+        d.ejercicios = (d.ejercicios || []).filter(e => ids.includes(e.id));
+        descartados += antes - d.ejercicios.length;
+      });
+      registro.descartados = descartados;
+      registro.resultado = 'ok';
       return res.status(200).json({ plan });
     }
-    const sesion = await pedirJSON(client, {
+    const sesion = await pedirJSON(clienteIA(), {
       sistema: SISTEMA + `\n\nAhora diseñas la SESIÓN DE HOY con su check-in (lugar, minutos, energía 1-5, dolor de hoy y lo que pida). Si hay "planDeHoy", parte de él y adáptalo al check-in; si no, decide tú lo que más le conviene hoy según la semana que lleva. "ajusteReglas" es lo que la app ya cambiaría por el check-in: tenlo en cuenta y mejóralo. En "cambios" di qué cambias respecto al día planificado y por qué.`,
       usuario: 'Sesión de hoy con estos datos (JSON):\n\n' + JSON.stringify({ ...comun, checkin: body.checkin, planDeHoy: body.planDeHoy || null, ajusteReglas: body.ajusteReglas || [] }),
-      esquema: esquemaSesion(ids, idsSuaves), esfuerzo: body.planDeHoy ? 'low' : 'medium',
+      esquema: esquemaSesion(ids, idsSuaves), esfuerzo: registro.esfuerzo, signal: corte.signal, registro,
     });
+    const antes = (sesion.ejercicios || []).length;
     sesion.ejercicios = (sesion.ejercicios || []).filter(e => ids.includes(e.id));
+    registro.descartados = antes - sesion.ejercicios.length;
+    registro.resultado = 'ok';
     return res.status(200).json({ sesion });
   } catch (e) {
-    return responderError(res, e, 'entrenador');
+    const r = responderError(res, e, 'entrenador', corte.signal);
+    if (!escrito) registro.resultado = r;
+  } finally {
+    corte.soltar();
+    escribirRegistro();
   }
 }
