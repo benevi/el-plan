@@ -231,6 +231,7 @@ function sesion(s, clave) {
     vuelta: lista(s.vuelta, 40).map(t => tarea(t, true)).filter(Boolean),
     estado: enLista(s.estado, ESTADOS, 'pendiente'), empezada: fechaISO(s.empezada), terminada,
     cierre: cierre ? { esfuerzo: numero(cierre.esfuerzo, 1, 5, null, { entero: true }), dolor: dolorPorZona(cierre.dolor), comentario: texto(cierre.comentario, 1000) } : null,
+    ...(['suave', 'dolorAlto'].includes(s.tipo) ? { tipo: s.tipo } : {}), // los de TIPOS_SESION (modelo.js)
   };
 }
 
