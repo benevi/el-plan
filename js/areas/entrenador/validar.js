@@ -19,7 +19,7 @@
 //  8. Tiempo ≤ pedido + 10 % con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
 
 import { ex, hayMaterial } from '../../reglas/catalogo.js';
-import { rango, acotarKg, sesionesHechas, cargaMuscular } from '../../reglas/progresion.js';
+import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga } from '../../reglas/progresion.js';
 import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
@@ -133,7 +133,7 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   if (vue.length < 2 || !vue.some(esEstiramiento)) out.push('vuelta sin estiramientos');
   [...cal, ...vue].forEach(t => { if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); });
   if (!alto && !suave) {
-    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso);
+    const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || (sesion.explicacion || []).some(t => /^Día suave/.test(t)) || sesion.tipo === 'suave';
     const prin = ejs.filter(x => x.rol === 'principal').length;
     if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) out.push(`${prin} principales`);
     zonasRehab(ctx).forEach(z => {
@@ -255,7 +255,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       else { ejs.splice(ejs.indexOf(x), 1); cambios.push(`quito ${nombre(ex(x.id))}: ya hay 2 ejercicios que implican tu ${nombreZona(z)}`); }
     });
   });
-  const faltan = s.explicacion.some(esUltimoRecurso) ? 0 : Math.min(3, maximo) - nPrin();
+  const suaveDelPlan = (ctxIn.tipo || s.tipo) === 'suave' && nPrin() === 0; // día suave del reparto (C-REP-2): sin fuerza
+  const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan ? 0 : Math.min(3, maximo) - nPrin();
   if (faltan > 0) {
     const tipo = tipoParaLugar(ctxIn.tipo || s.tipo, lugar);
     const nuevos = elegirPrincipales(S, ctx, { huecos: PLANTILLAS[tipo].huecos, presupuesto: Infinity, k: ctxIn.k || 0, excluir: ejs.map(x => x.id), maximo: faltan });
@@ -274,7 +275,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   // 6. Dosis.
   let iPrin = 0;
   // Contexto del check-in para el tope de kilos de la progresión (C-PROG-5, PR 10).
-  const ctxKg = { energia: ctx.energia, dolorHoy, niveles: ctx.niveles, carga: ctx.futuro ? {} : cargaMuscular(S) };
+  const ctxKg = { energia: ctx.energia, dolorHoy, niveles: ctx.niveles, carga: ctx.futuro ? {} : cargaMuscular(S), descarga: semanaDescarga(S).toca };
   ejs.forEach(x => {
     const e = ex(x.id);
     const i = x.rol === 'principal' ? iPrin++ : 0;
@@ -304,7 +305,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Kilos: nulos sin historial (C-PROG-1); con historial, el tope de la progresión (C-PROG-5, PR 10).
     if (x.kg != null && +x.kg > 0) {
       if (!conKg.has(x.id)) { cambios.push(`${nombre(e)} sin kilos: es la primera vez, elige un peso con el que te sobren 3 repeticiones`); delete x.kg; }
-      else x.kg = acotarKg(S, x.id, +x.kg, ctxKg);
+      else x.kg = acotarKg(S, x.id, +x.kg, { ...ctxKg, series: x.series, reps: x.reps });
     } else delete x.kg; // sin kilos: el campo no va (forma del plan); crearSesion lo deja en null
     if (x.kg == null) delete x.kg;
     delete x.zona;

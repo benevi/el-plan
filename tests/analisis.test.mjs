@@ -65,9 +65,9 @@ test('grasaMarina: fórmula de hombre y de mujer', () => {
   assert.ok(A.grasaMarina('m', 165, 32, 70, 95) > 0);
 });
 
-// ── Fallos demostrados por la auditoría ──
+// ── Fallos demostrados por la auditoría, cerrados en el PR 10 (C-ANA-7) ──
 
-test('constancia en la primera semana: sin semanas cerradas no hay cumplimiento (no un 0 %)', { todo: 'PR 10: corrección de la constancia en la primera semana' }, () => {
+test('constancia en la primera semana: sin semanas cerradas no hay cumplimiento (no un 0 %)', () => {
   fijarFecha('2026-11-19T10:00');
   const S = nuevoS();
   assert.equal(A.constancia(S).cumplimiento, null, 'sin ninguna sesión');
@@ -75,7 +75,7 @@ test('constancia en la primera semana: sin semanas cerradas no hay cumplimiento 
   assert.equal(A.constancia(S).cumplimiento, null, 'con la primera sesión de su vida');
 });
 
-test('constancia: tras el cambio de hora de primavera no se salta ninguna semana', { todo: 'PR 10: semanas de la constancia calculadas restando 7×24 h' }, () => {
+test('constancia: tras el cambio de hora de primavera no se salta ninguna semana', () => {
   fijarFecha('2026-03-30T00:30'); // lunes, justo después del cambio de hora
   const S = nuevoS();
   sesionEn(S, '2026-03-25T19:00');

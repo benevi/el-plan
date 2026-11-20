@@ -41,9 +41,10 @@ const HIST = {
 // Peso que no baja en 4 semanas, y dolor de rodilla que sube en las dos últimas.
 const pesoQuieto = [{ fecha: '2026-10-14', peso: 82 }, { fecha: '2026-10-28', peso: 82.4 }, { fecha: '2026-11-16', peso: 82.6 }];
 const pesoRapido = [{ fecha: '2026-10-14', peso: 70 }, { fecha: '2026-11-16', peso: 66 }];
+// 3 + 3 registros (C-ANA-5 pide ≥ 3 en los últimos 14 días y ≥ 3 en los 14 anteriores; hoy es 18-nov-2026).
 const dolorSube = [
-  { fecha: '2026-10-25', zona: 'rodilla', dolor: 2 }, { fecha: '2026-10-30', zona: 'rodilla', dolor: 2 },
-  { fecha: '2026-11-10', zona: 'rodilla', dolor: 5 }, { fecha: '2026-11-15', zona: 'rodilla', dolor: 5 },
+  { fecha: '2026-10-23', zona: 'rodilla', dolor: 2 }, { fecha: '2026-10-27', zona: 'rodilla', dolor: 2 }, { fecha: '2026-10-31', zona: 'rodilla', dolor: 2 },
+  { fecha: '2026-11-08', zona: 'rodilla', dolor: 5 }, { fecha: '2026-11-12', zona: 'rodilla', dolor: 5 }, { fecha: '2026-11-16', zona: 'rodilla', dolor: 5 },
 ];
 
 const disp = (dias, minutos, diasSemana = []) => ({ dias, minutos, diasSemana });

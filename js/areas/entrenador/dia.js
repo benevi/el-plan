@@ -7,6 +7,7 @@ import { analizarEjercicios, preferencia } from '../../reglas/contexto.js';
 import { cargaMuscular, rango, sesionesHechas } from '../../reglas/progresion.js';
 import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRehab, riesgoDetalle, techoDolor as techoZona } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS, OBJETIVOS } from '../../datos/constantes.js';
+import { semanaISO } from '../../nucleo/modelo.js';
 import { restriccionesSalud } from './salud.js';
 import { validarSesion } from './validar.js';
 
@@ -14,6 +15,7 @@ import { validarSesion } from './validar.js';
 export const PLANTILLAS = {
   fullA: { nombre: 'Cuerpo completo A', huecos: ['cuadriceps', 'espalda', 'pecho', 'isquios', 'hombro', 'core', 'gluteo', 'biceps', 'triceps'] },
   fullB: { nombre: 'Cuerpo completo B', huecos: ['gluteo', 'pecho', 'espalda', 'cuadriceps', 'hombro', 'core', 'triceps', 'biceps', 'isquios'] },
+  // C-REP-4: cada cuerpo completo lleva empuje, tirón, dominante de rodilla y de cadera en sus 4 primeros huecos.
   fullC: { nombre: 'Cuerpo completo C', huecos: ['isquios', 'espalda', 'hombro', 'cuadriceps', 'pecho', 'core', 'gluteo', 'gemelo', 'biceps'] },
   torso: { nombre: 'Torso', huecos: ['pecho', 'espalda', 'hombro', 'espalda', 'pecho', 'triceps', 'biceps', 'core'] },
   pierna: { nombre: 'Pierna y glúteo', huecos: ['cuadriceps', 'gluteo', 'isquios', 'cuadriceps', 'gluteo', 'gemelo', 'core'] },
@@ -322,7 +324,7 @@ export function ejercicioRehab(S, e, z, ctx) {
   const fase = fs.length ? Math.max(...fs) : max;
   const d = dosisRehab(e, fase); // C-DOSIS-7
   const nota = ZONAS[z] ? notaRehab(z, { dolor: b.dolor, fase, detalle: det, nueva: b.nueva }) : porQueRehab(S, e, z, ctx.dolorHoy);
-  return { id: e.id, rol: 'rehab', series: d.series, reps: d.reps, descanso: d.descanso, nota: d.intensidad ? `${nota} Intensidad: ${d.intensidad}.` : nota };
+  return { id: e.id, rol: 'rehab', series: d.series, reps: d.reps, descanso: d.descanso, nota: d.intensidad && nota.length + d.intensidad.length < 280 ? `${nota} Intensidad: ${d.intensidad}.` : nota };
 }
 // Zonas que llevan rehabilitación, de más a menos dolor (B3 no lleva: día de dolor alto).
 export const zonasRehab = ctx => Object.entries(ctx.bandas).filter(([, b]) => b.banda <= 2).sort((a, b) => b[1].dolor - a[1].dolor).map(([z]) => z);
@@ -542,7 +544,10 @@ export function montarDia(S, op) {
   const { lugar, minutos } = ctx, k = op.k || 0;
   const tipo = tipoParaLugar(op.tipo, lugar);
   const plantilla = PLANTILLAS[tipo];
-  const huecos = lugar === 'piscina' ? plantilla.huecos : op.huecos || plantilla.huecos;
+  // C-REP-4: A empieza por rodilla, B por cadera y C alterna cada semana (semanas pares, rodilla).
+  const semana = +String(semanaISO()).slice(-2);
+  const huecosC = semana % 2 ? plantilla.huecos : ['cuadriceps', 'espalda', 'hombro', 'isquios', 'pecho', 'core', 'gluteo', 'gemelo', 'biceps'];
+  const huecos = lugar === 'piscina' ? plantilla.huecos : op.huecos || (tipo === 'fullC' ? huecosC : plantilla.huecos);
   const an = ctx.an;
   const usados = op.usados || {};
   const carga = op.futuro ? {} : cargaMuscular(S);

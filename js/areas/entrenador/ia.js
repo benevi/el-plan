@@ -8,7 +8,7 @@ import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamar, enLinea } from '../../nucleo/api.js';
 import { crearSesion, semanaISO, diaSemana } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA } from '../../reglas/contexto.js';
-import { cargaMuscular } from '../../reglas/progresion.js';
+import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
 import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona } from './dia.js';
@@ -33,7 +33,7 @@ function peticionBase(S, lugares, dolorHoy) {
 // ── Antes de generar: alarma y «desde cuándo» ──
 // Opciones de «¿Desde cuándo te duele?» (C-LES-6): la respuesta se guarda como fecha aproximada.
 export const DESDE = { menos6: ['menos de 6 semanas', 21], de6a12: ['6 a 12 semanas', 63], mas3m: ['más de 3 meses', 120], nose: ['no lo sé', 0] };
-const sinDesde = S => S.perfil.lesiones.filter(l => l.activa && !l.desde);
+const sinDesde = S => lesionesSinFecha(S);
 // Lo que hay que preguntar antes de generar la sesión, o null. ci.desde: { zona: clave de DESDE }.
 export function preguntaAntes(S, ci = {}) {
   const p = alarmaPendiente(S, ci);

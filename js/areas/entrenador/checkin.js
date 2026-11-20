@@ -8,7 +8,7 @@ import { enLinea } from '../../nucleo/api.js';
 import { es } from '../../nucleo/ui.js';
 import { diaSemana } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
-import { sugerir, cargaMuscular, sesionesHechas } from '../../reglas/progresion.js';
+import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga } from '../../reglas/progresion.js';
 import { nivelesZona, ex } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion } from './dia.js';
@@ -74,6 +74,8 @@ export function ajustarAlCheckin(S, dia, ci) {
     const mismoMedio = base && (base.lugar === 'piscina') === (ci.lugar === 'piscina');
     const huecos = mismoMedio && tipoHoy === tipoDe(base) && ci.lugar !== 'piscina' ? base.ejercicios.filter(x => x.rol === 'principal' && ex(x.id)).map(x => ex(x.id).m[0]) : null;
     base = montarDia(S, { lugar: ci.lugar, minutos, tipo: tipoHoy, huecos: huecos && huecos.length >= 3 ? huecos : null, dolorHoy, energia, k: diaSemana() });
+    // Semana de descarga (C-DESCARGA-1): el día rehecho también va con la mitad de series.
+    if (semanaDescarga(S).toca) base.ejercicios.forEach(x => { if (x.rol === 'principal' && ex(x.id)) x.series = seriesDescarga(ex(x.id), x.series); });
   }
   let ej = base.ejercicios.map(x => ({ ...x }));
 
@@ -103,14 +105,16 @@ export function ajustarAlCheckin(S, dia, ci) {
     if (alt) x.nota = [x.nota, `Si está ocupado otra vez, haz ${alt.n.toLowerCase()}.`].filter(Boolean).join(' ');
   });
 
-  // Recuperación: músculos aún cargados (por ejemplo si entrenó ayer fuera del plan).
+  // Recuperación: músculo cargado → como mucho 2 series con 3 de margen y sin subir (C-REC-2).
   const carga = cargaMuscular(S);
-  const cargados = [...new Set(ej.filter(x => x.rol === 'principal' && carga[ex(x.id).m[0]] && carga[ex(x.id).m[0]].estado === 'cargado').map(x => ex(x.id).m[0]))];
-  if (cargados.length) {
-    // C-REC-2: músculo cargado → como mucho 2 series, con 3 repeticiones de margen y sin subir.
-    ej.forEach(x => { if (x.rol === 'principal' && cargados.includes(ex(x.id).m[0])) { x.series = Math.min(x.series, 2); x.nota = [x.nota, 'Hoy deja 3 repeticiones de margen: este músculo aún se recupera.'].filter(Boolean).join(' '); } });
-    cambios.push(`${lista(cargados.map(m => MUSCULOS[m]))} aún se recupera${cargados.length > 1 ? 'n' : ''}: como mucho 2 series con 3 de margen y sin subir peso.`);
-  }
+  const cargados = new Set();
+  ej.forEach(x => {
+    if (x.rol !== 'principal' || !ex(x.id)) return;
+    const a = ajusteCargado(S, ex(x.id), x.series, carga); if (!a) return;
+    x.series = a.series; a.musculos.forEach(m => cargados.add(m));
+    x.nota = [x.nota, 'Hoy deja 3 repeticiones de margen: este músculo aún se recupera.'].filter(Boolean).join(' ');
+  });
+  if (cargados.size) cambios.push(`${lista([...cargados].map(m => MUSCULOS[m]))} aún se recupera${cargados.size > 1 ? 'n' : ''}: como mucho 2 series con 3 de margen y sin subir peso.`);
 
   // Energía (C-ENERGIA-1): el cardio se queda en su mínimo de D3 a esfuerzo 3, nunca por debajo (C-CARDIO-3).
   if (energia <= 2) {
@@ -129,9 +133,9 @@ export function ajustarAlCheckin(S, dia, ci) {
 
   // Tiempo disponible: si sobra mucho, más principales (si falta, lo cuadra el validador con C-TIEMPO-2).
   let t = tiempoSesion({ ...base, ejercicios: ej });
-  if (t < minutos - 15 && energia > 2) {
+  if (t < minutos - 15 && energia > 2 && tipoHoy !== 'suave') {
     const extra = montarDia(S, { lugar: ci.lugar, minutos: minutos + 30, tipo: tipoHoy, dolorHoy, energia, k: diaSemana() + 1 }).ejercicios
-      .filter(x => x.rol === 'principal' && !ej.some(y => y.id === x.id) && !cargados.includes(ex(x.id).m[0]));
+      .filter(x => x.rol === 'principal' && !ej.some(y => y.id === x.id) && !cargados.has(ex(x.id).m[0]));
     const añadidos = [];
     while (extra.length && t < minutos - 10) { const x = extra.shift(); const pos = ej.map(y => y.rol).lastIndexOf('principal') + 1; ej.splice(pos, 0, x); añadidos.push(ex(x.id).n.toLowerCase()); t = tiempoSesion({ ...base, ejercicios: ej }); }
     if (añadidos.length) cambios.push(`Tienes ${minutos} minutos: añado ${lista(añadidos)}.`);

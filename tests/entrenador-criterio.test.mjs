@@ -450,7 +450,7 @@ test('CR-14: perder grasa, intermedio, calle, 45 min, Aquiles crónico hoy 2', (
   fijarFecha('2026-11-18T10:00');
 });
 
-test('CR-32: último prensa-piernas a 40 kg; la IA propone 47,5 → 42,5', { todo: 'PR 10: tope de kilos para la IA (C-PROG-5)' }, async () => {
+test('CR-32: último prensa-piernas a 40 kg; la IA propone 47,5 → 42,5', async () => {
   const S = nuevoS({ objetivos: ['musculo'] });
   hecha(S, 5, [{ id: 'prensa-piernas', sets: [[40, 10], [40, 10]] }]);
   respuesta = { nombre: 'IA', ejercicios: [E('prensa-piernas', 'principal', { kg: 47.5 }), E('jalon-pecho'), E('press-pecho-maquina')] };
@@ -493,4 +493,25 @@ test('C-ZONA-SUB: el detalle de la lesión cambia el riesgo (lumbar con contract
   const con = ent.bandasHoy(nuevoS({ lesiones: [L('lumbar', 2, { detalle: 'contractura' })] }), { lumbar: 2 });
   assert.equal(cat.riesgoDetalle(cat.ex(id), 'lumbar', sin.lumbar.lesion.detalle), 2);
   assert.ok(cat.riesgoDetalle(cat.ex(id), 'lumbar', con.lumbar.lesion.detalle) < 2);
+});
+
+test('C-PROG-5 con el contexto del check-in: si las reglas dicen «sube», la IA puede subir un paso (y no dos)', async () => {
+  const S = nuevoS({ objetivos: ['musculo'] });
+  hecha(S, 4, [{ id: 'prensa-piernas', reps: '8-12', sets: [[40, 12], [40, 12], [40, 12]] }]);
+  hecha(S, 8, [{ id: 'prensa-piernas', reps: '8-12', sets: [[40, 12], [40, 12], [40, 12]] }]);
+  respuesta = { nombre: 'IA', ejercicios: [E('prensa-piernas', 'principal', { kg: 50 }), E('jalon-pecho'), E('press-pecho-maquina')] };
+  const { sesion } = await ent.crearSesionHoy(ci({ forzarIA: true }));
+  assert.equal(sesion.ejercicios.find(x => x.id === 'prensa-piernas').kg, 42.5);
+});
+
+test('C-REP-2: un día suave del plan sigue suave al hacer el check-in (cardio, core y movilidad, sin fuerza)', () => {
+  const S = nuevoS({ objetivos: ['musculo'], nivel: 1, disponibilidad: { dias: 5, minutos: 45, diasSemana: [1, 2, 3, 4, 5] } });
+  const plan = ent.planReglas(S, { dias: [1, 2, 3, 4, 5], minutos: 45, lugares: ['gym'] });
+  const suave = plan.dias.find(d => d.tipo === 'suave');
+  assert.ok(suave, plan.dias.map(d => d.tipo).join(','));
+  const c = ci({ minutos: 45 });
+  const s = modelo.crearSesion(ent.ajustarAlCheckin(S, suave, c).datos);
+  assert.deepEqual(prin(s), []);
+  assert.ok(cardioMin(s) >= 8);
+  sinProblemas(S, s, c);
 });

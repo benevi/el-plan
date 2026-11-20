@@ -67,16 +67,16 @@ test('reorganizar mueve los días pendientes a los días libres', async () => {
   assert.deepEqual(est.estado().plan.dias.map(d => d.diaSemana), [4, 6]);
 });
 
-// ── Fallos demostrados por la auditoría (los cierra el PR 8 salvo los de plan.js, que son del PR 10) ──
+// ── Fallos demostrados por la auditoría (los de plan.js los cerró el PR 10; el resto, el PR 8) ──
 
-test('reorganizar sin días libres no borra la semana', { todo: 'PR 10: reorganizar sin días libres (plan.js)' }, async () => {
+test('reorganizar sin días libres no borra la semana', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
   await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] }, { conIA: false });
   ent.reorganizar([]);
   assert.equal(est.estado().plan.dias.length, 2);
 });
 
-test('una sesión no marca dos días del plan como hechos', { todo: 'PR 10: «una sesión marca dos días» (plan.js)' }, async () => {
+test('una sesión no marca dos días del plan como hechos', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
   await ent.crearPlanSemana({ dias: [3, 4], minutos: 60, lugares: ['gym'] }, { conIA: false });
   const { sesion } = await ent.crearSesionHoy(ci({ diaPlan: 4 }));
