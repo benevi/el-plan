@@ -16,7 +16,11 @@ const TIPOS = {
 
 http.createServer((q, s) => {
   const u = new URL(q.url, 'http://localhost');
-  let f = decodeURIComponent(u.pathname);
+  let f;
+  try { f = decodeURIComponent(u.pathname); } catch {
+    s.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+    return s.end('Ruta mal formada');
+  }
   if (f.endsWith('/')) f += 'index.html';
   const fp = path.join(RAIZ, f);
   const dentro = fp.startsWith(RAIZ + path.sep) && !/[\\/](node_modules|\.git)[\\/]/.test(fp);

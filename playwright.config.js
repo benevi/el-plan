@@ -9,10 +9,11 @@ export default defineConfig({
   testMatch: '**/*.spec.mjs',
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['github']] : 'list',
+  reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${PUERTO}`,
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {

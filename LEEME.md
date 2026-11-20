@@ -33,7 +33,7 @@ Las dos son **obligatorias** y hay que darlas de alta en **Production y en Previ
 `python3 -m http.server 8765` y abrir `http://localhost:8765` (la IA necesita Vercel; sin ella la app usa las reglas).
 
 ## Pruebas
-Requiere Node 22. Primero `npm ci`.
+Requiere Node 24. Primero `npm ci`.
 - `npm test`: pruebas unitarias y de pantalla con `node:test` (`tests/**/*.test.mjs`, en zona horaria de Madrid). Las de pantalla montan la app real en jsdom (`tests/ayuda/dom.mjs`); las de lógica usan un almacén en memoria (`tests/ayuda/node.mjs`, que inyecta `usarAlmacen` en `estado.js`).
 - `npm run lint`: ESLint sobre `js/`, `api/`, `tests/` y `sw.js`.
 - `npm run e2e`: prueba de humo con Playwright en un móvil emulado, con y sin red (`tests/e2e/`). Si ya tienes Chromium: `PW_CHROMIUM=/ruta/al/chromium npm run e2e`; si no, `npx playwright install chromium` antes.
