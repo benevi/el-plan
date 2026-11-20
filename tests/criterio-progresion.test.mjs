@@ -253,16 +253,31 @@ test('C-DOLOR-7: hoy 2 puntos más que antes de la última sesión → baja un 3
 
 // ── C-PROG-5 · Tope de la IA ──
 
-test('C-PROG-5 (CR-32): último prensa a 40 kg, la IA propone 47,5 → 42,5; mínimo 50 %; nunca NaN', () => {
+test('C-PROG-5 (CR-32): último prensa a 40 kg, la IA propone 47,5 → como mucho 42,5; mínimo 50 %; nunca NaN', () => {
+  const hoy = { energia: 3, dolorHoy: {} };
   const S = nuevoS();
-  hecha(S, 3, [{ id: 'prensa-piernas', sets: serie(40, 10, 10, 10) }]);
-  assert.equal(acotarKg(S, 'prensa-piernas', 47.5), 42.5);
-  assert.equal(acotarKg(S, 'prensa-piernas', 5), 20);
-  for (const raro of [NaN, 'abc', -3, Infinity, null, '']) assert.equal(acotarKg(S, 'prensa-piernas', raro), null, String(raro));
-  // Asistidas: ayuda ≥ última − 1 paso.
-  hecha(S, 3, [{ id: 'dominadas-asistidas-maquina', sets: serie(20, 8, 8, 8) }]);
-  assert.equal(acotarKg(S, 'dominadas-asistidas-maquina', 5), 17.5);
-  // Con dolor de hoy ≥ 4 en una zona implicada, sin subida.
+  hecha(S, 3, [{ id: 'prensa-piernas', sets: serie(40, 12, 12, 12) }]);
+  assert.equal(acotarKg(S, 'prensa-piernas', 47.5, hoy), 42.5, 'al tope: último + 1 paso');
+  assert.equal(acotarKg(S, 'prensa-piernas', 47.5), 40, 'sin contexto no se deja subir');
+  assert.equal(acotarKg(S, 'prensa-piernas', 47.5, { energia: 1 }), 40, 'con energía 1, tampoco');
+  assert.equal(acotarKg(S, 'prensa-piernas', 5, hoy), 20);
+  for (const raro of [NaN, 'abc', -3, Infinity, null, '']) assert.equal(acotarKg(S, 'prensa-piernas', raro, hoy), null, String(raro));
+  // Sin llegar al tope: el mismo peso; con dos sesiones cortas, lo que bajan las reglas.
+  const C = nuevoS();
+  hecha(C, 3, [{ id: 'prensa-piernas', sets: serie(40, 10, 10, 10) }]);
+  assert.equal(acotarKg(C, 'prensa-piernas', 47.5, hoy), 40);
+  const F = nuevoS();
+  hecha(F, 9, [{ id: 'curl-mancuernas', sets: serie(4, 5, 5, 4) }]);
+  hecha(F, 5, [{ id: 'curl-mancuernas', sets: serie(4, 5, 5, 4) }]);
+  assert.equal(acotarKg(F, 'curl-mancuernas', 5, hoy), 3, 'tras dos fallos, la IA no puede mantener ni subir');
+  // Asistidas: ayuda ≥ última − 1 paso al tope; con cualquier freno, no se quita ayuda.
+  const A2 = nuevoS();
+  hecha(A2, 3, [{ id: 'dominadas-asistidas-maquina', sets: serie(20, 12, 12, 12, 12) }]);
+  assert.equal(acotarKg(A2, 'dominadas-asistidas-maquina', 5, hoy), 17.5);
+  for (const c of [undefined, { energia: 1 }, { energia: 3, dolorHoy: { hombro: 6 } }, { energia: 3, descarga: true }]) {
+    assert.equal(acotarKg(A2, 'dominadas-asistidas-maquina', 5, c), 20, JSON.stringify(c));
+  }
+  // Con dolor de hoy ≥ 4 en una zona implicada, sin subida (CR-03).
   const L = nuevoS({ lesiones: [cronica('hombro', 2)] });
   hecha(L, 3, [{ id: 'press-pecho-maquina', sets: serie(40, 12, 12, 12) }]);
   assert.equal(acotarKg(L, 'press-pecho-maquina', 45, { dolorHoy: { hombro: 5 } }), 40, 'CR-03');
@@ -432,3 +447,129 @@ test('C-ANA-7: la primera semana de uso no cuenta como incumplida', () => {
 function sesionDia(S, f) { return hecha(S, 0, [{ id: 'remo-sentado-polea', sets: serie(40, 10) }], { cuando: new Date(f) }); }
 function ctxPlan() { return planMod; }
 const planMod = await import('./ayuda/comun.mjs').then(m => import(m.modulo('js/areas/entrenador/plan.js')));
+
+// ── Revisión independiente del PR 10 (scripts rev-pr10/p1, p2, p6, p7 y p8 convertidos en pruebas) ──
+
+test('C-ANA-2 (revisión): pasados, «tirantez», «dolor N» y negaciones a medias', () => {
+  const v = { 'me dolió la rodilla': true, 'me dolía el codo': true, 'no me duele mucho': true, 'molestó un poco': true, 'noto tirantez en el hombro': true,
+    'no es dolor, es cansancio': false, 'ni una molestia': false, 'ya no duele pero cruje': true, 'dolor 0': false, 'no me ha molestado nada': false,
+    'sin dolor pero me tira': true, 'Sin molestias, aunque el hombro me duele': true, 'no duele tanto como ayer': true, 'cero dolor': false, 'dolor: 0': false,
+    'Dolor 0/10': false, 'dolor 0 al principio, luego 4': true, 'me duelen las rodillas': true, 'no noto nada raro': false, 'dolor 3': true, 'sin dolor, 3 series bien': false };
+  for (const [t, si] of Object.entries(v)) assert.equal(ctx.leerComentario(t).includes('molestia'), si, t);
+});
+
+test('C-DOLOR-7 (revisión): la subida entre check-ins también frena dos sesiones y cuenta para «molesta»', () => {
+  const S = nuevoS({ lesiones: [cronica('hombro', 1)] });
+  hecha(S, 6, [{ id: 'press-pecho-maquina', sets: serie(40, 12, 12, 12) }], { checkin: { energia: 3, dolor: { hombro: 1 } }, cierre: { esfuerzo: 3, dolor: { hombro: 1 } } });
+  const a = sugerir(S, 'press-pecho-maquina', B, { descarga: false, dolorHoy: { hombro: 3 } });
+  assert.equal(a.tipo, 'baja');
+  assert.equal(a.kg, 27.5);
+  hecha(S, 3, [{ id: 'press-pecho-maquina', sets: serie(27.5, 12, 12, 12) }], { checkin: { energia: 3, dolor: { hombro: 3 } }, cierre: { esfuerzo: 3, dolor: { hombro: 3 } } });
+  const b = sugerir(S, 'press-pecho-maquina', B, { descarga: false, dolorHoy: { hombro: 1 } });
+  assert.notEqual(b.tipo, 'sube', 'una sola sesión sin subida no basta');
+  assert.equal(acotarKg(S, 'press-pecho-maquina', 42.5, { energia: 3, dolorHoy: { hombro: 1 } }), 27.5, 'la IA tampoco sube');
+  assert.equal(ctx.analizarEjercicios(S)['press-pecho-maquina'].estado, 'molesta');
+});
+
+test('Orden de reglas (revisión): se aplica la bajada más fuerte de las que tocan', () => {
+  const S = nuevoS();
+  hecha(S, 3, [{ id: 'press-pecho-maquina', sets: serie(40, 10, 10, 10) }], { checkin: { energia: 3, dolor: { hombro: 1 } } });
+  const d = sugerir(S, 'press-pecho-maquina', B, { descarga: true, dolorHoy: { hombro: 4 } });
+  assert.equal(d.kg, 27.5, 'descarga + dolor +3 baja');
+  assert.ok(d.series <= 2);
+  const P = nuevoS();
+  hecha(P, 16, [{ id: 'press-pecho-maquina', sets: serie(40, 10, 10, 10) }], { checkin: { energia: 3, dolor: { hombro: 1 } } });
+  const p = sugerir(P, 'press-pecho-maquina', B, { descarga: false, dolorHoy: { hombro: 4 } });
+  assert.equal(p.kg, 27.5, 'parón de 16 días + dolor +3: −30 %');
+  assert.equal(p.series, 2);
+});
+
+test('C-LES-6 (revisión): lesión sin «desde» toma la fecha de alta de su id; lesionesSinFecha la avisa', () => {
+  const id = new Date(Date.now() - 200 * 864e5).getTime().toString(36) + 'abcde';
+  const S = nuevoS({ lesiones: [{ id, zona: 'hombro', dolor: 1, activa: true, desde: '' }] });
+  assert.equal(prog.lesionNueva(S, 'hombro'), false, 'dada de alta hace 200 días');
+  assert.deepEqual(prog.lesionesSinFecha(S).map(l => l.id), [id]);
+  const T = nuevoS({ lesiones: [{ id: 'h', zona: 'hombro', dolor: 1, activa: true, desde: '' }] });
+  assert.equal(prog.lesionNueva(T, 'hombro'), true, 'sin ninguna fecha: nueva (prudente)');
+  const M = nuevoS({ lesiones: [{ id: 'v-l-x', zona: 'hombro', dolor: 3, activa: true, desde: '', vid: 'l:x' }] });
+  M.dolor = [{ fecha: dia(300), zona: 'hombro', dolor: 3, momento: 'dia', vid: 'p:1' }];
+  assert.equal(prog.lesionNueva(M, 'hombro'), false, 'migrada: fecha del primer dato migrado');
+});
+
+test('C-DESCARGA-1 (revisión): sugerir da las series de descarga y no las baja dos veces', () => {
+  const S = nuevoS();
+  hecha(S, 3, [{ id: 'press-pecho-maquina', sets: serie(40, 12, 12, 12, 12) }]);
+  const s = sugerir(S, 'press-pecho-maquina', { series: 4, reps: '8-12' }, { descarga: true });
+  assert.equal(s.series, 2);
+  assert.equal(s.kg, 40);
+  assert.equal(sugerir(S, 'press-pecho-maquina', { series: 2, reps: '8-12' }, { descarga: true }).series, 2, 'el plan ya la bajó');
+});
+
+test('C-DESCARGA-1 (revisión): la descarga adelantada por señales marca su semana', () => {
+  fijarFecha('2026-11-16T10:00');
+  const S = nuevoS({ nivel: 2 });
+  for (const d of [12, 10, 8, 5, 3, 1]) hecha(S, d, [{ id: 'press-pecho-maquina', sets: serie(40, 9, 9, 9) }], { cierre: { esfuerzo: 5 }, checkin: { energia: 2, dolor: {} } });
+  const { motivos } = prog.semanasDescarga(S);
+  const sem = [...motivos.entries()].find(([, m]) => m.senales.length >= 2);
+  assert.ok(sem, 'alguna semana adelantada por señales');
+  assert.ok(registros(S, 'press-pecho-maquina').some(r => r.descarga));
+});
+
+test('C-PROG-8 (revisión): tras un parón, la sesión de antes y la de vuelta no son referencia de «estancado»', () => {
+  const S = nuevoS();
+  hecha(S, 60, [{ id: 'press-pecho-maquina', sets: serie(40, 10, 10, 10) }]);
+  for (const d of [20, 13, 6]) hecha(S, d, [{ id: 'press-pecho-maquina', sets: serie(30, 10, 10, 10) }]);
+  assert.equal(prog.estaEstancado(registros(S, 'press-pecho-maquina'), cat.ex('press-pecho-maquina')), false);
+});
+
+test('C-REC-2 (revisión): con cualquier músculo principal cargado, como mucho 2 series y margen 3', () => {
+  const S = nuevoS({ nivel: 2 });
+  hecha(S, 0, [{ id: 'hip-thrust', sets: serie(60, 12, 12, 12, 12) }], { cuando: new Date(Date.now() - 10 * 3600e3) });
+  // prensa-piernas tiene cuádriceps y glúteo como principales: el glúteo cargado basta.
+  hecha(S, 7, [{ id: 'prensa-piernas', sets: serie(80, 12, 12, 12, 12) }]);
+  const s = sugerir(S, 'prensa-piernas', { series: 4, reps: '8-12' });
+  assert.notEqual(s.tipo, 'sube');
+  assert.equal(s.series, 2);
+  assert.match(s.motivo, /3 de margen/);
+  assert.deepEqual(prog.ajusteCargado(S, cat.ex('prensa-piernas'), 4).musculos, ['gluteo']);
+});
+
+test('fuzz de frenos (revisión, 3000 casos): con cualquier freno ni sugerir ni acotarKg suben', () => {
+  fijarFecha('2026-11-19T10:00');
+  let s = 3;
+  const az = () => (s = (s * 16807) % 2147483647) / 2147483647, el = a => a[Math.floor(az() * a.length)];
+  const ids = ['press-pecho-maquina', 'curl-mancuernas', 'prensa-piernas', 'dominadas-asistidas-maquina', 'press-banca-barra', 'elevaciones-laterales', 'hip-thrust', 'sentadilla-goblet'];
+  const malos = [];
+  let subidas = 0;
+  for (let i = 0; i < 3000; i++) {
+    const id = el(ids), e = cat.ex(id), z = Object.keys(e.r || {})[0] || 'hombro';
+    const les = az() < 0.3 ? [{ id: 'l', zona: z, dolor: el([0, 1, 2, 3, 5]), activa: true, desde: el(['', '2026-11-10', '2025-01-01']), tipo: el(['', 'recurrente', 'puntual', 'lesion']) }] : [];
+    const S = nuevoS({ nivel: el([1, 2, 3]), lesiones: les });
+    let d = el([3, 5, 9, 16, 25, 50]);
+    const kg = el([4, 10, 20, 40, 82.5]);
+    for (let k = 0, n = el([1, 2, 3, 4]); k < n; k++) {
+      hecha(S, d, [{ id, sets: serie(kg, 12, 12, 12) }], { cierre: { esfuerzo: el([3, 4, 5]), dolor: az() < 0.15 ? { [z]: 5 } : {} }, checkin: { energia: 3, dolor: az() < 0.5 ? { [z]: el([0, 1, 3]) } : {} } });
+      d = Math.max(1, d - el([2, 3, 7]));
+    }
+    const c = { energia: el([1, 2, 3, 4, 5]), dolorHoy: az() < 0.3 ? { [z]: el([1, 3, 4, 6]) } : {}, descarga: az() < 0.15 };
+    const sg = sugerir(S, id, B, c);
+    const regs = registros(S, id), ult = regs[regs.length - 1];
+    const asist = prog.esAsistida(e), ref = asist ? Math.min(...ult.sets.map(x => x.kg)) : Math.max(...ult.sets.map(x => x.kg));
+    const ia = acotarKg(S, id, asist ? 0 : 999, c);
+    const iaSube = ia != null && (asist ? ia < ref : ia > ref);
+    if (sg.tipo === 'sube') subidas++;
+    const por = [];
+    if (c.energia <= 2) por.push('energía');
+    if (e.r && e.r[z] && c.dolorHoy[z] >= 4) por.push('dolor hoy ≥ 4');
+    if (c.descarga) por.push('descarga');
+    if (ult.esfuerzo >= 5) por.push('esfuerzo 5');
+    if ((Date.now() - new Date(ult.fecha)) / 864e5 >= 14) por.push('parón');
+    if (prog.enReentrada(regs)) por.push('reentrada');
+    if (e.r && e.r[z] && (les.length || c.dolorHoy[z] >= 1) && prog.lesionNueva(S, z, c.dolorHoy)) por.push('lesión nueva');
+    if (prog.subidasDolor(regs, e).slice(-2).some(x => x.length)) por.push('subida de dolor');
+    if (e.r && e.r[z] && c.dolorHoy[z] != null && ult.antes[z] != null && c.dolorHoy[z] >= +ult.antes[z] + 2) por.push('24 h');
+    for (const p of por) { if (sg.tipo === 'sube') malos.push(`#${i} ${id} sugerir sube con ${p}`); if (iaSube) malos.push(`#${i} ${id} la IA sube con ${p} (${ref} → ${ia})`); }
+  }
+  assert.deepEqual(malos.slice(0, 5), []);
+  assert.ok(subidas > 50, `subidas: ${subidas}`);
+});

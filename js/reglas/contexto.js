@@ -3,7 +3,7 @@
 // (nada peligroso llega al catálogo) y corrigen después (kilos acotados, ver progresion.acotarKg).
 
 import { ex, disponibles, nivelesZona, zonasRiesgo, ZONAS } from './catalogo.js';
-import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
+import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
 import { es } from '../nucleo/ui.js';
 import { semanaISO } from '../nucleo/modelo.js';
 import { OBJETIVOS, NIVELES, PERSONAS, MUSCULOS, LUGARES } from '../datos/constantes.js';
@@ -86,24 +86,30 @@ export function historialParaIA(S, ids, ctx = {}) {
 
 // Comentarios en texto libre → problemas que el entrenador sabe resolver.
 const PROBLEMAS = [
-  ['molestia', /duel|dolor|dolid|molest|pinch|tir[oó]n|cruj|lesi|se me carg|me carga/i],
+  ['molestia', /duel|dolor|dolid|dol[ií][óoa]|molest|pinch|tir[oó]n|tirant|me tira|cruj|lesi|se me carg|me carga/i],
   ['ocupado', /ocupad|no (hab[ií]a|hay|estaba)|rota|averiad|sin m[aá]quina/i],
   ['aburrido', /aburr|mon[oó]ton|siempre lo mismo|repetitiv/i],
   ['facil', /f[aá]cil|ligero|me sobr|muy poco|sin esfuerzo/i],
   ['dificil', /dif[ií]cil|no pude|no llegu|demasiad|muy pesad|imposible|no pod[ií]a/i],
   ['tecnica', /t[eé]cnica|no s[eé] (hacer|c[oó]mo)|no me sale|no lo entiendo|postura/i],
 ];
-// C-ANA-2 · Negaciones que no son molestia: se borran del texto antes de buscar «molestia».
+// C-ANA-2 · Negaciones que no son molestia: se borran del texto antes de buscar «molestia». Una negación a
+// medias («no me duele mucho», «no duele tanto como ayer») sí es molestia y no se borra.
+const A_MEDIAS = String.raw`(?!\s+(?:mucho|tanto|demasiado|igual|casi|del todo))`;
 const NEGACIONES = [
-  /\b(sin|ni|cero|nada de)\s+(ning[uú]n\s+|ninguna\s+)?(dolor(es)?|molestias?)\b/gi,
-  /\bdolor(es)?\s*(:\s*)?(0|cero)\b/gi,
-  /\b(ya\s+)?no\s+(me\s+|le\s+)?(ha\s+|han\s+|he\s+)?(duel\w*|dol\w*|molest\w*)(\s+nada)?\b/gi,
+  /\b(sin|ni|cero|nada de)\s+(ning[uú]n\s+|ninguna\s+|una?\s+)?(dolor(es)?|molestias?)\b/gi,
+  /\bdolor(es)?\s*(:\s*)?(0|cero)(\s*\/\s*10)?\b(?![^.]*\b([1-9]|10)\b)/gi,
+  new RegExp(String.raw`\b(ya\s+)?no\s+(me\s+|le\s+)?(ha\s+|han\s+|he\s+)?(duel\w*|dol\w*|molest\w*)\b` + A_MEDIAS + String.raw`(\s+nada)?`, 'gi'),
   /\bno\s+noto\s+nada\b/gi,
+  /\bno\s+es\s+(un\s+)?dolor\b/gi,
 ];
+// «Dolor N» con N de 1 a 10 en la misma frase (sin contar «/10») siempre es molestia.
+const DOLOR_NUMERO = /\bdolor\b[^.]*?\b([1-9]|10)\b(?!\s*(series|rep|kg|min|seg|s\b|x\b|×))/i;
 export function leerComentario(txt) {
   const t = String(txt || '');
   const limpio = NEGACIONES.reduce((s, re) => s.replace(re, ' '), t);
-  return PROBLEMAS.filter(([k, re]) => re.test(k === 'molestia' ? limpio : t)).map(([k]) => k);
+  const sinDenominador = t.replace(/\/\s*10\b/g, '');
+  return PROBLEMAS.filter(([k, re]) => (k === 'molestia' ? re.test(limpio) || DOLOR_NUMERO.test(sinDenominador) : re.test(t))).map(([k]) => k);
 }
 
 // ── Semanas de calendario y constancia (C-ANA-7) ──
@@ -135,10 +141,13 @@ export function cumplimiento(S, semanas = 4, ahora = new Date()) {
 
 // C-ANA-1 · «Molesta»: en los últimos 30 días y en las 3 últimas sesiones del ejercicio, un comentario de dolor
 // sin negación, una subida ≥ 2 en una zona con r o un «dolor durante». Se quita tras 2 sesiones seguidas limpias.
+// Las subidas cuentan de antes a después de la sesión y hasta el check-in siguiente (C-DOLOR-7: dos veces con
+// el mismo ejercicio → «molesta»; con una basta para C-ANA-1).
 export function molesta(regs, e, ahora = Date.now()) {
-  const marca = r => leerComentario(r.comentario).includes('molestia') || dolorSubio(r, e).length > 0 || r.durante;
-  const ult = regs.slice(-3);
-  return ult.some((r, i) => ahora - new Date(r.fecha) <= 30 * DIA && marca(r) && ult.length - 1 - i < 2);
+  const sub = subidasDolor(regs, e);
+  const marca = (r, i) => leerComentario(r.comentario).includes('molestia') || sub[i].length > 0 || r.durante;
+  const n = regs.length;
+  return regs.slice(-3).some((r, j) => { const i = n - Math.min(3, n) + j; return ahora - new Date(r.fecha) <= 30 * DIA && marca(r, i) && n - 1 - i < 2; });
 }
 
 // Mejora (%) de un ejercicio de la primera a la última sesión: 1RM estimado o repeticiones al mismo peso

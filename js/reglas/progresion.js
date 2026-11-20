@@ -57,6 +57,14 @@ function bajar(e, kg, p, pct = 0.1) {
   return v > 0 ? v : null;
 }
 
+// C-PARON-1 · Bajada por parón: el % de la tabla redondeado al paso más cercano; desde −20 %, al menos un paso.
+function bajarParon(e, kg, p, pct) {
+  if (esAsistida(e)) return Math.max(r2(kg + p), r2(Math.round(kg * (1 + pct) / p) * p));
+  let v = r2(Math.round(kg * (1 - pct) / p) * p);
+  if (pct >= 0.2 && v >= kg) v = r2(kg - p);
+  return v > 0 ? Math.min(v, kg) : null;
+}
+
 export const sesionesHechas = S => Object.values(S.sesiones || {}).filter(s => s.estado === 'hecha')
   .sort((a, b) => new Date(a.terminada || a.fecha) - new Date(b.terminada || b.fecha));
 const fechaSesion = s => new Date(s.terminada || (s.fecha + 'T12:00'));
@@ -64,9 +72,13 @@ const fechaSesion = s => new Date(s.terminada || (s.fecha + 'T12:00'));
 // «Dolor durante» un ejercicio (C-DOLOR-6). Lo apuntará la sesión (PR 8); hasta entonces no hay ninguno.
 export const dolorDurante = x => !!(x && x.dolorDurante);
 
-// Todas las veces que hizo un ejercicio, de la más antigua a la más reciente.
+// Todas las veces que hizo un ejercicio, de la más antigua a la más reciente. `descarga` marca las sesiones de
+// una semana de descarga (C-DESCARGA-1), que no cuentan para «estancado».
 export function registros(S, id) {
   const desc = semanasDescarga(S).semanas;
+  return registrosCrudos(S, id).map(r => ({ ...r, descarga: desc.has(semanaISO(new Date(r.fecha))) }));
+}
+function registrosCrudos(S, id) {
   return sesionesHechas(S).map(s => {
     const x = (s.ejercicios || []).find(x => x.id === id);
     if (!x) return null;
@@ -75,7 +87,7 @@ export function registros(S, id) {
     if (!sets.length) return null;
     return { fecha: s.terminada || s.fecha, sets, esfuerzo: s.cierre && +s.cierre.esfuerzo || null, energia: s.checkin && +s.checkin.energia || null,
       antes: (s.checkin && s.checkin.dolor) || {}, despues: (s.cierre && s.cierre.dolor) || {}, gusto: x.gusto || null,
-      comentario: x.comentario || '', durante: dolorDurante(x), descarga: desc.has(semanaISO(fechaSesion(s))) };
+      comentario: x.comentario || '', durante: dolorDurante(x), descarga: false };
   }).filter(Boolean);
 }
 
@@ -86,6 +98,15 @@ export function resumen(reg) {
 }
 // Zonas con riesgo en el ejercicio cuyo dolor subió ≥ 2 de antes a después de la sesión.
 export const dolorSubio = (reg, e) => Object.keys(e.r || {}).filter(z => reg.despues[z] != null && +reg.despues[z] >= +(reg.antes[z] || 0) + 2);
+// C-DOLOR-7 · Subidas de dolor de cada sesión: de antes a después, o hasta el check-in de la siguiente sesión
+// con ese ejercicio (≥ 2 puntos por encima del de antes). Devuelve, por sesión, las zonas que subieron.
+export function subidasDolor(regs, e) {
+  return regs.map((r, i) => {
+    const z = new Set(dolorSubio(r, e)), sig = regs[i + 1];
+    if (sig) Object.keys(e.r || {}).forEach(k => { if (sig.antes[k] != null && r.antes[k] != null && +sig.antes[k] >= +r.antes[k] + 2) z.add(k); });
+    return [...z];
+  });
+}
 
 // ── Fuerza de una sesión: kilos de trabajo, repeticiones a ese peso y 1RM estimado (Epley) ──
 export const e1rm = (kg, reps) => kg * (1 + Math.min(reps, 12) / 30);
@@ -106,8 +127,18 @@ export function medidaSesion(reg, e) {
 // 14 días, ninguna de las 3 últimas mejora a la primera en peso máximo, ni en repeticiones totales al peso
 // de trabajo ni en 1RM estimado en más de un 2 %.
 export const cuentaParaEstancado = r => !r.descarga && !(r.energia && r.energia <= 2);
+// Sesiones desde la vuelta del último parón, sin las de reentrada (C-PARON-1): antes del parón no son referencia.
+export function trasParon(regs) {
+  for (let i = regs.length - 1; i >= 1; i--) {
+    const t = tramoParon(Math.floor((new Date(regs[i].fecha) - new Date(regs[i - 1].fecha)) / DIA));
+    if (!t) continue;
+    const vuelta = new Date(regs[i].fecha).getTime();
+    return regs.slice(i).filter((r, j) => (t.reentrada.sesiones ? j >= t.reentrada.sesiones : new Date(r.fecha) - vuelta >= t.reentrada.semanas * 7 * DIA));
+  }
+  return regs;
+}
 export function estaEstancado(regs, e) {
-  const v = regs.filter(cuentaParaEstancado).slice(-4);
+  const v = trasParon(regs).filter(cuentaParaEstancado).slice(-4);
   if (v.length < 4) return false;
   if (new Date(v[3].fecha) - new Date(v[0].fecha) < 14 * DIA - 3600e3) return false;
   const [ref, ...resto] = v.map(r => medidaSesion(r, e));
@@ -142,7 +173,8 @@ export function tendenciaDolor(registrosZona, ahora = Date.now()) {
   let tendencia = 'sin datos';
   if (rec.length >= 3 && prev.length >= 3) {
     const ult = +rec[rec.length - 1].dolor;
-    tendencia = mr >= mp + 1 && ult >= mr ? 'sube' : mr <= mp - 1 ? 'baja' : 'igual';
+    const dif = Math.round((mr - mp) * 10); // en décimas, sin errores de coma flotante
+    tendencia = dif >= 10 && ult >= mr ? 'sube' : dif <= -10 ? 'baja' : 'igual';
   }
   return { media14: mr, mediaAntes: mp, n14: rec.length, nAntes: prev.length, tendencia };
 }
@@ -156,10 +188,27 @@ export function lesionNueva(S, z, dolorHoy = {}) {
   if (!l.length) return +dolorHoy[z] >= 1;
   return l.some(x => {
     if (x.tipo === 'recurrente') return false;
-    if (x.tipo === 'puntual' || !x.desde) return true;
-    return Date.now() - new Date(x.desde + 'T12:00') < 42 * DIA;
+    if (x.tipo === 'puntual') return true;
+    const f = fechaLesion(S, x);
+    return !f || Date.now() - f.getTime() < 42 * DIA;
   });
 }
+// Fecha de inicio de una lesión: su «desde» o, si no lo tiene, una provisional (C-LES-6) hasta que el check-in
+// la pregunte: la fecha de alta que lleva su id (uid de la app) o, si viene de la app anterior, la del primer
+// dato migrado. Sin ninguna, null (cuenta como nueva).
+export function fechaLesion(S, l) {
+  if (l.desde) return new Date(l.desde + 'T12:00');
+  const t = parseInt(String(l.id || '').slice(0, -5), 36);
+  if (/^[0-9a-z]{13,}$/.test(String(l.id || '')) && t > Date.UTC(2020, 0, 1) && t <= Date.now()) return new Date(t);
+  if (l.vid) {
+    const f = [...Object.values(S.sesiones || {}).filter(s => s.fuente === 'anterior').map(s => s.fecha), ...(S.dolor || []).filter(d => d.vid).map(d => d.fecha), ...(S.medidas || []).filter(m => m.vid).map(m => m.fecha)]
+      .filter(Boolean).sort()[0];
+    if (f) return new Date(String(f).slice(0, 10) + 'T12:00');
+  }
+  return null;
+}
+// Lesiones activas sin «desde»: el check-in (PR 8) debe preguntar «¿Desde cuándo te duele…?» (C-LES-6).
+export const lesionesSinFecha = S => (S.perfil.lesiones || []).filter(l => l.activa && !l.desde);
 
 // ── C-REC-1 y C-REC-2 · Recuperación por músculo ──
 export const RECUPERA = { pecho: 48, espalda: 48, cuadriceps: 48, gluteo: 48, isquios: 48, hombro: 48, biceps: 36, triceps: 36, gemelo: 36, core: 24 };
@@ -201,47 +250,68 @@ export const hace = hrs => hrs < 24 ? `hace ${hrs} h` : hrs < 48 ? 'ayer' : `hac
 // 5 semanas constantes (8 en principiante; ≥ 75 % de las sesiones previstas) la siguiente es de descarga.
 const lunesDe = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const masDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const cacheDescarga = new WeakMap();
+// Semanas de descarga desde la primera sesión hasta la actual: por calendario o adelantadas por señales.
+// Devuelve { semanas: Set, motivos: Map(semana → { texto, senales }), seguidas, umbral }.
 export function semanasDescarga(S, ahora = new Date()) {
   const hechas = sesionesHechas(S);
-  const semanas = new Set();
   const umbral = (+S.perfil.nivel || 1) === 1 ? 8 : 5;
-  if (!hechas.length) return { semanas, seguidas: 0, umbral };
+  const motivos = new Map();
+  if (!hechas.length) return { semanas: new Set(), motivos, seguidas: 0, umbral };
   const objetivo = Math.max(1, +(S.perfil.disponibilidad && S.perfil.disponibilidad.dias) || 3);
+  const actual = semanaISO(ahora), fin = lunesDe(ahora).getTime();
+  const u = hechas[hechas.length - 1];
+  const clave = [hechas.length, hechas[0].id, u.id, u.terminada, actual, umbral, objetivo, (S.dolor || []).length].join('|');
+  const guardado = S.sesiones && cacheDescarga.get(S.sesiones);
+  if (guardado && guardado.clave === clave) return guardado.r;
   const porSemana = {};
   hechas.forEach(s => { const k = semanaISO(fechaSesion(s)); porSemana[k] = (porSemana[k] || 0) + 1; });
-  const actual = semanaISO(ahora), fin = lunesDe(ahora).getTime();
+  const crudos = {}, regsDe = id => crudos[id] || (crudos[id] = registrosCrudos(S, id));
   let seguidas = 0, lunes = lunesDe(fechaSesion(hechas[0]));
   for (let i = 0; i < 600 && lunes.getTime() <= fin; i++, lunes = masDias(lunes, 7)) {
-    const sem = semanaISO(lunes);
-    if (seguidas >= umbral) { semanas.add(sem); seguidas = 0; continue; }
+    const sem = semanaISO(lunes), L = lunes.getTime();
+    let m = null;
+    if (seguidas >= umbral) m = { texto: `Llevas ${umbral} semanas seguidas entrenando con constancia: esta semana toca descarga.`, senales: [] };
+    else if (!motivos.has(semanaISO(masDias(lunes, -7))) && !motivos.has(semanaISO(masDias(lunes, -14)))) {
+      const senales = senalesDescarga(S, L, regsDe, motivos);
+      if (senales.length >= 2) m = { texto: `Esta semana toca descarga: ${senales.join(' y ')}.`, senales };
+    }
+    if (m) { motivos.set(sem, m); seguidas = 0; if (sem === actual) break; continue; }
     if (sem === actual) break;
     const n = porSemana[sem] || 0;
-    if (!n) seguidas = 0;
+    if (!n) seguidas = 0; // una semana sin entrenar cuenta como descarga
     else if (n >= objetivo * 0.75) seguidas++;
   }
-  return { semanas, seguidas, umbral };
+  const r = { semanas: new Set(motivos.keys()), motivos, seguidas, umbral };
+  if (S.sesiones) cacheDescarga.set(S.sesiones, { clave, r });
+  return r;
 }
-// ¿Esta semana es de descarga? Por calendario o, antes, si en las 2 semanas anteriores se cumplen 2 de las
-// 4 señales. Solo mira semanas cerradas: la decisión no cambia a mitad de semana.
-export function semanaDescarga(S, ahora = new Date()) {
-  const { semanas, umbral } = semanasDescarga(S, ahora);
-  if (semanas.has(semanaISO(ahora))) return { toca: true, motivo: `Llevas ${umbral} semanas seguidas entrenando con constancia: esta semana toca descarga.`, senales: [] };
-  const lunes = lunesDe(ahora).getTime(), desde = lunes - 14 * DIA;
-  const antes = sesionesHechas(S).filter(s => fechaSesion(s).getTime() < lunes);
+// Las 4 señales que adelantan la descarga, con lo apuntado en las 2 semanas anteriores al lunes L.
+function senalesDescarga(S, L, regsDe, motivos) {
+  const desde = L - 14 * DIA;
+  const antes = sesionesHechas(S).filter(s => fechaSesion(s).getTime() < L);
   const ult = antes.filter(s => fechaSesion(s).getTime() >= desde);
-  if (!ult.length) return { toca: false, motivo: '', senales: [] };
+  if (!ult.length) return [];
   const senales = [];
   const esf = ult.map(s => s.cierre && +s.cierre.esfuerzo).filter(Boolean);
   if (esf.length >= 2 && esf.reduce((a, b) => a + b, 0) / esf.length >= 4.3) senales.push('esfuerzo medio muy alto');
   const ids = [...new Set(ult.flatMap(s => (s.ejercicios || []).filter(x => x.rol !== 'rehab' && x.rol !== 'cardio').map(x => x.id)))].filter(id => ex(id));
-  const malos = ids.filter(id => { const r = registros(S, id).filter(x => new Date(x.fecha).getTime() < lunes); return estaEstancado(r, ex(id)) || estaBajando(r, ex(id)); });
+  const malos = ids.filter(id => {
+    const r = regsDe(id).filter(x => new Date(x.fecha).getTime() < L).map(x => ({ ...x, descarga: motivos.has(semanaISO(new Date(x.fecha))) }));
+    return estaEstancado(r, ex(id)) || estaBajando(r, ex(id));
+  });
   if (malos.length >= 3) senales.push(`${malos.length} ejercicios estancados o bajando`);
   const ener = antes.filter(s => s.checkin && s.checkin.energia).slice(-5);
   if (ener.filter(s => +s.checkin.energia <= 2).length >= 3) senales.push('poca energía en 3 de los últimos 5 check-ins');
   const zonas = [...new Set((S.dolor || []).map(d => d.zona))];
-  if (zonas.some(z => tendenciaDolorZona(S, z, lunes).tendencia === 'sube')) senales.push('un dolor que va a más');
-  if (senales.length >= 2) return { toca: true, motivo: `Esta semana toca descarga: ${senales.join(' y ')}.`, senales };
-  return { toca: false, motivo: '', senales };
+  if (zonas.some(z => tendenciaDolorZona(S, z, L).tendencia === 'sube')) senales.push('un dolor que va a más');
+  return senales;
+}
+// ¿Esta semana es de descarga? La decisión solo mira semanas cerradas: no cambia a mitad de semana.
+// Si las señales la adelantan, la semana queda marcada y sus sesiones no cuentan para «estancado».
+export function semanaDescarga(S, ahora = new Date()) {
+  const m = semanasDescarga(S, ahora).motivos.get(semanaISO(ahora));
+  return m ? { toca: true, motivo: m.texto, senales: m.senales } : { toca: false, motivo: '', senales: [] };
 }
 // Series en descarga: −50 % redondeando hacia abajo; mínimo 2 en compuestos y 1 en accesorios.
 const RE_AISLADO = /aperturas|cruces|elevacion|curl|extension|patada|abduc|face-pull|pajaros|crunch|talones|plancha/;
@@ -284,20 +354,32 @@ const techoCorporal = e => (/^flexiones|remo-australiano/.test(e.id) ? 15 : 20);
 // C-PISC-2 · Tope de series de largos por nivel.
 const TOPE_LARGOS = { 1: 6, 2: 8, 3: 10 };
 
+// C-REC-2 · Músculos principales del ejercicio que están «cargados» (todos los de `m`, no solo el primero).
+export function musculosCargados(S, e, carga) {
+  const c = carga || cargaMuscular(S);
+  return e.m.filter(m => c[m] && c[m].estado === 'cargado').map(m => ({ m, horas: c[m].horas }));
+}
+// C-REC-2 · Con un músculo cargado, ese día: como mucho 2 series, margen 3 y sin subir. null si no hay ninguno.
+export function ajusteCargado(S, e, series, carga) {
+  const m = musculosCargados(S, e, carga);
+  return m.length ? { series: Math.min(series, 2), margen: 3, musculos: m.map(x => x.m) } : null;
+}
+
 // Frenos de una subida: lista cerrada de C-REC-3 (C-PROG-7 para las lesiones). Una lesión con dolor 1-3
 // estable no frena. ctx: { energia, dolorHoy, niveles, carga, descarga }.
 export function frenosDe(S, e, regs, ctx = {}) {
   const ult = regs[regs.length - 1];
   const frenos = [];
   if ((+ctx.energia || 3) <= 2) frenos.push('hoy tienes poca energía');
-  const carga = (ctx.carga || cargaMuscular(S))[e.m[0]];
-  if (carga && carga.estado === 'cargado') frenos.push(`el ${(MUSCULOS[e.m[0]] || '').toLowerCase()} aún se recupera (${hace(carga.horas)})`);
+  const cargado = musculosCargados(S, e, ctx.carga);
+  if (cargado.length) frenos.push(`el ${(MUSCULOS[cargado[0].m] || '').toLowerCase()} aún se recupera (${hace(cargado[0].horas)})`);
   const zonas = Object.keys(e.r || {});
   const dolorHoy = ctx.dolorHoy || {};
   // Dolor de hoy ≥ 4 en una zona implicada. Sin el dolor de hoy, el nivel de cuidado ≥ 2 (4-6) hace sus veces.
   if (zonas.some(z => dolorHoy[z] != null ? +dolorHoy[z] >= 4 : (ctx.niveles || {})[z] >= 2)) frenos.push('hoy te duele una zona que trabaja este ejercicio');
-  // C-DOLOR-7: tras una subida de dolor, no sube hasta dos sesiones sin subida.
-  if (ult && regs.slice(-2).some(r => dolorSubio(r, e).length)) frenos.push('la última vez te subió el dolor');
+  // C-DOLOR-7: tras una subida de dolor (en la sesión o hasta el check-in siguiente), no sube hasta dos
+  // sesiones sin subida.
+  if (ult && subidasDolor(regs, e).slice(-2).some(z => z.length)) frenos.push('te subió el dolor hace poco');
   const activas = zonas.filter(z => (S.perfil.lesiones || []).some(l => l.activa && l.zona === z) || +dolorHoy[z] >= 1);
   if (activas.some(z => lesionNueva(S, z, dolorHoy))) frenos.push('la lesión es reciente');
   if (activas.some(z => tendenciaDolorZona(S, z).tendencia === 'sube')) frenos.push('el dolor de esa zona va a más');
@@ -311,6 +393,21 @@ export function frenosDe(S, e, regs, ctx = {}) {
 // ctx: { energia, dolorHoy, niveles, carga, tiempo, descarga, nivel }.
 // Devuelve { series, reps, kg, tipo: 'nuevo'|'igual'|'sube'|'baja'|'series', motivo, ultima, variante? }.
 export function sugerir(S, id, base, ctx = {}) {
+  const out = sugerirBase(S, id, base, ctx);
+  const e = ex(id);
+  if (!e || out.tipo === 'nuevo') return out;
+  // C-DESCARGA-1 · Series −50 % sobre las de una semana normal (así da igual que el plan ya las haya bajado).
+  const descarga = ctx.descarga != null ? !!ctx.descarga : semanaDescarga(S).toca;
+  if (descarga) {
+    const normal = registros(S, id).filter(r => !r.descarga).pop();
+    out.series = Math.min(out.series, seriesDescarga(e, Math.max(normal ? normal.sets.length : 0, base.series)));
+  }
+  // C-REC-2 · Músculo cargado: como mucho 2 series con margen 3.
+  const aj = ajusteCargado(S, e, out.series, ctx.carga);
+  if (aj && out.series > aj.series) { out.series = aj.series; out.motivo = `${out.motivo} Hoy como mucho ${aj.series} series y deja 3 de margen: ese músculo aún se recupera.`.trim(); }
+  return out;
+}
+function sugerirBase(S, id, base, ctx) {
   const e = ex(id);
   const out = { series: base.series, reps: base.reps, kg: null, tipo: 'igual', motivo: '', ultima: '' };
   if (!e) return out;
@@ -371,21 +468,19 @@ export function sugerir(S, id, base, ctx = {}) {
       return v.length > 0 && v.filter(y => y < lo).length > v.length / 2;
     };
     let kg = kgUlt;
-    if (paron) {
-      kg = bajar(e, kgUlt, p, paron.pct) || kgUlt;
-      out.series = paron.series(base.series);
-      out.tipo = kg !== kgUlt ? 'baja' : 'igual';
-      out.motivo = `Hace ${paron.txt} que no lo haces: empieza con ${es(kg)} kg y ${out.series} series, y recupera el ritmo poco a poco.`;
+    // Todas las bajadas que tocan; se aplica la más fuerte (C-PARON-1, C-DOLOR-7, C-PROG-6).
+    const bajadas = [];
+    if (paron) bajadas.push({ kg: bajarParon(e, kgUlt, p, paron.pct), txt: k => `Hace ${paron.txt} que no lo haces: empieza con ${es(k)} kg`, porParon: true });
+    if (peor24.length) bajadas.push({ kg: bajar(e, kgUlt, p, 0.3), txt: k => `Hoy te duele más que antes de la última sesión: ${k != null ? `baja a ${es(k)} kg` : 'usa una variante más suave'}; no subas hasta dos sesiones sin que el dolor suba` });
+    if (corto(ult) && corto(prev)) bajadas.push({ kg: bajar(e, kgUlt, p), txt: k => (k != null ? `Dos sesiones sin llegar a ${es(lo)} repeticiones: baja a ${es(k)} kg y vuelve a subir desde ahí` : `Dos sesiones sin llegar a ${es(lo)} repeticiones y ya estás en el peso más bajo: prueba una variante más fácil`) });
+    const fuerte = bajadas.filter(b => b.kg != null).sort((a, b) => (asist ? b.kg - a.kg : a.kg - b.kg))[0] || bajadas[0];
+    const extraDescarga = descarga ? ' Semana de descarga: menos series y 4 repeticiones de margen.' : '';
+    if (fuerte) {
+      if (fuerte.kg != null && fuerte.kg !== kgUlt) { kg = fuerte.kg; out.tipo = 'baja'; }
+      if (paron) out.series = paron.series(base.series);
+      out.motivo = fuerte.txt(fuerte.kg) + (paron && !fuerte.porParon ? ` (llevas ${paron.txt} sin hacerlo)` : '') + (paron ? `, con ${out.series} series.` : '.') + extraDescarga;
     } else if (descarga) {
       out.motivo = `Semana de descarga: mismo peso (${es(kgUlt)} kg), menos series y deja 4 repeticiones de margen.`;
-    } else if (peor24.length) {
-      const k = bajar(e, kgUlt, p, 0.3);
-      if (k != null) { kg = k; out.tipo = 'baja'; }
-      out.motivo = `Hoy te duele más que antes de la última sesión: ${k != null ? `baja a ${es(kg)} kg` : 'usa una variante más suave'} y no subas hasta dos sesiones sin que el dolor suba.`;
-    } else if (corto(ult) && corto(prev)) {
-      const k = bajar(e, kgUlt, p);
-      if (k != null) { kg = k; out.tipo = 'baja'; out.motivo = `Dos sesiones sin llegar a ${es(lo)} repeticiones: baja a ${es(kg)} kg y vuelve a subir desde ahí.`; }
-      else out.motivo = `Dos sesiones sin llegar a ${es(lo)} repeticiones y ya estás en el peso más bajo: prueba una variante más fácil.`;
     } else if (listo && !freno) {
       const k = asist ? r2(kgUlt - p) : r2(kgUlt + p);
       if (asist && k <= 0) out.motivo = `Ya casi no necesitas ayuda (${es(kgUlt)} kg): mantén y prueba la versión sin máquina cuando te veas con fuerza.`;
@@ -477,14 +572,15 @@ function subioHace(regs, asist) {
   return Infinity;
 }
 
-// C-PROG-5 · Barandilla para lo que propone la IA:
-// - máximo: último peso máximo + 1 paso; sin subida si algo frena (C-REC-3) o hay reentrada, y con parón,
-//   el peso de C-PARON-1;
-// - asistidas: ayuda ≥ última − 1 paso;
+// C-PROG-5 · Barandilla para lo que propone la IA. Usa la misma decisión que las reglas (sugerir):
+// - máximo: el último peso máximo + 1 paso solo si las reglas dicen «sube»; si no, lo que digan las reglas
+//   (mismo peso, o menos si toca bajar: fallos, regla de las 24 h, parón…);
+// - asistidas: ayuda ≥ última − 1 paso solo si toca subir; si no, ≥ la ayuda que digan las reglas;
 // - mínimo: 50 % del último; por debajo, se corrige al 50 %.
-// ctx (opcional): { energia, dolorHoy, niveles, descarga }. Devuelve null si los kilos no son un número o si
-// tras más de 12 semanas toca empezar como sin historial.
-export function acotarKg(S, id, kg, ctx = {}) {
+// ctx: { energia, dolorHoy, niveles, descarga, carga, series, reps }. Sin ctx no se sabe cómo llega hoy la
+// persona: no se deja subir. Devuelve null si los kilos no son un número o si, tras más de 12 semanas, toca
+// empezar como sin historial.
+export function acotarKg(S, id, kg, ctx) {
   if (kg == null || kg === '') return null;
   kg = +kg;
   if (!Number.isFinite(kg) || kg < 0) return null;
@@ -492,15 +588,17 @@ export function acotarKg(S, id, kg, ctx = {}) {
   const regs = registros(S, id);
   const ult = regs[regs.length - 1];
   if (!ult || !ult.sets.some(s => s.kg)) return kg;
+  const conCtx = !!ctx && Object.keys(ctx).length > 0;
   const k = ult.sets.filter(s => s.kg).map(s => s.kg);
   const asist = esAsistida(e);
   const ref = asist ? Math.min(...k) : Math.max(...k);
   const p = paso(e, ref);
-  const paron = tramoParon(Math.floor((Date.now() - new Date(ult.fecha)) / DIA));
-  if (paron && paron.pct == null) return null;
-  if (asist) return Math.max(kg, paron ? bajar(e, ref, p, paron.pct) : Math.max(p, r2(ref - p)));
-  const frenos = frenosDe(S, e, regs, { ...ctx, descarga: ctx.descarga != null ? ctx.descarga : semanaDescarga(S).toca });
-  const max = paron ? (bajar(e, ref, p, paron.pct) || ref) : frenos.length ? ref : r2(ref + p);
+  const sg = sugerir(S, id, { series: (ctx && ctx.series) || Math.max(2, ult.sets.length), reps: (ctx && ctx.reps) || e.d[1] }, ctx || {});
+  if (sg.tipo === 'nuevo') return null;
+  const reglas = sg.kg != null ? sg.kg : ref;
+  const sube = conCtx && sg.tipo === 'sube';
+  if (asist) return Math.max(kg, sube ? Math.max(p, r2(ref - p)) : Math.max(ref, reglas));
+  const max = sube ? r2(ref + p) : Math.min(ref, reglas);
   const minimo = Math.min(max, arriba(ref * 0.5, p));
   return Math.min(Math.max(kg, minimo), max);
 }
