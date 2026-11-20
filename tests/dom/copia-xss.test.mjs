@@ -43,7 +43,7 @@ test('ningún texto de la copia se convierte en HTML en ninguna pantalla ni hoja
   for (const ru of rutas) {
     await a.ir(ru);
     mirar(ru);
-    if (ru === 'perfil') for (const g of ['objetivos', 'lesiones', 'entreno', 'datos', 'ajustes']) { a.clic(`[data-act="perfil.grupo"][data-v="${g}"]`); await tic(); mirar('perfil:' + g); }
+    if (ru === 'perfil') for (const g of ['objetivos', 'lesiones', 'entreno', 'datos', 'copias', 'ajustes']) { a.clic(`[data-act="perfil.grupo"][data-v="${g}"]`); await tic(); mirar('perfil:' + g); }
     const n = Math.min(doc.querySelectorAll(sel).length, 20);
     for (let i = 0; i < n; i++) {
       const el = doc.querySelectorAll(sel)[i]; if (!el) break;

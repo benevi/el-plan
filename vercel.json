@@ -1,6 +1,7 @@
 {
   "functions": {
-    "api/entrenador.js": { "maxDuration": 300, "supportsCancellation": true }
+    "api/entrenador.js": { "maxDuration": 300, "supportsCancellation": true },
+    "api/copia.js": { "maxDuration": 30 }
   },
   "headers": [
     { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },

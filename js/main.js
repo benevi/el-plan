@@ -7,6 +7,7 @@ import { arrancar, pintar, probarPantallas } from './nucleo/router.js';
 import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
 import { iniciarVersiones } from './nucleo/version.js';
+import { iniciarCopias } from './nucleo/copia.js';
 
 import './nucleo/rescate.js'; // antes que la bienvenida: su guardia manda
 import './areas/perfil/bienvenida.js';
@@ -68,6 +69,9 @@ try {
       .then(ya => ya || st.persist()).catch(() => {});
   }
 } catch { /* nada */ }
+
+// Copias automáticas en la nube (js/nucleo/copia.js): solo si están activadas en este móvil.
+iniciarCopias().catch(e => console.error('Copias en la nube', e));
 
 // Service worker y aviso de versión nueva (js/nucleo/version.js).
 iniciarVersiones();
