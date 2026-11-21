@@ -24,7 +24,7 @@ test('C-ALAR-3, C-DOLOR-0: la casilla de alarma está siempre en el check-in y l
   await reiniciar(conLesion('2026-01-01'));
   await abrir();
   assert.ok(a.doc.querySelector('[data-cambio="entrenador.ciAlarma"]'), 'sin casilla de alarma');
-  assert.match(a.doc.querySelector('.hoja').textContent, /Hoy noto algo de esto/);
+  assert.match(a.doc.querySelector('.hoja').textContent, /Hoy noto alguna de estas señales/);
   assert.equal(a.doc.querySelector('input[type=range][data-z="hombro"]').value, '6');
 });
 
@@ -55,4 +55,23 @@ test('D4: Perfil › Salud enseña T1 y guarda una casilla', async () => {
   const c = a.doc.querySelector('[data-cambio="perfil.salud"][data-k="asma"]');
   c.checked = true; c.dispatchEvent(new a.w.Event('change', { bubbles: true })); await a.tic();
   assert.equal(a.estado.estado().perfil.salud.asma, true);
+});
+
+test('una zona añadida por error en el check-in se puede quitar; la de una lesión activa no lleva «Quitar»', async () => {
+  await reiniciar(conLesion('2026-01-01'));
+  await abrir();
+  assert.equal(a.doc.querySelector('[data-act="entrenador.ciQuitarZona"][data-v="hombro"]'), null, 'la lesión activa no se quita desde aquí');
+  a.clic('[data-act="entrenador.ciZona"][data-v="rodilla"]');
+  await a.esperar(() => a.doc.querySelector('input[type=range][data-z="rodilla"]'));
+  a.clic('[data-act="entrenador.ciQuitarZona"][data-v="rodilla"]');
+  await a.esperar(() => !a.doc.querySelector('input[type=range][data-z="rodilla"]'));
+  assert.ok(a.doc.querySelector('[data-act="entrenador.ciZona"][data-v="rodilla"]'), 'vuelve a la lista de «¿Te duele algo más?»');
+});
+
+test('C-ALAR-3: la lista corta de señales se ve sin desplegar nada', async () => {
+  await reiniciar(conLesion('2026-01-01'));
+  await abrir();
+  const corta = a.doc.querySelector('.alarma-ci .señales-cortas');
+  assert.ok(corta && corta.closest('details') === null, 'la lista corta no debe ir plegada');
+  assert.match(corta.textContent, /pecho/);
 });
