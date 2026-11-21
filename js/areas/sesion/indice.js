@@ -14,7 +14,7 @@ import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
 import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias } from '../entrenador/entrenador.js';
-import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma } from './temporizador.js';
+import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio' };
 const minus = t => String(t || '').toLowerCase();
@@ -344,9 +344,10 @@ function hojaCierre() {
   // «Terminar» dice cuántas quedan (R17), en la misma hoja que el cierre: seguir o guardar igual.
   const p = pendientes(s);
   const lista = [...p.ej.map(([n, k]) => `${k} de ${minus(n)}`), ...(p.vuelta ? [`${p.vuelta} estiramiento${p.vuelta === 1 ? '' : 's'} de la vuelta a la calma`] : [])];
-  const titulo = p.series ? `${p.series} serie${p.series === 1 ? '' : 's'}` : `${p.vuelta} estiramiento${p.vuelta === 1 ? '' : 's'}`;
+  const est = `${p.vuelta} estiramiento${p.vuelta === 1 ? '' : 's'}`;
+  const titulo = p.series ? `${p.series} serie${p.series === 1 ? '' : 's'}${p.vuelta ? ` y ${est}` : ''}` : est;
   const quedan = lista.length ? `<div class="aviso aviso--aviso aviso-hoja" role="note">${ICONOS.alerta}<div class="aviso-texto">
-      <b>Te ${(p.series || p.vuelta) === 1 ? 'queda' : 'quedan'} ${titulo}</b>
+      <b>Te ${p.series + p.vuelta === 1 ? 'queda' : 'quedan'} ${titulo}</b>
       <p>Si terminas ahora, quedan sin hacer: ${h(lista.join(', '))}. Lo hecho se guarda igual.</p>
       <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">Seguir con la sesión</button></div></div></div>` : '';
   // Solo zonas del catálogo: su clave va dentro de un id.
@@ -451,11 +452,15 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
     if (z.kg == null && x.kg != null && conKg(x)) z.kg = x.kg;
     // Los kilos y las repeticiones pasan a las series siguientes que siguen vacías (R05): las que no se han
     // hecho, con el peso previsto y sin repeticiones apuntadas.
+    // También se pisa lo que vino propagado de la serie anterior (coincide con ella): si bajas la serie 2, la 3
+    // baja con ella; lo que ajustaste a mano en una serie siguiente se respeta.
     const porTiempo = !!objetivoSeg(x);
+    const ant = x.sets.slice(0, j).filter(q => q.hecha).pop();
     for (const w of x.sets.slice(j + 1)) {
       if (w.hecha) continue;
-      if (conKg(x) && z.kg != null && (w.kg == null || +w.kg === +x.kg)) w.kg = z.kg;
-      if (!porTiempo && !String(w.valor || '').trim()) w.valor = z.valor;
+      if (conKg(x) && z.kg != null && (w.kg == null || +w.kg === +x.kg || (ant && ant.kg != null && +w.kg === +ant.kg))) w.kg = z.kg;
+      const wv = String(w.valor || '').trim();
+      if (!porTiempo && (!wv || (ant && wv === String(ant.valor || '').trim()))) w.valor = z.valor;
     }
     const sig = x.sets.findIndex(w => !w.hecha);
     const ultimaDelEj = sig < 0;
@@ -480,7 +485,7 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
 
 // ── Pantalla final (celebración aprobada): series, minutos, kilos movidos y mejor serie, con lo que ya hay ──
 function datosFinal(S, s) {
-  let series = 0, kilos = 0, mejor = null;
+  let series = 0, kilos = 0, mejor = null, aprox = false;
   for (const x of s.ejercicios) {
     const e = ex(x.id), u = unidad(x);
     for (const z of x.sets) {
@@ -488,18 +493,23 @@ function datosFinal(S, s) {
       series++;
       if (!conKg(x) || u !== 'reps' || !(+z.kg > 0)) continue;
       const reps = valorApuntado(z.valor, '') || 0;
-      kilos += +z.kg * reps;
+      // «10 c/lado» son 20 repeticiones; las mancuernas pueden ser una o dos: la cifra se da como aproximada.
+      const lados = /c\/\s*lado|por lado|cada lado/i.test(String(x.reps)) ? 2 : 1;
+      if (e && e.mat.includes('mancuernas')) aprox = true;
+      kilos += +z.kg * reps * lados;
       const rm = e1rm(+z.kg, reps || 1);
       if (reps && (!mejor || rm > mejor.rm)) mejor = { rm, n: e ? e.n : x.id, kg: +z.kg, reps };
     }
   }
-  const min = s.empezada && s.terminada ? Math.max(1, Math.round((new Date(s.terminada) - new Date(s.empezada)) / 60000)) : null;
+  // Minutos de verdad (de la primera marca a guardar); si empezó otro día o pasa de 4 h, los de la sesión.
+  let min = s.empezada && s.terminada ? Math.max(1, Math.round((new Date(s.terminada) - new Date(s.empezada)) / 60000)) : null;
+  if (min && (min > 240 || new Date(s.empezada).toDateString() !== new Date(s.terminada).toDateString())) min = +s.minutos || null;
   let semana = '';
   try {
     const d = estadoDias(S);
     if (d.length) semana = `${d.filter(x => x.estado === 'hecho').length} de ${d.length} días del plan esta semana`;
   } catch { /* sin plan */ }
-  return { series, kilos: Math.round(kilos), mejor, min, semana };
+  return { series, kilos: Math.round(kilos), aprox, mejor, min, semana };
 }
 let finalViva = null;
 function quitarFinal() {
@@ -516,7 +526,7 @@ function mostrarFinal(idSesion) {
   // Cifras en rodillo: cada dígito sube hasta su valor (con movimiento reducido, ya en su sitio).
   let n = 0;
   const rd = v => `<span class="solo-lector">${h(v)}</span><span class="rodillo" aria-hidden="true">${[...String(v)].map(c => /\d/.test(c) ? `<span class="rd" style="--i:${n++}"><span class="rd-tira" data-fin="${c}">${[...'0123456789'].map(k => `<span>${k}</span>`).join('')}</span></span>` : `<span>${h(c)}</span>`).join('')}</span>`;
-  const cifras = [['series', d.series], ...(d.min ? [['minutos', d.min]] : []), ...(d.kilos ? [['kilos movidos', d.kilos.toLocaleString('es-ES')]] : [])];
+  const cifras = [['series', d.series], ...(d.min ? [['minutos', d.min]] : []), ...(d.kilos ? [[d.aprox ? 'kilos movidos, aprox.' : 'kilos movidos', d.kilos.toLocaleString('es-ES')]] : [])];
   const el = document.createElement('div');
   el.className = 'final' + (quieto ? '' : ' celebra');
   el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'fin-t');
@@ -541,6 +551,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && finalViva)
 // Cambiar de pantalla (o el botón atrás) quita la pantalla final.
 window.addEventListener('hashchange', () => { if (finalViva && location.hash !== '#hoy') quitarFinal(); });
 
+// Para el temporizador y la alarma solo si son de esta sesión (cerrar la de ayer no corta el descanso de hoy).
+function pararSiEsDe(id) {
+  const cr = info();
+  if (cr && (!cr.meta || cr.meta.sesion === id)) parar();
+  const al = alarmaDe();
+  if (al && (!al.sesion || al.sesion === id)) cerrarAlarma();
+}
 let cerrando = false;
 acciones({
   'sesion.modo': el => {
@@ -713,10 +730,12 @@ acciones({
       conSesion((s, S) => {
         empezarSiHaceFalta(S, s);
         s.estado = 'hecha'; s.terminada = new Date().toISOString(); s.cierre = { esfuerzo: esf, dolor, comentario };
-        Object.entries(dolor).forEach(([zona, v]) => S.dolor.push({ fecha: hoyISO(), zona, dolor: v, momento: 'despues', sesion: s.id }));
-        Object.entries((s.checkin && s.checkin.dolor) || {}).forEach(([zona, v]) => S.dolor.push({ fecha: hoyISO(), zona, dolor: v, momento: 'antes', sesion: s.id }));
+        // Una sesión de otro día («Cerrar la de ayer» desde Hoy) apunta el dolor en su día, no en el de hoy.
+        const fecha = s.fecha && s.fecha < hoyISO() ? s.fecha : hoyISO();
+        Object.entries(dolor).forEach(([zona, v]) => S.dolor.push({ fecha, zona, dolor: v, momento: 'despues', sesion: s.id }));
+        Object.entries((s.checkin && s.checkin.dolor) || {}).forEach(([zona, v]) => S.dolor.push({ fecha, zona, dolor: v, momento: 'antes', sesion: s.id }));
       });
-      parar(); cerrarAlarma(); cerrarHoja(); ir('hoy');
+      pararSiEsDe(id); cerrarHoja(); ir('hoy');
       mostrarFinal(id);
     } finally { cerrando = false; }
   },
@@ -726,7 +745,7 @@ acciones({
     if (!await confirmar(`¿Descartar «${s.nombre}»? Se borra lo apuntado en ella${hechas ? `: ${hechas} serie${hechas === 1 ? '' : 's'} hecha${hechas === 1 ? '' : 's'}` : ''}.`, { si: 'Descartar sesión', no: 'Seguir con la sesión', peligro: true })) return;
     const id = idActual();
     cambiar(S => { delete S.sesiones[id]; }, 'sesion');
-    parar(); cerrarAlarma(); ir('hoy');
+    pararSiEsDe(id); ir('hoy');
     aviso('Sesión descartada', 'info');
   },
 });

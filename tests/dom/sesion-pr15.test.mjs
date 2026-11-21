@@ -155,3 +155,59 @@ test('el contador con el móvil bloqueado no apunta solo: pregunta, con el objet
   } finally { Date.now = real; }
   assert.deepEqual([S1().ejercicios[0].sets[0].hecha, S1().ejercicios[0].sets[0].valor], [true, '40']);
 });
+
+// ── Revisión del PR #40 ──
+test('R05: lo propagado de la serie anterior no se queda anticuado (bajas la serie 2 y la 3 baja con ella)', async () => {
+  await reiniciar(lista());
+  await a.ir('sesion/s1');
+  const pasos = (n, d, veces) => { for (let k = 0; k < veces; k++) a.clic(a.doc.querySelectorAll('[data-actual] .selector')[n].querySelector(`[data-paso="${d}"]`)); };
+  pasos(0, 1, 1); pasos(1, 1, 1); // serie 1: 42,5 × 9
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  assert.deepEqual([S1().ejercicios[0].sets[2].kg, S1().ejercicios[0].sets[2].valor], [42.5, '9']);
+  await a.espera(260); // otra serie justo después cuenta como doble toque (240 ms)
+  pasos(0, -1, 2); pasos(1, -1, 2); // serie 2: 37,5 × 7
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="1"]'); await a.tic();
+  assert.deepEqual([S1().ejercicios[0].sets[2].kg, S1().ejercicios[0].sets[2].valor], [37.5, '7']);
+});
+
+test('dos pestañas: si la otra quita el temporizador («Saltar»), aquí se para sin alarma ni vibración', async () => {
+  await reiniciar(lista());
+  await a.ir('sesion/s1');
+  crono.descanso(1, 'Serie 2 de 3', { sesion: 's1', siguiente: 'A por la serie 2' });
+  assert.ok(a.doc.querySelector('#temporizador.descanso'));
+  await a.espera(300); vibra.length = 0;
+  a.w.dispatchEvent(new a.w.StorageEvent('storage', { key: 'pipos-temporizador', newValue: null }));
+  assert.equal(a.doc.querySelector('#temporizador'), null);
+  assert.equal(crono.activo(), false);
+  await a.espera(1200);
+  assert.equal(a.doc.querySelector('#temporizador'), null, 'salió una alarma fantasma');
+  assert.deepEqual(vibra, []);
+});
+
+test('dos pestañas: si la otra empieza un descanso, aquí se adopta', async () => {
+  await reiniciar(lista());
+  await a.ir('sesion/s1');
+  const g = { tipo: 'descanso', etiqueta: 'Serie 3 de 3', meta: { sesion: 's1', siguiente: 'A por la serie 3' }, fases: [{ f: 'descanso', dur: 60 }], i: 0, inicio: Date.now(), pausa: null, tiempos: [], avisos: {}, confirmar: null };
+  a.w.dispatchEvent(new a.w.StorageEvent('storage', { key: 'pipos-temporizador', newValue: JSON.stringify(g) }));
+  await a.tic();
+  assert.match(a.doc.querySelector('#temporizador .descanso-et').textContent, /Serie 3 de 3/);
+  crono.parar();
+});
+
+test('cerrar la sesión de ayer no corta el descanso de otra y apunta el dolor en su día', async () => {
+  const b = lista();
+  Object.assign(b.sesiones.s1, { fecha: '2026-11-01', checkin: { energia: 3, dolor: { rodilla: 2 } } });
+  b.perfil.lesiones.push({ id: 'l1', zona: 'rodilla', dolor: 2, desde: '2026-01-01', nota: '', activa: true });
+  await reiniciar(b);
+  await a.ir('sesion/s1');
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  crono.descanso(90, 'Serie 2 de 3', { sesion: 'otra', siguiente: 'A por la serie 2' });
+  a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => a.doc.querySelector('[data-act="sesion.cerrar"]'));
+  a.clic('[data-act="sesion.cerrar"]'); await a.tic();
+  assert.equal(S1().estado, 'hecha');
+  assert.ok(crono.activo(), 'paró el descanso de otra sesión');
+  const d = a.estado.estado().dolor.filter(x => x.sesion === 's1');
+  assert.deepEqual(d.map(x => [x.fecha, x.momento]), [['2026-11-01', 'despues'], ['2026-11-01', 'antes']]);
+  crono.parar();
+  a.clic('.final [data-fin-hoy]');
+});

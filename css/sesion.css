@@ -253,3 +253,4 @@ body.con-final { overflow: hidden; }
   .sesion-ej .ultima { margin-top: var(--e-1); }
   .serie--actual { padding-top: var(--e-2); }
 }
+.contador-sonido { align-self: center; }

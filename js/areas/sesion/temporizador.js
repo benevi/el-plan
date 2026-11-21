@@ -273,7 +273,7 @@ function pintarCaja() {
     `<span class="contador-agua" aria-hidden="true"></span>
     <div class="contador-cab"><p class="contador-nombre" id="ct-n" tabindex="-1">${h(t.nombre || t.etiqueta)}</p><p class="contador-estado c-arriba"></p></div>
     <div class="contador-centro"><b class="contador-reloj c-num" role="timer" aria-live="off"></b><p class="contador-meta c-abajo" aria-live="polite"></p></div>
-    <div class="contador-pie">${botones}</div>
+    <div class="contador-pie">${botones}${t.sinSonido ? `<button type="button" class="boton boton--texto contador-sonido" data-t="sonido">${ICONOS.reloj}Activar el sonido</button>` : ''}</div>
     <button type="button" class="boton-icono contador-x" data-t="cancelar" aria-label="Cancelar sin apuntar">${ICONOS.x}</button>`,
     { '.c-arriba': arriba, '.c-num': grande, '.c-abajo': pausa && !t.confirmar ? 'En pausa' : abajo });
   el.style.setProperty('--p', String(prog));
@@ -310,7 +310,8 @@ function alarmaDescanso(titulo, hace, meta) {
   pintarAlarma();
   // Recibe el foco (el lector lo anuncia y «Cerrar» queda a un Tab) y se cierra sola a los 8 s.
   const el = document.getElementById('temporizador');
-  try { el && !document.querySelector('.hoja-fondo') && el.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+  const escribiendo = document.activeElement && document.activeElement.matches('input:not([type=hidden]), textarea, select, [contenteditable]');
+  try { el && !escribiendo && !document.querySelector('.hoja-fondo') && el.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
   alarmaViva.cierre = setTimeout(() => cerrarAlarma(), ALARMA_SEG * 1000);
 }
 // Quita la alarma (al cerrarla, al marcar la serie siguiente o a los 8 s). El foco vuelve a la serie siguiente.
@@ -345,11 +346,12 @@ function avanzar(enVivo = true) {
       const ultimo = t.i === t.fases.length - 1;
       if (s >= F.hi && !t.avisos['hi' + t.i]) {
         t.avisos['hi' + t.i] = 1; cambio = true;
-        if (enVivo) { pitar(); vibrar([300, 120, 300]); destello(); }
+        if (enVivo) { t.avisos['vivo' + t.i] = 1; pitar(); vibrar([300, 120, 300]); destello(); }
         if (!ultimo) { t.tiempos.push(F.hi); t.inicio += F.hi * 1000; t.i++; continue; }
       }
-      // Con el móvil bloqueado no se sabe cuándo paró: se pregunta (tope y confirmación).
-      if (ultimo && !enVivo && s >= F.hi) {
+      // Si el máximo llegó con el móvil bloqueado (o la app cerrada), no se sabe cuándo paró: se pregunta (tope y
+      // confirmación). Si se avisó con la pantalla a la vista, se sigue contando: los segundos son reales.
+      if (ultimo && !enVivo && s >= F.hi && !t.avisos['vivo' + t.i]) {
         t.confirmar = { seg: F.hi }; t.pausa = F.hi * 1000; cambio = true;
         try { sonido && sonido.pause(); } catch (e) { /* nada */ }
         vibrar(VIBRA_ALARMA);
@@ -418,6 +420,7 @@ export function cuenta({ lo, hi, lados = 1, u = 's', nombre = '', etiqueta, meta
 }
 
 export const activo = () => !!t;
+export const alarmaDe = () => (alarmaViva ? alarmaViva.meta || {} : null);
 export const info = () => t && { tipo: t.tipo, meta: t.meta };
 export function parar() { t = null; clearInterval(tic); guardar(); mediaSession(); try { sonido && sonido.pause(); } catch (e) { /* nada */ } pintarCaja(); }
 
@@ -470,6 +473,18 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (t) { avanzar(false); mantenerPantalla(); }
 });
+// Otra pestaña (o la app instalada) cambió el temporizador: si lo quitó («Saltar», terminar), aquí se para todo
+// (sin alarma ni vibración fantasma); si empezó o cambió uno, se adopta.
+window.addEventListener('storage', e => {
+  if (e.key !== CLAVE) return;
+  let g;
+  try { g = e.newValue ? JSON.parse(e.newValue) : null; } catch (err) { g = null; }
+  clearInterval(tic);
+  try { sonido && sonido.pause(); } catch (err) { /* nada */ }
+  if (!g || !g.fases) { t = null; cerrarAlarma({ foco: false }); mediaSession(); quitarCaja(); return; }
+  cerrarAlarma({ foco: false });
+  t = g; mediaSession(); bucle(false);
+});
 // Al cambiar de pantalla, la barra se enseña o se esconde (no va encima de otra sesión).
 window.addEventListener('hashchange', () => { if (t || alarmaViva) pintarCaja(); });
 
@@ -480,7 +495,10 @@ setTimeout(() => {
     if (!g || !g.fases) return;
     const F = g.fases[g.i];
     const s = (g.pausa != null ? g.pausa : ahora() - g.inicio) / 1000;
-    if (s > 30 * 60 || (F.f === 'descanso' && s - F.dur > 10 * 60)) { localStorage.removeItem(CLAVE); return; }
+    // Tope: un descanso que acabó hace más de 10 min o un ejercicio por tiempo pasado su máximo + 2 min (lo que
+    // quedaba de previas y lados incluido) ya no se recupera. Uno que espera confirmación (en pausa) sí.
+    const resto = g.fases.slice(g.i).reduce((a, x) => a + (x.f === 'previa' ? x.dur : x.f === 'trabajo' ? x.hi : 0), 0);
+    if ((F.f === 'descanso' && s - F.dur > 10 * 60) || (g.tipo === 'tiempo' && g.pausa == null && s > resto + EXTRA_MAX)) { localStorage.removeItem(CLAVE); return; }
     t = g; manejadoresMedia(); mediaSession();
     bucle(false); // lo que pasó mientras la app estaba cerrada se trata como con el móvil bloqueado
     if (t) programarSonido();

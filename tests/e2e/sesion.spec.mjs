@@ -302,3 +302,23 @@ test('doble toque en «Serie 1 hecha»: cuenta como uno', async ({ page, context
   await page.clock.runFor(500);
   expect(await hechas(page, id, 0)).toBe(1);
 });
+
+test('ejercicio por tiempo: si el máximo se avisó con la pantalla a la vista, ocultar la app un momento no pregunta y apunta los segundos reales', async ({ page, context }) => {
+  await preparar(page, context);
+  const id = await empezar(page, 'victor');
+  await page.goto('/#sesion/' + id);
+  await irPaso(page, 3); // plancha 40-60 s
+  await page.click('[data-actual] [data-act="sesion.cuenta"]');
+  await page.evaluate(() => { window.__vibra = []; });
+  await page.clock.runFor((5 + 61) * 1000); // pasa el máximo con la pantalla a la vista: avisa
+  expect(await page.evaluate(() => window.__vibra)).toContainEqual([300, 120, 300]);
+  await esconder(page, true);
+  await page.clock.runFor(3000);
+  await esconder(page, false);
+  await expect(page.locator('#temporizador.contador.superado')).toBeVisible();
+  await expect(page.locator('#temporizador.contador.confirmar')).toHaveCount(0);
+  await page.click('#temporizador [data-t="fin"]');
+  const v = await page.evaluate(async id => (await import('/js/nucleo/estado.js')).estado().sesiones[id].ejercicios[2].sets[0].valor, id);
+  expect(+v).toBeGreaterThanOrEqual(63);
+  expect(+v).toBeLessThanOrEqual(66);
+});
