@@ -7,29 +7,28 @@
 .titulo-pantalla { font-size: var(--t-portada); line-height: var(--t-portada-alto); font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); margin: var(--e-2) 0 var(--e-5); }
 .titulo-pantalla:focus { outline: none; }
 .bloque + .bloque { margin-top: var(--e-bloque); }
-.bloque-titulo { font-size: var(--t-secundario); color: var(--texto-2); font-weight: var(--f-peso-medio); margin: 0 0 var(--e-2); }
-.bloque-fila { display: flex; justify-content: space-between; align-items: baseline; gap: var(--e-3); margin-bottom: var(--e-2); }
 .bloque-fila > h2, .bloque-fila > .bloque-titulo { margin: 0; }
-.bloque-mini { margin-top: var(--e-4); }
-.texto-2 { color: var(--texto-2); }
-.pequeno { font-size: var(--t-secundario); }
-.meta { font-size: var(--t-meta); line-height: var(--t-meta-alto); color: var(--texto-3); margin: var(--e-2) 0 0; }
-.ayuda { font-size: var(--t-secundario); color: var(--texto-2); margin: var(--e-2) 0 0; }
 .lectura { max-width: var(--ancho-lectura); }
 .tarjeta-nombre { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); }
 .seccion-titulo { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); }
 
-/* Campo de texto con su etiqueta siempre visible (pieza de DIS 4) */
-.campo:not(.col) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--e-2); margin: 0; }
-.campo:not(.col) + .campo:not(.col), .grupo + .grupo, .campo:not(.col) + .grupo, .grupo + .campo:not(.col) { margin-top: var(--e-6); }
-.campo:not(.col) > label, .grupo-et { font-weight: var(--f-peso-medio); color: var(--texto-1); font-size: var(--t-cuerpo); }
-.campo:not(.col) > label small, .grupo-et small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var(--t-secundario); }
-.campo:not(.col) input[id], .campo:not(.col) textarea[id], .campo:not(.col) select[id] { padding: var(--e-3) var(--e-4); min-height: 48px; }
-.campo:not(.col) textarea { min-height: 88px; }
-.campo .ayuda, .campo .mensaje { margin-top: 0; }
+/* Las clases genéricas (.ayuda, .meta, .bloque-titulo, .bloque-fila, .texto-2, .pequeno…) las definen hoy.css y
+   sesion.css (cargan antes); aquí solo lo que estas pantallas necesitan distinto, dentro de sus contenedores. */
+:is(.perfil-sec, .mia-sec, .prog-sec, .hoja-pf) .ayuda { margin-top: var(--e-2); }
+:is(.perfil-sec, .mia-sec, .prog-sec, .hoja-pf, .dolor-zona) .meta { margin-top: var(--e-2); line-height: var(--t-meta-alto); }
+.bloque-mini { margin-top: var(--e-4); }
+
+/* Campo de texto con su etiqueta siempre visible (pieza de DIS 4), en Perfil, el editor y sus hojas */
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--e-2); margin: 0; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) :is(.campo:not(.col), .grupo) + :is(.campo:not(.col), .grupo) { margin-top: var(--e-6); }
+.hoja-pf :is(.campo:not(.col), .grupo) + :is(.campo:not(.col), .grupo) { margin-top: var(--e-5); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) > label { font-weight: var(--f-peso-medio); color: var(--texto-1); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) > label small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var(--t-secundario); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) :is(input, textarea, select)[id] { padding: var(--e-3) var(--e-4); min-height: 48px; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) textarea { min-height: 88px; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo :is(.ayuda, .mensaje) { margin-top: 0; }
 .campo input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--estado-error); }
-.grupo-et { margin: 0; }
-.grupo .chips, .grupo .segmento, .grupo .selector { margin-top: var(--e-2); }
+.grupo .selector { margin-top: var(--e-2); }
 .rejilla-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--e-4); }
 .rejilla-campos > .campo + .campo { margin-top: 0; }
 fieldset.salud-med { border: 0; margin: var(--e-5) 0 0; padding: 0; min-width: 0; }
@@ -75,7 +74,6 @@ fieldset.salud-med legend { padding: 0; margin-bottom: var(--e-1); }
 
 /* Botones en fila; texto y peligro con su alto mínimo fuera de la sesión */
 .fila-botones { display: flex; flex-wrap: wrap; gap: var(--toque-separacion); margin-top: var(--e-4); }
-.fila-botones .boton { flex: 1 1 auto; }
 .boton--texto { min-height: var(--toque-min); }
 .boton .icono { width: 20px; height: 20px; }
 
@@ -134,8 +132,7 @@ fieldset.salud-med legend { padding: 0; margin-bottom: var(--e-1); }
 .analisis .tenue { color: var(--texto-2); }
 
 /* Hojas (lesión, medidas, ficha…) */
-.hoja .campo:not(.col) + .campo:not(.col), .hoja .grupo + .campo:not(.col), .hoja .campo:not(.col) + .grupo, .hoja .grupo + .grupo { margin-top: var(--e-5); }
-.hoja .fila-botones .boton { flex: 1 1 140px; }
+.hoja-pf .fila-botones .boton { flex: 1 1 140px; }
 .hoja-texto { color: var(--texto-2); font-size: var(--t-secundario); margin: 0 0 var(--e-4); }
 .hoja-cab .hoja-texto { color: var(--texto-1); font-size: 17px; margin: 0; }
 

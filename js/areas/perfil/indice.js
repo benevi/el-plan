@@ -284,7 +284,7 @@ function hojaLesion(l) {
     <div class="campo"><label for="l-desde">Desde</label><input type="date" id="l-desde" value="${h(l.desde || '')}"></div>
     <div class="campo"><label for="l-nota">Nota <small>qué movimientos duelen, diagnóstico…</small></label><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></div>
     ${nueva ? '' : `<label class="interruptor"><input type="checkbox" id="l-activa" ${l.activa ? 'checked' : ''}><span>Sigue activa</span></label>`}
-    <div class="fila-botones">${nueva ? '' : `<button type="button" class="boton boton--peligro" data-act="perfil.borrarLesion" data-id="${h(l.id)}">Borrar lesión</button>`}<button type="button" class="boton" data-act="perfil.guardarLesion" data-id="${h(l.id || '')}">Guardar lesión</button></div>`);
+    <div class="fila-botones">${nueva ? '' : `<button type="button" class="boton boton--peligro" data-act="perfil.borrarLesion" data-id="${h(l.id)}">Borrar lesión</button>`}<button type="button" class="boton" data-act="perfil.guardarLesion" data-id="${h(l.id || '')}">Guardar lesión</button></div>`, { clase: 'hoja-pf' });
   $('#l-zona').dataset.noFoco = '1';
 }
 

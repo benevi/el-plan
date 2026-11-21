@@ -48,7 +48,7 @@ export function abrirFicha(id) {
       <h3 id="ficha-gusto">¿Qué te parece?</h3>
       <div class="chips gustos-ficha" role="group" aria-labelledby="ficha-gusto">${ORDEN_GUSTO.map(k => chip('ejercicios.gustoFicha', k, g === k, GUSTOS[k].nombre, `data-id="${h(id)}"`)).join('')}</div>
       <button type="button" class="boton boton--secundario boton--ancho ficha-mia" data-act="ejercicios.aMia" data-id="${h(id)}">${ICONOS.mas}<span>Añadir a una de mis sesiones</span></button>
-    </div>`, { clase: 'hoja-ficha' });
+    </div>`, { clase: 'hoja-ficha hoja-pf' });
 }
 
 // «Añadir a una de mis sesiones»: elige una guardada o crea una nueva con este ejercicio.
@@ -62,7 +62,7 @@ function hojaAMia(id) {
       return `<li><button type="button" class="fila" data-act="ejercicios.aMiaOk" data-id="${h(id)}" data-mia="${h(m.id)}"${ya ? ' aria-disabled="true"' : ''}>
         <span class="crece"><b>${h(m.nombre)}</b><span>${ya ? 'Ya lo tiene' : `${+m.ejercicios.length} ${m.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}, ${h((LUGARES[m.lugar] || '').toLowerCase())}`}</span></span>${ya ? ICONOS.check : ICONOS.mas}</button></li>`;
     }).join('')}</ul>` : '<p class="hoja-texto">Aún no tienes ninguna sesión guardada.</p>'}
-    ${mias.length < MAX_MIAS ? `<button type="button" class="boton${mias.length ? ' boton--secundario' : ''} boton--ancho" data-act="ejercicios.aMiaNueva" data-id="${h(id)}">Crear una sesión nueva con este ejercicio</button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS} sesiones guardadas: para crear otra, borra alguna.</p>`}`);
+    ${mias.length < MAX_MIAS ? `<button type="button" class="boton${mias.length ? ' boton--secundario' : ''} boton--ancho" data-act="ejercicios.aMiaNueva" data-id="${h(id)}">Crear una sesión nueva con este ejercicio</button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS} sesiones guardadas: para crear otra, borra alguna.</p>`}`, { clase: 'hoja-pf' });
 }
 
 function itemEjercicio(e, gustos, niveles) {

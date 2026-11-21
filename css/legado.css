@@ -22,9 +22,6 @@ small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var
 .tarjeta > h2 { font-size: var(--t-subtitulo); margin-bottom: var(--e-3); display: flex; align-items: baseline; gap: var(--e-2); justify-content: space-between; }
 .tarjeta > h2 small { font-size: var(--t-secundario); }
 .tarjeta h3 { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); margin: var(--e-4) 0 var(--e-2); }
-.tarjeta.destacada { border-color: var(--acento); padding: var(--e-5); }
-.tarjeta.destacada h2 { font-size: var(--t-titulo); line-height: var(--t-titulo-alto); letter-spacing: var(--f-titulo-tracking); margin: var(--e-1) 0 var(--e-1); }
-.tarjeta.destacada .enlace { margin: var(--e-1) auto 0; }
 a.tarjeta:active, .tarjeta.tap:active { background: var(--sup-control); }
 .etiqueta { display: inline-flex; align-items: center; gap: var(--e-1); font-size: var(--t-secundario); color: var(--texto-2); }
 .etiqueta svg { width: 16px; height: 16px; color: var(--acento); }
@@ -128,12 +125,12 @@ details.plegable li { margin: var(--e-1) 0; }
 .hoja h3 { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); margin: var(--e-6) 0 var(--e-2); }
 .hoja-texto { font-size: 17px; margin: 0; }
 .hoja .btn.grande, .hoja > .btn { width: 100%; }
-.menu { display: flex; flex-direction: column; gap: var(--e-1); margin: var(--e-2) 0; }
-.menu button { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-sesion); padding: 0 var(--e-4); border: 0; border-radius: var(--r-pequeno); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); text-align: left; cursor: pointer; }
-.menu button:active { background: var(--sup-control); }
-.menu button svg { width: 20px; height: 20px; color: var(--texto-2); }
 .cargando { text-align: center; padding: var(--e-8) 0 var(--e-5); }
 .cargando .giro { width: 32px; height: 32px; border-width: 3px; margin: 0 auto var(--e-4); color: var(--acento); }
 .cargando.espera { padding-bottom: var(--e-3); }
 .nota-fallo p { margin: 0 0 var(--e-2); }
 .nota-fallo .btn { margin-top: var(--e-1); }
+.menu { display: flex; flex-direction: column; gap: var(--e-1); margin: var(--e-2) 0; }
+.menu button { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-sesion); padding: 0 var(--e-4); border: 0; border-radius: var(--r-pequeno); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); text-align: left; cursor: pointer; }
+.menu button:active { background: var(--sup-control); }
+.menu button svg { width: 20px; height: 20px; color: var(--texto-2); }

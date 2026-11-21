@@ -167,7 +167,7 @@ function abrirBuscador() {
     <div class="buscar"><label class="solo-lector" for="mia-buscar">Buscar ejercicio</label>${ICONOS16.buscar}<input id="mia-buscar" type="search" placeholder="press, plancha, crol…" autocomplete="off" enterkeyhint="search"></div>
     <div class="filtros" id="mia-filtros">${filtrosBuscador()}</div>
     <div id="mia-resultados">${resultadosBuscador()}</div>
-    <button type="button" class="boton boton--ancho mia-listo" data-act="mia.listo">Listo</button>`, { clase: 'hoja-buscador', alCerrar: () => pintar() });
+    <button type="button" class="boton boton--ancho mia-listo" data-act="mia.listo">Listo</button>`, { clase: 'hoja-buscador hoja-pf', alCerrar: () => pintar() });
   const i = panel.querySelector('#mia-buscar'); let t;
   i.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { buscador.texto = i.value; repintarResultados(); }, 150); });
 }

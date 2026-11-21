@@ -1,20 +1,17 @@
 // Área ASPECTO · vida: respuesta física y celebración. No toca datos ni lógica.
 // Presupuesto de movimiento (DIS 3, 2.4): durante la serie no se mueve nada salvo el reloj, así que al
 // marcar una serie o una tarea solo hay un toque corto de vibración. Al guardar la sesión, una
-// celebración de menos de 1,5 s con los colores de la marca (lima y rosa), nunca en bucle; con
-// «reducir movimiento» no hay celebración (la información es la misma: el aviso «¡Sesión guardada!»).
-// El final con el agua que sube llega con el PR 15.
+// celebración: la pantalla final con el agua que sube (js/areas/sesion, PR 15) y un toque de vibración.
+// El confeti queda para quien lo pida (ya no se usa al guardar la sesión).
 
-import { movimientoReducido } from '../nucleo/ui.js';
 
 const toque = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch { /* sin vibración */ } };
 
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act="sesion.serie"], [data-act="sesion.tarea"]');
-  if (b && b.getAttribute('aria-pressed') === 'false') toque(12);
-  if (e.target.closest('[data-act="sesion.cerrar"]')) {
-    setTimeout(() => { toque([30, 60, 30]); if (!movimientoReducido()) confeti({ n: 90 }); }, 250);
-  }
+  if (b && (b.getAttribute('aria-pressed') === 'false' || b.hasAttribute('data-principal'))) toque(12);
+  // Al guardar la sesión, la celebración es la pantalla final (js/areas/sesion, PR 15): aquí solo el toque.
+  if (e.target.closest('[data-act="sesion.cerrar"]')) setTimeout(() => toque([30, 60, 30]), 250);
 }, true);
 
 // ── Celebración ──

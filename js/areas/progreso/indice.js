@@ -96,7 +96,7 @@ function hojaEjercicio(id) {
   const panel = abrirHoja(`<h2>${h(e ? e.n : id)}</h2>
     ${pts.length >= 2 ? linea({ titulo: '1RM estimado', cifra: es(f.e1rm), cifraTexto: `kg ahora, desde ${es(pts[0].v)} kg`, unidad: 'kg', valores: pts.map(p => p.v), etiquetas: pts.map(p => p.etiqueta), cab: 'Fecha', recorrido: 'las sesiones' }) : ''}
     <h3>Últimas veces</h3>
-    <ul class="lista lista-compacta">${regs.slice(0, 15).map(r => `<li><span class="cifra texto-2">${h(fechaCorta(String(r.fecha).slice(0, 10)))}</span><span class="crece">${h(resumen(r))}</span>${r.esfuerzo ? `<span class="texto-2">esfuerzo ${+r.esfuerzo} de 5</span>` : ''}</li>`).join('')}</ul>`);
+    <ul class="lista lista-compacta">${regs.slice(0, 15).map(r => `<li><span class="cifra texto-2">${h(fechaCorta(String(r.fecha).slice(0, 10)))}</span><span class="crece">${h(resumen(r))}</span>${r.esfuerzo ? `<span class="texto-2">esfuerzo ${+r.esfuerzo} de 5</span>` : ''}</li>`).join('')}</ul>`, { clase: 'hoja-pf' });
   activar(panel);
 }
 
@@ -173,7 +173,7 @@ acciones({
       <p class="hoja-texto">Por la mañana, en ayunas. La cintura, a la altura del ombligo y sin apretar.</p>
       <div class="rejilla-campos">${MEDIDAS.filter(m => m[3]).map(campo).join('')}</div>
       <details class="tecnica"><summary>Más medidas</summary><p class="tecnica-texto">Con cuello, cintura y cadera se estima el % de grasa.</p><div class="rejilla-campos">${MEDIDAS.filter(m => !m[3]).map(campo).join('')}</div></details>
-      <button type="button" class="boton boton--ancho" data-act="progreso.guardarMedida">Guardar medidas</button>`);
+      <button type="button" class="boton boton--ancho" data-act="progreso.guardarMedida">Guardar medidas</button>`, { clase: 'hoja-pf' });
   },
   'progreso.guardarMedida': () => {
     const x = { fecha: hoyISO() };
