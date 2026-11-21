@@ -1,0 +1,255 @@
+/* Pipos Fitness · SESIÓN Y DESCANSO (PR 15): las pantallas aprobadas de DIS 4 (prototipos/app, rama
+   diseno-prototipos) con las decisiones del 21-11-2026: descanso solo con la barra de abajo, contador a pantalla
+   completa solo para ejercicios por tiempo y cardio, alarma de tres toques que se cierra sola.
+   Solo tokens (css/tokens.css) y componentes del sistema (css/componentes.css): fila de serie, selector ±,
+   tarjeta de ejercicio, barra de descanso, contador, segmento, hoja y aviso. Todo lo que se pulsa mide ≥ 48 px. */
+
+/* ---------- Pantalla ---------- */
+.vista-sesion { padding-top: env(safe-area-inset-top); }
+.cab-sesion { display: flex; align-items: center; gap: var(--e-2); min-height: 64px; padding-top: var(--e-2); }
+.cab-sesion > .boton-icono { flex: none; }
+.cab-sesion > div { flex: 1; min-width: 0; }
+.cab-sesion h1 { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cab-sesion p { font-size: var(--t-secundario); color: var(--texto-2); }
+.cab-sesion .boton { flex: none; min-height: var(--toque-sesion); padding: 0 var(--e-4); font-size: 15px; }
+.vista-sesion > .avance { margin-top: var(--e-3); }
+.modo-sesion { margin-top: var(--e-4); }
+
+/* Tira de pasos de «Uno a uno»: C, 1, 2…, V */
+.pasos-sesion { display: flex; gap: var(--e-2); overflow-x: auto; margin: var(--e-4) calc(var(--e-1) * -1) 0; padding: var(--e-1) var(--e-1) var(--e-3); scrollbar-width: none; }
+.pasos-sesion::-webkit-scrollbar { display: none; }
+.pasos-sesion button { flex: none; width: var(--toque-sesion); height: var(--toque-sesion); border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-2); font-weight: var(--f-peso-medio); display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.pasos-sesion button .icono { width: 18px; height: 18px; }
+.pasos-sesion button.hecho { color: var(--estado-bien); }
+.pasos-sesion button[aria-current="step"] { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }
+.pasos-sesion button:active { background: var(--sup-control); }
+
+.vista-sesion > .tarjeta, .vista-sesion > .navega { margin-top: var(--e-1); }
+.sesion-lista { margin-top: var(--e-4); }
+.sesion-lista > * + * { margin-top: var(--e-4); }
+.bloque-sesion { margin-top: var(--e-8); }
+.bloque-mini { margin-top: var(--e-4); }
+.centro { display: flex; justify-content: center; text-align: center; margin-left: auto; margin-right: auto; }
+.meta { font-size: var(--t-meta); color: var(--texto-3); }
+.vista-sesion .boton--texto { gap: var(--e-2); }
+.vista-sesion .boton--texto .icono { width: 18px; height: 18px; }
+.algo-va-mal { margin-top: var(--e-6); color: var(--estado-error); text-decoration-color: var(--estado-error); }
+.descartar { margin-top: var(--e-1); color: var(--texto-2); }
+
+/* Anterior / Siguiente */
+.navega { display: flex; gap: var(--toque-separacion); margin-top: var(--e-4); }
+.navega .boton { flex: 1; min-width: 0; padding: 0 var(--e-3); min-height: var(--toque-sesion); }
+
+/* Por qué esta sesión */
+.porque { display: flex; gap: var(--e-2); align-items: flex-start; color: var(--texto-2); font-size: var(--t-secundario); }
+.porque-bloque .nota-fallo + .porque { margin-top: var(--e-3); }
+.porque .icono { width: 16px; height: 16px; margin-top: 3px; color: var(--acento); }
+.porque-bloque .tecnica { margin-top: var(--e-3); }
+
+/* ---------- Tarjeta de ejercicio ---------- */
+.ejercicio-cab { display: flex; align-items: flex-start; gap: var(--e-3); }
+.ejercicio-cab > div { flex: 1; min-width: 0; }
+.ejercicio-cab h2 { font-size: var(--t-titulo); line-height: var(--t-titulo-alto); font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); overflow-wrap: anywhere; }
+.ejercicio-cab p { font-size: var(--t-secundario); color: var(--texto-2); margin-top: var(--e-1); }
+.ejercicio-cab .boton-icono { flex: none; }
+.sesion-ej .insignia { display: inline-block; padding: 0 var(--e-2); border-radius: var(--r-pildora); box-shadow: inset 0 0 0 1px var(--borde-control); font-size: var(--t-meta); line-height: 20px; color: var(--texto-1); margin-right: var(--e-1); }
+.ultima, .nota-ej { font-size: var(--t-secundario); color: var(--texto-2); margin-top: var(--e-2); }
+.nota-ej.motivo { padding-left: var(--e-3); box-shadow: inset 2px 0 0 var(--acento); }
+.comentario { font-size: var(--t-secundario); color: var(--texto-2); margin-top: var(--e-3); }
+.aviso-tarjeta { margin-top: var(--e-3); box-shadow: inset 3px 0 0 var(--aviso-color); background: var(--sup-control); }
+.sesion-ej .series { margin-top: var(--e-3); }
+.sesion-ej--parado .serie-valor { color: var(--texto-2); }
+.tecnica .tecnica-texto { padding-bottom: var(--e-3); }
+.tecnica .tecnica-texto .boton--texto { padding: 0; margin-top: var(--e-2); }
+.tecnica .video-ficha { margin: var(--e-1) 0 var(--e-3); }
+.tecnica .pasos { margin: 0; color: var(--texto-2); }
+.tecnica .evita { margin-top: var(--e-3); font-size: var(--t-secundario); font-weight: var(--f-peso-fuerte); color: var(--texto-1); }
+.tecnica .errores { margin: var(--e-1) 0 0; }
+.tecnica .consejo { margin-top: var(--e-3); font-size: var(--t-secundario); color: var(--texto-2); padding-left: var(--e-3); box-shadow: inset 2px 0 0 var(--acento); }
+.tecnica summary .insignia { margin-left: var(--e-2); margin-right: auto; }
+
+/* ---------- Fila de serie ---------- */
+.sesion-ej .serie { grid-template-columns: 28px 1fr auto; }
+.serie-valor { overflow-wrap: anywhere; }
+button.serie-estado { min-height: var(--toque-sesion); min-width: var(--toque-sesion); padding: 0 var(--e-2); margin-right: calc(var(--e-2) * -1); border-radius: var(--r-pildora); justify-content: center; }
+button.serie-estado:active { background: var(--sup-control); }
+.serie--hecha button.serie-estado { color: var(--estado-bien); }
+.serie-marcar .anillo { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--borde-control); }
+.serie--parada .serie-valor { color: var(--texto-2); }
+.serie-cuenta { margin: 0 0 var(--e-1); }
+.serie--actual .boton { margin-top: var(--e-1); }
+.selectores--uno { grid-template-columns: 1fr !important; }
+.serie--actual .selector-valor:focus-visible { outline-offset: 0; }
+.serie-tiempo { display: flex; align-items: baseline; gap: var(--e-2); margin: var(--e-1) 0 var(--e-3); }
+.serie-tiempo b { font-size: var(--t-cifra-l); line-height: 1.05; font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; }
+.serie-tiempo span { color: var(--texto-2); font-size: var(--t-secundario); }
+.serie--tiempo .boton .icono { width: 18px; height: 18px; fill: currentColor; }
+/* Apuntarlo sin el contador (lo hiciste con el reloj de la máquina) */
+.serie-manual { display: flex; align-items: flex-end; gap: var(--e-2); margin-top: var(--e-4); }
+.serie-manual .dato { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; gap: var(--e-1); }
+.serie-manual .dato > span { font-size: var(--t-secundario); color: var(--texto-2); }
+#vista .serie-manual input { width: 100%; min-height: var(--toque-sesion); padding: 0 44px 0 var(--e-3); border-radius: var(--r-pequeno); border: 0; background: var(--sup-control); box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-1); font-size: 18px; font-variant-numeric: tabular-nums; }
+#vista .serie-manual input::placeholder { color: var(--texto-3); }
+.serie-manual small { position: absolute; right: var(--e-3); bottom: 14px; font-size: var(--t-secundario); color: var(--texto-2); pointer-events: none; }
+.serie-manual .boton { flex: none; min-height: var(--toque-sesion); margin: 0; padding: 0 var(--e-4); font-size: 16px; }
+
+/* ---------- Calentamiento y vuelta a la calma ---------- */
+.bloque-fila { display: flex; justify-content: space-between; align-items: baseline; gap: var(--e-3); }
+.bloque-fila p { font-size: var(--t-secundario); color: var(--texto-2); }
+.tareas { list-style: none; margin: var(--e-2) 0 0; padding: 0; }
+.tareas li { display: flex; align-items: center; gap: var(--e-3); min-height: 56px; padding: var(--e-1) 0; border-bottom: 1px solid var(--borde-fino); }
+.tareas .tarea-texto { flex: 1; min-width: 0; }
+.tareas li b { font-weight: var(--f-peso-medio); }
+.tareas li p { font-size: var(--t-secundario); color: var(--texto-2); }
+.tareas .dur { color: var(--texto-2); font-size: var(--t-secundario); margin-left: var(--e-2); }
+.tareas li.hecho b { color: var(--texto-2); }
+.tarea-marca, .tarea-estado { flex: none; }
+.tarea-marca[aria-pressed="true"] .icono { fill: none; }
+.tarea-estado { display: inline-grid; place-items: center; width: var(--toque-sesion); height: var(--toque-sesion); border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-3); }
+.tarea-estado.hecho { background: var(--acento-tinte); color: var(--acento); box-shadow: inset 0 0 0 1.5px var(--acento); }
+
+/* Ejercicio hecho, plegado en «Toda la sesión» */
+.plegada { padding: var(--e-2) var(--tarjeta-relleno); }
+.plegada summary { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-sesion); cursor: pointer; list-style: none; border-radius: var(--r-pequeno); }
+.plegada summary::-webkit-details-marker { display: none; }
+.plegada summary > .icono { color: var(--estado-bien); }
+.plegada summary > span { flex: 1; min-width: 0; }
+.plegada summary b { font-weight: var(--f-peso-medio); }
+.plegada summary small { display: block; color: var(--texto-2); font-size: var(--t-secundario); }
+.plegada[open] > .sesion-ej { margin: var(--e-2) calc(var(--tarjeta-relleno) * -1) calc(var(--e-2) * -1); border: 0; background: none; box-shadow: none; }
+
+/* Cierre en modo lectura */
+.cierre-resumen p { margin-top: var(--e-2); color: var(--texto-2); }
+.cierre-resumen p:first-of-type { color: var(--texto-1); }
+.mia-origen { margin-top: var(--e-2); }
+
+/* ---------- Hojas de la sesión (menú, cambiar, cierre, «Algo va mal», guardar como mía) ---------- */
+.hoja-sesion .hoja-texto { color: var(--texto-2); font-size: var(--t-secundario); margin-bottom: var(--e-4); }
+.hoja-sesion .hoja-sub { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); margin: var(--e-6) 0 var(--e-3); }
+.hoja-sesion .grupo + .grupo, .hoja-sesion .grupo + .campo, .hoja-sesion .campo + .campo, .hoja-sesion .campo + .grupo { margin-top: var(--e-5); }
+.hoja-sesion .grupo-et { font-weight: var(--f-peso-medio); margin-bottom: var(--e-2); }
+.hoja-sesion .ayuda { font-size: var(--t-secundario); color: var(--texto-2); margin-top: var(--e-2); }
+.hoja-sesion .segmento [role="radio"] { flex: 1 1 auto; font-variant-numeric: tabular-nums; }
+.hoja-sesion .campo { display: flex; flex-direction: column; align-items: stretch; gap: var(--e-2); margin: 0; }
+.hoja-sesion .campo > label { font-weight: var(--f-peso-medio); }
+.hoja-sesion .campo small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var(--t-secundario); }
+.hoja-fondo .hoja-sesion .campo select, .hoja-fondo .hoja-sesion .campo input:not([type=hidden]), .hoja-fondo .hoja-sesion .campo textarea { min-height: var(--toque-sesion); }
+.hoja-sesion .boton--ancho, .hoja-sesion .campo + .boton, .hoja-sesion .grupo + .boton { margin-top: var(--e-5); }
+.hoja-sesion .hoja-texto + .boton--ancho { margin-top: 0; }
+.hoja-sesion .selector { margin-top: 0; }
+.hoja-sesion .selector-valor b { font-size: var(--t-cifra-s); }
+.fila-botones .boton { flex: 1 1 auto; }
+.aviso-hoja { margin-bottom: var(--e-5); box-shadow: inset 3px 0 0 var(--aviso-color); background: var(--sup-panel); }
+.aviso-hoja .aviso-acciones .boton { min-height: var(--toque-sesion); }
+.menu-hoja { list-style: none; margin: 0 0 var(--e-5); padding: 0; border-top: 1px solid var(--borde-fino); }
+.menu-hoja button { display: flex; align-items: center; gap: var(--e-3); width: 100%; min-height: 52px; text-align: left; border-bottom: 1px solid var(--borde-fino); }
+.menu-hoja button:active { background: var(--sup-control); }
+.menu-hoja .icono { color: var(--texto-2); }
+.hoja-sesion .gustos { margin-bottom: var(--e-5); }
+.hoja-sesion .lista .fila { min-height: var(--toque-sesion); }
+.hoja-sesion .lista .crece { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hoja-sesion .lista .crece > span { font-size: var(--t-secundario); color: var(--texto-2); }
+.hoja-sesion .lista .fila > .icono { color: var(--texto-3); width: 18px; height: 18px; }
+
+/* ---------- Barra de descanso (componente .descanso, fija abajo) ---------- */
+.temporizador.descanso--fija { z-index: var(--z-descanso); bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom)); padding-bottom: var(--e-3); }
+body.sin-nav .temporizador.descanso--fija { bottom: 0; padding-bottom: calc(var(--e-3) + env(safe-area-inset-bottom)); }
+.temporizador.descanso .boton { min-width: 52px; padding: 0 var(--e-3); }
+.temporizador .descanso-txt { min-width: 0; }
+.temporizador .descanso-et { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.descanso-sonido { display: flex; width: 100%; max-width: 520px; margin: var(--e-2) auto 0; justify-content: center; }
+.descanso-sonido .icono { width: 18px; height: 18px; }
+/* La barra reserva su alto (R09): la serie siguiente siempre se puede ver por encima. */
+body.con-temporizador { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--alto-descanso, 112px) + var(--e-4)); }
+body.sin-nav.con-temporizador { padding-bottom: calc(var(--alto-descanso, 112px) + var(--e-4)); }
+body.con-temporizador #aviso { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--alto-descanso, 104px) + var(--e-2)); }
+body.sin-nav.con-temporizador #aviso { bottom: calc(var(--alto-descanso, 104px) + var(--e-2)); }
+
+/* Alarma de fin: la barra toma el color de la persona con texto oscuro (≥ 7:1 en todos los fotogramas, R08).
+   Todo lo de dentro usa el color de la barra (currentColor) para que el parpadeo lento lo siga. */
+.temporizador.descanso--alarma { color: var(--texto-sobre-acento); }
+.descanso--alarma .descanso-et, .descanso--alarma .descanso-reloj, .descanso--alarma .boton--secundario, .descanso--alarma .alarma-sub { color: inherit; }
+.descanso--alarma .boton--secundario { box-shadow: inset 0 0 0 1.5px currentColor; }
+.descanso--alarma .eco { border-color: currentColor; }
+.descanso--alarma:focus { outline: none; }
+.descanso--alarma:focus-visible { outline: 2px solid var(--texto-sobre-acento); outline-offset: -4px; }
+.alarma-sub { max-width: 520px; margin: var(--e-1) auto 0; font-size: var(--t-secundario); font-weight: var(--f-peso-medio); }
+/* La alarma es crítica: con «reducir movimiento» sigue avisando, con un parpadeo lento de 1 Hz (dos estados por
+   segundo, muy por debajo de 3 destellos/s) que la regla general de componentes.css no apaga. */
+@media (prefers-reduced-motion: reduce) {
+  .alarma { animation: destello 1s steps(2) infinite !important; }
+  .temporizador.destello { animation: destello-t 1s steps(2) 4 !important; }
+  .cuenta.destello { animation: destello 1s steps(2) 4 !important; }
+}
+@keyframes destello { 50% { background: var(--sup-fondo); color: var(--acento); } }
+
+/* ---------- Contador a pantalla completa (ejercicio por tiempo y cardio) ---------- */
+.temporizador.contador--pantalla { z-index: var(--z-pantalla); padding-top: calc(env(safe-area-inset-top) + var(--e-6)); outline: none; }
+.temporizador.contador { justify-content: space-between; }
+.contador-cab { width: 100%; padding: 0 var(--e-12); }
+.contador-nombre:focus { outline: none; }
+.contador-centro { display: flex; flex-direction: column; align-items: center; gap: var(--e-2); }
+.contador-meta { min-height: 1.5em; padding: 0 var(--e-2); }
+.contador-pie { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: var(--e-3); }
+.contador-acciones .boton { min-height: var(--toque-principal); padding: 0 var(--e-3); }
+.contador-acciones .boton .icono { width: 18px; height: 18px; }
+.contador-pasos { grid-template-columns: 1fr 1fr; }
+.contador-x { position: absolute !important; top: calc(env(safe-area-inset-top) + var(--e-4)); right: var(--e-4); }
+.contador.previa .contador-reloj { color: var(--texto-2); }
+.contador.pausado .contador-reloj { color: var(--texto-2); }
+.contador.confirmar .contador-estado { color: var(--estado-aviso); font-weight: var(--f-peso-fuerte); }
+body.con-cuenta { overflow: hidden; }
+.temporizador.destello { animation: destello-t .45s steps(2) 4; }
+@keyframes destello-t { 50% { background: var(--acento); color: var(--texto-sobre-acento); } }
+
+/* ---------- Pantalla final (celebración aprobada: el agua sube, sello y cifras en rodillo) ---------- */
+.final { position: fixed; inset: 0; z-index: var(--z-pantalla); overflow: auto; background: var(--sup-fondo); }
+.final-agua { position: absolute; inset: 0; background: var(--sup-agua); transform-origin: bottom; }
+.final-dentro { position: relative; max-width: 480px; margin: 0 auto; min-height: 100dvh; padding: calc(env(safe-area-inset-top) + 72px) var(--e-6) calc(var(--e-6) + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.sello { position: relative; width: 64px; height: 64px; }
+.sello span { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: var(--acento); color: var(--texto-sobre-acento); }
+.sello span .icono { width: 30px; height: 30px; stroke-width: 2.4; }
+.sello i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--acento); opacity: 0; }
+.final h2 { font-size: 40px; line-height: 1.08; font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); margin-top: var(--e-6); outline: none; }
+.final .semana-txt { color: var(--texto-2); margin-top: var(--e-2); }
+.final dl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-4); margin: var(--e-8) 0 0; }
+.final dl div { display: flex; flex-direction: column-reverse; }
+.final dt { font-size: var(--t-secundario); color: var(--texto-2); margin-top: var(--e-1); }
+.final dd { margin: 0; font-size: var(--t-cifra-l); line-height: 1; font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; }
+.final .marca { margin: var(--e-6) 0 auto; padding-top: var(--e-4); border-top: 1px solid var(--borde-control); }
+.final .boton { margin-top: var(--e-8); }
+.rodillo { display: inline-flex; }
+.rd { display: inline-block; height: 1em; overflow: hidden; vertical-align: top; }
+.rd-tira { display: flex; flex-direction: column; transform: translateY(calc(var(--d, 0) * -1em)); transition: transform var(--m-fluye) var(--c-agua); transition-delay: calc(900ms + var(--i, 0) * 80ms); }
+.rd-tira span { height: 1em; line-height: 1; }
+.celebra .final-agua { animation: agua var(--m-fluye) var(--c-agua) both; }
+@keyframes agua { from { transform: scaleY(0); } }
+.celebra .sello span { animation: marca var(--m-medio) var(--c-sale) 650ms both; }
+.celebra .sello i { animation: eco var(--m-fluye) var(--c-sale) both; }
+.celebra .sello i:nth-child(1) { animation-delay: 650ms; }
+.celebra .sello i:nth-child(2) { animation-delay: 800ms; }
+.celebra .sello i:nth-child(3) { animation-delay: 950ms; }
+.celebra h2, .celebra .semana-txt, .celebra dl, .celebra .marca, .celebra .final-dentro > .boton { animation: sube var(--m-medio) var(--c-sale) both; }
+.celebra h2 { animation-delay: 700ms; }
+.celebra .semana-txt { animation-delay: 750ms; }
+.celebra dl { animation-delay: 800ms; }
+.celebra .marca { animation-delay: 1250ms; }
+.celebra .final-dentro > .boton { animation-delay: 1350ms; }
+@keyframes sube { from { opacity: 0; transform: translateY(12px); } }
+body.con-final { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .rd-tira { transition: none; }
+  .sello i { display: none; }
+}
+
+/* ---------- Móviles bajos (360 × 640 y menos): la serie actual cabe sin desplazarse (T9, R03) ---------- */
+@media (max-height: 700px) {
+  .cab-sesion { min-height: 56px; padding-top: var(--e-1); }
+  .vista-sesion > .avance { margin-top: var(--e-2); }
+  .modo-sesion { margin-top: var(--e-3); }
+  .pasos-sesion { margin-top: var(--e-2); padding-bottom: var(--e-2); }
+  .vista-sesion > .tarjeta { padding: var(--e-3) var(--e-4); }
+  .ejercicio-cab h2 { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); }
+  .sesion-ej .ultima { margin-top: var(--e-1); }
+  .serie--actual { padding-top: var(--e-2); }
+}
