@@ -10,6 +10,7 @@ import { BlobSimulado, fetchNube, ClavesMemoria } from './ayuda/nube.mjs';
 import { ponerReloj, ponerAlmacen, nombreCopiaV1 } from '../api/copia.js';
 
 const C = await import(modulo('js/nucleo/copia.js'));
+process.env.VERCEL_ENV = 'production'; // rutas del Blob de producción (copias/…); las de las vistas previas, en tests/api/copia.test.mjs
 const N = await import(modulo('js/nucleo/normalizar.js'));
 const FRASE = 'caballo grapa batería correcta';
 const sal = () => C.nuevaSal();

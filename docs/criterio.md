@@ -78,6 +78,8 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 
 **C-ALAR-1 [Objetivo] [PR 8, PR 11]** Si aparece cualquiera, **no se entrena hoy** (o se para la sesión en curso), no se llama a la IA, se muestra T2 y el día queda como «sin entrenar por precaución».
 
+**C-ALAR-1 · excepción [aprobada por Víctor el 21-11-2026] (D-A)** Si la sesión en curso se para con «Algo va mal» (T3) **después de haber hecho alguna serie**, lo hecho se guarda y **el día cuenta como entrenado** (constancia y plan), con la marca `parada: 'alarma'`; desde ese momento hoy no se entrena más (T2). La marca va también en el historial que se manda a la IA. Sin ninguna serie ni tarea hecha, la sesión no queda.
+
 | Código | Señal | Qué hacer |
 |---|---|---|
 | A1 | Dolor u opresión en el pecho, sobre todo si se extiende al brazo, el cuello o la mandíbula; palpitaciones raras; mareo o desmayo; falta de aire desproporcionada; sudor frío o náuseas con el esfuerzo | Parar en seco. Si no cede en unos minutos, **112** |
@@ -369,12 +371,14 @@ ZONAS[z].cardio = {
 
 | Objetivo principal | Principiante | Intermedio | Avanzado | Descanso | Margen (princ. / interm. / avanz.) |
 |---|---|---|---|---|---|
-| Fuerza | 3 × 6-8 | 4 × 4-6 | 4-5 × 3-6 | 150-180 s | 3 / 2 / 1-2 |
+| Fuerza | 3 × 6-8 | 4 × 4-6 | 4 × 3-6 | 150-180 s | 3 / 2 / 1-2 |
 | Músculo | 3 × 8-12 | 3-4 × 6-10 | 4 × 6-10 | 120 s | 3 / 2 / 1-2 |
 | Perder grasa | 3 × 10-12 | 3 × 8-12 | 3-4 × 8-12 | 90 s | 3 / 2 / 2 |
 | Resistencia | 2 × 12-15 | 3 × 12-15 | 3 × 12-20 | 60 s | 3 / 2 / 2 |
 | Salud | 2 × 12-15 | 3 × 10-12 | 3 × 8-12 | 60 s / 90 s / 90 s | 3 / 3 / 2 |
 | Accesorio compuesto | 2-3 × 10-12 | 3 × 8-12 | 3 × 8-12 | 90 s | 3 / 2 / 2 |
+
+**C-DOSIS-2 · tope de series [aprobado por Víctor el 21-11-2026] (D-B)** En el plan y en las reglas, **como mucho 3 series por ejercicio para el principiante y 4 para intermedio y avanzado** (antes, avanzado de fuerza 4-5). El relleno de volumen semanal (C-VOL-1) no sube un ejercicio por encima de ese tope: si falta volumen para la banda, añade otro ejercicio del mismo músculo (de su nivel, sin riesgo en una zona activa, sin pasar el máximo por sesión, el techo ni los minutos del día). La nota de dosis dice siempre las series reales.
 
 **C-DOSIS-3 [Objetivo] [PR 8]** **Aislamientos**: nunca por debajo de 8 repeticiones; los de hombro (`elevaciones-laterales`, `elevaciones-laterales-maquina`, `elevaciones-laterales-banda`, `pajaros`, `face-pull`, `face-pull-banda`, `rotacion-externa-banda`) nunca por debajo de **12**. Hoy, con objetivo fuerza, salen a 6-8.
 
@@ -489,7 +493,7 @@ Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superse
 | Intermedio | 10-14 | **16** (18 si el principal es músculo) | 8 |
 | Avanzado | 12-18 | **20** | 10 |
 
-Dentro de la banda: músculo, mitad alta; fuerza y perder grasa, mitad; salud, resistencia y nadar mejor, mitad baja.
+Dentro de la banda: músculo, mitad alta; fuerza y perder grasa, mitad; salud, resistencia y nadar mejor, mitad baja. Para llegar a la banda no se pasa del tope de series por ejercicio de C-DOSIS-2 (3 / 4 / 4, D-B aprobada por Víctor el 21-11-2026): se añade otro ejercicio del mismo músculo; si tampoco cabe, la semana se queda por debajo de la banda y el porqué lo dice con las series reales.
 
 **C-VOL-2 [Objetivo] [PR 10]** Hoy no hay techo. El plan **nunca lo supera** y, al rellenar, nunca añade series a un ejercicio con r en una zona activa.
 

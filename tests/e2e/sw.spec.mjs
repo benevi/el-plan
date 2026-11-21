@@ -357,7 +357,8 @@ test('dos pestañas con una sesión en curso: la otra avisa, no se recarga y se 
     await t2.waitForTimeout(500);
     expect(await t2.evaluate(() => window.sinRecargar)).toBe(true);
     expect((await foto(t2)).marca).toBe('A');
-    // Termina la sesión: se recarga sola con B.
+    // Termina la sesión (con una serie hecha: sin ninguna no se guarda, E7): se recarga sola con B.
+    await t2.locator('[data-act="sesion.serie"]').first().click();
     const terminar = t2.locator('[data-act="sesion.terminar"]:visible').first();
     await terminar.evaluate(e => e.scrollIntoView({ block: 'center' }));
     await terminar.click({ timeout: 5000 });

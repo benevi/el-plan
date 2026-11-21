@@ -199,11 +199,13 @@ function pintarCaja() {
     abajo = F.lado === 2 ? 'Cambia de lado' : 'Colócate en posición';
     prog = s / F.dur;
   } else {
-    const objetivo = F.lo === F.hi ? `${F.hi} s` : `${F.lo}-${F.hi} s`;
+    // Con minutos enteros (cardio «8 min») se lee en minutos, no «480 s» (E5).
+    const enMin = F.lo >= 120 && F.lo % 60 === 0 && F.hi % 60 === 0;
+    const objetivo = enMin ? (F.lo === F.hi ? `${F.hi / 60} min` : `${F.lo / 60}-${F.hi / 60} min`) : F.lo === F.hi ? `${F.hi} s` : `${F.lo}-${F.hi} s`;
     arriba = (lados > 1 ? `Lado ${F.lado} de ${lados} · ` : '') + 'objetivo ' + objetivo;
     if (s < F.lo) { grande = mmss(Math.ceil(F.lo - s)); abajo = 'Aguanta'; prog = s / F.hi; }
-    else if (s < F.hi) { grande = mmss(Math.floor(s)); abajo = `¡Mínimo hecho! Sigue hasta ${F.hi} s si puedes`; estadoCls += ' logrado'; prog = s / F.hi; }
-    else { grande = '+' + mmss(Math.floor(s - F.hi)); abajo = `¡Objetivo superado! Llevas ${Math.floor(s)} s`; estadoCls += ' superado'; prog = 1; }
+    else if (s < F.hi) { grande = mmss(Math.floor(s)); abajo = `¡Mínimo hecho! Sigue hasta ${enMin ? F.hi / 60 + ' min' : F.hi + ' s'} si puedes`; estadoCls += ' logrado'; prog = s / F.hi; }
+    else { grande = '+' + mmss(Math.floor(s - F.hi)); abajo = `¡Objetivo superado! Llevas ${enMin ? mmss(Math.floor(s)) : Math.floor(s) + ' s'}`; estadoCls += ' superado'; prog = 1; }
   }
   const ultimoLado = !t.fases.slice(t.i + 1).some(x => x.f === 'trabajo');
   const textoFin = F.f === 'previa' ? 'Empezar ya' : ultimoLado ? `${ICONOS.check} Hecho` : 'Cambiar de lado';

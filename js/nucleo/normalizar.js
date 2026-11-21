@@ -72,7 +72,8 @@ export function zona(v) {
   const k = v.trim().toLowerCase().replace(/\s+/g, '_');
   if (Object.prototype.hasOwnProperty.call(ZONAS, k)) return k;
   const sin = k.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return ALIAS_ZONAS[k] || ALIAS_ZONAS[sin] || null;
+  const alias = x => (Object.prototype.hasOwnProperty.call(ALIAS_ZONAS, x) ? ALIAS_ZONAS[x] : null); // nada de «__proto__»
+  return alias(k) || alias(sin) || null;
 }
 // { zona: 0-10 } con solo zonas conocidas.
 function dolorPorZona(v) {
@@ -198,6 +199,11 @@ function ejercicioSesion(x) {
   };
   const nombre = texto(x.nombre, 120); if (nombre) out.nombre = nombre;
   if (x.superserie === true) out.superserie = true;
+  // «Dolor durante» (C-DOLOR-6, E9): opcional; el ejercicio se paró porque el dolor pasó del límite.
+  if (esObjeto(x.dolorDurante) && zona(x.dolorDurante.zona)) {
+    const d = x.dolorDurante, n = k => numero(d[k], 0, 10, null, { entero: true });
+    if (n('dolor') != null) out.dolorDurante = { zona: zona(d.zona), dolor: n('dolor'), antes: n('antes') ?? 0, techo: n('techo') ?? 3 };
+  }
   return out.id || out.nombre ? out : null;
 }
 function ejercicioPlan(x) {
@@ -234,6 +240,7 @@ function sesion(s, clave) {
     estado: enLista(s.estado, ESTADOS, 'pendiente'), empezada: fechaISO(s.empezada), terminada,
     cierre: cierre ? { esfuerzo: numero(cierre.esfuerzo, 1, 5, null, { entero: true }), dolor: dolorPorZona(cierre.dolor), comentario: texto(cierre.comentario, 1000) } : null,
     ...(['suave', 'dolorAlto'].includes(s.tipo) ? { tipo: s.tipo } : {}), // los de TIPOS_SESION (modelo.js)
+    ...(s.parada === 'alarma' ? { parada: 'alarma' } : {}), // parada con «Algo va mal» (C-ALAR-1, E9)
     ...iaFalloSesion(s.iaFallo),
     ...origenSesion(s.origen),
   };
@@ -244,9 +251,9 @@ const origenSesion = o => (esObjeto(o) && o.tipo === 'mia' && idValido(o.id) ? {
 function iaFalloSesion(f) {
   if (!esObjeto(f)) return {};
   const motivo = texto(f.motivo, 300); if (!motivo) return {};
-  const peticion = texto(f.peticion, 300);
+  const peticion = texto(f.peticion, 300), atendido = texto(f.atendido, 120);
   const huella = typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {};
-  return { iaFallo: { motivo, ...(peticion ? { peticion } : {}), diaPlan: numero(f.diaPlan, 1, 7, null, { entero: true }), reintentable: f.reintentable !== false, ...huella } };
+  return { iaFallo: { motivo, ...(peticion ? { peticion } : {}), ...(peticion && atendido ? { atendido } : {}), diaPlan: numero(f.diaPlan, 1, 7, null, { entero: true }), reintentable: f.reintentable !== false, ...huella } };
 }
 function iaFalloPlan(f) {
   if (!esObjeto(f) || !esObjeto(f.semana)) return {};
@@ -286,6 +293,8 @@ function plan(p, sesiones) {
     resumen: texto(p.resumen, 2000), criterios: texto(p.criterios, 3000), progresion: texto(p.progresion, 2000), dias, hechos,
     ...iaFalloPlan(p.iaFallo),
   };
+  // Días en los que dijo «Hoy no puedo» sin otro día libre (opcional, E13).
+  if (Array.isArray(p.noPuedo)) { const np = [...new Set(p.noPuedo.slice(0, 50).filter(d => Number.isInteger(d) && d >= 1 && d <= 7))].sort((a, b) => a - b).slice(0, 7); if (np.length) out.noPuedo = np; }
   if (Array.isArray(p.cambios)) out.cambios = lista(p.cambios, 50).filter(esObjeto).map(c => ({ fecha: fechaISO(c.fecha), texto: texto(c.texto, 600) })).filter(c => c.fecha && c.texto);
   return out;
 }

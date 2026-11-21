@@ -1,5 +1,6 @@
 // Copias automáticas en la nube (PR 4b, decisiones D14 y D15 del plan v2).
 // Un almacén Vercel Blob PRIVADO para los dos: copias/<persona>/<fecha>_k<sal>_m<metadatos cifrados>.bin
+// (en las vistas previas, preview/copias/…: ver prefijoEntorno)
 // Lo que llega ya va cifrado en el móvil (AES-GCM con una clave que sale de la frase de cada persona,
 // ver js/nucleo/copia.js). Aquí solo se ve: bytes cifrados, su tamaño, la fecha de subida y la sal (pública)
 // con la que se derivó la clave. El nº de sesiones y el día de la última van en el nombre CIFRADOS con la
@@ -25,8 +26,12 @@ export const MAGIA = 'PIPC'; // primeros bytes de un archivo de copia (js/nucleo
 export const SUBIDAS_DIA = 30; // por persona y día (UTC)
 const ACCIONES = ['subir', 'listar', 'bajar', 'borrar-viejas'];
 const FECHA = '(\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}\\.\\d{3}Z)';
-const NOMBRE_V2 = new RegExp(`^copias\\/(victor|virginia)\\/${FECHA}_k([A-Za-z0-9_-]{22})_m([A-Za-z0-9_-]{40,200})\\.bin$`);
-const NOMBRE_V1 = new RegExp(`^copias\\/(victor|virginia)\\/${FECHA}_s(\\d{1,6})_u(\\d{4}-\\d{2}-\\d{2}|-)\\.bin$`);
+const NOMBRE_V2 = new RegExp(`^(preview\\/)?copias\\/(victor|virginia)\\/${FECHA}_k([A-Za-z0-9_-]{22})_m([A-Za-z0-9_-]{40,200})\\.bin$`);
+const NOMBRE_V1 = new RegExp(`^(preview\\/)?copias\\/(victor|virginia)\\/${FECHA}_s(\\d{1,6})_u(\\d{4}-\\d{2}-\\d{2}|-)\\.bin$`);
+// Las vistas previas (y `vercel dev`) usan el mismo almacén Blob que producción: sus copias y contadores van
+// aparte, bajo «preview/», para que una prueba no se mezcle con las copias de verdad (retención, contador
+// diario). Producción (VERCEL_ENV = 'production') sigue con las rutas de siempre.
+export const prefijoEntorno = () => (process.env.VERCEL_ENV === 'production' ? '' : 'preview/');
 const SAL = /^[A-Za-z0-9_-]{22}$/, META = /^[A-Za-z0-9_-]{40,200}$/;
 const MAX_LISTA = 400; // copias que se enseñan por persona (con la retención quedan unas 60-90)
 
@@ -64,19 +69,21 @@ function dentroDeRitmo(persona, accion, ahora = reloj()) {
 let ultimoSello = 0;
 export const sello = d => d.toISOString().replace(/:/g, '-');
 export function nombreCopia(persona, fecha, sal, meta) {
-  return `copias/${persona}/${sello(fecha)}_k${sal}_m${meta}.bin`;
+  return `${prefijoEntorno()}copias/${persona}/${sello(fecha)}_k${sal}_m${meta}.bin`;
 }
 // Solo para leer (y para pruebas): el nombre de la primera versión, con sesiones y última en claro.
 export function nombreCopiaV1(persona, fecha, sesiones, ultima) {
-  return `copias/${persona}/${sello(fecha)}_s${sesiones}_u${ultima || '-'}.bin`;
+  return `${prefijoEntorno()}copias/${persona}/${sello(fecha)}_s${sesiones}_u${ultima || '-'}.bin`;
 }
 const fechaDe = s => { const t = Date.parse(s.replace(/T(\d{2})-(\d{2})-(\d{2})/, 'T$1:$2:$3')); return Number.isNaN(t) ? null : new Date(t).toISOString(); };
+// Solo vale un nombre del entorno en el que se está: producción no lee las de las vistas previas, ni al revés.
 export function leerNombre(pathname) {
   const p = String(pathname || '');
+  const delEntorno = m => (m[1] || '') === prefijoEntorno();
   let m = NOMBRE_V2.exec(p);
-  if (m) { const fecha = fechaDe(m[2]); return fecha && { nombre: p, persona: m[1], fecha, sal: m[3], meta: m[4] }; }
+  if (m) { const fecha = delEntorno(m) && fechaDe(m[3]); return fecha ? { nombre: p, persona: m[2], fecha, sal: m[4], meta: m[5] } : null; }
   m = NOMBRE_V1.exec(p);
-  if (m) { const fecha = fechaDe(m[2]); return fecha && { nombre: p, persona: m[1], fecha, sesiones: +m[3], ultima: m[4] === '-' ? null : m[4] }; }
+  if (m) { const fecha = delEntorno(m) && fechaDe(m[3]); return fecha ? { nombre: p, persona: m[2], fecha, sesiones: +m[4], ultima: m[5] === '-' ? null : m[5] } : null; }
   return null;
 }
 
@@ -128,7 +135,7 @@ async function listarPrefijo(prefix) {
 }
 async function listarPersona(persona) {
   const copias = [];
-  for (const b of await listarPrefijo(`copias/${persona}/`)) {
+  for (const b of await listarPrefijo(`${prefijoEntorno()}copias/${persona}/`)) {
     const c = leerNombre(b.pathname);
     if (c && c.persona === persona) copias.push({ ...c, bytes: +b.size || 0 });
   }
@@ -139,7 +146,7 @@ async function aplicarRetencion(persona, ahora) {
   const fuera = sobrantes(copias, ahora);
   // Contadores de días anteriores (ver contadorHoy).
   const hoy = new Date(ahora).toISOString().slice(0, 10);
-  const contadores = (await listarPrefijo(`cuentas/${persona}/`)).map(b => b.pathname).filter(p => !p.endsWith(`/${hoy}.json`));
+  const contadores = (await listarPrefijo(`${prefijoEntorno()}cuentas/${persona}/`)).map(b => b.pathname).filter(p => !p.endsWith(`/${hoy}.json`));
   if (fuera.length || contadores.length) await blob().del([...fuera, ...contadores]);
   return fuera.length;
 }
@@ -147,7 +154,7 @@ async function aplicarRetencion(persona, ahora) {
 // Subidas de hoy de una persona: un contador en el Blob (cuentas/<persona>/<día>.json), porque la retención
 // deja menos copias de las que se suben y la memoria de una instancia no dura. Dos subidas a la vez pueden
 // contar una sola: es un tope aproximado contra un móvil en bucle.
-const rutaContador = (persona, ahora) => `cuentas/${persona}/${new Date(ahora).toISOString().slice(0, 10)}.json`;
+const rutaContador = (persona, ahora) => `${prefijoEntorno()}cuentas/${persona}/${new Date(ahora).toISOString().slice(0, 10)}.json`;
 async function contadorHoy(persona, ahora) {
   const r = await blob().get(rutaContador(persona, ahora), { access: 'private', useCache: false });
   if (!r || r.statusCode !== 200 || !r.stream) return 0;

@@ -8,7 +8,7 @@ import { tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas, semanaDescarga, seriesDescarga, esCompuestoDe, lesionNueva } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
-import { montarDia, objetivosDe, tiene, lista, minus } from './dia.js';
+import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
 
 const GRANDES = ['pecho', 'espalda', 'cuadriceps', 'gluteo', 'isquios', 'hombro'];
 const PEQUEÑOS = ['biceps', 'triceps', 'gemelo', 'core'];
@@ -224,6 +224,35 @@ function recortarDia(d, m, tope) {
   }
 }
 
+// Series por ejercicio hasta las que puede llegar el relleno de volumen (C-DOSIS-2 y C-VOL-1, decisión D-B de
+// Víctor del 21-11-2026): principiante 3, intermedio y avanzado 4. Si con eso no se llega a la banda, se añade
+// otro ejercicio del mismo músculo (añadirEjercicio) en vez de más series.
+export const topeRelleno = nivel => (nivel === 1 ? 3 : 4);
+// Otro principal del músculo m en un día de seco (D-B): de su nivel, sin riesgo en una zona activa, que quepa
+// en los minutos del día y sin pasar el máximo por sesión, el techo semanal ni crear un choque de C-REP-1.
+function añadirEjercicio(S, out, d, m, obj, vol) {
+  if (d.lugar === 'piscina' || d.tipo === 'suave') return false;
+  const ctx = contextoDia(S, { lugar: d.lugar, minutos: d.minutos, futuro: true });
+  const enSemana = new Set(out.flatMap(o => o.ejercicios.map(x => x.id)));
+  const cand = ctx.pool.filter(e => valePrincipal(S, e, ctx, m) && e.niv <= ctx.nivel && !d.ejercicios.some(x => x.id === e.id) && riesgoHoy(e, ctx.niveles, ctx.bandas) === 'ok')
+    .sort((a, b) => enSemana.has(a.id) - enSemana.has(b.id) || (b.s || []).length - (a.s || []).length || a.id.localeCompare(b.id));
+  const iPrin = d.ejercicios.filter(x => x.rol === 'principal').length;
+  for (const e of cand) {
+    const dz = dosis(S, e, Math.max(2, iPrin), d.lugar);
+    let series = Math.min(dz.series, topeRelleno(obj.nivel), Math.ceil(obj.musculos[m].min - (vol[m] || 0)));
+    series = Math.max(2, series);
+    if (e.m.some(mm => directas(d, mm) + series > obj.sesion)) continue;
+    if ([...e.m, ...(e.s || [])].some(mm => obj.musculos[mm] && (vol[mm] || 0) + series * (e.m.includes(mm) ? 1 : 0.5) > obj.musculos[mm].techo)) continue;
+    if (e.m.some(mm => GRANDES.includes(mm) && directas(d, mm) + series >= 4 && vecinos(out, d).some(o => directas(o, mm) >= 4))) continue;
+    const x = { id: e.id, rol: 'principal', ...dz, series };
+    if (tiempoSesionExacto(d) + tiempoEj(x) > (+d.minutos || 60) * 1.1) return false;
+    x.nota = porQueEjercicio(S, e, { i: iPrin, d: x, an: {}, carga: {}, niveles: ctx.niveles, dolorHoy: {} });
+    const pos = d.ejercicios.map(y => y.rol).lastIndexOf('principal') + 1;
+    d.ejercicios.splice(pos, 0, x);
+    return true;
+  }
+  return false;
+}
 // C-VOL-1 y C-VOL-2 · Rellena hasta el mínimo y recorta hasta el techo; nunca añade series a un ejercicio con
 // r en una zona activa, ni pasa el máximo por sesión, ni crea un choque de C-REP-1.
 function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
@@ -236,15 +265,18 @@ function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
         const cand = [];
         out.forEach(d => d.ejercicios.filter(x => x.rol === 'principal' && ex(x.id) && ex(x.id).m[0] === m).forEach(x => {
           const e = ex(x.id);
-          if (tocaZona(e) || x.series >= 5) return;
+          if (tocaZona(e) || x.series >= topeRelleno(obj.nivel)) return;
           if (e.m.some(mm => directas(d, mm) + 1 > obj.sesion)) return;
           if ([...e.m, ...(e.s || [])].some(mm => obj.musculos[mm] && (vol[mm] || 0) + (e.m.includes(mm) ? 1 : 0.5) > obj.musculos[mm].techo)) return;
           if (e.m.some(mm => GRANDES.includes(mm) && directas(d, mm) + 1 >= 4 && vecinos(out, d).some(o => directas(o, mm) >= 4))) return;
           cand.push(x);
         }));
         const x = cand.sort((a, b) => a.series - b.series)[0];
-        if (!x) break;
-        x.series++; vol = volumenSemana(out);
+        if (x) { x.series++; vol = volumenSemana(out); continue; }
+        // Todos en su tope de series: otro ejercicio del mismo músculo en el día que menos lleva (D-B).
+        const dias0 = out.slice().sort((a, b) => directas(a, m) - directas(b, m) || a.diaSemana - b.diaSemana);
+        if (!dias0.some(d => añadirEjercicio(S, out, d, m, obj, vol))) break;
+        vol = volumenSemana(out);
       }
     });
   }
@@ -323,6 +355,7 @@ export function planReglas(S, semana, { hechas = [] } = {}) {
       d.explicacion = ['Semana de descarga: mismos ejercicios y pesos, la mitad de series y 4 repeticiones de margen.', ...d.explicacion];
     });
   }
+  out.forEach(sincronizarDosis);
   const vol = volumenSemana(out);
   const hechasTxt = hechas.length ? ` Ya llevas ${hechas.length} sesión${hechas.length > 1 ? 'es' : ''} esta semana y lo que queda lo tiene en cuenta.` : '';
   const zonas = S.perfil.lesiones.filter(l => l.activa).map(l => (ZONAS[l.zona] || {}).corta).filter(Boolean);
@@ -349,7 +382,7 @@ export function planReglas(S, semana, { hechas = [] } = {}) {
 // ── Estado de la semana ──
 export const planDeLaSemana = S => (S.plan && S.plan.semana === semanaISO() ? S.plan : null);
 function lunesISO() { const h = new Date(); h.setDate(h.getDate() - diaSemana(h) + 1); return hoyISO(h); }
-// Estado de cada día del plan: 'hecho' | 'hoy' | 'pendiente' | 'saltado'.
+// Estado de cada día del plan: 'hecho' | 'hoy' | 'pendiente' | 'saltado' | 'noPuedo' (dijo «Hoy no puedo»).
 // Una sesión solo marca un día: primero los días enlazados en `hechos`; después, una sesión hecha ese mismo día
 // que no esté enlazada a ningún otro.
 export function estadoDias(S) {
@@ -368,7 +401,9 @@ export function estadoDias(S) {
       hecha = hechasSemana.find(s => s.fecha === hoyISO(f) && !usadas.has(s.id)) || null;
       if (hecha) usadas.add(hecha.id);
     }
-    return { ...d, estado: hecha ? 'hecho' : d.diaSemana === hoy ? 'hoy' : d.diaSemana < hoy ? 'saltado' : 'pendiente', sesion: hecha ? hecha.id : null };
+    // «Hoy no puedo» sin otro día libre: el día queda apuntado como que no se puede (E13).
+    const noPuede = !hecha && (p.noPuedo || []).includes(d.diaSemana) && d.diaSemana <= hoy;
+    return { ...d, estado: hecha ? 'hecho' : noPuede ? 'noPuedo' : d.diaSemana === hoy ? 'hoy' : d.diaSemana < hoy ? 'saltado' : 'pendiente', sesion: hecha ? hecha.id : null };
   });
 }
 // El día que toca hoy: el de hoy si lo hay; si no, nada (se puede adelantar el siguiente).
@@ -383,6 +418,7 @@ export const siguientePendiente = S => estadoDias(S).find(x => x.estado === 'pen
 // ── Reorganizar lo que queda de semana (día perdido, menos días, «hoy no puedo») ──
 // libres: días que aún puede entrenar (>= hoy). Mueve los pendientes en orden; si no caben, los rehace.
 // Sin ningún día libre no se borra nada: el plan sigue igual y se dice.
+// quitarHoy: viene de «Hoy no puedo»; si no queda ningún día libre, se apunta que hoy no se entrena (E13).
 export function reorganizar(libres, { quitarHoy = false } = {}) {
   const S = estado(), p = planDeLaSemana(S); if (!p) return null;
   const hoy = diaSemana();
@@ -390,6 +426,7 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
   const hechos = est.filter(d => d.estado === 'hecho');
   const pendientes = est.filter(d => d.estado !== 'hecho');
   libres = (libres || []).filter(d => d >= hoy && !hechos.some(h => h.diaSemana === d) && !(quitarHoy && d === hoy)).sort((a, b) => a - b);
+  if (!libres.length && quitarHoy && est.some(d => d.estado === 'hoy')) return noPuedoHoy();
   if (!libres.length) return pendientes.length ? 'No queda ningún día libre esta semana: dejo el plan como está.' : 'Ya has hecho todos los días de esta semana.';
   let nuevos, nota;
   if (pendientes.length <= libres.length) {
@@ -417,6 +454,7 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
     for (let g = 0; g < 20; g++) { const ch = choquesSeguidos([...hechos, ...nuevos])[0]; if (!ch) break; const d = nuevos.find(x => x.diaSemana === ch.dias[1]) || nuevos.find(x => x.diaSemana === ch.dias[0]); if (!d) break; recortarDia(d, ch.m, 3); }
     nota = `Quedaban ${pendientes.length} días y puedes ${libres.length}: lo junto en ${libres.length === 1 ? 'una sesión de cuerpo completo' : 'sesiones de cuerpo completo'} priorizando ${lista(faltan.map(m => minus(MUSCULOS[m]))) || 'lo más importante'}.`;
   }
+  nuevos.forEach(sincronizarDosis);
   cambiar(S2 => {
     const pl = S2.plan;
     pl.dias = [...hechos.map(d => p.dias.find(x => x.diaSemana === d.diaSemana) || d), ...nuevos.map(({ estado: _e, sesion: _s, ...d }) => d)].sort((a, b) => a.diaSemana - b.diaSemana);
@@ -424,4 +462,21 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
     delete pl.iaFallo; // reorganizada a mano: «Reintentar con IA» ya no la pisaría (PR 12)
   }, 'plan');
   return nota;
+}
+
+// «Hoy no puedo» sin ningún otro día libre esta semana: no se mueve nada, pero queda apuntado que hoy no se
+// entrena (Hoy deja de decir «Hoy toca») y se dice (E13). Si luego entrena igualmente, el día cuenta como hecho.
+export function noPuedoHoy() {
+  const S = estado(), p = planDeLaSemana(S); if (!p) return null;
+  const hoy = diaSemana();
+  const d = estadoDias(S).find(x => x.diaSemana === hoy && x.estado === 'hoy');
+  if (!d) return null;
+  const quedan = estadoDias(S).some(x => x.diaSemana > hoy && x.estado === 'pendiente');
+  const texto = `Apuntado: hoy (${minus(DIAS[hoy])}) no entrenas «${d.nombre}». ${quedan ? 'Lo demás sigue en su día.' : 'No quedan más días esta semana: el lunes montas la semana nueva.'}`;
+  cambiar(S2 => {
+    const pl = S2.plan;
+    pl.noPuedo = [...new Set([...(pl.noPuedo || []), hoy])].sort((a, b) => a - b);
+    pl.cambios = [...(pl.cambios || []), { fecha: new Date().toISOString(), texto }];
+  }, 'plan');
+  return texto;
 }

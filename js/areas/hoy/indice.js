@@ -27,7 +27,7 @@ function tiraSemana(S) {
 
 function tarjetaHoy(S) {
   // Señal de alarma de hoy: día sin entrenar por precaución (C-ALAR-1).
-  if (sinEntrenarHoy(S) && !(sesionDeHoy(S) && sesionDeHoy(S).estado === 'hecha')) {
+  if (sinEntrenarHoy(S) && !(sesionDeHoy(S) && sesionDeHoy(S).estado === 'hecha' && !sesionDeHoy(S).parada)) {
     return `<section class="tarjeta destacada precaucion"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="enlace" data-act="entrenador.deshacerAlarma">La marqué por error</button></section>`;
   }
   const s = sesionDeHoy(S);
@@ -51,6 +51,16 @@ function tarjetaHoy(S) {
       ${hechas ? `<div class="barra"><i style="width:${Math.round(hechas / total * 100)}%"></i></div>` : ''}
       <a class="btn grande" href="#sesion/${h(s.id)}">${ICONOS.play} ${s.estado === 'en_curso' ? 'Seguir' : 'Empezar'}</a>
       ${s.estado === 'pendiente' ? '<button class="enlace" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}</section>`;
+  }
+  // «Hoy no puedo» el último día: hoy no se entrena, y se puede entrenar igualmente (E13).
+  const noPuede = estadoDias(S).find(d => d.estado === 'noPuedo' && d.diaSemana === diaSemana());
+  if (noPuede) {
+    const sig = siguientePendiente(S);
+    return `<section class="tarjeta destacada">
+      <span class="etiqueta">Hoy</span>
+      <h2>Hoy no entrenas</h2>
+      <p class="tenue">Has dicho que hoy no puedes hacer «${h(noPuede.nombre)}». ${sig && sig.estado === 'pendiente' ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minus(sig.nombre))}.` : 'No quedan más días esta semana: el lunes montas la semana nueva.'}</p>
+      <button class="btn sec" data-act="entrenador.hacerDia" data-v="${+noPuede.diaSemana}">Entrenar igualmente</button></section>`;
   }
   const dia = planDeHoy(S);
   if (dia) {

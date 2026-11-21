@@ -113,7 +113,10 @@ export function dosis(S, e, i, _lugar) {
   const nivel = Math.max(1, Math.min(3, S.perfil.nivel || 1));
   const tipo = tipoEj(e);
   if (tipo === 'propia') {
-    if (e.t === 'tiempo' && PROPIA.test(e.id)) return { series: nivel === 1 ? 2 : 3, reps: nivel === 1 ? '15-30 s' : '20-45 s', descanso: 45 }; // C-DOSIS-6
+    if (e.t === 'tiempo' && PROPIA.test(e.id)) { // C-DOSIS-6; «c/lado» se conserva (dos lados en el cronómetro)
+      const lado = (String(e.d[1]).match(/\s+(c\/\s*\S+|por lado|cada lado)\s*$/i) || [''])[0];
+      return { series: nivel === 1 ? 2 : 3, reps: (nivel === 1 ? '15-30 s' : '20-45 s') + lado, descanso: 45 };
+    }
     return { series: e.d[0], reps: e.d[1], descanso: e.d[2] };
   }
   const objs = objetivosDe(S), prin = COMPUESTO[objs[0]] ? objs[0] : 'salud';
@@ -464,6 +467,17 @@ export function techoDolor(S, z, { rehab = false } = {}) {
   if (!ZONAS[z]) return 3;
   return techoZona(z, { nueva: faseLesion(l) === 'nueva', detalle: l && l.detalle, rehab }).techo;
 }
+// Límite del «dolor durante» un ejercicio (C-DOLOR-6): como mucho 2 puntos sobre el de antes y nunca por encima
+// del techo; con dolor irradiado, sin aumento. Devuelve { limite, techo }.
+export function limiteDolor(S, z, antes = 0, { rehab = false } = {}) {
+  const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z);
+  const t = ZONAS[z] ? techoZona(z, { nueva: faseLesion(l) === 'nueva', detalle: l && l.detalle, rehab }) : { techo: 3, sube: 2 };
+  let limite = Math.min(t.techo, (+antes || 0) + t.sube);
+  // Rehabilitación (C-DOSIS-7): «dolor ≤ 3 o igual al de antes»; si ya empieza por encima del techo o es
+  // irradiado (sin aumento), vale quedarse como empezó.
+  if (rehab && ((+antes || 0) > t.techo || t.sube === 0)) limite = Math.max(limite, +antes || 0);
+  return { techo: t.techo, limite };
+}
 // c: { i, d, an, carga, niveles, dolorHoy, sustituye: { n, por } }
 export function porQueEjercicio(S, e, c) {
   const a = c.an[e.id];
@@ -483,6 +497,18 @@ export function porQueEjercicio(S, e, c) {
   }
   if (a && a.problemas.includes('dificil')) out.push('La última vez te costó: empieza más ligero');
   return out.slice(0, 3).map(frase).join(' ');
+}
+// La nota de dosis («Básico del día para pecho: 3 × 8-12 con 120 s…») y la línea «el primer básico va a…» de la
+// explicación dicen las series, repeticiones y descanso que de verdad quedan, aunque luego los cambie el
+// volumen semanal, el tiempo, la energía o la descarga (E10).
+const RE_NOTA_DOSIS = /(Básico del día para [^:]+: )\d+ × .+? con \d+ s( porque)/;
+const RE_EXPL_DOSIS = /(el primer básico va a )\d+ × .+? con \d+ s( de descanso)/;
+export function sincronizarDosis(d) {
+  const ejs = (d && d.ejercicios) || [];
+  ejs.forEach(x => { if (x && typeof x.nota === 'string' && RE_NOTA_DOSIS.test(x.nota)) x.nota = x.nota.replace(RE_NOTA_DOSIS, `$1${+x.series} × ${x.reps} con ${+x.descanso} s$2`); });
+  const p = ejs.find(x => x && x.rol === 'principal' && ex(x.id) && ex(x.id).t === 'reps');
+  if (p && Array.isArray(d.explicacion)) d.explicacion = d.explicacion.map(t => (typeof t === 'string' ? t.replace(RE_EXPL_DOSIS, `$1${+p.series} × ${p.reps} con ${+p.descanso} s$2`) : t));
+  return d;
 }
 export function porQueRehab(S, e, z, dolorHoy) {
   const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z) || {};

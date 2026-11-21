@@ -51,7 +51,6 @@ export function ajustarAlCheckin(S, dia, ci) {
   const minutos = minutosSesion(ci.minutos);
   const niveles = nivelesZona(S.perfil, dolorHoy);
   const maxDolor = maxDolorHoy(dolorHoy);
-  const pet = minus(ci.peticion);
   const checkin = { energia, dolor: dolorHoy, tiempo: ci.minutos };
   const ctxV = { lugar: ci.lugar, minutos, dolorHoy, energia, origen: dia ? 'plan' : 'reglas', k: diaSemana() };
   const salud = restriccionesSalud(S);
@@ -72,8 +71,9 @@ export function ajustarAlCheckin(S, dia, ci) {
   const tipoDe = d => (d && d.tipo) || 'fullA';
   // Petición concreta que las reglas entienden (con una sesión guardada no hay petición).
   let tipo = tipoDe(base);
-  if (mia) { /* manda la sesión guardada */ } else if (/superior|torso|brazo|pecho|espalda/.test(pet) && !/pierna|inferior/.test(pet)) { tipo = 'torso'; cambios.push('Pides tren superior: hoy torso.'); }
-  else if (/inferior|pierna|gl[uú]teo/.test(pet)) { tipo = 'pierna'; cambios.push('Pides tren inferior: hoy pierna y glúteo.'); }
+  const peticion = leerPeticion(mia ? '' : ci.peticion);
+  if (peticion.tipo === 'torso') { tipo = 'torso'; cambios.push('Pides tren superior: hoy torso.'); }
+  else if (peticion.tipo === 'pierna') { tipo = 'pierna'; cambios.push('Pides tren inferior: hoy pierna y glúteo.'); }
   // Cambio de lugar: con la plantilla del destino (piscina ↔ seco, C-PISC-1).
   const tipoHoy = tipoParaLugar(tipo, ci.lugar);
   if (!mia && (!base || ci.lugar !== base.lugar || tipoHoy !== tipoDe(base))) {
@@ -181,7 +181,23 @@ export function ajustarAlCheckin(S, dia, ci) {
     checkin,
     ...(mia ? { origen: { tipo: 'mia', id: mia.id } } : {}),
   };
-  return { datos, cambios: todos };
+  return { datos, cambios: todos, peticion };
+}
+
+// Lo que las reglas entienden de la petición del check-in (sin IA): tren superior o inferior. `atendido` dice
+// qué se ha hecho con ella y `completa` si no pedía nada más (palabras de relleno aparte), para que la nota
+// «No he podido atender…» diga qué sí y qué no (N4 del informe del 21-11-2026).
+const RELLENO = new Set('hoy quiero quisiera me gustaria apetece solo solamente centrarme centrar centrado en el la los las lo de del al y a un una unos unas tren parte inferior superior pierna piernas gluteo gluteos torso brazo brazos pecho espalda trabajar hacer entrenar por favor mejor dia sesion toca toda todo mas que nada'.split(' '));
+export function leerPeticion(texto) {
+  // Lo negado («sin máquinas de pierna», «nada de pecho») no es una petición de ese tren.
+  const pet = minus(texto).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(sin|no|nada de|ni|evitar|evita)\s+([a-zñ]+\s+){0,3}?(piernas?|inferior|gluteos?|superior|torso|brazos?|pecho|espalda)\b/g, ' ');
+  let tipo = null;
+  if (/superior|torso|brazo|pecho|espalda/.test(pet) && !/pierna|inferior/.test(pet)) tipo = 'torso';
+  else if (/inferior|pierna|gluteo/.test(pet)) tipo = 'pierna';
+  if (!tipo) return { tipo: null, atendido: '', completa: false };
+  const resto = pet.split(/[^a-zñ]+/).filter(w => w && !RELLENO.has(w));
+  return { tipo, atendido: tipo === 'torso' ? 'hoy torso' : 'hoy pierna y glúteo', completa: !resto.length };
 }
 
 // ── Cuándo merece la pena pagar una llamada a la IA para el día ──
