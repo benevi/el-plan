@@ -12,9 +12,10 @@ body.con-hoja { overflow: hidden; }
 ::selection { background: var(--acento-tinte); color: var(--texto-1); }
 
 /* ---- Contenido de la pantalla ---- */
-main#vista { max-width: 560px; margin: 0 auto; padding: 0 var(--e-margen) var(--e-4); outline: none; }
+main#vista { max-width: 560px; margin: 0 auto; padding: 0 var(--e-margen) var(--e-4); outline: none; overflow-x: clip; } /* lo que entra de lado no ensancha la página */
+/* El h1 recibe el foco al cambiar de pantalla para que el lector y el teclado empiecen por arriba; no es un
+   control, así que no lleva anillo (como en los prototipos). */
 main#vista h1:focus { outline: none; }
-main#vista h1:focus-visible { outline: 2px solid var(--borde-foco); outline-offset: 2px; border-radius: var(--r-pequeno); }
 
 /* ---- Cabecera: el logo (Trenza + nombre) y el aviso «Sin conexión» ---- */
 .cab {
@@ -97,3 +98,6 @@ body.con-temporizador.con-aviso-version { padding-bottom: calc(var(--nav-alto) +
 
 /* ---- Celebración al guardar la sesión (js/aspecto/vida.js) ---- */
 .confeti { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: var(--z-confeti); pointer-events: none; }
+
+/* Con una hoja abierta, el aviso va arriba para no tapar sus campos ni sus botones. */
+body.con-hoja #aviso { top: calc(env(safe-area-inset-top) + var(--e-3)); bottom: auto; }

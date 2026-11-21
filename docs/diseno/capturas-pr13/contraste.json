@@ -1,0 +1,288 @@
+{
+ "victor": {
+  "bienvenida": {
+   "pares": 11,
+   "cumplen": 11,
+   "minimo": 8.85,
+   "malos": []
+  },
+  "hoy-sin-plan": {
+   "pares": 23,
+   "cumplen": 23,
+   "minimo": 6.82,
+   "malos": []
+  },
+  "hoja-montar-semana": {
+   "pares": 63,
+   "cumplen": 63,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-con-plan": {
+   "pares": 52,
+   "cumplen": 52,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoja-checkin": {
+   "pares": 128,
+   "cumplen": 128,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "sesion-uno-a-uno": {
+   "pares": 63,
+   "cumplen": 63,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "sesion-toda": {
+   "pares": 240,
+   "cumplen": 240,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoja-menu-ejercicio": {
+   "pares": 264,
+   "cumplen": 264,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "sesion-descanso": {
+   "pares": 249,
+   "cumplen": 249,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-cierre": {
+   "pares": 267,
+   "cumplen": 267,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "progreso": {
+   "pares": 89,
+   "cumplen": 89,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-medidas": {
+   "pares": 104,
+   "cumplen": 104,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "ejercicios": {
+   "pares": 775,
+   "cumplen": 775,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-ficha-ejercicio": {
+   "pares": 803,
+   "cumplen": 803,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "perfil-objetivos": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-lesiones": {
+   "pares": 38,
+   "cumplen": 38,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-salud": {
+   "pares": 53,
+   "cumplen": 53,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-entreno": {
+   "pares": 73,
+   "cumplen": 73,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-datos": {
+   "pares": 37,
+   "cumplen": 37,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-copias": {
+   "pares": 39,
+   "cumplen": 39,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-ajustes": {
+   "pares": 49,
+   "cumplen": 49,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-lesion": {
+   "pares": 55,
+   "cumplen": 55,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-aviso": {
+   "pares": 58,
+   "cumplen": 58,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoy-sin-conexion": {
+   "pares": 60,
+   "cumplen": 60,
+   "minimo": 4.08,
+   "malos": []
+  }
+ },
+ "virginia": {
+  "hoy-sin-plan": {
+   "pares": 23,
+   "cumplen": 23,
+   "minimo": 6.82,
+   "malos": []
+  },
+  "hoja-montar-semana": {
+   "pares": 63,
+   "cumplen": 63,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-con-plan": {
+   "pares": 52,
+   "cumplen": 52,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoja-checkin": {
+   "pares": 128,
+   "cumplen": 128,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "sesion-uno-a-uno": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "sesion-toda": {
+   "pares": 263,
+   "cumplen": 263,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoja-menu-ejercicio": {
+   "pares": 287,
+   "cumplen": 287,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "sesion-descanso": {
+   "pares": 272,
+   "cumplen": 272,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-cierre": {
+   "pares": 292,
+   "cumplen": 292,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "progreso": {
+   "pares": 85,
+   "cumplen": 85,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-medidas": {
+   "pares": 100,
+   "cumplen": 100,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "ejercicios": {
+   "pares": 807,
+   "cumplen": 807,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-ficha-ejercicio": {
+   "pares": 828,
+   "cumplen": 828,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "perfil-objetivos": {
+   "pares": 64,
+   "cumplen": 64,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-lesiones": {
+   "pares": 40,
+   "cumplen": 40,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-salud": {
+   "pares": 53,
+   "cumplen": 53,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-entreno": {
+   "pares": 73,
+   "cumplen": 73,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-datos": {
+   "pares": 37,
+   "cumplen": 37,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-copias": {
+   "pares": 39,
+   "cumplen": 39,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-ajustes": {
+   "pares": 49,
+   "cumplen": 49,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoja-lesion": {
+   "pares": 61,
+   "cumplen": 61,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-aviso": {
+   "pares": 58,
+   "cumplen": 58,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "hoy-sin-conexion": {
+   "pares": 60,
+   "cumplen": 60,
+   "minimo": 4.08,
+   "malos": []
+  }
+ }
+}

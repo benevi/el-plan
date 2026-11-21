@@ -44,7 +44,7 @@ a.tarjeta:active, .tarjeta.tap:active { background: var(--sup-control); }
 .btn.sec:active { background: var(--sup-control); }
 .btn.peligro, .btn.sec.peligro { background: transparent; color: var(--estado-error); box-shadow: inset 0 0 0 1px var(--estado-error); font-weight: var(--f-peso-medio); }
 .btn.peligro:active { background: var(--sup-control); }
-.btn[disabled], .btn[aria-disabled="true"] { background: var(--sup-control); color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-fino); cursor: not-allowed; transform: none; }
+.btn[disabled], .btn[aria-disabled="true"] { background: transparent; color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-control); cursor: not-allowed; transform: none; }
 .fila-botones { display: flex; gap: var(--toque-separacion); flex-wrap: wrap; }
 .fila-botones .btn { flex: 1; }
 .enlace { display: block; background: none; border: 0; padding: var(--e-3) 0 0; color: var(--texto-1); cursor: pointer; text-decoration: underline; text-decoration-color: var(--borde-control); text-underline-offset: 4px; min-height: var(--toque-min); }
@@ -129,8 +129,8 @@ details.plegable li { margin: var(--e-1) 0; }
 .hoja-texto { font-size: 17px; margin: 0; }
 .hoja .btn.grande, .hoja > .btn { width: 100%; }
 .menu { display: flex; flex-direction: column; gap: var(--e-1); margin: var(--e-2) 0; }
-.menu button { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-sesion); padding: 0 var(--e-4); border: 0; border-radius: var(--r-pequeno); background: var(--sup-control); text-align: left; cursor: pointer; }
-.menu button:active { background: var(--sup-panel); }
+.menu button { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-sesion); padding: 0 var(--e-4); border: 0; border-radius: var(--r-pequeno); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); text-align: left; cursor: pointer; }
+.menu button:active { background: var(--sup-control); }
 .menu button svg { width: 20px; height: 20px; color: var(--texto-2); }
 .cargando { text-align: center; padding: var(--e-8) 0 var(--e-5); }
 .cargando .giro { width: 32px; height: 32px; border-width: 3px; margin: 0 auto var(--e-4); color: var(--acento); }
