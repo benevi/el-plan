@@ -12,14 +12,14 @@ antesDeCadaRuta(r => (estado().dueño ? null : 'bienvenida'));
 rutas({
   bienvenida: {
     titulo: 'Bienvenida', sinNav: true,
-    vista: () => `<div class="bienvenida">
-      <img src="icons/icon.svg" alt="" class="logo-grande">
+    vista: () => `<section class="bienvenida">
+      <img src="icons/icon.svg" alt="" width="96" height="96" class="logo-grande">
       <h1>Pipos Fitness</h1>
-      <p class="tenue">Tu entrenador personal. Cada uno usa su móvil y ve solo lo suyo.</p>
-      <p><b>¿De quién es este móvil?</b></p>
-      <div class="dueños">${Object.entries(PERSONAS).map(([k, p]) => `<button class="dueño" style="--c:${p.color}" data-act="bienvenida.elegir" data-v="${k}">${h(p.nombre)}</button>`).join('')}</div>
-      <section class="aviso-salud">${T1.map(t => `<p class="tenue">${h(t)}</p>`).join('')}</section>
-    </div>`,
+      <p class="lectura">Tu entrenador personal. Cada uno usa su móvil y ve solo lo suyo.</p>
+      <p class="quien" id="quien">¿De quién es este móvil?</p>
+      <div class="dueños" role="group" aria-labelledby="quien">${Object.entries(PERSONAS).map(([k, p]) => `<span data-persona="${h(k)}"><button type="button" class="boton dueño" data-act="bienvenida.elegir" data-v="${h(k)}">${h(p.nombre)}</button></span>`).join('')}</div>
+      <div class="aviso-salud avisos-salud">${T1.map(t => `<p>${h(t)}</p>`).join('')}</div>
+    </section>`,
   },
 });
 

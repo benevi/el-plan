@@ -13,7 +13,8 @@
 
 import { estado, cambiar, uid } from '../../nucleo/estado.js';
 import { ex } from '../../reglas/catalogo.js';
-import { tiempoSesion } from './dia.js';
+import { LUGARES } from '../../datos/constantes.js';
+import { tiempoSesion, dosis } from './dia.js';
 
 export const MAX_MIAS = 30;
 export const LARGO_NOMBRE_MIA = 40;
@@ -84,4 +85,92 @@ export function miaComoDia(mia) {
     calentamiento: [], vuelta: [],
     ejercicios: ejerciciosMia(mia).map(x => ({ ...x })),
   };
+}
+
+// ── Editor de «Mis sesiones» (PR 16, sin IA) ──
+// Crear una sesión desde cero o cambiar una guardada: nombre, lugar y ejercicios del catálogo, cada uno con
+// sus series, repeticiones o tiempo y descanso. La forma guardada es la de siempre (ninguna clave nueva).
+// Los valores que propone la app salen de la dosis de las reglas (C-DOSIS-2 a C-DOSIS-6, C-PAUSA-1) con el
+// tope de series de D-B (aprobada por Víctor el 21-11-2026): 3 para principiante y 4 para intermedio y
+// avanzado; en natación, por distancia, hasta 10 (C-SERIES-1). Al hacerla se ajusta a ese día como cualquier
+// otra mía (C-MIA-1, C-MIA-2): esta parte solo guarda.
+export const MAX_EJERCICIOS_MIA = 30;
+export const DESCANSO_MAX_MIA = 300;
+
+const nivelDe = S => Math.max(1, Math.min(3, +(S && S.perfil && S.perfil.nivel) || 1));
+// Tope de series de un ejercicio para esta persona.
+export function topeSeriesMia(S, e) {
+  if (e && e.t === 'distancia') return 10;
+  return nivelDe(S) === 1 ? 3 : 4;
+}
+// El cardio va con su rol (cuenta como el cardio del día); lo demás, como principal. La rehabilitación la pone
+// la app al hacerla, según las zonas activas de ese día (C-DOLOR-3).
+export const rolMia = e => (e && e.m[0] === 'cardio' ? 'cardio' : 'principal');
+
+// Lo que propone la app para el ejercicio `id` en la posición `i` (0 = primero de la sesión).
+export function propuestaMia(S, id, i = 0) {
+  const e = ex(id);
+  if (!e) return null;
+  const d = dosis(S, e, i);
+  const series = Math.max(1, Math.min(topeSeriesMia(S, e), Math.round(+d.series) || 1));
+  return { id, rol: rolMia(e), series, reps: String(d.reps || e.d[1]).slice(0, 24), descanso: Math.max(0, Math.min(DESCANSO_MAX_MIA, Math.round(+d.descanso) || 0)) };
+}
+
+// Un ejercicio tal como lo deja el editor, dentro de los límites (los del normalizador y el tope de D-B).
+function ejercicioEditado(S, x) {
+  const e = x && ex(x.id);
+  if (!e) return null;
+  return {
+    id: e.id, rol: ROLES.includes(x.rol) ? x.rol : rolMia(e),
+    series: Math.max(1, Math.min(topeSeriesMia(S, e), Math.round(+x.series) || 1)),
+    reps: String(x.reps || e.d[1]).replace(/\s+/g, ' ').trim().slice(0, 24) || String(e.d[1]),
+    descanso: Math.max(0, Math.min(DESCANSO_MAX_MIA, Math.round(+x.descanso) || 0)),
+  };
+}
+
+// Por qué no se puede guardar lo editado (null si se puede). `id`: la que se está cambiando (null si es nueva).
+export function motivoNoGuardarEdicion(S, datos, id = null) {
+  const n = limpiarNombre(datos && datos.nombre);
+  const ejs = (datos && Array.isArray(datos.ejercicios) ? datos.ejercicios : []).filter(x => x && ex(x.id));
+  if (id && !miaDe(S, id)) return 'Esa sesión ya no está.';
+  if (!n) return 'Ponle un nombre.';
+  if (misSesiones(S).some(m => m.id !== id && m.nombre.toLowerCase() === n.toLowerCase())) return `Ya tienes una sesión que se llama «${n}».`;
+  if (!ejs.length) return 'Añade al menos un ejercicio.';
+  if (ejs.length > MAX_EJERCICIOS_MIA) return `Como mucho ${MAX_EJERCICIOS_MIA} ejercicios por sesión.`;
+  if (!id && misSesiones(S).length >= MAX_MIAS) return `Ya tienes ${MAX_MIAS} sesiones guardadas: borra alguna antes de crear otra.`;
+  return null;
+}
+
+// Guarda lo editado: crea una nueva (id null) o cambia la guardada conservando su id, su fecha y si es suave.
+// Devuelve { mia } o { error }.
+export function guardarEdicionMia(id, datos) {
+  const S = estado();
+  const error = motivoNoGuardarEdicion(S, datos, id);
+  if (error) return { error };
+  const ejercicios = datos.ejercicios.map(x => ejercicioEditado(S, x)).filter(Boolean);
+  const lugar = Object.keys(LUGARES).includes(datos.lugar) ? datos.lugar : 'gym';
+  const minutos = Math.max(10, Math.min(240, tiempoSesion({ calentamiento: [], vuelta: [], ejercicios }) || 10));
+  const nombre = limpiarNombre(datos.nombre);
+  let mia;
+  if (id) {
+    cambiar(S2 => {
+      const m = miaDe(S2, id);
+      if (m) Object.assign(m, { nombre, lugar, minutos, ejercicios });
+    }, 'misSesiones');
+    mia = miaDe(estado(), id);
+  } else {
+    mia = { id: uid(), nombre, lugar, minutos, creada: new Date().toISOString(), ejercicios };
+    cambiar(S2 => { S2.misSesiones = [...misSesiones(S2), mia]; }, 'misSesiones');
+  }
+  return { mia };
+}
+
+// Atajo de la ficha: añade el ejercicio al final de una guardada con lo que propone la app.
+export function añadirAMia(id, idEjercicio) {
+  const S = estado(), m = miaDe(S, id), e = ex(idEjercicio);
+  if (!m) return { error: 'Esa sesión ya no está.' };
+  if (!e) return { error: 'Ese ejercicio no está en el catálogo.' };
+  if (m.ejercicios.some(x => x && x.id === e.id)) return { error: `«${e.n}» ya está en «${m.nombre}».` };
+  if (ejerciciosMia(m).length >= MAX_EJERCICIOS_MIA) return { error: `«${m.nombre}» ya tiene ${MAX_EJERCICIOS_MIA} ejercicios.` };
+  return guardarEdicionMia(id, { nombre: m.nombre, lugar: m.lugar, ejercicios: [...ejerciciosMia(m), propuestaMia(S, e.id, ejerciciosMia(m).length)] });
 }

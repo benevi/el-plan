@@ -1,0 +1,282 @@
+{
+ "victor": {
+  "bienvenida": {
+   "pares": 11,
+   "cumplen": 11,
+   "minimo": 8.85,
+   "malos": []
+  },
+  "progreso-vacio": {
+   "pares": 15,
+   "cumplen": 15,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-primera-semana": {
+   "pares": 123,
+   "cumplen": 123,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-un-ano": {
+   "pares": 277,
+   "cumplen": 277,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-burbuja": {
+   "pares": 279,
+   "cumplen": 279,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-tabla": {
+   "pares": 277,
+   "cumplen": 277,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-medidas": {
+   "pares": 292,
+   "cumplen": 292,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-ejercicio": {
+   "pares": 361,
+   "cumplen": 361,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-objetivos": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-lesiones": {
+   "pares": 30,
+   "cumplen": 30,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-salud": {
+   "pares": 47,
+   "cumplen": 47,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-entreno": {
+   "pares": 85,
+   "cumplen": 85,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-datos": {
+   "pares": 32,
+   "cumplen": 32,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-copias": {
+   "pares": 31,
+   "cumplen": 31,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-ajustes": {
+   "pares": 49,
+   "cumplen": 49,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-lesion": {
+   "pares": 53,
+   "cumplen": 53,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "editor-buscador": {
+   "pares": 118,
+   "cumplen": 118,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "editor-mia": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-mis-sesiones": {
+   "pares": 91,
+   "cumplen": 91,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "ejercicios": {
+   "pares": 617,
+   "cumplen": 617,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "ejercicios-sin-resultados": {
+   "pares": 62,
+   "cumplen": 62,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "ficha": {
+   "pares": 649,
+   "cumplen": 649,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "ficha-anadir-a-mia": {
+   "pares": 625,
+   "cumplen": 625,
+   "minimo": 3.56,
+   "malos": []
+  }
+ },
+ "virginia": {
+  "bienvenida": {
+   "pares": 11,
+   "cumplen": 11,
+   "minimo": 8.85,
+   "malos": []
+  },
+  "progreso-vacio": {
+   "pares": 15,
+   "cumplen": 15,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-primera-semana": {
+   "pares": 148,
+   "cumplen": 148,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-un-ano": {
+   "pares": 302,
+   "cumplen": 302,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-burbuja": {
+   "pares": 304,
+   "cumplen": 304,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-tabla": {
+   "pares": 302,
+   "cumplen": 302,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-medidas": {
+   "pares": 317,
+   "cumplen": 317,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "progreso-ejercicio": {
+   "pares": 386,
+   "cumplen": 386,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-objetivos": {
+   "pares": 66,
+   "cumplen": 66,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-lesiones": {
+   "pares": 32,
+   "cumplen": 32,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-salud": {
+   "pares": 47,
+   "cumplen": 47,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-entreno": {
+   "pares": 85,
+   "cumplen": 85,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-datos": {
+   "pares": 32,
+   "cumplen": 32,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-copias": {
+   "pares": 31,
+   "cumplen": 31,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "perfil-ajustes": {
+   "pares": 49,
+   "cumplen": 49,
+   "minimo": 4.08,
+   "malos": []
+  },
+  "perfil-lesion": {
+   "pares": 55,
+   "cumplen": 55,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "editor-buscador": {
+   "pares": 118,
+   "cumplen": 118,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "editor-mia": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "perfil-mis-sesiones": {
+   "pares": 91,
+   "cumplen": 91,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "ejercicios": {
+   "pares": 649,
+   "cumplen": 649,
+   "minimo": 4.99,
+   "malos": []
+  },
+  "ejercicios-sin-resultados": {
+   "pares": 62,
+   "cumplen": 62,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "ficha": {
+   "pares": 682,
+   "cumplen": 682,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "ficha-anadir-a-mia": {
+   "pares": 657,
+   "cumplen": 657,
+   "minimo": 3.56,
+   "malos": []
+  }
+ }
+}

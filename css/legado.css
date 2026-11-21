@@ -101,7 +101,6 @@ input[type=checkbox], input[type=radio] { accent-color: var(--acento); }
 .lista .fila .grow > span, .grow > .tenue { display: block; font-size: var(--t-secundario); color: var(--texto-2); }
 .lista.compacta li { display: flex; align-items: center; gap: var(--e-3); padding: var(--e-2) 0; font-size: var(--t-secundario); }
 .lista li.apagada { color: var(--texto-2); }
-button.fila[data-act="ejercicios.ficha"]::after { content: '›'; font-size: 22px; color: var(--texto-3); padding-left: var(--e-2); }
 
 /* ---- Insignias, notas y barra ---- */
 .insignia { display: inline-block; padding: 1px var(--e-2); border-radius: var(--r-pildora); font-size: var(--t-meta); font-weight: var(--f-peso-fuerte); white-space: nowrap; color: var(--texto-2); box-shadow: inset 0 0 0 1px var(--borde-control); }

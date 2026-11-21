@@ -186,3 +186,61 @@ export function analisisParaEntrenador(S) {
     dolor: d.map(z => ({ zona: z.zona, ultimo: z.ultimo, tendencia: z.tendencia, sesionesConSubida: z.subidas, coincideCon: z.sospechosos.map(s => s.id) })),
   };
 }
+
+// ── Para los gráficos de Progreso (PR 16) ──
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const etiquetaDia = d => `${d.getDate()} ${MESES[d.getMonth()]}`;
+const lunesDe = d => { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+
+// Constancia de las últimas `n` semanas con el mismo denominador que Hoy: la semana en curso, frente a los
+// días de su plan si lo hay; las demás, frente a los días por semana del perfil (el plan de semanas pasadas no
+// se guarda). [{ sem, n, meta, actual, etiqueta: «16 nov» (su lunes) }]
+// Con plan, la semana en curso cuenta como Hoy: días del plan hechos de los días del plan.
+export function constanciaSemanas(S, n = 8, { planificados = 0, hechosPlan = 0 } = {}, ahora = new Date()) {
+  const obj = objetivoSemanal(S);
+  const lunes = lunesDe(ahora);
+  return semanasCalendario(S, n, ahora).map((s, i) => {
+    const d = new Date(lunes); d.setDate(d.getDate() - 7 * (n - 1 - i));
+    const conPlan = s.actual && planificados > 0;
+    return { ...s, n: conPlan ? hechosPlan : s.n, meta: conPlan ? planificados : obj, etiqueta: etiquetaDia(d) };
+  });
+}
+// Semanas seguidas cumplidas (sin contar la de ahora si aún no se ha cumplido), con el mismo denominador.
+export function rachaSemanas(semanas) {
+  let r = 0;
+  for (let i = semanas.length - 1; i >= 0; i--) {
+    const s = semanas[i];
+    if (s.n >= s.meta) r++;
+    else if (!s.actual) break;
+  }
+  return r;
+}
+
+// Sesiones hechas por mes, los últimos `n` meses (el último, el de ahora). [{ mes: '2026-11', etiqueta: 'nov', n }]
+export function sesionesPorMes(S, n = 12, ahora = new Date()) {
+  const cuenta = {};
+  sesionesHechas(S).forEach(s => { const d = fechaDe(s); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; cuenta[k] = (cuenta[k] || 0) + 1; });
+  const out = [];
+  for (let k = n - 1; k >= 0; k--) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - k, 1);
+    const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    out.push({ mes, etiqueta: MESES[d.getMonth()], n: cuenta[mes] || 0 });
+  }
+  return out;
+}
+
+// Puntos para una línea: los `max` últimos, con su etiqueta de fecha (para la burbuja y la tabla).
+export function puntosFecha(serie, max = 12) {
+  return serie.slice(-max).map(p => ({ v: r1(p.v), etiqueta: etiquetaDia(new Date(String(p.fecha).slice(0, 10) + 'T12:00')) }));
+}
+
+// Dolor de una zona por mes (media de lo apuntado después de entrenar y en el día a día), solo los meses con
+// datos, los `max` últimos. [{ etiqueta: 'nov', v }]
+export function dolorPorMes(S, zona, max = 6) {
+  const por = {};
+  (S.dolor || []).filter(d => d.zona === zona && d.momento !== 'antes').forEach(d => {
+    const k = String(d.fecha).slice(0, 7);
+    (por[k] = por[k] || []).push(+d.dolor);
+  });
+  return Object.keys(por).sort().slice(-max).map(k => ({ etiqueta: MESES[+k.slice(5, 7) - 1], v: r1(por[k].reduce((a, b) => a + b, 0) / por[k].length) }));
+}
