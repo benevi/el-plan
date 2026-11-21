@@ -1,0 +1,26 @@
+// Segunda verificación de M4 (desmarcar corta el descanso) y N4 («No he podido atender lo que pediste»), en local.
+import { navegador, contexto, vigilar, leer, esperar, empezar } from './comun.mjs';
+const b = await navegador();
+const ctx = await contexto(b, 'm390'); const page = await ctx.newPage(); vigilar(page);
+await empezar(page, 'virginia', { objetivos: ['salud'] });
+await page.click('[data-act="perfil.grupo"][data-v="entreno"]'); await page.click('[data-act="perfil.usoIA"][data-v="ahorro"]');
+await page.click('#nav a[href="#hoy"]'); await page.click('[data-act="entrenador.plan"]');
+for (const d of [6, 7]) await page.click(`[data-act="entrenador.psDia"][data-v="${d}"]`);
+await page.click('[data-act="entrenador.crearPlan"][data-ia="0"]'); await esperar(500);
+await page.click('[data-act="entrenador.prepararHoy"]'); await esperar(300);
+await page.fill('#ci-peticion', 'Hoy quiero centrarme en pierna y glúteo, la prensa está ocupada'); await page.locator('#ci-peticion').blur(); await esperar(300);
+const previa = (await leer(page)).hoja.match(/Pides[^\n]*/);
+await page.click('[data-act="entrenador.crearHoy"]'); await esperar(800);
+const v = (await leer(page)).vista;
+console.log(previa && /No he podido atender/.test(v) ? 'REPRODUCIDO' : 'NO', 'N4 · previa «' + (previa && previa[0]) + '» · sesión «' + v.split('\n')[0] + '» · nota «' + (v.match(/No he podido atender[^\n]*/) || [''])[0].slice(0, 60) + '»');
+const s = await page.evaluate(() => Object.values(JSON.parse(localStorage.pipos4).sesiones)[0]);
+console.log('   ejercicios:', s.ejercicios.map(x => x.id).join(', '));
+await page.click('[data-act="sesion.modo"][data-v="lista"]');
+const i = s.ejercicios.findIndex(x => x.series >= 2 && x.descanso);
+await page.click(`[data-act="sesion.serie"][data-e="${i}"][data-s="0"]`); await esperar(300);
+await page.click('#temporizador [data-t="fin"]'); await esperar(200);
+await page.click(`[data-act="sesion.serie"][data-e="${i}"][data-s="1"]`); await esperar(300);
+const antes = (await leer(page)).crono.split('\n')[0];
+await page.click(`[data-act="sesion.serie"][data-e="${i}"][data-s="0"]`); await esperar(300);
+console.log(antes && !(await leer(page)).crono ? 'REPRODUCIDO' : 'NO', `M4 · descanso «${antes}» y, tras desmarcar la serie 1, crono «${(await leer(page)).crono.split('\n')[0]}»`);
+await b.close();
