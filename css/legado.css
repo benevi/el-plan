@@ -47,8 +47,9 @@ a.tarjeta:active, .tarjeta.tap:active { background: var(--sup-control); }
 .btn[disabled], .btn[aria-disabled="true"] { background: transparent; color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-control); cursor: not-allowed; transform: none; }
 .fila-botones { display: flex; gap: var(--toque-separacion); flex-wrap: wrap; }
 .fila-botones .btn { flex: 1; }
-.enlace { display: block; background: none; border: 0; padding: var(--e-3) 0 0; color: var(--texto-1); cursor: pointer; text-decoration: underline; text-decoration-color: var(--borde-control); text-underline-offset: 4px; min-height: var(--toque-min); }
-.enlace.centro { margin: 0 auto; }
+.enlace { display: flex; align-items: center; gap: var(--e-2); background: none; border: 0; padding: var(--e-3) 0 0; color: var(--texto-1); cursor: pointer; text-decoration: underline; text-decoration-color: var(--borde-control); text-underline-offset: 4px; min-height: var(--toque-min); }
+.enlace.centro { justify-content: center; margin: 0 auto; }
+.enlace svg { width: 18px; height: 18px; flex: none; }
 .enlace.peligro { color: var(--estado-error); text-decoration-color: currentColor; }
 button.icono, a.icono {
   display: inline-grid; place-items: center; width: var(--toque-min); height: var(--toque-min); flex-shrink: 0;

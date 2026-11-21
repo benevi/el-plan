@@ -140,7 +140,13 @@ body.con-cuenta { overflow: hidden; }
 .alarma b { font-size: var(--t-portada); font-weight: var(--f-peso-fuerte); text-align: center; padding: 0 var(--e-5); line-height: 1.1; }
 .alarma svg { width: 64px; height: 64px; }
 .alarma span { font-size: 17px; padding: 0 var(--e-6); text-align: center; }
-@media (prefers-reduced-motion: reduce) { .alarma { animation: none; } }
+/* La alarma es crítica: con «reducir movimiento» sigue avisando, con un parpadeo lento de 1 Hz (dos estados por
+   segundo, muy por debajo de 3 destellos/s) que la regla general de componentes.css no apaga. */
+@media (prefers-reduced-motion: reduce) {
+  .alarma { animation: destello 1s steps(2) infinite !important; }
+  .temporizador.destello { animation: destello-t 1s steps(2) 4 !important; }
+  .cuenta.destello { animation: destello 1s steps(2) 4 !important; }
+}
 @keyframes destello { 50% { background: var(--sup-fondo); color: var(--acento); } }
 
 /* ── Progreso ── */
@@ -235,7 +241,7 @@ body.con-cuenta { overflow: hidden; }
 .medidor > p.tenue { font-size: var(--t-secundario); margin: 0 0 var(--e-2); }
 .medidor .nota { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-1) var(--e-3); }
 .medidor .nota .enlace { padding: 0; font-weight: var(--f-peso-fuerte); }
-.chips.grupos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: var(--e-4) calc(-1 * var(--e-margen)) var(--e-1); padding: 2px var(--e-margen) var(--e-2); gap: var(--e-2); scroll-snap-type: x proximity; }
+.chips.grupos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; scroll-padding-inline: var(--e-margen); margin: var(--e-4) calc(-1 * var(--e-margen)) var(--e-1); padding: 2px var(--e-margen) var(--e-2); gap: var(--e-2); scroll-snap-type: x proximity; }
 .chips.grupos::-webkit-scrollbar { display: none; }
 .chips.grupos .chip { flex-shrink: 0; scroll-snap-align: start; }
 .chips.grupos .chip.on { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }

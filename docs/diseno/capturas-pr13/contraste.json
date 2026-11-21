@@ -31,32 +31,32 @@
    "malos": []
   },
   "sesion-uno-a-uno": {
-   "pares": 63,
-   "cumplen": 63,
+   "pares": 66,
+   "cumplen": 66,
    "minimo": 4.61,
    "malos": []
   },
   "sesion-toda": {
-   "pares": 240,
-   "cumplen": 240,
+   "pares": 256,
+   "cumplen": 256,
    "minimo": 4.61,
    "malos": []
   },
   "hoja-menu-ejercicio": {
-   "pares": 264,
-   "cumplen": 264,
+   "pares": 283,
+   "cumplen": 283,
    "minimo": 3.56,
    "malos": []
   },
   "sesion-descanso": {
-   "pares": 249,
-   "cumplen": 249,
+   "pares": 265,
+   "cumplen": 265,
    "minimo": 4.08,
    "malos": []
   },
   "hoja-cierre": {
-   "pares": 267,
-   "cumplen": 267,
+   "pares": 283,
+   "cumplen": 283,
    "minimo": 4.08,
    "malos": []
   },
@@ -171,32 +171,32 @@
    "malos": []
   },
   "sesion-uno-a-uno": {
-   "pares": 70,
-   "cumplen": 70,
+   "pares": 73,
+   "cumplen": 73,
    "minimo": 4.61,
    "malos": []
   },
   "sesion-toda": {
-   "pares": 263,
-   "cumplen": 263,
+   "pares": 286,
+   "cumplen": 286,
    "minimo": 4.61,
    "malos": []
   },
   "hoja-menu-ejercicio": {
-   "pares": 287,
-   "cumplen": 287,
+   "pares": 313,
+   "cumplen": 313,
    "minimo": 3.56,
    "malos": []
   },
   "sesion-descanso": {
-   "pares": 272,
-   "cumplen": 272,
+   "pares": 295,
+   "cumplen": 295,
    "minimo": 4.08,
    "malos": []
   },
   "hoja-cierre": {
-   "pares": 292,
-   "cumplen": 292,
+   "pares": 315,
+   "cumplen": 315,
    "minimo": 4.08,
    "malos": []
   },

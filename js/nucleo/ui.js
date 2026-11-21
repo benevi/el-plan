@@ -204,6 +204,8 @@ export function reusarEntradaDeHoja(destino) {
   return 'cambio';
 }
 if (typeof window !== 'undefined') {
+  // Recargar con una hoja abierta deja su entrada del historial sin hoja: se quita al cargar.
+  try { const hi = historial(); if (hi && esNuestra(hi.state)) irAtrasSinVer(hi); } catch { /* sin historial */ }
   window.addEventListener('popstate', e => {
     if (enVuelo) { soltarCola(); return; }
     if (entrada && !esNuestra(e.state)) { entrada = false; atras(); return; }
@@ -214,11 +216,58 @@ if (typeof window !== 'undefined') {
 
 export const hayHojaAbierta = () => !!(hoja && hoja.fondo.isConnected);
 
+// Un control se identifica por su acción y sus datos (data-act + data-id/k/v/e/s/z, o href): así, si la
+// pantalla o la hoja se repinta, se puede devolver el foco al control equivalente del repintado.
+const CLAVES = ['id', 'k', 'v', 'e', 's', 'z'];
+function huellaDe(el) {
+  if (!el || el.nodeType !== 1 || el === document.body) return null;
+  const act = el.dataset && (el.dataset.act || el.dataset.cambio);
+  if (act) return { act, datos: Object.fromEntries(CLAVES.filter(k => k in el.dataset).map(k => [k, el.dataset[k]])) };
+  const href = el.getAttribute && el.getAttribute('href');
+  return href ? { href } : null;
+}
+function buscarEquivalente(huella, raiz) {
+  if (!huella || !raiz) return null;
+  if (huella.href) return [...raiz.querySelectorAll('[href]')].find(x => x.getAttribute('href') === huella.href) || null;
+  return [...raiz.querySelectorAll('[data-act], [data-cambio]')].find(x => (x.dataset.act || x.dataset.cambio) === huella.act
+    && CLAVES.every(k => (k in huella.datos) === (k in x.dataset) && (!(k in huella.datos) || x.dataset[k] === huella.datos[k]))) || null;
+}
+// Foco al título de la pantalla (h1, enfocable sin estar en el orden de Tab).
+function focoAlTitulo() {
+  const t = document.querySelector('#vista h1') || document.querySelector('#vista');
+  if (!t) return;
+  if (t.tagName === 'H1' && !t.hasAttribute('tabindex')) t.setAttribute('tabindex', '-1');
+  try { t.focus({ preventScroll: true }); } catch { /* nada */ }
+}
+
+// Pregunta dentro de la propia hoja (sin sustituirla: lo de debajo sigue funcionando). La usa la espera
+// de la IA: atrás o Escape no cancelan en silencio, preguntan.
+function preguntarDentro(boton, pregunta) {
+  const panel = hoja.fondo.querySelector('.hoja');
+  let caja = panel.querySelector('.hoja-pregunta');
+  if (!caja) {
+    caja = document.createElement('div');
+    caja.className = 'hoja-pregunta nota aviso-nota';
+    caja.setAttribute('role', 'group');
+    caja.setAttribute('aria-labelledby', 'hoja-pregunta-t');
+    caja.innerHTML = `<p id="hoja-pregunta-t"><b>${h(pregunta)}</b></p><div class="fila-botones"><button type="button" class="btn sec" data-respuesta="no">No, seguir esperando</button><button type="button" class="btn" data-respuesta="si">Sí, cancelar</button></div>`;
+    caja.addEventListener('click', e => {
+      const r = e.target.closest('[data-respuesta]'); if (!r) return;
+      caja.remove();
+      if (r.dataset.respuesta === 'si') boton.click();
+      else { try { boton.focus({ preventScroll: true }); } catch { /* nada */ } }
+    });
+    boton.before(caja);
+  }
+  try { caja.querySelector('[data-respuesta="no"]').focus(); } catch { /* nada */ }
+}
+
 // El botón atrás (o Escape) con una hoja abierta.
 function atras() {
   if (!hayHojaAbierta()) return;
   if (hoja.op.fija) {
     const b = hoja.fondo.querySelector('[data-atras]');
+    if (b && b.dataset.atrasPregunta) { preguntarDentro(b, b.dataset.atrasPregunta); ponerEntrada(); return; }
     if (b) { b.click(); return; }
     ponerEntrada(); // se queda: vuelve a poner su entrada para el siguiente atrás
     return;
@@ -237,6 +286,9 @@ function fondoInerte(fondo, si) {
 export function abrirHoja(html, { clase = '', fija = false, foco = 'titulo', alCerrar = null } = {}) {
   const habia = hayHojaAbierta();
   const disparador = habia ? hoja.disparador : document.activeElement;
+  const huellaDisparador = habia ? hoja.huellaDisparador : huellaDe(document.activeElement);
+  // Al repintar la misma hoja (el check-in a cada toque), el foco vuelve al control que se pulsó, no al título.
+  const dentro = habia && hoja.fondo.contains(document.activeElement) ? huellaDe(document.activeElement) : null;
   if (habia) quitarHoja({ animar: false, devolverFoco: false });
   $$('.hoja-fondo').forEach(f => f.remove()); // restos (p. ej. quitada a mano en las pruebas)
   const id = `hoja-t-${++nHoja}`;
@@ -262,10 +314,11 @@ export function abrirHoja(html, { clase = '', fija = false, foco = 'titulo', alC
   if (!fija) fondo.addEventListener('click', e => { if (e.target === fondo || e.target.closest('[data-cerrar-hoja]')) cerrarHoja(); });
   document.body.appendChild(fondo);
   document.body.classList.add('con-hoja');
-  hoja = { fondo, op: { fija, alCerrar }, disparador };
+  hoja = { fondo, op: { fija, alCerrar }, disparador, huellaDisparador };
   fondoInerte(fondo, true);
   const campo = foco === 'campo' && panel.querySelector('input:not([type=hidden]), select, textarea');
-  try { (campo || titulo || panel).focus({ preventScroll: true }); } catch { /* sin foco */ }
+  const igual = dentro && buscarEquivalente(dentro, panel);
+  try { (igual || campo || titulo || panel).focus({ preventScroll: true }); } catch { /* sin foco */ }
   ponerEntrada();
   return panel;
 }
@@ -273,7 +326,7 @@ export function abrirHoja(html, { clase = '', fija = false, foco = 'titulo', alC
 // Quita la hoja de la página (sin tocar el historial).
 function quitarHoja({ animar = true, devolverFoco = true } = {}) {
   if (!hoja) return;
-  const { fondo, op, disparador } = hoja;
+  const { fondo, op, disparador, huellaDisparador } = hoja;
   hoja = null;
   const estaba = fondo.isConnected;
   fondo.remove();
@@ -294,8 +347,12 @@ function quitarHoja({ animar = true, devolverFoco = true } = {}) {
     setTimeout(() => eco.remove(), 220);
   }
   if (!$('.hoja-fondo')) { document.body.classList.remove('con-hoja'); fondoInerte(null, false); }
-  if (devolverFoco && estaba && disparador && disparador.isConnected && typeof disparador.focus === 'function') {
-    try { disparador.focus({ preventScroll: true }); } catch { /* nada */ }
+  // El foco vuelve a quien abrió la hoja; si la pantalla se repintó (p. ej. al guardar), a su equivalente,
+  // y si ya no existe, al título de la pantalla: nunca se pierde en <body>.
+  if (devolverFoco && estaba) {
+    const destino = disparador && disparador.isConnected ? disparador : buscarEquivalente(huellaDisparador, document.querySelector('#vista'));
+    if (destino && typeof destino.focus === 'function') { try { destino.focus({ preventScroll: true }); } catch { /* nada */ } }
+    else focoAlTitulo();
   }
   if (op.alCerrar) { try { op.alCerrar(); } catch (e) { console.error(e); } }
 }

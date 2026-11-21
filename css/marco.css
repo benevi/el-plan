@@ -23,7 +23,7 @@ main#vista h1:focus { outline: none; }
   max-width: 560px; margin: 0 auto; min-height: calc(var(--cab-alto) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) var(--e-margen) 0;
 }
-.cab .logo { display: block; }
+.cab .logo { display: flex; align-items: center; min-height: var(--toque-min); border-radius: var(--r-pequeno); }
 .cab .logo img { display: block; height: 28px; width: auto; }
 .red { display: inline-flex; align-items: center; gap: var(--e-1); font-size: var(--t-secundario); color: var(--estado-aviso); }
 .red .icono { width: 16px; height: 16px; }

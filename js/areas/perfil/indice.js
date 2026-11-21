@@ -294,7 +294,7 @@ function hojaLesion(l) {
     <label class="campo col"><span>Zona</span><select id="l-zona" data-cambio="perfil.lesionZona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></label>
     ${detallesLesion(l)}
     <label class="campo col"><span>Dolor habitual: <b id="l-dolor-v">${+l.dolor}</b>/10</span><input type="range" id="l-dolor" min="0" max="10" value="${+l.dolor}" data-eco="l-dolor-v"></label>
-    <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}">${h(n)}</button>`).join('')}</div></div>
+    <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}" aria-pressed="${(l.tipo || 'lesion') === k}">${h(n)}</button>`).join('')}</div></div>
     <label class="campo col"><span>Desde</span><input type="date" id="l-desde" value="${h(l.desde || '')}"></label>
     <label class="campo col"><span>Nota <small>qué movimientos duelen, diagnóstico…</small></span><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></label>
     ${nueva ? '' : `<label class="interruptor"><input type="checkbox" id="l-activa" ${l.activa ? 'checked' : ''}><span>Sigue activa</span></label>`}
@@ -401,6 +401,8 @@ function probar() {
   const antes = grupo;
   try { for (const [k] of GRUPOS) { grupo = k; vista(); } } finally { grupo = antes; }
 }
-rutas({ perfil: { titulo: 'Perfil', vista, probar } });
+// El grupo elegido siempre a la vista en la fila de partes del perfil (M13).
+const montar = raiz => { const on = raiz.querySelector('.chips.grupos .chip.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); };
+rutas({ perfil: { titulo: 'Perfil', vista, montar, probar } });
 pestaña({ ruta: 'perfil', nombre: 'Perfil', icono: ICONOS.perfil, orden: 40 });
 export { vista };

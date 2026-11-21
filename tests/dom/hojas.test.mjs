@@ -134,3 +134,73 @@ test('ocupado(): el botón dice qué hace y lleva aria-busy; al terminar vuelve 
   assert.equal(b.textContent, 'Guardar');
   assert.ok(!b.hasAttribute('aria-busy'));
 });
+
+// ── Revisión del PR 13 ──
+test('al cerrar una hoja cuyo botón ya no existe (pantalla repintada), el foco va a su equivalente o al h1', async () => {
+  await a.ir('perfil');
+  a.clic('[data-act="perfil.grupo"][data-v="lesiones"]'); await a.tic();
+  const abre = a.doc.querySelector('#vista [data-act="perfil.lesion"]');
+  abre.focus();
+  a.clic(abre); await a.esperar(() => hoja());
+  router.pintar(); // la pantalla de debajo se repinta (p. ej. al guardar)
+  assert.ok(!abre.isConnected);
+  ui.cerrarHoja(); await a.espera(60);
+  const f = a.doc.activeElement;
+  assert.equal(f.dataset.act, 'perfil.lesion', `el foco quedó en ${f.tagName}`);
+  // Sin equivalente: al título de la pantalla
+  const b = a.doc.createElement('button'); b.dataset.act = 'prueba.nada'; a.doc.querySelector('#vista').append(b); b.focus();
+  ui.abrirHoja('<h2>Otra</h2>');
+  b.remove();
+  ui.cerrarHoja(); await a.espera(60);
+  assert.equal(a.doc.activeElement, a.doc.querySelector('#vista h1'));
+  assert.equal(a.doc.activeElement.getAttribute('tabindex'), '-1');
+});
+
+test('los chips «Qué es» de la lesión llevan aria-pressed y se actualiza al elegir', async () => {
+  await a.ir('perfil');
+  a.clic('[data-act="perfil.grupo"][data-v="lesiones"]'); await a.tic();
+  a.clic('[data-act="perfil.lesion"]'); await a.esperar(() => a.doc.querySelector('#l-tipo'));
+  const estados = () => [...a.doc.querySelectorAll('#l-tipo .chip')].map(c => c.getAttribute('aria-pressed'));
+  assert.deepEqual(estados().filter(x => x === 'true').length, 1);
+  assert.ok(estados().every(x => x === 'true' || x === 'false'));
+  a.clic(a.doc.querySelectorAll('#l-tipo .chip')[2]);
+  assert.deepEqual(estados(), ['false', 'false', 'true']);
+  ui.cerrarHoja(); await a.espera(60);
+});
+
+test('check-in: al tocar una opción, la hoja se repinta y el foco sigue en esa opción (no en el título)', async () => {
+  await a.ir('hoy');
+  const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.doc.querySelector('#vista').append(b);
+  a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja.checkin'));
+  const sel = '.hoja [data-act="entrenador.ci"][data-k="minutos"][data-v="45"]';
+  const chip = a.doc.querySelector(sel);
+  chip.focus(); a.clic(chip); await a.tic();
+  assert.notEqual(a.doc.querySelector(sel), chip, 'la hoja no se repintó');
+  assert.equal(a.doc.activeElement, a.doc.querySelector(sel));
+  ui.cerrarHoja(); await a.espera(60);
+});
+
+test('espera de la IA: atrás no cancela en silencio, pregunta; «No» sigue esperando y «Sí» cancela', async () => {
+  let cancelada = 0;
+  router.acciones({ 'prueba.cancelarIA': () => { cancelada++; ui.cerrarHoja(); } });
+  ui.abrirHoja('<h2>Preparando</h2><button class="btn" data-act="prueba.cancelarIA" data-atras data-atras-pregunta="¿Cancelar y hacerla con la app?">Cancelar</button>', { fija: true });
+  await a.tic();
+  await atras();
+  assert.equal(cancelada, 0, 'canceló sin preguntar');
+  assert.ok(hoja(), 'la espera se cerró');
+  assert.match(hoja().querySelector('.hoja-pregunta').textContent, /¿Cancelar y hacerla con la app\?/);
+  assert.ok(a.w.history.state && a.w.history.state.piposHoja, 'sin entrada para el siguiente atrás');
+  a.clic('.hoja-pregunta [data-respuesta="no"]');
+  assert.equal(hoja().querySelector('.hoja-pregunta'), null);
+  assert.equal(cancelada, 0);
+  tecla('Escape');
+  a.clic('.hoja-pregunta [data-respuesta="si"]'); await a.espera(60);
+  assert.equal(cancelada, 1);
+  assert.equal(hoja(), null);
+});
+
+test('el logo de la cabecera lleva a Hoy', () => {
+  const l = a.doc.querySelector('.cab a.logo');
+  assert.equal(l.getAttribute('href'), '#hoy');
+  assert.match(l.querySelector('img').getAttribute('alt'), /Pipos Fitness/);
+});

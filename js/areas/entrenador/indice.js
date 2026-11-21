@@ -179,7 +179,7 @@ async function conEspera(tipo, titulo, hacer) {
     <div class="cargando espera"><div class="giro"></div>
       <p id="espera-fase" aria-live="polite">Conectando con tu entrenador…</p>
       <p class="tenue"><span id="espera-tiempo">0:00</span> · suele tardar entre 20 y 90 segundos</p></div>
-    <button class="btn sec" data-act="entrenador.cancelarIA" data-atras>Cancelar y hacerla con la app</button>`, { clase: 'espera', fija: true });
+    <button class="btn sec" data-act="entrenador.cancelarIA" data-atras data-atras-pregunta="¿Cancelar y hacerla con la app?">Cancelar y hacerla con la app</button>`, { clase: 'espera', fija: true });
   const reloj = setInterval(() => { const t = $('#espera-tiempo'); if (t) t.textContent = mmss((Date.now() - yo.inicio) / 1000); }, 1000);
   const alProgreso = p => { const f = $('#espera-fase'); if (f && enCurso === yo) f.textContent = TEXTO_FASE[tipo](p); };
   try {
