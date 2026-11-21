@@ -54,6 +54,8 @@ test('dos pestañas: lo que guarda una aparece en la otra y la vieja no lo pisa'
   await a.goto('/');
   await a.click('[data-act="bienvenida.elegir"][data-v="victor"]');
   await expect(a.locator('#nav a')).toHaveCount(4);
+  // El guardado espera 250 ms: B se abre cuando el dueño ya está guardado (si no, B arranca en la bienvenida).
+  await expect.poll(() => a.evaluate(() => (JSON.parse(localStorage.getItem('pipos4') || 'null') || {}).dueño)).toBe('victor');
   const b = await context.newPage();
   await b.goto('/#perfil');
   await expect(b).toHaveTitle(/Perfil/);

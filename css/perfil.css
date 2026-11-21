@@ -1,0 +1,183 @@
+/* Pipos Fitness · PERFIL, BIENVENIDA y EDITOR DE «MIS SESIONES» (PR 16), y las piezas de pantalla que
+   comparten Progreso, Perfil y Ejercicios (copiadas de prototipos/app/app.css, DIS 4).
+   Solo tokens (css/tokens.css) y componentes del sistema (css/componentes.css): aquí solo se coloca.
+   Orden de carga: … legado.css → areas.css → progreso.css → perfil.css → ejercicios.css. */
+
+/* ---------- Piezas comunes de pantalla ---------- */
+.titulo-pantalla { font-size: var(--t-portada); line-height: var(--t-portada-alto); font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); margin: var(--e-2) 0 var(--e-5); }
+.titulo-pantalla:focus { outline: none; }
+.bloque + .bloque { margin-top: var(--e-bloque); }
+.bloque-fila > h2, .bloque-fila > .bloque-titulo { margin: 0; }
+.lectura { max-width: var(--ancho-lectura); }
+.tarjeta-nombre { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); }
+.seccion-titulo { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); }
+
+/* Las clases genéricas (.ayuda, .meta, .bloque-titulo, .bloque-fila, .texto-2, .pequeno…) las definen hoy.css y
+   sesion.css (cargan antes); aquí solo lo que estas pantallas necesitan distinto, dentro de sus contenedores. */
+:is(.perfil-sec, .mia-sec, .prog-sec, .hoja-pf) .ayuda { margin-top: var(--e-2); }
+:is(.perfil-sec, .mia-sec, .prog-sec, .hoja-pf, .dolor-zona) .meta { margin-top: var(--e-2); line-height: var(--t-meta-alto); }
+.bloque-mini { margin-top: var(--e-4); }
+
+/* Campo de texto con su etiqueta siempre visible (pieza de DIS 4), en Perfil, el editor y sus hojas */
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--e-2); margin: 0; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) :is(.campo:not(.col), .grupo) + :is(.campo:not(.col), .grupo) { margin-top: var(--e-6); }
+.hoja-pf :is(.campo:not(.col), .grupo) + :is(.campo:not(.col), .grupo) { margin-top: var(--e-5); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) > label { font-weight: var(--f-peso-medio); color: var(--texto-1); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) > label small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var(--t-secundario); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) :is(input, textarea, select)[id] { padding: var(--e-3) var(--e-4); min-height: 48px; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo:not(.col) textarea { min-height: 88px; }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .campo :is(.ayuda, .mensaje) { margin-top: 0; }
+.campo input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--estado-error); }
+.grupo .selector { margin-top: var(--e-2); }
+.rejilla-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--e-4); }
+.rejilla-campos > .campo + .campo { margin-top: 0; }
+fieldset.salud-med { border: 0; margin: var(--e-5) 0 0; padding: 0; min-width: 0; }
+fieldset.salud-med legend { padding: 0; margin-bottom: var(--e-1); }
+
+/* Interruptor (casilla nativa con su texto; toda la fila se toca) */
+.interruptor { margin: var(--e-1) 0; padding: var(--e-1) 0; color: var(--texto-1); }
+.interruptor input { accent-color: var(--acento); }
+
+/* Segmento que ocupa el ancho y deja partir el texto (opciones largas) */
+:is(.perfil-sec, .mia-sec, .hoja-pf) .segmento--ancho { display: flex; flex-wrap: wrap; border-radius: var(--r-medio); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .segmento--ancho [role="radio"] { flex: 1 1 auto; line-height: 1.2; padding: var(--e-1) var(--e-2); font-size: var(--t-secundario); }
+
+/* Segmento en rejilla de dos (cuatro opciones que no caben en una fila: el lugar) */
+.segmento--rejilla { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--r-medio); }
+.segmento--rejilla [role="radio"] { min-width: 0; }
+
+/* Selector ± compacto (editor de «Mis sesiones»: tres en una fila) */
+.selector--compacto .selector-valor { margin: 0 0 var(--e-2); min-height: 36px; align-items: center; }
+.selector--compacto .selector-valor b { font-size: var(--t-cifra-s); line-height: 1.1; white-space: nowrap; }
+.selector--compacto .selector-pasos button { min-height: var(--toque-min); font-size: 18px; }
+.selector--compacto .selector-et { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.selector-valor:focus-visible { outline-offset: 0; }
+
+/* Listas con filas que se tocan */
+.lista .fila .crece { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lista .fila .crece > b { font-weight: var(--f-peso-medio); color: var(--texto-1); }
+.lista .fila .crece > span { font-size: var(--t-secundario); color: var(--texto-2); }
+.lista .fila > .icono { width: 18px; height: 18px; color: var(--texto-3); flex: none; }
+.lista .fila[aria-disabled="true"] { cursor: default; }
+.lista .fila[aria-disabled="true"] > .icono { color: var(--estado-bien); }
+.lista .fila--quieta { cursor: default; }
+.lista .fila--quieta:active { background: none; }
+.lista .fila--quieta .boton--texto { min-height: var(--toque-min); flex: none; }
+.lista li.apagada .fila .crece > b { color: var(--texto-2); }
+.fila-accion { display: inline-flex; align-items: center; gap: var(--e-1); color: var(--texto-2); font-size: var(--t-secundario); flex: none; }
+.fila-accion .icono { width: 18px; height: 18px; }
+.insignias { display: flex; flex-wrap: wrap; gap: var(--e-1); margin-top: var(--e-1); }
+.insignia { display: inline-block; padding: 0 var(--e-2); border-radius: var(--r-pildora); box-shadow: inset 0 0 0 1px var(--borde-control); font-size: var(--t-meta); line-height: 20px; font-weight: var(--f-peso-medio); color: var(--texto-1); white-space: nowrap; }
+.insignia--bien { color: var(--estado-bien); box-shadow: inset 0 0 0 1px var(--estado-bien); }
+.insignia--aviso { color: var(--estado-aviso); box-shadow: inset 0 0 0 1px var(--estado-aviso); }
+.insignia--error { color: var(--estado-error); box-shadow: inset 0 0 0 1px var(--estado-error); }
+
+/* Botones en fila; texto y peligro con su alto mínimo fuera de la sesión */
+:is(.perfil-sec, .mia-sec, .hoja-pf) .fila-botones, .prog-sec .fila-botones { margin-top: var(--e-4); }
+.boton .icono { width: 20px; height: 20px; }
+
+/* Aviso dentro de la pantalla o de una hoja (no flota: sin sombra, con la raya de su color) */
+.aviso-linea { grid-template-columns: auto 1fr; margin: var(--e-3) 0; border-radius: var(--r-pequeno); background: var(--sup-control); box-shadow: inset 3px 0 0 var(--aviso-color, var(--estado-info)); }
+.aviso-linea .aviso-texto p { margin: 0; color: var(--texto-2); }
+.aviso-linea .aviso-texto p + p { margin-top: var(--e-1); }
+.aviso-linea .aviso-acciones .boton { flex: 0 1 auto; }
+
+/* Buscador (Ejercicios y el editor) */
+.buscar { position: relative; }
+.buscar .icono { position: absolute; left: var(--e-4); top: 50%; margin-top: -10px; color: var(--texto-2); pointer-events: none; }
+.buscar input[type="search"][id] { min-height: 48px; padding-left: 48px; }
+.filtros { display: grid; gap: var(--e-2); margin: var(--e-3) 0; }
+.chips--fila { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--e-margen)); padding: 2px var(--e-margen) var(--e-1); scroll-padding-inline: var(--e-margen); }
+.chips--fila::-webkit-scrollbar { display: none; }
+.chips--fila .chip { flex: none; white-space: nowrap; }
+.hoja .chips--fila { margin: 0 calc(-1 * var(--e-5)); padding-left: var(--e-5); padding-right: var(--e-5); }
+.meta-lista { font-size: var(--t-meta); color: var(--texto-3); margin: var(--e-2) 0; }
+
+/* ---------- Perfil ---------- */
+.perfil-resumen { font-size: var(--t-secundario); margin: calc(-1 * var(--e-3)) 0 var(--e-4); }
+/* Las siete partes, todas a la vista: los chips bajan de línea en vez de salirse por el borde */
+.grupos-perfil { margin: 0 0 var(--e-5); }
+.grupos-perfil ul { display: flex; flex-wrap: wrap; gap: var(--toque-separacion); list-style: none; margin: 0; padding: 0; }
+.grupos-perfil .chip { color: var(--texto-1); }
+.grupos-perfil .chip[aria-current="true"] { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }
+.grupos-perfil .chip[aria-current="true"]:focus-visible { outline-color: var(--borde-foco); }
+.perfil-sec { padding: var(--e-5); margin: 0; }
+.perfil-sec + .perfil-sec, .perfil-sec + .tarjeta { margin-top: var(--e-4); }
+.perfil-sec h2 { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); font-weight: var(--f-peso-medio); margin: 0 0 var(--e-2); display: block; }
+.perfil-sec h2 small { font-size: var(--t-secundario); color: var(--texto-2); font-weight: var(--f-peso-normal); }
+.perfil-sec > p { color: var(--texto-2); font-size: var(--t-secundario); margin: 0 0 var(--e-2); }
+.perfil-sec > p + .chips, .perfil-sec > p + .lista, .perfil-sec > h2 + .chips, .perfil-sec > h2 + .segmento { margin-top: var(--e-3); }
+.perfil-sec > .boton { margin-top: var(--e-4); }
+.perfil-sec .bloque-fila h2 { margin: 0; }
+.perfil-sec .segmento + .interruptor { margin-top: var(--e-3); }
+.mis-sesiones .lista { margin-top: var(--e-2); }
+.medidor { margin-top: var(--e-3); }
+.criterios { list-style: none; margin: var(--e-2) 0 0; padding: 0; display: block; }
+.criterios li { display: flex; gap: var(--e-2); align-items: flex-start; min-height: 0; padding: var(--e-1) 0; background: none; border-radius: 0; font-size: var(--t-secundario); color: var(--texto-1); line-height: var(--t-secundario-alto); }
+.criterios li .icono { width: 16px; height: 16px; margin-top: 3px; color: var(--texto-3); flex: none; }
+.criterios li.ok .icono { color: var(--estado-bien); }
+.criterios li > span:last-child { margin-left: auto; color: var(--texto-2); white-space: nowrap; padding-left: var(--e-2); }
+.salud-fila + .salud-fila { border-top: 1px solid var(--borde-fino); }
+.salud-extra { padding: 0 0 var(--e-3) var(--e-8); }
+.salud-extra .segmento, .salud-extra .campo { margin-top: var(--e-1); }
+.version-app { margin-top: var(--e-4); }
+.revisar-sexo .boton.probable { background: var(--acento); color: var(--texto-sobre-acento); }
+/* «Lo que ve tu entrenador» (lo pinta el entrenador en Objetivos y nivel) */
+.analisis { list-style: none; padding: 0; margin: 0; }
+.analisis li { position: relative; padding: var(--e-3) 0 var(--e-3) var(--e-4); font-size: var(--t-secundario); line-height: 1.45; color: var(--texto-2); }
+.analisis li + li { border-top: 1px solid var(--borde-fino); }
+.analisis li::before { content: ''; position: absolute; left: 0; top: 19px; width: 6px; height: 6px; border-radius: 50%; background: var(--acento); }
+.analisis li b { color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
+.analisis .tenue { color: var(--texto-2); }
+
+/* Hojas (lesión, medidas, ficha…) */
+.hoja-pf .fila-botones .boton { flex: 1 1 140px; }
+.hoja-texto { color: var(--texto-2); font-size: var(--t-secundario); margin: 0 0 var(--e-4); }
+.hoja-cab .hoja-texto { color: var(--texto-1); font-size: 17px; margin: 0; }
+
+/* ---------- Editor de «Mis sesiones» ---------- */
+.volver { margin: var(--e-1) 0 0 calc(-1 * var(--e-3)); text-decoration: none; gap: var(--e-1); color: var(--texto-2); }
+.volver .icono { width: 18px; height: 18px; }
+.mia-ayuda { margin: calc(-1 * var(--e-3)) 0 var(--e-5); }
+.mia-sec + .mia-sec { margin-top: var(--e-6); }
+.mia-sec.tarjeta { padding: var(--e-5); margin: 0; }
+.mia-ejs { list-style: none; margin: var(--e-3) 0 0; padding: 0; display: grid; gap: var(--e-3); }
+.mia-ej { margin: 0; padding: var(--e-4); }
+.mia-ej-cab { display: flex; gap: var(--e-3); align-items: flex-start; }
+.mia-ej-cab > div { flex: 1; min-width: 0; }
+.mia-num { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-2); font-size: var(--t-secundario); font-variant-numeric: tabular-nums; }
+.mia-ej-nombre { font-size: var(--t-cuerpo); line-height: 1.35; font-weight: var(--f-peso-medio); margin: 2px 0 0; }
+.mia-ej-datos { font-size: var(--t-secundario); color: var(--texto-2); margin: 2px 0 0; }
+.mia-ej-dosis { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: var(--e-3); margin-top: var(--e-4); } /* 3 en fila; en móviles estrechos, 2 y 1: los ± nunca bajan de 44 px */
+.mia-ej-acciones { display: flex; align-items: center; gap: var(--toque-separacion); margin-top: var(--e-3); padding-top: var(--e-3); border-top: 1px solid var(--borde-fino); }
+.mia-ej-acciones .boton-icono { width: var(--toque-min); height: var(--toque-min); }
+.mia-quitar { margin-left: auto; color: var(--estado-error); text-decoration-color: currentColor; gap: var(--e-1); padding: 0 var(--e-2); }
+.mia-quitar .icono { width: 18px; height: 18px; }
+.mia-vacia { margin: var(--e-3) 0 0; text-align: left; }
+.mia-vacia h3 { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); margin: 0; }
+.mia-sec > .boton { margin-top: var(--e-4); }
+.mia-guardar { display: grid; gap: var(--e-3); margin-top: var(--e-8); }
+.mia-sec .mensaje--error, .mia-guardar + .mensaje--error { margin-top: var(--e-3); }
+.hoja-buscador .filtros { margin-bottom: 0; }
+.hoja-buscador .lista { margin-top: var(--e-1); }
+.hoja-buscador .vacio { padding: var(--e-4) 0; text-align: left; }
+.mia-listo { position: sticky; bottom: 0; margin-top: var(--e-4); box-shadow: 0 -8px 16px var(--sup-capa); }
+/* Hoja «Añadir a una de mis sesiones» */
+.lista-mias { margin: 0 0 var(--e-4); }
+.hoja .boton--ancho + .boton--ancho { margin-top: var(--e-2); }
+
+/* ---------- Bienvenida ---------- */
+.bienvenida { min-height: calc(100dvh - env(safe-area-inset-top)); display: flex; flex-direction: column; justify-content: center; padding: var(--e-10) 0; text-align: left; }
+.bienvenida .logo-grande { width: 96px; height: 96px; margin: 0; }
+.bienvenida h1 { font-size: var(--t-portada); line-height: var(--t-portada-alto); font-weight: var(--f-peso-medio); margin: var(--e-6) 0 0; letter-spacing: var(--f-titulo-tracking); }
+.bienvenida h1:focus { outline: none; }
+.bienvenida .lectura { color: var(--texto-2); margin: var(--e-2) 0 0; }
+.bienvenida .quien { font-weight: var(--f-peso-fuerte); margin: var(--e-8) 0 0; }
+.dueños { display: grid; grid-template-columns: 1fr 1fr; gap: var(--toque-separacion); margin-top: var(--e-3); }
+.dueños > span { display: block; }
+.dueños > [data-persona="victor"] { --acento: var(--p-lima-300); --acento-pulsado: var(--p-lima-400); }
+.dueños .boton { width: 100%; background: var(--acento); }
+.dueños .boton:active { background: var(--acento-pulsado); }
+.avisos-salud { margin-top: var(--e-8); padding-top: var(--e-4); border-top: 1px solid var(--borde-fino); }
+.avisos-salud p { font-size: var(--t-secundario); color: var(--texto-2); margin: 0; }
+.avisos-salud p + p { margin-top: var(--e-2); }

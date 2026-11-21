@@ -2,19 +2,7 @@
    Los PR 14-16 pasan cada pantalla a su propio archivo (css/<area>.css) con el diseño aprobado
    (la sesión y el descanso ya están en css/sesion.css, PR 15). */
 
-/* ── Bienvenida ── */
-.bienvenida { text-align: center; padding: 10vh 0 0; }
-.logo-grande { width: 96px; height: 96px; margin: 0 auto var(--e-4); }
-.bienvenida h1 { font-size: var(--t-portada); line-height: var(--t-portada-alto); letter-spacing: var(--f-titulo-tracking); margin-bottom: var(--e-2); }
-.bienvenida > p.tenue { max-width: 300px; margin: var(--e-2) auto var(--e-6); }
-.dueños { display: grid; gap: var(--e-3); margin-top: var(--e-4); }
-/* Cada botón lleva el color de su persona (en <html> aún no hay ninguna puesta) */
-.dueño { min-height: var(--toque-principal); border: 0; border-radius: var(--r-pildora); font-size: var(--t-subtitulo); font-weight: var(--f-peso-fuerte); color: var(--texto-sobre-acento); background: var(--acento); cursor: pointer; }
-.dueño[data-v="victor"] { --acento: var(--p-lima-300); --acento-pulsado: var(--p-lima-400); }
-.dueño[data-v="virginia"] { --acento: var(--p-rosa-300); --acento-pulsado: var(--p-rosa-400); }
-.dueño:active { background: var(--acento-pulsado); }
-.aviso-salud { margin-top: var(--e-8); padding-top: var(--e-4); border-top: 1px solid var(--borde-fino); text-align: left; }
-.aviso-salud p { font-size: var(--t-secundario); }
+/* ── Bienvenida, Progreso, Perfil y Ejercicios: en css/perfil.css, css/progreso.css y css/ejercicios.css (PR 16) ── */
 
 /* ── Hoy: en css/hoy.css (PR 14) ── */
 
@@ -29,29 +17,10 @@
 .errores { color: var(--texto-2); }
 .errores li::marker { color: var(--estado-error); }
 
-/* ── Progreso ── */
-.barras { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--e-2); height: 120px; align-items: end; margin: var(--e-4) 0 var(--e-6); }
-.barras div { position: relative; height: 100%; display: flex; align-items: flex-end; }
-.barras i { display: block; width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; background: var(--texto-3); }
-.barras div.ok i { background: var(--acento); }
-.barras span { position: absolute; bottom: -20px; width: 100%; text-align: center; font-size: var(--t-meta); color: var(--texto-2); }
-.barras hr { position: absolute; left: 0; right: 0; margin: 0; border: 0; border-top: 1.5px dashed var(--texto-2); }
-.barras div.actual i { box-shadow: inset 0 0 0 1.5px var(--texto-1); }
-.barras div.actual span { color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
-.puntos { display: flex; gap: var(--e-1); }
-.puntos i { width: 24px; height: 24px; border-radius: var(--r-pequeno); display: grid; place-items: center; font-style: normal; font-size: var(--t-meta); font-weight: var(--f-peso-fuerte); color: var(--texto-sobre-acento); background: color-mix(in srgb, var(--estado-error) calc(var(--v) * 10%), var(--estado-bien)); }
+/* ── Constancia en Hoy (progreso/indice.js · tarjetaConstancia; hoy.css la ajusta) ── */
 .fila-dato { display: flex; align-items: center; gap: var(--e-3); }
 .fila-dato h2 { margin-bottom: 2px; }
 .fila-dato p { margin: 0; }
-.datos li b { font-variant-numeric: tabular-nums; }
-.nivel, .cardio, .medidor { margin-top: var(--e-4); padding-top: var(--e-3); border-top: 1px solid var(--borde-fino); }
-.criterios { list-style: none; padding: 0; margin: var(--e-2) 0 0; display: grid; gap: var(--e-2); }
-.criterios li { display: flex; align-items: center; gap: var(--e-3); min-height: var(--toque-min); padding: var(--e-2) var(--e-3); border-radius: var(--r-pequeno); background: var(--sup-control); font-size: var(--t-secundario); color: var(--texto-2); line-height: 1.3; }
-.criterios li > svg, .criterios li > i { width: 18px; height: 18px; flex-shrink: 0; }
-.criterios li > i { border-radius: var(--r-pildora); box-shadow: inset 0 0 0 1.5px var(--borde-control); }
-.criterios li svg { color: var(--estado-bien); }
-.criterios li.ok { color: var(--texto-1); }
-.criterios li .tenue { margin-left: auto; font-size: var(--t-meta); white-space: nowrap; }
 .racha { text-align: center; line-height: 1; padding: var(--e-2) var(--e-3); border-radius: var(--r-pequeno); box-shadow: inset 0 0 0 1px var(--borde-control); }
 .racha b { display: block; font-size: var(--t-cifra-s); font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; }
 .racha small { font-size: var(--t-meta); color: var(--texto-2); }
@@ -60,63 +29,11 @@
 .puntos-semana i.on { background: var(--acento); box-shadow: none; }
 .constancia-hoy .enlace { display: inline-flex; align-items: center; gap: var(--e-1); margin-top: var(--e-2); }
 .constancia-hoy .enlace svg { width: 16px; height: 16px; }
-.destacado { display: flex; align-items: center; gap: var(--e-3); margin: var(--e-2) 0 var(--e-1); }
-.destacado > b { white-space: nowrap; font-size: 40px; font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; line-height: 1; }
-.destacado > b.bien { color: var(--estado-bien); }
-.destacado span { font-size: 15px; line-height: 1.3; }
-.linea { display: block; width: 100%; height: 56px; margin: var(--e-2) 0; overflow: visible; }
-.linea path { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.linea circle { fill: var(--acento); }
-.rejilla-datos { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-3); margin-top: var(--e-2); }
-.dato-salud { display: flex; flex-direction: column; gap: 2px; padding: var(--e-3); border-radius: var(--r-pequeno); background: var(--sup-control); min-width: 0; }
-.dato-salud small { color: var(--texto-2); font-size: var(--t-meta); }
-.dato-salud b { font-size: var(--t-cifra-s); font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; }
-.dato-salud .tenue { font-size: var(--t-meta); }
-.dato-salud .insignia { align-self: flex-start; }
-.dato-salud .linea { height: 36px; margin: var(--e-2) 0 0; }
-.lectura { font-size: var(--t-secundario); box-shadow: inset 3px 0 0 var(--acento); padding-left: var(--e-3); margin: var(--e-3) 0 0; }
-.lista.dolor li { display: block; padding: var(--e-3) 0; }
-.lista.dolor .puntos { margin-top: var(--e-2); flex-wrap: wrap; }
-.vacio { text-align: center; padding: var(--e-6) var(--e-5); }
-.vacio > svg { width: 44px; height: 44px; margin: 0 auto; color: var(--acento); }
-.vacio h2 { margin: var(--e-3) 0 var(--e-2); }
-.vacio .btn { width: 100%; }
-.fecha { min-width: 52px; }
 
-/* ── Ejercicios ── */
-.filtros-chips { display: grid; gap: var(--e-2); margin: var(--e-3) 0 var(--e-1); }
-.chips.desliza { flex-wrap: nowrap; overflow-x: auto; margin: 0 calc(-1 * var(--e-margen)); padding: 2px var(--e-margen); scrollbar-width: none; }
-.chips.desliza::-webkit-scrollbar { display: none; }
-.chips.desliza .chip { flex: 0 0 auto; white-space: nowrap; }
-.lista.ejercicios .fila { gap: var(--e-3); }
-.mini { position: relative; flex-shrink: 0; width: 80px; height: 45px; border-radius: var(--r-pequeno); overflow: hidden; background: var(--sup-control); display: grid; place-items: center; color: var(--texto-3); }
-.mini > svg { width: 22px; height: 22px; }
-.mini img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.mini i { position: absolute; right: var(--e-1); bottom: var(--e-1); width: 18px; height: 18px; border-radius: var(--r-pildora); background: var(--sup-velo); color: var(--texto-1); display: grid; place-items: center; }
-.mini i svg { width: 10px; height: 10px; }
-.marcas { display: flex; flex-wrap: wrap; gap: var(--e-1); margin-top: var(--e-1); }
+/* ── Vídeo de la ficha (lo usan la ficha de Ejercicios y la sesión) ── */
 .video-ficha { position: relative; display: block; margin: var(--e-4) 0; border-radius: var(--r-pequeno); overflow: hidden; aspect-ratio: 16 / 9; background: var(--sup-control); color: var(--texto-1); text-decoration: none; }
 .video-ficha img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .video-ficha span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: var(--e-2); padding: var(--e-3) var(--e-4); border-radius: var(--r-pildora); background: var(--sup-velo); font-weight: var(--f-peso-fuerte); white-space: nowrap; }
 .video-ficha svg { width: 18px; height: 18px; }
-.filtros { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-2); margin: var(--e-3) 0 var(--e-1); }
-.filtros input { grid-column: 1 / -1; }
 
 /* ── Entrenador (check-in, semana y espera): en css/hoy.css (PR 14) ── */
-
-/* ── Perfil ── */
-.medidor > p.tenue { font-size: var(--t-secundario); margin: 0 0 var(--e-2); }
-.medidor .nota { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-1) var(--e-3); }
-.medidor .nota .enlace { padding: 0; font-weight: var(--f-peso-fuerte); }
-.chips.grupos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; scroll-padding-inline: var(--e-margen); margin: var(--e-4) calc(-1 * var(--e-margen)) var(--e-1); padding: 2px var(--e-margen) var(--e-2); gap: var(--e-2); scroll-snap-type: x proximity; }
-.chips.grupos::-webkit-scrollbar { display: none; }
-.chips.grupos .chip { flex-shrink: 0; scroll-snap-align: start; }
-.chips.grupos .chip.on { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }
-
-/* ── Lo que ve tu entrenador ── */
-.analisis { list-style: none; padding: 0; margin: 0; }
-.analisis li { position: relative; padding: var(--e-3) 0 var(--e-3) var(--e-4); font-size: var(--t-secundario); line-height: 1.45; color: var(--texto-2); }
-.analisis li + li { border-top: 1px solid var(--borde-fino); }
-.analisis li::before { content: ''; position: absolute; left: 0; top: 17px; width: 6px; height: 6px; border-radius: 50%; background: var(--acento); }
-.analisis li b { color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
-.analisis li > .tenue:last-child { display: block; margin-top: 2px; font-size: var(--t-secundario); color: var(--texto-1); }

@@ -5,7 +5,7 @@
 
 import { acciones, pintar, rutaActual } from '../../nucleo/router.js';
 import { estado, cambiar, importar, ErrorCopia } from '../../nucleo/estado.js';
-import { h, abrirHoja, cerrarHoja, aviso, confirmar, $, fechaCorta } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, fechaCorta } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
 import { estadoNube, escucharNube, activar, cambiarFrase, copiarAhora, listar, abrirCopia, probarCopias, cargarClave, marcarBase,
   reanudarNube, generarFrase, calidadFrase, metadatos, ErrorNube, FRASE_MIN, AVISO_DIAS } from '../../nucleo/copia.js';
@@ -25,48 +25,48 @@ export function cuando(iso, ahora = new Date()) {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: d.getFullYear() === ahora.getFullYear() ? undefined : 'numeric' }) + ' ' + hora;
 }
 
+// Aviso del sistema (icono + texto + acciones). Lleva las clases que buscan las pruebas.
+const avisoAcc = (clases, texto, botones) => `<div class="aviso aviso-linea aviso--aviso aviso-nube ${clases}" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>${texto}</p><div class="aviso-acciones">${botones}</div></div></div>`;
+const accion = (act, txt, sec = true) => `<button type="button" class="boton ${sec ? 'boton--secundario' : 'boton--texto'}" data-act="${act}">${txt}</button>`;
 // Aviso que se queda (Hoy y Perfil): copias desactivadas en este móvil, en pausa tras empezar de cero, una
 // copia automática retenida por tener menos datos, nube no activada en el servidor o más de 3 días sin copia.
 export function avisoNube() {
   const n = estadoNube();
   if (!n.avisar) return '';
   if (n.desactivada) {
-    return `<p class="nota aviso-nota aviso-nube desactivada-nube">Las copias en la nube se han desactivado en este móvil (ya no está su clave). Actívalas de nuevo con tu frase.
-      <button class="enlace" data-act="nube.activar">Activar</button></p>`;
+    return avisoAcc('desactivada-nube', 'Las copias en la nube se han desactivado en este móvil (ya no está su clave). Actívalas de nuevo con tu frase.', accion('nube.activar', 'Activar copias'));
   }
   if (n.pausada) {
-    return `<p class="nota aviso-nota aviso-nube pausada-nube">Las copias en la nube están en pausa porque empezaste de cero en este móvil. ¿Sigo copiando con tu frase o recuperas tus datos de la nube?
-      <button class="enlace" data-act="nube.reanudar">Seguir copiando</button> · <button class="enlace" data-act="nube.recuperar">Recuperar de la nube</button></p>`;
+    return avisoAcc('pausada-nube', 'Las copias en la nube están en pausa porque empezaste de cero en este móvil. ¿Sigo copiando con tu frase o recuperas tus datos de la nube?', accion('nube.reanudar', 'Seguir copiando') + accion('nube.recuperar', 'Recuperar de la nube', false));
   }
   if (n.retenida) {
     const r = n.retenida;
-    return `<p class="nota aviso-nota aviso-nube retenida-nube">No he subido la copia automática: este móvil tiene ${+r.sesiones} sesiones${r.ultima ? ` (la última, ${h(fechaCorta(r.ultima))})` : ''} y la última copia en la nube tenía ${+r.base}${r.baseUltima ? ` (la última, ${h(fechaCorta(r.baseUltima))})` : ''}. Si la subo, la copia más nueva tendría menos datos.
-      <button class="enlace" data-act="nube.forzar">Subir de todos modos</button> · <button class="enlace" data-act="nube.lista">Recuperar de la nube</button></p>`;
+    return avisoAcc('retenida-nube', `No he subido la copia automática: este móvil tiene ${+r.sesiones} sesiones${r.ultima ? ` (la última, ${h(fechaCorta(r.ultima))})` : ''} y la última copia en la nube tenía ${+r.base}${r.baseUltima ? ` (la última, ${h(fechaCorta(r.baseUltima))})` : ''}. Si la subo, la copia más nueva tendría menos datos.`, accion('nube.forzar', 'Subir de todos modos') + accion('nube.lista', 'Recuperar de la nube', false));
   }
   const txt = n.inactiva
     ? 'Las copias en la nube aún no están activadas en el servidor: tus datos solo están en este móvil.'
     : n.ultima ? `Hace más de ${AVISO_DIAS} días que no se hace una copia en la nube (la última, ${cuando(n.ultima)}).` : 'Aún no se ha hecho ninguna copia en la nube.';
-  return `<p class="nota aviso-nota aviso-nube">${h(txt)} <button class="enlace" data-act="nube.copiar">Copiar ahora</button></p>`;
+  return avisoAcc('', h(txt), accion('nube.copiar', 'Copiar ahora'));
 }
 
 export function grupoCopias() {
   const n = estadoNube();
   const estadoTxt = n.subiendo ? 'Haciendo una copia en la nube…'
     : n.ultima ? `Última copia en la nube: ${cuando(n.ultima)}` : 'Aún no hay ninguna copia en la nube desde este móvil.';
-  return `<section class="tarjeta copias-nube">
-    <h2>Copias en la nube</h2>
+  return `<section class="tarjeta perfil-sec copias-nube" aria-labelledby="p-nube">
+    <h2 id="p-nube">Copias en la nube</h2>
     ${n.activada ? `<p class="ultima-nube">${h(estadoTxt)}</p>
       ${avisoNube()}
-      ${n.error && !n.inactiva ? `<p class="nota aviso-nota error-nube">${h(n.error)}</p>` : ''}
-      <p class="tenue">Se hacen solas: al terminar una sesión, al cambiar tu perfil, lesiones o medidas y cada día que abras la app (con conexión).</p>
-      <div class="fila-botones"><button class="btn sec" data-act="nube.copiar">Copiar ahora</button><button class="btn sec" data-act="nube.lista">Ver copias y restaurar</button></div>
-      <button class="enlace" data-act="nube.frase">Cambiar la frase</button>`
+      ${n.error && !n.inactiva ? `<div class="aviso aviso-linea aviso--error error-nube" role="alert">${ICONOS.error}<div class="aviso-texto"><p>${h(n.error)}</p></div></div>` : ''}
+      <p>Se hacen solas: al terminar una sesión, al cambiar tu perfil, lesiones o medidas y cada día que abras la app (con conexión).</p>
+      <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="nube.copiar">Copiar ahora</button><button type="button" class="boton boton--secundario" data-act="nube.lista">Ver copias y restaurar</button></div>
+      <button type="button" class="boton boton--texto" data-act="nube.frase">Cambiar la frase</button>`
     : `${avisoNube()}<p>Guarda tus datos en la nube de la app sin hacer nada: al terminar cada sesión, al cambiar tu perfil y cada día que la abras.</p>
-      <button class="btn" data-act="nube.activar">Activar copias en la nube</button>
-      ${n.cargada ? '' : '<p class="tenue">Comprobando este móvil…</p>'}`}
-    <p class="tenue">Se cifran en este móvil con tu frase de recuperación antes de salir: ni el servidor ni quien tenga el código de acceso pueden leer lo que hay dentro, aunque sí ven cuándo se subió cada copia y cuánto ocupa. Cada uno tiene su frase. ${h(ADVERTENCIA)}</p>
-    <button class="enlace" data-act="nube.recuperar">Recuperar de la nube en este móvil (con la frase)</button>
-    <p class="tenue">La copia a un archivo (Perfil → Ajustes → Guardar copia) sigue siendo la segunda vía.</p>
+      <button type="button" class="boton" data-act="nube.activar">Activar copias en la nube</button>
+      ${n.cargada ? '' : '<p class="ayuda">Comprobando este móvil…</p>'}`}
+    <p class="ayuda">Se cifran en este móvil con tu frase de recuperación antes de salir: ni el servidor ni quien tenga el código de acceso pueden leer lo que hay dentro, aunque sí ven cuándo se subió cada copia y cuánto ocupa. Cada uno tiene su frase. ${h(ADVERTENCIA)}</p>
+    <button type="button" class="boton boton--texto" data-act="nube.recuperar">Recuperar de la nube en este móvil (con la frase)</button>
+    <p class="ayuda">La copia en un archivo (Perfil › Ajustes › Guardar copia) sigue siendo la segunda vía.</p>
   </section>`;
 }
 
@@ -139,7 +139,7 @@ function hojaRecuperar(persona) {
   abrirHoja(`<h2>Recuperar de la nube</h2>
     <div class="campo col"><span>¿De quién son las copias?</span><div class="segmentos" id="n-persona">${Object.entries(PERSONAS).map(([k, p]) => `<button type="button" data-v="${h(k)}" class="${k === persona ? 'on' : ''}">${h(p.nombre)}</button>`).join('')}</div></div>
     <label class="campo col"><span>Frase de recuperación <small>vale también una frase anterior</small></span><input type="password" id="n-frase" autocomplete="current-password" autocapitalize="off" spellcheck="false"></label>
-    ${sinCodigo ? '<label class="campo col"><span>Código de acceso <small>el mismo que APP_CODE en Vercel</small></span><input type="password" id="n-codigo" autocomplete="off"></label>' : ''}
+    ${sinCodigo ? '<label class="campo col"><span>Código de acceso <small>el mismo que te ha dado Víctor para el entrenador IA</small></span><input type="password" id="n-codigo" autocomplete="off"></label>' : ''}
     <button class="btn grande" data-act="nube.buscar">Buscar copias</button>
     <div id="n-lista"></div>`, { clase: 'hoja-nube' });
   $('#n-persona').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#n-persona').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });

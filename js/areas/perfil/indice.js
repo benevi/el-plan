@@ -9,39 +9,40 @@ import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
-import { bloqueMedidor, tarjetaAnalisis } from '../entrenador/indice.js';
-import { misSesiones, miaDe, renombrarMia, borrarMia, LARGO_NOMBRE_MIA, MAX_MIAS } from '../entrenador/entrenador.js';
+import { medidorNivel } from '../../reglas/contexto.js';
+import { tarjetaAnalisis } from '../entrenador/indice.js';
+import { misSesiones, MAX_MIAS } from '../entrenador/entrenador.js';
 import { versionApp } from '../../nucleo/version.js';
 import { grupoCopias, avisoNube, siVisible } from './nube.js';
 import { grupoSalud } from './salud.js';
+import { chip, segmento, selector, alCambiarSelector, devolverFoco, cuenta } from './controles.js';
+import { GRUPOS, grupoPerfil, ponerGrupo } from './grupo.js';
+import './editor.js';
 
-const chip = (act, val, on, txt) => `<button class="chip ${on ? 'on' : ''}" data-act="${act}" data-v="${h(val)}" aria-pressed="${on}">${h(txt)}</button>`;
-
-// El perfil va por grupos (antes era una página de 2200 px): se ve uno cada vez.
-const GRUPOS = [['objetivos', 'Objetivos y nivel'], ['lesiones', 'Lesiones'], ['salud', 'Salud'], ['entreno', 'Mi entreno'], ['datos', 'Mis datos'], ['copias', 'Copias'], ['ajustes', 'Ajustes']];
-let grupo = 'objetivos';
-siVisible(() => grupo === 'copias');
+siVisible(() => grupoPerfil() === 'copias');
 const TIPOS_LESION = { lesion: 'Lesión diagnosticada', recurrente: 'Dolor que va y viene', puntual: 'Molestia puntual (días)' };
 const USO_IA = {
   auto: ['Automático', 'La IA monta la semana y revisa el día solo cuando hace falta (dolor nuevo, una petición, otro lugar, comentarios). Unos 0,25 € por semana y 0,10 € por día revisado.'],
   siempre: ['Siempre', 'La IA rehace cada sesión con tu check-in. Unos 0,10 € por sesión.'],
   ahorro: ['Ahorro', 'La IA solo cuando la pidas para la semana. El día lo ajusta la app.'],
 };
+const minus = t => String(t || '').toLowerCase();
+// «Ganar músculo, Salud, movilidad y espalda sana · intermedio · 1 lesión activa»
+function resumenPerfil(p) {
+  const obj = p.objetivos.length ? p.objetivos.map(o => OBJETIVOS[o].nombre).join(', ') : 'Sin objetivos';
+  const act = p.lesiones.filter(l => l.activa).length;
+  return `${obj} · ${minus(NIVELES[p.nivel] || NIVELES[1])} · ${act ? cuenta(act, 'lesión activa', 'lesiones activas') : 'sin lesiones activas'}`;
+}
 
 function vista() {
-  const S = estado(), p = S.perfil;
-  const resumen = [
-    p.objetivos.length ? p.objetivos.map(o => OBJETIVOS[o].nombre).join(', ') : 'Sin objetivos',
-    NIVELES[p.nivel],
-    `${p.lesiones.filter(l => l.activa).length} lesiones activas`,
-  ].join(' · ');
+  const S = estado(), p = S.perfil, g = grupoPerfil();
   return `
-  <h1 class="titulo">Tu perfil</h1>
-  <p class="tenue">${h(resumen)}</p>
+  <h1 class="titulo-pantalla">Tu perfil</h1>
+  <p class="tenue perfil-resumen">${h(resumenPerfil(p))}</p>
   ${avisosMigracion(S)}
-  ${grupo !== 'copias' ? avisoNube() : ''}
-  <nav class="chips grupos" aria-label="Partes del perfil">${GRUPOS.map(([k, n]) => `<button class="chip ${grupo === k ? 'on' : ''}" data-act="perfil.grupo" data-v="${k}" aria-pressed="${grupo === k}">${h(n)}</button>`).join('')}</nav>
-  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[grupo] || grupoObjetivos)(S)}`;
+  ${g !== 'copias' ? avisoNube() : ''}
+  <nav class="grupos-perfil" aria-label="Partes del perfil"><ul>${GRUPOS.map(([k, n]) => `<li><button type="button" class="chip" data-act="perfil.grupo" data-v="${k}"${g === k ? ' aria-current="true"' : ''}>${h(n)}</button></li>`).join('')}</ul></nav>
+  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[g] || grupoObjetivos)(S)}`;
 }
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
@@ -56,127 +57,111 @@ export { QUEDA };
 function avisosMigracion(S) {
   const m = S.migracion || {};
   const porRevisar = S.perfil.lesiones.filter(l => l.activa && l.dolorRevisar).length;
-  return `${m.sexoRevisar ? `<section class="tarjeta aviso-nota revisar-sexo">
+  return `${m.sexoRevisar ? `<section class="aviso aviso-linea aviso--aviso revisar-sexo" role="group" aria-label="Revisa tu sexo">${ICONOS.alerta}<div class="aviso-texto">
       <p>Al pasar tus datos de la app anterior el sexo pudo quedar cambiado. Ahora pone <b>${h(SEXO[S.perfil.datos.sexo] || 'nada')}</b>. ¿Cuál es el correcto?</p>
-      <div class="fila-botones">${[['h', 'Hombre'], ['m', 'Mujer']].map(([k, n]) => `<button class="btn ${k === SEXO_PROBABLE[S.dueño] ? 'probable' : 'sec'}" data-act="perfil.sexoRevisado" data-v="${k}">${n}</button>`).join('')}</div></section>` : ''}
-    ${migracionDeOtro() ? `<section class="tarjeta aviso-nota migracion-otro">
+      <div class="aviso-acciones">${[['h', 'Hombre'], ['m', 'Mujer']].map(([k, n]) => `<button type="button" class="boton ${k === SEXO_PROBABLE[S.dueño] ? 'probable' : 'boton--secundario'}" data-act="perfil.sexoRevisado" data-v="${k}">${n}</button>`).join('')}</div></div></section>` : ''}
+    ${migracionDeOtro() ? `<section class="aviso aviso-linea aviso--aviso migracion-otro" role="group" aria-label="Datos de otra persona">${ICONOS.alerta}<div class="aviso-texto">
       <p>Lo que se trajo de la app anterior es de ${h(nombre(m.dueño))}, no de ${h(nombre(S.dueño))}.</p>
-      <button class="btn sec" data-act="perfil.rehacerMigracion">Traer lo de ${h(nombre(S.dueño))}</button></section>` : ''}
-    ${porRevisar && grupo !== 'lesiones' ? `<p class="nota aviso-nota">Tienes ${+porRevisar} lesi${porRevisar > 1 ? 'ones' : 'ón'} de la app anterior con el dolor estimado: ¿cuánto te duele normalmente, de 0 a 10? Hasta que lo digas, el plan la trata con prudencia. <button class="enlace" data-act="perfil.grupo" data-v="lesiones">Revísalo</button></p>` : ''}`;
+      <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.rehacerMigracion">Traer lo de ${h(nombre(S.dueño))}</button></div></div></section>` : ''}
+    ${porRevisar && grupoPerfil() !== 'lesiones' ? `<div class="aviso aviso-linea aviso--aviso" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>Tienes ${cuenta(porRevisar, 'lesión', 'lesiones')} de la app anterior con el dolor estimado: ¿cuánto te duele normalmente, de 0 a 10? Hasta que lo digas, el plan la trata con prudencia.</p>
+      <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.grupo" data-v="lesiones">Revisar lesiones</button></div></div></div>` : ''}`;
+}
+
+const tarjeta = (titulo, cuerpo, { clase = '', id = '', sub = '' } = {}) => {
+  const t = id || 'p-' + titulo.toLowerCase().normalize('NFD').replace(/[^a-z]+/g, '-');
+  return `<section class="tarjeta perfil-sec ${clase}" aria-labelledby="${t}"><h2 id="${t}">${h(titulo)}${sub ? ` <small>${h(sub)}</small>` : ''}</h2>${cuerpo}</section>`;
+};
+const interruptor = (act, on, txt, extra = '') => `<label class="interruptor"><input type="checkbox" data-cambio="${act}" ${on ? 'checked' : ''} ${extra}><span>${h(txt)}</span></label>`;
+
+// Medidor de nivel: qué falta para subir (C-NIVEL-1 a 3) y, si toca, la propuesta de cambiar.
+function medidor(S) {
+  const m = medidorNivel(S);
+  return `<div class="medidor">
+    ${m.criterios.length ? `<p class="ayuda">Para subir a ${h(minus(NIVELES[m.nivel + 1]))}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : ICONOS.info}<span>${h(c.que)}<span class="solo-lector">: ${c.ok ? 'cumplido' : 'pendiente'}</span></span><span>${h(c.valor)}</span></li>`).join('')}</ul>` : '<p class="ayuda">Estás en el nivel más alto.</p>'}
+    ${m.sugerido !== m.nivel && !S.perfil.nivelAuto ? `<div class="aviso aviso-linea aviso--info" role="note">${ICONOS.info}<div class="aviso-texto"><p>${h(m.motivo)}</p><div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="entrenador.aplicarNivel">Pasar a ${h(minus(NIVELES[m.sugerido]))}</button></div></div></div>` : ''}
+    ${(S.perfil.nivelCambios || []).slice(-2).map(c => `<p class="ayuda">${h(fechaCorta(c.fecha.slice(0, 10)))}: de ${h(minus(NIVELES[c.de]))} a ${h(minus(NIVELES[c.a]))}. ${h(c.motivo)}</p>`).join('')}
+  </div>`;
 }
 
 function grupoObjetivos(S) {
   const p = S.perfil;
-  return `<section class="tarjeta">
-    <h2>Objetivos <small>puedes marcar varios</small></h2>
-    <div class="chips">${Object.entries(OBJETIVOS).map(([k, o]) => chip('perfil.objetivo', k, p.objetivos.includes(k), o.nombre)).join('')}</div>
-  </section>
-  <section class="tarjeta">
-    <h2>Nivel</h2>
-    <div class="segmentos">${Object.entries(NIVELES).map(([k, n]) => `<button class="${+k === p.nivel ? 'on' : ''}" data-act="perfil.nivel" data-v="${k}">${h(n)}</button>`).join('')}</div>
-    <label class="interruptor"><input type="checkbox" data-cambio="perfil.nivelAuto" ${p.nivelAuto ? 'checked' : ''}><span>Que mi progreso me cambie de nivel</span></label>
-    ${bloqueMedidor(S)}
-  </section>
+  return `${tarjeta('Objetivos', `<div class="chips" role="group" aria-label="Objetivos (puedes marcar varios)">${Object.entries(OBJETIVOS).map(([k, o]) => chip('perfil.objetivo', k, p.objetivos.includes(k), o.nombre)).join('')}</div>`, { sub: 'puedes marcar varios' })}
+  ${tarjeta('Nivel', `${segmento('Nivel', 'perfil.nivel', Object.entries(NIVELES), p.nivel, { ancho: true })}
+    ${interruptor('perfil.nivelAuto', p.nivelAuto, 'Que mi progreso me cambie de nivel')}
+    ${medidor(S)}`)}
   ${tarjetaAnalisis(S)}`;
 }
 
 function grupoLesiones(S) {
   const p = S.perfil;
   const lesiones = p.lesiones.slice().sort((a, b) => b.activa - a.activa);
-  return `<section class="tarjeta">
-    <h2>Lesiones y dolor</h2>
-    <p class="tenue">Cambian con el tiempo: apúntalas, ajusta el dolor y desmárcalas cuando se curen. El entrenador quita lo que las carga y añade rehabilitación.</p>
-    ${lesiones.some(l => l.activa && l.dolorRevisar) ? '<p class="nota aviso-nota">El dolor de las lesiones traídas de la app anterior es una estimación. Toca cada una y pon cuánto te duele ahora.</p>' : ''}
+  const detalle = l => { const z = ZONAS[l.zona]; const d = l.detalle && z && z.detalles && z.detalles.opciones[l.detalle]; return d ? minus(d.nombre) : ''; };
+  return tarjeta('Lesiones y dolor', `<p>Cambian con el tiempo: apúntalas, ajusta el dolor y desmárcalas cuando se curen. El entrenador quita lo que las carga y añade rehabilitación.</p>
+    ${lesiones.some(l => l.activa && l.dolorRevisar) ? `<div class="aviso aviso-linea aviso--aviso" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>El dolor de las lesiones traídas de la app anterior es una estimación. Toca cada una y pon cuánto te duele ahora.</p></div></div>` : ''}
     ${lesiones.length ? `<ul class="lista">${lesiones.map(l => `<li class="${l.activa ? '' : 'apagada'}">
-      <button class="fila" data-act="perfil.lesion" data-id="${h(l.id)}">
-        <span class="grow"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span class="tenue">${l.activa ? `Dolor ${+l.dolor}/10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada'}${l.tipo ? ' · ' + h(TIPOS_LESION[l.tipo]) : ''}${l.detalle && ZONAS[l.zona] && ZONAS[l.zona].detalles && ZONAS[l.zona].detalles.opciones[l.detalle] ? ' · ' + h(ZONAS[l.zona].detalles.opciones[l.detalle].nombre.toLowerCase()) : ''}${l.desde ? ' · desde ' + h(l.desde) : ''}${l.nota ? ' · ' + h(l.nota) : ''}</span></span>
-        ${ICONOS.editar}</button></li>`).join('')}</ul>` : '<p class="tenue">Sin lesiones apuntadas.</p>'}
-    <button class="btn sec" data-act="perfil.lesion">${ICONOS.mas} Añadir lesión o dolor</button>
-  </section>`;
+      <button type="button" class="fila" data-act="perfil.lesion" data-id="${h(l.id)}">
+        <span class="crece"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span>${[l.activa ? `Dolor ${+l.dolor} de 10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada', l.tipo ? minus(TIPOS_LESION[l.tipo]) : '', detalle(l), l.desde ? 'desde ' + fechaCorta(l.desde) : '', l.nota].filter(Boolean).map(h).join(', ')}</span></span>
+        ${ICONOS.editar}<span class="solo-lector">Editar</span></button></li>`).join('')}</ul>` : '<p class="texto-2">Sin lesiones apuntadas.</p>'}
+    <button type="button" class="boton boton--secundario" data-act="perfil.lesion">${ICONOS.mas}<span>Añadir lesión o dolor</span></button>`);
 }
 
 function grupoEntreno(S) {
   const p = S.perfil, d = p.disponibilidad;
-  const gustos = Object.entries(p.gustos || {});
-  return `<section class="tarjeta">
-    <h2>Disponibilidad habitual</h2>
-    <p class="tenue">Cada semana eliges los días al montar la semana; esto es lo habitual.</p>
-    <div class="campo"><span>Días por semana</span>
-      <div class="paso"><button data-act="perfil.dias" data-v="-1" aria-label="Menos">${ICONOS.menos}</button><b>${+d.dias}</b><button data-act="perfil.dias" data-v="1" aria-label="Más">${ICONOS.mas}</button></div></div>
-    <div class="campo col"><span>Minutos por sesión</span>
-      <div class="chips">${[30, 45, 60, 75, 90].map(m => chip('perfil.minutos', m, d.minutos === m, m + ' min')).join('')}</div></div>
-  </section>
-  <section class="tarjeta">
-    <h2>Dónde entrenas</h2>
-    <div class="chips">${Object.entries(LUGARES).map(([k, n]) => chip('perfil.lugar', k, p.lugares.includes(k), n)).join('')}</div>
-    ${p.lugares.includes('casa') ? `<h3>Material que tienes ahora en casa</h3><div class="chips">${MATERIAL_CASA.map(m => chip('perfil.material', m, p.materialCasa.includes(m), MATERIAL[m])).join('')}</div>` : ''}
-    <label class="interruptor"><input type="checkbox" data-cambio="perfil.acompañado" ${p.acompañado ? 'checked' : ''}><span>Entreno a la vez que otra persona</span></label>
-    ${p.lugares.includes('piscina') ? `<label class="interruptor"><input type="checkbox" data-cambio="perfil.nadar25" ${p.nadar25 ? 'checked' : ''}><span>Sé nadar 2 × 25 m seguidos</span></label>` : ''}
-  </section>
+  const gustos = Object.entries(p.gustos || {}).filter(([id]) => ex(id));
+  return `${tarjeta('Disponibilidad habitual', `<p>Cada semana eliges los días al montar la semana; esto es lo habitual.</p>
+    <div class="grupo">${selector({ id: 'p-dias', et: 'Días por semana', valor: +d.dias || 3, min: 1, max: 7, paso: 1, unidad: 'días', act: 'perfil.dias', texto: v => cuenta(v, 'día por semana', 'días por semana') })}</div>
+    <div class="grupo"><p class="grupo-et" id="p-min-et">Minutos por sesión</p>${segmento('Minutos por sesión', 'perfil.minutos', [30, 45, 60, 75, 90].map(m => [m, String(m), `${m} minutos`]), d.minutos, { ancho: true })}</div>`)}
+  ${tarjeta('Dónde entrenas', `<div class="chips" role="group" aria-label="Dónde entrenas">${Object.entries(LUGARES).map(([k, n]) => chip('perfil.lugar', k, p.lugares.includes(k), n)).join('')}</div>
+    ${p.lugares.includes('casa') ? `<p class="grupo-et bloque-mini" id="p-mat-et">Material que tienes ahora en casa</p><div class="chips" role="group" aria-labelledby="p-mat-et">${MATERIAL_CASA.map(m => chip('perfil.material', m, p.materialCasa.includes(m), MATERIAL[m])).join('')}</div>` : ''}
+    <div class="bloque-mini">${interruptor('perfil.acompañado', p.acompañado, 'Entreno a la vez que otra persona')}
+    ${p.lugares.includes('piscina') ? interruptor('perfil.nadar25', p.nadar25, 'Sé nadar 2 × 25 m seguidos') : ''}</div>`)}
   ${tarjetaMias(S)}
-  <section class="tarjeta">
-    <h2>Ejercicios que has valorado</h2>
-    ${gustos.length ? `<ul class="lista">${gustos.map(([id, g]) => `<li><button class="fila" data-act="perfil.quitarGusto" data-id="${h(id)}"><span class="grow"><b>${h(ex(id) ? ex(id).n : id)}</b><span class="tenue">${GUSTOS[g] ? GUSTOS[g].icono + ' ' + h(GUSTOS[g].nombre) : ''}</span></span><span class="tenue">Quitar</span></button></li>`).join('')}</ul>`
-      : '<p class="tenue">Valora los ejercicios durante la sesión (me gusta, no me gusta, no lo quiero) y el entrenador lo tendrá en cuenta.</p>'}
-  </section>
-  <section class="tarjeta">
-    <h2>Entrenador IA</h2>
-    <div class="segmentos">${Object.entries(USO_IA).map(([k, [n]]) => `<button class="${(p.usoIA || 'auto') === k ? 'on' : ''}" data-act="perfil.usoIA" data-v="${k}">${h(n)}</button>`).join('')}</div>
-    <p class="tenue">${h(USO_IA[p.usoIA || 'auto'][1])}</p>
-  </section>`;
+  ${tarjeta('Ejercicios que has valorado', gustos.length ? `<ul class="lista">${gustos.map(([id, g]) => `<li><div class="fila fila--quieta"><span class="crece"><b>${h(ex(id).n)}</b><span>${h(GUSTOS[g] ? GUSTOS[g].nombre : '')}</span></span><button type="button" class="boton boton--texto" data-act="perfil.quitarGusto" data-id="${h(id)}" aria-label="Quitar la valoración de ${h(ex(id).n)}">Quitar</button></div></li>`).join('')}</ul>`
+    : '<p>Valora los ejercicios en su ficha o durante la sesión (me gusta, no me gusta, no lo quiero) y el entrenador lo tendrá en cuenta.</p>')}
+  ${tarjeta('Entrenador IA', `${segmento('Uso del entrenador IA', 'perfil.usoIA', Object.entries(USO_IA).map(([k, [n]]) => [k, n]), p.usoIA || 'auto', { ancho: true })}
+    <p class="ayuda">${h(USO_IA[p.usoIA || 'auto'][1])}</p>`)}`;
 }
 
-// «Mis sesiones»: las guardadas para repetir (se eligen en el check-in). Aquí se ven, se renombran y se borran.
+// «Mis sesiones»: las guardadas para repetir (se eligen en «Antes de empezar»). Se crean y se editan aquí.
 function tarjetaMias(S) {
   const mias = misSesiones(S);
-  return `<section class="tarjeta mis-sesiones">
-    <h2>Mis sesiones <small>${+mias.length} de ${+MAX_MIAS}</small></h2>
-    ${mias.length ? `<ul class="lista">${mias.map(m => `<li><button class="fila" data-act="perfil.mia" data-id="${h(m.id)}">
-      <span class="grow"><b>${h(m.nombre)}</b><span class="tenue">${+m.ejercicios.length} ejercicios · ${h(LUGARES[m.lugar] || '')}</span></span>${ICONOS.editar}</button></li>`).join('')}</ul>
-      <p class="tenue">Para repetir una, elígela en «Antes de empezar».</p>`
-    : '<p class="tenue">Al preparar o terminar una sesión, toca «Guardar como mía» y podrás repetirla otro día desde «Antes de empezar».</p>'}
+  return `<section class="tarjeta perfil-sec mis-sesiones" aria-labelledby="p-mias"><div class="bloque-fila"><h2 id="p-mias">Mis sesiones</h2><span class="texto-2 pequeno">${+mias.length} de ${+MAX_MIAS}</span></div>
+    ${mias.length ? `<ul class="lista">${mias.map(m => `<li><button type="button" class="fila" data-act="perfil.editarMia" data-id="${h(m.id)}">
+      <span class="crece"><b>${h(m.nombre)}</b><span>${cuenta(m.ejercicios.length, 'ejercicio', 'ejercicios')}, ${h(minus(LUGARES[m.lugar] || ''))}${m.minutos ? `, unos ${+m.minutos} min` : ''}</span></span>
+      <span class="fila-accion">${ICONOS.editar}<span>Editar<span class="solo-lector"> «${h(m.nombre)}»</span></span></span></button></li>`).join('')}</ul>
+      <p class="ayuda">Para hacer una, elígela en «Antes de empezar».</p>`
+    : '<p>Al preparar o terminar una sesión, toca «Guardar como mía» y podrás repetirla otro día desde «Antes de empezar». También puedes crear una con los ejercicios que quieras.</p>'}
+    ${mias.length < MAX_MIAS ? `<button type="button" class="boton boton--secundario" data-act="perfil.crearMia">${ICONOS.mas}<span>Crear sesión</span></button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS}: para crear otra, borra alguna.</p>`}
   </section>`;
-}
-function hojaMia(m) {
-  abrirHoja(`<h2>${h(m.nombre)}</h2>
-    <p class="tenue">${h(LUGARES[m.lugar] || '')}${m.minutos ? ` · unos ${+m.minutos} min` : ''}</p>
-    <ul>${m.ejercicios.map(x => `<li>${h(ex(x.id) ? ex(x.id).n : x.id)} <span class="tenue">· ${+x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ' · rehabilitación' : x.rol === 'cardio' ? ' · cardio' : ''}</span></li>`).join('')}</ul>
-    <p class="tenue">Al hacerla se le añaden calentamiento, cardio y estiramientos, y se cambia lo que ese día no valga por tu dolor, el lugar o el material.</p>
-    <label class="campo col"><span>Nombre</span><input id="mia-nombre" maxlength="${+LARGO_NOMBRE_MIA}" value="${h(m.nombre)}"></label>
-    <div class="fila-botones"><button class="btn sec peligro" data-act="perfil.borrarMia" data-id="${h(m.id)}">Borrar</button><button class="btn" data-act="perfil.renombrarMia" data-id="${h(m.id)}">Guardar nombre</button></div>`);
 }
 
 function grupoDatos(S) {
   const p = S.perfil;
   const año = String(p.datos.nacimiento || '').slice(0, 4);
-  return `<section class="tarjeta">
-    <h2>Tus datos</h2>
-    <div class="rejilla">
-      <label class="campo col"><span>Sexo</span><select data-cambio="perfil.dato" data-k="sexo"><option value="">—</option><option value="h" ${p.datos.sexo === 'h' ? 'selected' : ''}>Hombre</option><option value="m" ${p.datos.sexo === 'm' ? 'selected' : ''}>Mujer</option></select></label>
-      <label class="campo col"><span>Altura (cm)</span><input type="number" inputmode="numeric" data-cambio="perfil.dato" data-k="altura" value="${h(p.datos.altura || '')}"></label>
-      <label class="campo col"><span>Año de nacimiento</span><input type="number" inputmode="numeric" min="1930" max="2015" placeholder="1985" data-cambio="perfil.dato" data-k="nacimiento" value="${h(año)}"></label>
+  return `${tarjeta('Tus datos', `<div class="rejilla-campos">
+      <div class="campo"><label for="d-sexo">Sexo</label><select id="d-sexo" data-cambio="perfil.dato" data-k="sexo"><option value="">Sin decir</option><option value="h" ${p.datos.sexo === 'h' ? 'selected' : ''}>Hombre</option><option value="m" ${p.datos.sexo === 'm' ? 'selected' : ''}>Mujer</option></select></div>
+      <div class="campo"><label for="d-altura">Altura (cm)</label><input id="d-altura" type="number" inputmode="numeric" min="100" max="230" data-cambio="perfil.dato" data-k="altura" value="${h(p.datos.altura || '')}"></div>
+      <div class="campo"><label for="d-nac">Año de nacimiento</label><input id="d-nac" type="number" inputmode="numeric" min="1930" max="2015" placeholder="1985" data-cambio="perfil.dato" data-k="nacimiento" value="${h(año)}"></div>
     </div>
-  </section>
-  <section class="tarjeta">
-    <h2>Para tu entrenador</h2>
-    <textarea rows="3" data-cambio="perfil.notas" placeholder="Lo que quieras que tenga en cuenta: horarios, metas concretas, cosas que no te gustan…">${h(p.notas)}</textarea>
-  </section>`;
+    <p class="ayuda">El sexo y la altura sirven para el índice cintura/altura y el % de grasa; la edad, para la dosis a partir de los 60.</p>`)}
+  ${tarjeta('Para tu entrenador', `<div class="campo"><label for="d-notas">Lo que quieras que tenga en cuenta</label><textarea id="d-notas" rows="3" data-cambio="perfil.notas" placeholder="horarios, metas concretas, cosas que no te gustan…">${h(p.notas)}</textarea>
+    <p class="ayuda">Lo lee el entrenador IA como información, no como órdenes.</p></div>`)}`;
 }
 
 function grupoAjustes(S) {
-  return `<section class="tarjeta">
-    <h2>Ajustes del móvil</h2>
-    <label class="campo col"><span>Código de acceso a la IA</span><input type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" placeholder="El mismo que APP_CODE en Vercel"></label>
-    <label class="interruptor"><input type="checkbox" data-cambio="perfil.ajuste" data-k="vibrar" ${S.ajustes.vibrar ? 'checked' : ''}><span>Vibrar al acabar el descanso</span></label>
-    <label class="interruptor"><input type="checkbox" data-cambio="perfil.ajuste" data-k="sonido" ${S.ajustes.sonido ? 'checked' : ''}><span>Pitido al acabar el descanso</span></label>
-    <div class="fila-botones"><button class="btn sec" data-act="perfil.exportar">Guardar copia</button><button class="btn sec" data-act="perfil.importar">Cargar copia</button></div>
-    ${puedeCompartirArchivos() ? '<button class="enlace" data-act="perfil.compartir">Enviar la copia a otra app (Archivos, Drive…)</button>' : ''}
-    <p class="tenue aviso-salud">La copia lleva tus datos de salud (lesiones, dolor, medidas y entrenos), sin el código de acceso. Guárdala en un sitio privado.</p>
+  return `${tarjeta('Ajustes del móvil', `<div class="campo"><label for="a-codigo">Código de acceso a la IA</label><input id="a-codigo" type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" aria-describedby="a-codigo-ayuda">
+      <p class="ayuda" id="a-codigo-ayuda">El mismo que te ha dado Víctor para usar el entrenador IA. Sin él, la app monta tus sesiones con sus reglas.</p></div>
+    <div class="bloque-mini">${interruptor('perfil.ajuste', S.ajustes.vibrar, 'Vibrar al acabar el descanso', 'data-k="vibrar"')}
+    ${interruptor('perfil.ajuste', S.ajustes.sonido, 'Pitido al acabar el descanso', 'data-k="sonido"')}</div>`)}
+  ${tarjeta('Copia en un archivo', `<div class="aviso aviso-linea aviso--aviso aviso-salud" role="note">${ICONOS.alerta}<div class="aviso-texto"><b>Lleva tus datos de salud</b><p>Lesiones, dolor, medidas y entrenos (sin el código de acceso). Guárdala en un sitio privado.</p></div></div>
+    <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="perfil.exportar">Guardar copia</button><button type="button" class="boton boton--secundario" data-act="perfil.importar">Cargar copia</button></div>
+    ${puedeCompartirArchivos() ? '<button type="button" class="boton boton--texto" data-act="perfil.compartir">Enviar la copia a otra app (Archivos, Drive…)</button>' : ''}
     ${bloqueCopia()}
     ${bloqueDeshacer()}
-    <p class="tenue pie">Móvil de ${h(nombre(S.dueño))} · <button class="enlace" data-act="perfil.cambiarDueño">cambiar</button></p>
-    <p class="tenue pie version-app">Versión de la app: <span data-version-app>${h(versionApp() || '—')}</span></p>
-  </section>`;
+    <p class="ayuda">Las copias automáticas están en Perfil › Copias.</p>`)}
+  ${tarjeta('Este móvil', `<p>Móvil de ${h(nombre(S.dueño))}.</p>
+    <button type="button" class="boton boton--texto" data-act="perfil.cambiarDueño">Cambiar de quién es</button>
+    <p class="meta version-app">Versión de la app: <span class="cifra" data-version-app>${h(versionApp() || '—')}</span></p>`)}`;
 }
 
 // Uso del almacenamiento y última copia exportada (los datos solo viven en este móvil).
@@ -184,22 +169,22 @@ const tamaño = b => b < 1024 ? b + ' B' : b < 1024 * 1024 ? es(b / 1024, 0) + '
 export function recordatorioCopia() {
   const c = infoCopia();
   if (!c.toca) return avisoNube();
-  return avisoNube() + `<p class="nota aviso-nota recordatorio-copia">Llevas ${c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.
-    <button class="enlace" data-act="perfil.exportar">Guardar copia</button></p>`;
+  return avisoNube() + `<div class="aviso aviso-linea aviso--aviso recordatorio-copia" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>Llevas ${+c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.</p>
+    <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.exportar">Guardar copia</button></div></div></div>`;
 }
 function bloqueCopia() {
   const u = usoAlmacen(), c = infoCopia();
   const pct = u.porcentaje < 1 ? 'menos del 1 %' : `${es(u.porcentaje, 0)} %`;
-  return `<p class="tenue uso-almacen">Tus datos ocupan ${tamaño(u.bytes)}, ${pct} de unos 5 MB que deja el navegador.</p>
-    <p class="tenue ultima-copia">${c.fecha ? `Última copia guardada: ${h(fechaCorta(c.fecha))}.` : 'Aún no has guardado ninguna copia.'}</p>
+  return `<p class="ayuda uso-almacen">Tus datos ocupan ${tamaño(u.bytes)}, ${pct} de unos 5 MB que deja el navegador.</p>
+    <p class="ayuda ultima-copia">${c.fecha ? `Última copia guardada: ${h(fechaCorta(c.fecha))}.` : 'Aún no has guardado ninguna copia.'}</p>
     ${recordatorioCopia()}`;
 }
 
 function bloqueDeshacer() {
   const a = infoAntesDeImportar();
   if (!a) return '';
-  return `<p class="tenue deshacer-importar">Antes de cargar la última copia (${h(fechaCorta(a.fecha))}) tus datos quedaron apartados (se borran solos a los 7 días).
-    <button class="enlace" data-act="perfil.deshacerImportar">Volver a ellos</button> · <button class="enlace" data-act="perfil.descartarAntes">Descartar</button></p>`;
+  return `<div class="aviso aviso-linea aviso--info deshacer-importar" role="note">${ICONOS.info}<div class="aviso-texto"><p>Antes de cargar la última copia (${h(fechaCorta(a.fecha))}) tus datos quedaron apartados. Se borran solos a los 7 días.</p>
+    <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.deshacerImportar">Volver a ellos</button><button type="button" class="boton boton--texto" data-act="perfil.descartarAntes">Descartar</button></div></div></div>`;
 }
 
 // ── Guardar y cargar copias ──
@@ -277,11 +262,11 @@ function esCopiaVieja(txt) { try { return esViejo(JSON.parse(txt)); } catch { re
 function detallesLesion(l) {
   return Object.entries(ZONAS).filter(([, z]) => z.detalles).map(([k, z]) => {
     const irradia = l.zona === k && l.detalle && (z.detalles.opciones[l.detalle] || {}).irradiado;
-    return `<label class="campo col" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
-      <span>Detalle <small>opcional; si no lo sabes, la app elige lo más prudente</small></span>
+    return `<div class="campo" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
+      <label for="l-detalle-${h(k)}">Detalle <small>opcional; si no lo sabes, la app elige lo más prudente</small></label>
       <select id="l-detalle-${h(k)}" data-cambio="perfil.lesionDetalle"><option value="">No lo sé</option>${Object.entries(z.detalles.opciones).map(([o, d]) => `<option value="${h(o)}" data-irradia="${d.irradiado ? '1' : ''}" ${l.zona === k && l.detalle === o ? 'selected' : ''}>${h(d.nombre)}</option>`).join('')}</select>
-      ${z.detalles.ayuda ? `<small class="tenue">${h(z.detalles.ayuda)}</small>` : ''}
-      <p class="nota aviso-nota" data-a4="${h(k)}" ${irradia ? '' : 'style="display:none"'}>${h(AVISO_IRRADIADO)}</p></label>`;
+      ${z.detalles.ayuda ? `<p class="ayuda">${h(z.detalles.ayuda)}</p>` : ''}
+      <p class="mensaje mensaje--error" data-a4="${h(k)}" role="alert" ${irradia ? '' : 'style="display:none"'}>${h(AVISO_IRRADIADO)}</p></div>`;
   }).join('');
 }
 // Dolor que baja por el brazo o la pierna (A4 de docs/criterio.md).
@@ -290,24 +275,25 @@ const AVISO_IRRADIADO = 'Si es nuevo o va a más, no entrenes y consulta.';
 function hojaLesion(l) {
   const nueva = !l;
   l = l || { zona: Object.keys(ZONAS)[0], dolor: 3, desde: hoyISO(), nota: '', activa: true };
+  const tipo = l.tipo || 'lesion';
   abrirHoja(`<h2>${nueva ? 'Nueva lesión o dolor' : 'Editar lesión'}</h2>
-    <label class="campo col"><span>Zona</span><select id="l-zona" data-cambio="perfil.lesionZona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></label>
+    <div class="campo"><label for="l-zona">Zona</label><select id="l-zona" data-cambio="perfil.lesionZona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></div>
     ${detallesLesion(l)}
-    <label class="campo col"><span>Dolor habitual: <b id="l-dolor-v">${+l.dolor}</b>/10</span><input type="range" id="l-dolor" min="0" max="10" value="${+l.dolor}" data-eco="l-dolor-v"></label>
-    <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}" aria-pressed="${(l.tipo || 'lesion') === k}">${h(n)}</button>`).join('')}</div></div>
-    <label class="campo col"><span>Desde</span><input type="date" id="l-desde" value="${h(l.desde || '')}"></label>
-    <label class="campo col"><span>Nota <small>qué movimientos duelen, diagnóstico…</small></span><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></label>
+    <div class="grupo">${selector({ id: 'l-dolor', et: 'Dolor habitual', valor: Math.max(0, Math.min(10, +l.dolor || 0)), min: 0, max: 10, paso: 1, unidad: 'de 10', act: 'perfil.lesionDolor', texto: v => `${v} de 10` })}</div>
+    <div class="grupo"><p class="grupo-et" id="l-tipo-et">Qué es</p><div class="chips" id="l-tipo" role="group" aria-labelledby="l-tipo-et" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${tipo === k ? 'on' : ''}" data-v="${k}" aria-pressed="${tipo === k}">${ICONOS.check}<span>${h(n)}</span></button>`).join('')}</div></div>
+    <div class="campo"><label for="l-desde">Desde</label><input type="date" id="l-desde" value="${h(l.desde || '')}"></div>
+    <div class="campo"><label for="l-nota">Nota <small>qué movimientos duelen, diagnóstico…</small></label><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></div>
     ${nueva ? '' : `<label class="interruptor"><input type="checkbox" id="l-activa" ${l.activa ? 'checked' : ''}><span>Sigue activa</span></label>`}
-    <div class="fila-botones">${nueva ? '' : `<button class="btn sec peligro" data-act="perfil.borrarLesion" data-id="${h(l.id)}">Borrar</button>`}<button class="btn" data-act="perfil.guardarLesion" data-id="${h(l.id || '')}">Guardar</button></div>`);
+    <div class="fila-botones">${nueva ? '' : `<button type="button" class="boton boton--peligro" data-act="perfil.borrarLesion" data-id="${h(l.id)}">Borrar lesión</button>`}<button type="button" class="boton" data-act="perfil.guardarLesion" data-id="${h(l.id || '')}">Guardar lesión</button></div>`, { clase: 'hoja-pf' });
   $('#l-zona').dataset.noFoco = '1';
 }
 
 const alternar = (lista, v) => { const i = lista.indexOf(v); if (i >= 0) lista.splice(i, 1); else lista.push(v); };
 
 acciones({
-  'perfil.grupo': el => { grupo = el.dataset.v; pintar(); window.scrollTo(0, 0); },
+  'perfil.grupo': el => { ponerGrupo(el.dataset.v); pintar(); window.scrollTo(0, 0); const b = $(`[data-act="perfil.grupo"][data-v="${el.dataset.v}"]`); if (b && el.closest('.grupos-perfil')) b.focus({ preventScroll: true }); },
   // Desde otras pantallas (p. ej. la nota «el código de acceso no es correcto»): Perfil › Ajustes.
-  'perfil.irAjustes': () => { grupo = 'ajustes'; cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
+  'perfil.irAjustes': () => { ponerGrupo('ajustes'); cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
   'perfil.acompañado': el => cambiar(S => { S.perfil.acompañado = el.checked; }, 'perfil-silencio'),
   'perfil.nadar25': el => cambiar(S => { if (el.checked) S.perfil.nadar25 = true; else delete S.perfil.nadar25; }, 'perfil'),
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
@@ -315,7 +301,6 @@ acciones({
   'perfil.objetivo': el => cambiar(S => alternar(S.perfil.objetivos, el.dataset.v), 'perfil'),
   'perfil.nivel': el => cambiar(S => { S.perfil.nivel = +el.dataset.v; }, 'perfil'),
   'perfil.nivelAuto': el => cambiar(S => { S.perfil.nivelAuto = el.checked; }, 'perfil'),
-  'perfil.dias': el => cambiar(S => { const d = S.perfil.disponibilidad; d.dias = Math.max(1, Math.min(7, d.dias + +el.dataset.v)); }, 'perfil'),
   'perfil.diaSemana': el => cambiar(S => { alternar(S.perfil.disponibilidad.diasSemana, +el.dataset.v); S.perfil.disponibilidad.diasSemana.sort(); if (S.perfil.disponibilidad.diasSemana.length) S.perfil.disponibilidad.dias = S.perfil.disponibilidad.diasSemana.length; }, 'perfil'),
   'perfil.minutos': el => cambiar(S => { S.perfil.disponibilidad.minutos = +el.dataset.v; }, 'perfil'),
   'perfil.lugar': el => cambiar(S => { alternar(S.perfil.lugares, el.dataset.v); if (!S.perfil.lugares.length) S.perfil.lugares.push('gym'); }, 'perfil'),
@@ -329,20 +314,11 @@ acciones({
     if (a4) a4.style.display = el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia ? '' : 'none';
   },
   'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.style.display = c.dataset.detalle === el.value ? '' : 'none'; }),
-  'perfil.mia': el => { const m = miaDe(estado(), el.dataset.id); if (m) hojaMia(m); },
-  'perfil.renombrarMia': el => {
-    const r = renombrarMia(el.dataset.id, ($('#mia-nombre') || {}).value || '');
-    if (r.error) { aviso(r.error, 'error'); return; }
-    cerrarHoja(); aviso('Nombre cambiado');
-  },
-  'perfil.borrarMia': async el => {
-    const m = miaDe(estado(), el.dataset.id); if (!m) return;
-    if (!await confirmar(`¿Borrar «${m.nombre}» de tus sesiones? Las sesiones que ya hiciste con ella se quedan.`, { si: 'Borrar', peligro: true })) return;
-    borrarMia(m.id); aviso('Borrada');
-  },
+  'perfil.crearMia': () => ir('mia/nueva'),
+  'perfil.editarMia': el => ir('mia/' + el.dataset.id),
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),
   'perfil.guardarLesion': el => {
-    const datos = { tipo: ($('#l-tipo .chip.on') || { dataset: { v: 'lesion' } }).dataset.v, zona: $('#l-zona').value, dolor: +$('#l-dolor').value, desde: $('#l-desde').value, nota: $('#l-nota').value.trim(), activa: $('#l-activa') ? $('#l-activa').checked : true };
+    const datos = { tipo: ($('#l-tipo .chip[aria-pressed="true"]') || { dataset: { v: 'lesion' } }).dataset.v, zona: $('#l-zona').value, dolor: +$('#l-dolor').getAttribute('aria-valuenow'), desde: $('#l-desde').value, nota: $('#l-nota').value.trim(), activa: $('#l-activa') ? $('#l-activa').checked : true };
     const detalle = $(`#l-detalle-${datos.zona}`);
     if (detalle && detalle.value) datos.detalle = detalle.value;
     cambiar(S => {
@@ -353,7 +329,9 @@ acciones({
     cerrarHoja();
   },
   'perfil.borrarLesion': async el => {
-    if (!await confirmar('¿Borrar esta lesión? Si ya está curada, mejor desmarca «Sigue activa» para que el entrenador lo sepa.', { si: 'Borrar', peligro: true })) return;
+    const l = estado().perfil.lesiones.find(x => x.id === el.dataset.id); if (!l) return;
+    const zona = ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona;
+    if (!await confirmar(`¿Borrar la lesión de ${minus(zona)}? Si ya está curada, mejor desmarca «Sigue activa» para que el entrenador lo sepa.`, { si: 'Borrar lesión', peligro: true })) return;
     cambiar(S => { S.perfil.lesiones = S.perfil.lesiones.filter(l => l.id !== el.dataset.id); }, 'perfil');
   },
   'perfil.exportar': () => exportarCopia(),
@@ -396,13 +374,18 @@ acciones({
   },
 });
 
+// Días por semana (selector ±): se guarda al momento.
+alCambiarSelector({
+  'perfil.dias': sel => cambiar(S => { S.perfil.disponibilidad.dias = Math.max(1, Math.min(7, +sel.dataset.valor)); }, 'perfil'),
+  'perfil.lesionDolor': () => {}, // se lee al guardar la lesión
+});
+
 // Prueba de pintado de una copia (router.probarPantallas): todas las partes del perfil.
 function probar() {
-  const antes = grupo;
-  try { for (const [k] of GRUPOS) { grupo = k; vista(); } } finally { grupo = antes; }
+  const antes = grupoPerfil();
+  try { for (const [k] of GRUPOS) { ponerGrupo(k); vista(); } } finally { ponerGrupo(antes); }
 }
-// El grupo elegido siempre a la vista en la fila de partes del perfil (M13).
-const montar = raiz => { const on = raiz.querySelector('.chips.grupos .chip.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); };
+const montar = raiz => devolverFoco(raiz);
 rutas({ perfil: { titulo: 'Perfil', vista, montar, probar } });
 pestaña({ ruta: 'perfil', nombre: 'Perfil', icono: ICONOS.perfil, orden: 40 });
 export { vista };
