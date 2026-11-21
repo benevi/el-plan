@@ -254,7 +254,7 @@ function vista([id]) {
       <div><h1>${h(s.nombre)}</h1><p>${h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> series${abierta ? '' : ', hecha'}</p></div>
       ${abierta ? '<button type="button" class="boton boton--secundario" data-act="sesion.terminar">Terminar</button>' : ''}
     </header>
-    <div class="avance" role="img" aria-label="${hechas} de ${total} series"><i style="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
+    <div class="avance" role="img" aria-label="${hechas} de ${total} series"><i data-var="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
     ${abierta ? `<div class="segmento segmento--ancho modo-sesion" role="radiogroup" aria-label="Cómo ver la sesión">
       <button type="button" role="radio" data-act="sesion.modo" data-v="foco" aria-checked="${modoFoco}" tabindex="${modoFoco ? 0 : -1}">Uno a uno</button>
       <button type="button" role="radio" data-act="sesion.modo" data-v="lista" aria-checked="${!modoFoco}" tabindex="${modoFoco ? -1 : 0}">Toda la sesión</button></div>` : ''}`;
@@ -525,7 +525,7 @@ function mostrarFinal(idSesion) {
   const d = datosFinal(S, s), quieto = movimientoReducido();
   // Cifras en rodillo: cada dígito sube hasta su valor (con movimiento reducido, ya en su sitio).
   let n = 0;
-  const rd = v => `<span class="solo-lector">${h(v)}</span><span class="rodillo" aria-hidden="true">${[...String(v)].map(c => /\d/.test(c) ? `<span class="rd" style="--i:${n++}"><span class="rd-tira" data-fin="${c}">${[...'0123456789'].map(k => `<span>${k}</span>`).join('')}</span></span>` : `<span>${h(c)}</span>`).join('')}</span>`;
+  const rd = v => `<span class="solo-lector">${h(v)}</span><span class="rodillo" aria-hidden="true">${[...String(v)].map(c => /\d/.test(c) ? `<span class="rd" data-var="--i:${n++}"><span class="rd-tira" data-fin="${c}">${[...'0123456789'].map(k => `<span>${k}</span>`).join('')}</span></span>` : `<span>${h(c)}</span>`).join('')}</span>`;
   const cifras = [['series', d.series], ...(d.min ? [['minutos', d.min]] : []), ...(d.kilos ? [[d.aprox ? 'kilos movidos, aprox.' : 'kilos movidos', d.kilos.toLocaleString('es-ES')]] : [])];
   const el = document.createElement('div');
   el.className = 'final' + (quieto ? '' : ' celebra');

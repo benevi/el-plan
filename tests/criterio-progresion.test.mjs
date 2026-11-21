@@ -153,6 +153,8 @@ test('H-6: «sin dolor» en curl-mancuernas no es «molesta» (C-ANA-2)', () => 
 });
 
 test('H-7: flexiones 3 × 15 dos veces, intermedio → progresión desde lo hecho; diamante solo con nivel 3 (C-PROG-9, C-DOSIS-10)', () => {
+  // Hora fija: con la hora real, cerca de medianoche la sesión de «hace 2 días» caía dentro de las 48 h de recuperación del pecho.
+  fijarFecha('2026-11-18T12:00');
   const base = { series: 3, reps: '8-15' };
   for (const nivel of [2, 3]) {
     const S = nuevoS({ nivel });

@@ -47,6 +47,7 @@ test.beforeAll(async () => {
   }
   fs.copyFileSync(path.join(RAIZ, 'tests/e2e/legado/sw.js'), path.join(legado, 'sw.js'));
   fs.copyFileSync(path.join(RAIZ, 'tests/e2e/legado/index.html'), path.join(legado, 'index.html'));
+  fs.copyFileSync(path.join(RAIZ, 'tests/e2e/legado/vercel.json'), path.join(legado, 'vercel.json')); // sus cabeceras, sin CSP
   srv = crearServidor({ raiz: vA });
   await srv.escuchar(PUERTO);
 });

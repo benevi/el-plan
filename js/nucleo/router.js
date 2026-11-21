@@ -88,6 +88,9 @@ export function pintar() {
     console.error(e);
     main.innerHTML = `<div class="tarjeta"><h1 class="titulo">Algo ha fallado</h1><p>No se ha podido pintar esta pantalla. Prueba a volver a Hoy.</p><p class="tenue">${h(e.message)}</p></div>`;
   }
+  // Antes de cualquier lectura de estilos (scroll, foco, transición): si no, una barra con transición
+  // arrancaría desde 0 en cada repintado esperando al observador.
+  aplicarVariables(main);
   diaPintado = hoyISO();
   document.title = (def.titulo ? def.titulo + ' · ' : '') + 'Pipos Fitness';
   document.body.classList.toggle('sin-nav', !!def.sinNav);
@@ -165,5 +168,23 @@ export function arrancar() {
     const el = e.target;
     if (el && el.tagName === 'IMG' && el.hasAttribute('data-quitar-si-falla')) el.remove();
   }, true);
+  // Variables de CSS que dependen de los datos (avance, rodillo de cifras): <i data-var="--v:0.5">.
+  // Con la CSP (PR 17) no hay atributos style en las plantillas; se ponen por CSSOM al entrar en la página.
+  aplicarVariables(document.body);
+  const Observador = globalThis.MutationObserver || (document.defaultView && document.defaultView.MutationObserver);
+  if (Observador) new Observador(cambios => {
+    for (const c of cambios) for (const n of c.addedNodes) if (n.nodeType === 1) aplicarVariables(n);
+  }).observe(document.body, { childList: true, subtree: true });
   pintar();
+}
+
+// Solo propiedades personalizadas (--algo) con valores numéricos: nada que venga de un texto libre.
+export function aplicarVariables(raiz) {
+  const els = raiz.matches && raiz.matches('[data-var]') ? [raiz, ...raiz.querySelectorAll('[data-var]')] : raiz.querySelectorAll('[data-var]');
+  for (const el of els) {
+    for (const par of el.dataset.var.split(';')) {
+      const m = /^\s*(--[a-z][\w-]*)\s*:\s*(-?\d+(?:\.\d+)?)\s*$/i.exec(par);
+      if (m) el.style.setProperty(m[1], m[2]);
+    }
+  }
 }
