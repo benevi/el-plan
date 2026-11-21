@@ -12,9 +12,9 @@ const repetidos = a => a.filter((x, i) => a.indexOf(x) !== i);
 const CARDIO_PR8 = ['marcha-estatica', 'cardio-sentado', 'nado-continuo', 'series-50-crol'];
 const existeOPendiente = id => !!ex(id);
 
-// 159 + 19 nuevos del PR 9 + 4 de cardio del PR 8 (docs/criterio.md, sección 18).
-test('el catálogo tiene 182 ejercicios', () => {
-  assert.equal(EJERCICIOS.length, 182);
+// 159 + 19 nuevos del PR 9 + 4 de cardio del PR 8 (docs/criterio.md, sección 18) + 4 de la espalda alta (sección 12.9).
+test('el catálogo tiene 186 ejercicios', () => {
+  assert.equal(EJERCICIOS.length, 186);
 });
 
 test('ids y nombres únicos; ids en minúsculas con guiones', () => {
@@ -123,7 +123,7 @@ test('los 4 ejercicios de cardio del PR 8 están en el catálogo', () => {
   assert.deepEqual(CARDIO_PR8.filter(id => !ex(id)), []);
 });
 
-test('las etiquetas de riesgo son las de la tabla 12.9 del criterio (y las de la revisión)', () => {
+test('las etiquetas de riesgo son las de la tabla 12.10 del criterio (y las de la revisión)', () => {
   const esperado = [
     ['carrera-suave', 'rodilla', 2], ['carrera-suave', 'tobillo_pie', 2], ['carrera-suave', 'lumbar', 1],
     ['comba', 'rodilla', 2], ['comba', 'tobillo_pie', 2], ['comba', 'muñeca', 1], ['comba', 'lumbar', 1],
@@ -145,7 +145,7 @@ test('las etiquetas de riesgo son las de la tabla 12.9 del criterio (y las de la
     ['talones-toalla-dedos', 'tobillo_pie', 1], ['estiramiento-pectoral-pared', 'hombro', 1],
     // Revisión del PR 9: la negativa termina colgado de la barra (12.5: colgarse es r=2); la asistida sigue en 1.
     ['dominadas-negativas', 'hombro', 2], ['dominadas-asistidas-maquina', 'hombro', 1],
-    // Convención del PR 9 (no está en la tabla 12.9): cuadrupedia o de rodillas con la rodilla apoyada = rodilla 1,
+    // Convención del PR 9 (no está en la tabla 12.10): cuadrupedia o de rodillas con la rodilla apoyada = rodilla 1,
     // como bird-dog; así cuadra el «con dolor 4 o más: sin apoyar la rodilla» de la ficha.
     ...['bird-dog', 'gato-camello', 'rotacion-toracica-cuadrupedia', 'flexiones-rodillas', 'patada-gluteo-cuadrupedia', 'rueda-abdominal'].map(id => [id, 'rodilla', 1]),
   ];

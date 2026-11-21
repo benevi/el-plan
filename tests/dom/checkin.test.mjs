@@ -90,3 +90,14 @@ test('C-ALAR-1: el aviso de precaución no usa el estilo de la alarma del descan
   a.clic([...a.doc.querySelectorAll('.hoja button')].find(x => /No noto ninguna/.test(x.textContent)));
   await a.esperar(() => !(a.estado.estado().alarmas || []).some(x => x.respuesta === 'si'));
 });
+
+test('C-ZONA-DORSAL: el check-in ofrece «Espalda alta» y al tocarla sale su control de dolor', async () => {
+  await reiniciar(conLesion('2026-01-01'));
+  await abrir();
+  const chip = a.doc.querySelector('[data-act="entrenador.ciZona"][data-v="dorsal"]');
+  assert.ok(chip, 'sin la zona en «¿Te duele algo más?»');
+  assert.equal(chip.textContent.trim(), 'Espalda alta');
+  a.clic(chip);
+  await a.esperar(() => a.doc.querySelector('input[type=range][data-z="dorsal"]'));
+  assert.match(a.doc.querySelector('.hoja').textContent, /Dolor hoy · Espalda alta/);
+});

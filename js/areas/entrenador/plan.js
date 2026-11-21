@@ -18,7 +18,7 @@ const ZONAS_CARGA = ['cadera_lateral', 'rodilla', 'lumbar', 'tobillo_pie'];
 // ── C-VOL-1 · Series semanales por músculo grande, por nivel ──
 // banda, techo y máximo por sesión y músculo (series directas).
 const VOLUMEN = { 1: { banda: [6, 10], techo: 12, sesion: 6 }, 2: { banda: [10, 14], techo: 16, sesion: 8 }, 3: { banda: [12, 18], techo: 20, sesion: 10 } };
-// C-VOL-4 · Mapa zona → músculos (lumbar y cervical: se cambia el tipo de ejercicio, no el volumen).
+// C-VOL-4 · Mapa zona → músculos (lumbar, dorsal y cervical: se cambia el tipo de ejercicio, no el volumen).
 const MUSCULOS_ZONA = { cadera_lateral: ['gluteo'], rodilla: ['cuadriceps'], tobillo_pie: ['gemelo'], hombro: ['hombro', 'pecho'], codo: ['biceps', 'triceps'], 'muñeca': ['biceps', 'triceps'] };
 
 // Volumen objetivo de la semana: { m: { min, techo } } para cada músculo con límites.
