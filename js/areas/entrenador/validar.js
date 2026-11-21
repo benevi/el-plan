@@ -28,6 +28,7 @@ import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
   calentamientoDe, vueltaDe, tiempoSesionExacto, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
+  sincronizarDosis, techoDolor,
 } from './dia.js';
 import { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
 import { normalizarTexto } from './alarma.js';
@@ -43,6 +44,9 @@ export const NOTA_NIVEL = 'Es de un nivel más alto que el tuyo: prioriza la té
 export const esUltimoRecurso = t => /\(último recurso\)|no caben tu cardio/.test(String(t));
 const LUGAR_TXT = { gym: 'el gimnasio', casa: 'casa', calle: 'la calle', piscina: 'la piscina' };
 
+// Zonas en las que un ejercicio va «con precaución» hoy: r=1 en una zona en B0-B1 (C-DOSIS-4).
+const zonasPrecaucion = (e, ctx) => (riesgoHoy(e, ctx.niveles, ctx.bandas) === 'precaucion' ? Object.keys(ctx.bandas).filter(z => (e.r || {})[z] === 1 && ctx.bandas[z].banda <= 1) : []);
+const minPrecaucion = tipo => (tipo === 'aislamiento' ? 12 : 10);
 // Por qué un ejercicio no vale hoy (null si vale).
 function motivoNoVale(S, e, ctx) {
   if (!e.l.includes(ctx.lugar)) return `es de otro lugar (hoy entrenas en ${LUGAR_TXT[ctx.lugar] || ctx.lugar})`;
@@ -132,6 +136,8 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
     if (+x.series > maxSeries(e, ctx.lugar)) out.push(`${x.id}: ${x.series} series`);
     if (x.rol !== 'cardio' && !normalizarReps(e, x.reps)) out.push(`${x.id}: repeticiones «${x.reps}»`);
     if (x.kg != null && +x.kg > 0 && !conKg.has(x.id)) out.push(`${x.id}: kilos sin historial`);
+    const rp = rango(x.reps);
+    if (e.t === 'reps' && rp && rp.u === '' && zonasPrecaucion(e, ctx).length && rp.lo < minPrecaucion(tipoEj(e))) out.push(`${x.id}: con precaución, ${x.reps} repeticiones (mínimo ${minPrecaucion(tipoEj(e))})`);
   });
   const cardio = ejs.filter(x => x.rol === 'cardio' && esCardioValido(ex(x.id), ctx.lugar));
   if (!cardio.length && opcionesCardio(S, ctx, { sinRiesgo: alto || suave }).length) out.push('sin cardio');
@@ -348,6 +354,23 @@ export function validarSesion(S, sesion, ctxIn = {}) {
         cambios.push(`${nombre(e)} a ${nuevo} repeticiones: un aislamiento no baja de ${minReps}`);
         x.reps = nuevo + (rg.resto || '');
       }
+      // C-DOSIS-4 · Con precaución (r=1 en una zona B0-B1, dolor 0-3): ≥ 10 repeticiones (12 en aislamiento) y
+      // 3 de margen, bajada de 3 s y el techo en la nota. También en lo que propone la IA.
+      const zp = zonasPrecaucion(e, ctx);
+      const rp = rango(x.reps);
+      if (zp.length && e.t === 'reps' && rp && rp.u === '') {
+        const min = minPrecaucion(tipo);
+        const zt = lista(zp.map(z => `tu ${nombreZona(z)}`));
+        if (rp.lo < min) {
+          const nuevo = `${min}-${Math.max(rp.hi, min + 2)}`;
+          cambios.push(`${nombre(e)} a ${nuevo} repeticiones: implica ${zt} y, con precaución, no baja de ${min}`);
+          x.reps = nuevo + (rp.resto || '');
+        }
+        if (!/3 (repeticiones )?de margen/.test(x.nota || '')) {
+          const techo = Math.min(...zp.map(z => Math.min(techoDolor(S, z, { rehab: x.rol === 'rehab' }), (ctx.bandas[z].dolor || 0) + 2)));
+          x.nota = `Con precaución por ${lista(zp.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}: bajada de 3 s y 3 repeticiones de margen; si pasa de ${techo}/10, salta al siguiente. ${x.nota || ''}`.trim().slice(0, 300);
+        }
+      }
       const desc = Math.round(+x.descanso);
       x.descanso = desc >= 0 && desc <= 300 ? desc : x.rol === 'principal' ? dosis(S, e, i, lugar).descanso : e.d[2];
       const pm = x.rol === 'principal' ? Math.max(pausaMinima(tipo, (rango(x.reps) || {}).lo), ctx.salud.descansoMin || 0) : 0;
@@ -406,6 +429,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
   const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
   if (ultimo) s.explicacion.splice(1, 0, ultimo);
+  sincronizarDosis(s);
   const valida = problemasSesion(S, s, { ...ctxIn, lugar, minutos, dolorHoy }).length === 0;
   return { sesion: s, cambios, valida, ultimoRecurso: !!ultimo };
 }

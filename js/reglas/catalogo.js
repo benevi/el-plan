@@ -50,9 +50,16 @@ export function disponibles(perfil, lugar, { dolorHoy = {}, nivelMax } = {}) {
 // Alternativa segura para cambiar un ejercicio (mismo músculo, material parecido, mismo tipo).
 // Un ejercicio de dosis propia (rehabilitación, movilidad…) solo sustituye a uno de fuerza si no hay otro.
 const puntosTipo = (e, orig) => (e.tipo === orig.tipo ? 4 : 0) - (e.tipo === 'propia' && orig.tipo !== 'propia' ? 8 : 0);
-export function alternativas(orig, lugar, perfil, { excluir = [], dolorHoy = {} } = {}) {
+// nivel: tope de nivel para un principal (C-DOSIS-10: niv ≤ nivel; si no hay ninguno, los de menor nivel).
+// Sin él (una de «Mis sesiones», C-MIA-2), hasta un nivel más, como hasta ahora.
+export function alternativas(orig, lugar, perfil, { excluir = [], dolorHoy = {}, nivel = null } = {}) {
   const mat = new Set(orig.mat);
-  return disponibles(perfil, lugar, { dolorHoy }).filter(e => e.id !== orig.id && !excluir.includes(e.id) && (e.m[0] === orig.m[0] || orig.m.includes(e.m[0])))
+  let cand = disponibles(perfil, lugar, { dolorHoy }).filter(e => e.id !== orig.id && !excluir.includes(e.id) && (e.m[0] === orig.m[0] || orig.m.includes(e.m[0])));
+  if (nivel != null && cand.length) {
+    const ok = cand.filter(e => e.niv <= nivel);
+    cand = ok.length ? ok : cand.filter(e => e.niv === Math.min(...cand.map(x => x.niv)));
+  }
+  return cand
     .map(e => ({ e, p: (e.m[0] === orig.m[0] ? 10 : 0) + e.mat.filter(m => mat.has(m)).length * 3 + (e.t === orig.t ? 2 : 0) + puntosTipo(e, orig) - Math.abs(e.niv - orig.niv) + ((perfil.gustos || {})[e.id] === 'gusta' ? 3 : 0) - ((perfil.gustos || {})[e.id] === 'nogusta' ? 4 : 0) }))
     .sort((a, b) => b.p - a.p).map(x => x.e);
 }

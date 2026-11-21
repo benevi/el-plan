@@ -13,19 +13,23 @@
 //     nota, motivo,                               // nota del entrenador · motivo de la progresión
 //     sets: [{ kg|null, valor: '12'|'40'|'1:30', hecha }],
 //     gusto: 'rechazo'|'nogusta'|'gusta'|null, comentario,
-//     superserie?: true                         // va en pareja con el siguiente (último recurso de tiempo)
+//     superserie?: true,                        // va en pareja con el siguiente (último recurso de tiempo)
+//     dolorDurante?: { zona, dolor, antes, techo }  // se paró: el dolor pasó del límite (C-DOLOR-6, «Algo va mal»)
 //   }],
 //   estado: 'pendiente' | 'en_curso' | 'hecha', empezada, terminada,
 //   cierre: { esfuerzo 1-5, dolor: { zona: 0-10 }, comentario } | null,
 //   origen?: { tipo: 'mia', id }               // hecha a partir de una de «Mis sesiones» (S.misSesiones)
-//   iaFallo?: { motivo, peticion?, diaPlan 1-7|null, reintentable, huella }  (huella: huellaSesion al crearla)  // la hizo la app sin la IA (PR 12):
-//            motivo completa «La ha hecho la app porque…»; peticion = lo pedido en el check-in sin atender
+//   parada?: 'alarma'                          // terminada con «Algo va mal» por una señal de alarma (C-ALAR-1)
+//   iaFallo?: { motivo, peticion?, atendido?, diaPlan 1-7|null, reintentable, huella }  (huella: huellaSesion al crearla)  // la hizo la app sin la IA (PR 12):
+//            motivo completa «La ha hecho la app porque…»; peticion = lo pedido en el check-in sin atender;
+//            atendido = la parte que sí entendió la app («hoy pierna y glúteo»)
 // }
 //
 // Plan semanal:
 // { semana 'YYYY-Www', creado ISO, fuente, resumen, criterios, progresion,
 //   dias: [{ diaSemana 1-7, nombre, foco, lugar, minutos, explicacion: [texto], calentamiento, ejercicios, vuelta }],
-//   iaFallo?: { motivo, semana: { dias, minutos, lugares } } }   // la hizo la app porque falló la IA (PR 12)
+//   iaFallo?: { motivo, semana: { dias, minutos, lugares } },   // la hizo la app porque falló la IA (PR 12)
+//   noPuedo?: [diaSemana] }   // días en que dijo «Hoy no puedo» sin otro día libre (E13): no cuentan como «Hoy toca»
 
 import { uid, hoyISO } from './estado.js';
 import { ex } from '../reglas/catalogo.js';
@@ -70,7 +74,7 @@ export function crearSesion(d) {
 // series, kilos, lo apuntado, gusto y comentario. Corta (djb2 en base 36); no lleva iaFallo.
 export function huellaSesion(s) {
   const t = JSON.stringify([s.estado, (s.calentamiento || []).map(x => !!x.hecho), (s.vuelta || []).map(x => !!x.hecho), s.cierre || null,
-    (s.ejercicios || []).map(x => [x.id, x.rol, x.series, x.reps, x.descanso, x.kg, (x.sets || []).map(z => [z.kg, z.valor, !!z.hecha]), x.gusto || null, x.comentario || ''])]);
+    (s.ejercicios || []).map(x => [x.id, x.rol, x.series, x.reps, x.descanso, x.kg, (x.sets || []).map(z => [z.kg, z.valor, !!z.hecha]), x.gusto || null, x.comentario || '', ...(x.dolorDurante ? [x.dolorDurante] : [])])]);
   let n = 5381;
   for (let i = 0; i < t.length; i++) n = ((n * 33) ^ t.charCodeAt(i)) >>> 0;
   return n.toString(36);
@@ -86,7 +90,8 @@ export function sesionTocada(s) {
 export function iaFalloSesion(f) {
   if (!f || typeof f !== 'object' || typeof f.motivo !== 'string' || !f.motivo.trim()) return undefined;
   const ds = Number.isInteger(f.diaPlan) && f.diaPlan >= 1 && f.diaPlan <= 7 ? f.diaPlan : null;
-  return { motivo: f.motivo.slice(0, 300), ...(typeof f.peticion === 'string' && f.peticion.trim() ? { peticion: f.peticion.slice(0, 300) } : {}), diaPlan: ds, reintentable: f.reintentable !== false,
+  return { motivo: f.motivo.slice(0, 300), ...(typeof f.peticion === 'string' && f.peticion.trim() ? { peticion: f.peticion.slice(0, 300) } : {}),
+    ...(typeof f.atendido === 'string' && f.atendido.trim() ? { atendido: f.atendido.slice(0, 120) } : {}), diaPlan: ds, reintentable: f.reintentable !== false,
     ...(typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {}) };
 }
 export const TIPOS_SESION = ['suave', 'dolorAlto'];

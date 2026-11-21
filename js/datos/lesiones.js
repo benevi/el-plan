@@ -558,7 +558,9 @@ export function dosisRehab(e, fase) {
   // Posturas y caminar por minutos (descarga 90/90, caminar en el agua): su propia dosis, suave.
   if (e.t === 'tiempo' && /min/.test(r0)) return { series: s0, reps: r0, descanso: d0, intensidad: 'suave, en una postura o a un ritmo que no aumente el dolor' };
   const isoSeg = e.t === 'tiempo' && /^\d+(-\d+)?\s*s\b/.test(r0);
-  if (fase === 1) return isoSeg ? { series: 4, reps: '30-45s', descanso: 30, intensidad: INTENSIDAD[1] } : { series: s0, reps: r0, descanso: Math.min(d0 || 30, 30), intensidad: INTENSIDAD[1] };
+  // Un isométrico «c/lado» sigue siendo por lados (el cronómetro cuenta los dos, E6).
+  const lado = (String(r0).match(/\s+(c\/\s*\S+|por lado|cada lado)\s*$/i) || [''])[0];
+  if (fase === 1) return isoSeg ? { series: 4, reps: '30-45s' + lado, descanso: 30, intensidad: INTENSIDAD[1] } : { series: s0, reps: r0, descanso: Math.min(d0 || 30, 30), intensidad: INTENSIDAD[1] };
   if (fase === 3) {
     const m = e.t === 'reps' && String(r0).match(/^\d+(?:-\d+)?(.*)$/);
     return { series: 3, reps: m ? '8-12' + m[1] : r0, descanso: 60, intensidad: INTENSIDAD[3] };

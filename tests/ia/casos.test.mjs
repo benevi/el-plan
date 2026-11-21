@@ -254,7 +254,9 @@ test('juez de plan: más de 4 días de fuerza siendo principiante o días que fa
   const r = buena(p);
   assert.ok(juzgar(p, r).aprueba);
   const fuerza = r.dias.find(d => d.ejercicios.some(x => x.rol === 'principal'));
-  const todoFuerza = { ...r, dias: r.dias.map(d => ({ ...copia(fuerza), diaSemana: d.diaSemana })) };
+  // Con 4 series por principal (un principiante sale a 3 desde E10), repetir el día choca con C-REP-1.
+  const conCuatro = d => ({ ...d, ejercicios: d.ejercicios.map(x => (x.rol === 'principal' ? { ...x, series: Math.max(4, x.series) } : x)) });
+  const todoFuerza = { ...r, dias: r.dias.map(d => ({ ...conCuatro(copia(fuerza)), diaSemana: d.diaSemana })) };
   const j = juzgar(p, todoFuerza);
   assert.equal(j.aprueba, false);
   assert.ok(j.seguridad.some(t => /más de 4 días/.test(t)), j.seguridad.join(', '));
