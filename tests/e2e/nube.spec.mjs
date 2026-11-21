@@ -11,7 +11,7 @@ const blob = new BlobSimulado();
 
 // Reloj del servidor: la retención deja una copia por hora, así que la prueba avanza una hora entre copias.
 let desfase = 0;
-test.beforeAll(() => { process.env.APP_CODE = 'secreto'; ponerAlmacen(blob); reiniciarRitmo(); ponerReloj(() => Date.now() + desfase); });
+test.beforeAll(() => { process.env.APP_CODE = 'secreto'; process.env.VERCEL_ENV = 'production'; ponerAlmacen(blob); reiniciarRitmo(); ponerReloj(() => Date.now() + desfase); });
 test.afterAll(() => { ponerAlmacen(null); ponerReloj(null); });
 
 // Contexto con /api/copia → función real (el service worker no atiende /api/*, así que la ruta lo ve).

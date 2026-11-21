@@ -19,12 +19,12 @@
 // - salud.js    datos de salud del perfil (D4) y sus restricciones.
 // - mias.js     «Mis sesiones»: guardar una sesión para repetirla (el check-in la ajusta a hoy, sin IA).
 
-export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab } from './dia.js';
+export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab, limiteDolor } from './dia.js';
 export { validarSesion, problemasSesion, normalizarReps } from './validar.js';
 export { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
-export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS, T1, T2, T6, T8 } from './alarma.js';
+export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS, T1, T2, T3, T6, T8 } from './alarma.js';
 export { restriccionesSalud, etiquetasSalud, CAMPOS_SALUD, MEDICACION, AVISO_VISTO_BUENO } from './salud.js';
-export { ajustesPorTendencia, diasPorDefecto, planReglas, planDeLaSemana, estadoDias, planDeHoy, diaElegido, siguientePendiente, reorganizar } from './plan.js';
+export { ajustesPorTendencia, diasPorDefecto, planReglas, planDeLaSemana, estadoDias, planDeHoy, diaElegido, siguientePendiente, reorganizar, noPuedoHoy } from './plan.js';
 export { ajustarAlCheckin, motivoIA, previaCheckin } from './checkin.js';
-export { crearSesionHoy, crearPlanSemana, preguntaAntes, sinEntrenarHoy, DESDE } from './ia.js';
+export { crearSesionHoy, crearPlanSemana, preguntaAntes, sinEntrenarHoy, pararPorAlarma, DESDE } from './ia.js';
 export { misSesiones, miaDe, guardarMia, renombrarMia, borrarMia, motivoNoGuardar, MAX_MIAS, LARGO_NOMBRE_MIA } from './mias.js';

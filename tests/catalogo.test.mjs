@@ -343,7 +343,7 @@ test('en casa y en la calle hay cardio permitido con lesiones de carga (cadera, 
 
 test('dosis de rehabilitación por fase (C-DOSIS-7 y fichas)', () => {
   const D = (id, f) => L.dosisRehab(ex(id), f);
-  for (const id of ['abduccion-isometrica-pared', 'rotacion-externa-isometrica', 'extension-rodilla-isometrica', 'talones-isometrico', 'extension-muneca-isometrica']) assert.deepEqual([D(id, 1).series, D(id, 1).reps, D(id, 1).descanso], [4, '30-45s', 30], id);
+  for (const id of ['abduccion-isometrica-pared', 'rotacion-externa-isometrica', 'extension-rodilla-isometrica', 'talones-isometrico', 'extension-muneca-isometrica']) assert.deepEqual([D(id, 1).series, D(id, 1).reps, D(id, 1).descanso], [4, id === 'abduccion-isometrica-pared' ? '30-45s c/lado' : '30-45s', 30], id); // «c/lado» se conserva (E6)
   assert.deepEqual([D('puente-gluteo', 1).series, D('puente-gluteo', 1).reps], [3, '10']);
   assert.match(D('puente-gluteo', 1).intensidad, /lento/);
   assert.deepEqual([D('separacion-banda', 1).series, D('separacion-banda', 1).reps], [2, '15']);

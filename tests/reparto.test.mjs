@@ -81,6 +81,24 @@ test('C-VOL-1: músculo intermedio llega al menos a la banda en los grandes prin
   // glúteo llega antes a su techo (C-VOL-2: el techo manda).
   assert.ok(['pecho', 'espalda'].every(m => vol[m] >= 10), JSON.stringify(vol));
   assert.ok(vol.cuadriceps >= 8 && vol.gluteo <= 18, JSON.stringify(vol));
+  // D-B (Víctor, 21-11-2026): como mucho 4 series por ejercicio; el volumen que falta va en otro ejercicio.
+  const prin = p.dias.flatMap(d => d.ejercicios.filter(x => x.rol === 'principal'));
+  assert.ok(prin.every(x => x.series <= 4), prin.map(x => `${x.id} ${x.series}`).join(', '));
+});
+
+test('D-B: el relleno de volumen no pasa de 3 series (principiante) ni de 4 (intermedio y avanzado) y añade ejercicios', () => {
+  for (const [nivel, tope] of [[1, 3], [2, 4], [3, 4]]) {
+    for (const dias of [[6, 7], [1, 4], [1, 3, 5], [1, 2, 4, 5]]) {
+      const { p } = plan({ objetivos: ['musculo'], nivel }, dias);
+      const prin = p.dias.flatMap(d => d.ejercicios.filter(x => x.rol === 'principal'));
+      assert.ok(prin.every(x => x.series <= tope), `nivel ${nivel}, días ${dias}: ${prin.map(x => `${x.id} ${x.series}`).join(', ')}`);
+    }
+  }
+  // Avanzado con 2 días: con 4 series por ejercicio no llega a su banda (12) sin otro ejercicio de pecho.
+  const { p } = plan({ objetivos: ['musculo'], nivel: 3 }, [1, 4]);
+  const pecho = p.dias.flatMap(d => d.ejercicios.filter(x => x.rol === 'principal' && cat.ex(x.id).m[0] === 'pecho'));
+  assert.ok(pecho.length >= 3, pecho.map(x => x.id).join(', '));
+  assert.ok(P.volumenSemana(p.dias).pecho >= 12, JSON.stringify(P.volumenSemana(p.dias)));
 });
 
 test('C-VOL-4: hombro en B1 deja hombro y pecho en el techo del nivel inferior; nunca suma series a lo que toca la zona', () => {

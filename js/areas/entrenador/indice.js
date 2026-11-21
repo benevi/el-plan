@@ -12,7 +12,7 @@ import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
-  crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
+  crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar, noPuedoHoy,
   previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, SEÑALES_CORTAS, T2, DESDE, misSesiones, miaDe,
 } from './entrenador.js';
 
@@ -23,9 +23,16 @@ const minus = t => String(t || '').toLowerCase();
 
 // ── Check-in: lo que cambia la sesión, y enseña qué cambia antes de crearla ──
 let ci = null;
+// Desplazamiento de la hoja que se recupera al repintarla (E3): cada opción repinta la hoja entera y, sin esto,
+// volvía arriba a cada toque. Lo guarda también quien abre otra hoja encima (la confirmación de 7 o más).
+let scrollCi = null;
+const guardarScrollCi = () => { const v = $('.hoja.checkin'); if (v) scrollCi = v.scrollTop; };
 
-function hojaCheckin() {
+function hojaCheckin({ arriba = false } = {}) {
   const S = estado();
+  const vieja = $('.hoja.checkin');
+  const top = arriba ? 0 : vieja ? vieja.scrollTop : scrollCi || 0;
+  scrollCi = null;
   // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
   const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   const otras = Object.keys(ZONAS).filter(z => !zonas.includes(z));
@@ -44,21 +51,24 @@ function hojaCheckin() {
     ${mias.length ? `<div class="campo col mis-sesiones-ci"><span>Qué sesión</span><div class="chips">
       <button class="chip ${mia ? '' : 'on'}" data-act="entrenador.ciMia" data-v="" aria-pressed="${!mia}">${dia ? 'La de mi plan' : 'La que me prepares'}</button>
       ${mias.map(m => `<button class="chip ${mia && mia.id === m.id ? 'on' : ''}" data-act="entrenador.ciMia" data-v="${h(m.id)}" aria-pressed="${!!(mia && mia.id === m.id)}">${h(m.nombre)}</button>`).join('')}</div>
-      ${mia && dia ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciOcupar" ${ci.ocuparDia ? 'checked' : ''}><span>Cuenta como el día «${h(dia.nombre)}» del plan</span></label>` : ''}</div>` : ''}
+      ${mia && dia ? `<label class="interruptor"><input type="checkbox" data-no-foco="1" data-cambio="entrenador.ciOcupar" ${ci.ocuparDia ? 'checked' : ''}><span>Cuenta como el día «${h(dia.nombre)}» del plan</span></label>` : ''}</div>` : ''}
     <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
     ${zonas.map(z => `<div class="campo col"><label class="col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
-      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>
+      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-no-foco="1" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>
       ${deLesion.includes(z) ? '' : `<button class="enlace" data-act="entrenador.ciQuitarZona" data-v="${h(z)}">Quitar ${h(minus(ZONAS[z].corta))}</button>`}</div>`).join('')}
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
     <div class="campo col alarma-ci"><span>Señales de alarma</span>
       <ul class="tenue señales-cortas">${SEÑALES_CORTAS.map(t => `<li>${h(t)}</li>`).join('')}</ul>
       <details class="plegable"><summary>Ver la lista completa</summary><ul class="tenue">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>
-      <label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto alguna de estas señales</b> · si la marcas, hoy no se entrena</span></label></div>
-    ${mia ? '' : `<label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>`}
+      <label class="interruptor"><input type="checkbox" data-no-foco="1" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto alguna de estas señales</b> · si la marcas, hoy no se entrena</span></label></div>
+    ${mia ? '' : `<label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" data-no-foco="1" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>`}
     ${htmlPrevia(pv)}
     <button class="btn grande" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : `${ICONOS.play} ${mia ? `Preparar «${h(mia.nombre)}»` : 'Preparar mi sesión'}`}</button>`, { clase: 'checkin' });
+  // Se abre arriba (sin foco automático en ningún campo, que bajaba la hoja hasta la casilla de alarma) y,
+  // al repintar, se queda donde estaba.
+  const hoja = $('.hoja.checkin'); if (hoja) hoja.scrollTop = top;
   const pet = $('#ci-peticion');
   if (!pet) return;
   pet.addEventListener('input', e => { ci.peticion = e.target.value; });
@@ -66,13 +76,17 @@ function hojaCheckin() {
   // botón «Preparar mi sesión» y el toque se perdía (PR 12).
   pet.addEventListener('change', () => { const v = $('.hoja.checkin .previa'); if (v) v.outerHTML = htmlPrevia(previaCheckin(ci)); });
 }
+// «Pedírsela igualmente al entrenador IA» solo cuando de verdad se puede pedir: no con dolor de 7 o más, con
+// datos de salud que piden la sesión suave, con una de «Mis sesiones», sin red ni con la casilla de alarma
+// (C-DOLOR-4, C-SALUD-1, C-ALAR-1; E12). Con la casilla ya marcada sigue a la vista para poder quitarla.
+const puedeForzarIA = pv => enLinea() && !ci.mia && !ci.alarma && !['dolor', 'salud', 'mia', 'red'].includes(pv.ia.por) && (!pv.ia.usar || ci.forzarIA);
 function htmlPrevia(pv) {
   return `<section class="previa" aria-live="polite">
       <h3>Con lo que me dices</h3>
       ${pv.cambios.length ? `<ul>${pv.cambios.map(c => `<li>${h(c)}</li>`).join('')}</ul>` : `<p class="tenue">${ci.mia ? 'Nada cambia: haces tu sesión tal como la guardaste.' : 'Nada cambia: haces el día tal como estaba previsto.'}</p>`}
       <p class="tenue">${+pv.datos.ejercicios.length} ejercicios · unos ${+pv.minutos} min con calentamiento y estiramientos.</p>
-      <p class="tenue">${ICONOS.ia} ${h(ci.forzarIA ? 'Se lo pides al entrenador IA.' : pv.ia.motivo)}</p>
-      ${enLinea() && !pv.ia.usar && !ci.mia ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
+      <p class="tenue">${ICONOS.ia} ${h(pv.ia.motivo)}</p>
+      ${puedeForzarIA(pv) ? `<label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciIA" ${ci.forzarIA ? 'checked' : ''}><span>Pedírsela igualmente al entrenador IA</span></label>` : ''}
     </section>`;
 }
 
@@ -121,7 +135,7 @@ export function abrirCheckin(diaPlan = null, op = {}) {
   const mia = op.mia || (deMia && deMia.origen.id);
   if (mia) elegirMia(S, mia);
   if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; }
-  hojaCheckin();
+  hojaCheckin({ arriba: true });
 }
 // Elegir (o dejar) una de «Mis sesiones» en el check-in: su lugar, si lo tienes, y su tiempo; sin petición ni IA.
 // Lo de antes (lugar, minutos, petición, IA) se aparta y vuelve al dejarla («La de mi plan»).
@@ -208,7 +222,9 @@ export function notaFallo(s) {
   const puede = s.estado === 'pendiente' && !tocada && f.reintentable !== false;
   return `<div class="nota aviso-nota nota-fallo" role="note">
     <p>La ha hecho la app porque ${h(f.motivo)}.${enlaceCodigo(f.motivo)}</p>
-    ${f.peticion ? `<p>No he podido atender lo que pediste: «${h(f.peticion)}».</p>` : ''}
+    ${f.peticion ? (f.atendido
+      ? `<p>De lo que pediste («${h(f.peticion)}»), la app ha hecho lo que entiende: ${h(f.atendido)}. Lo demás no lo he podido atender: sin el entrenador IA, la app solo entiende si pides tren superior o inferior.</p>`
+      : `<p>No he podido atender lo que pediste: «${h(f.peticion)}».</p>`) : ''}
     ${puede ? (enLinea() ? `<button class="btn sec pequeño" data-act="entrenador.reintentarIA" data-v="${h(s.id)}">${ICONOS.ia} Reintentar con IA</button>` : '<p class="tenue">Cuando tengas conexión podrás reintentarlo con la IA.</p>') : ''}
   </div>`;
 }
@@ -228,7 +244,7 @@ function hojaPlan() {
   const libres = ps.dias.filter(d => d >= hoy && !hechos.includes(d));
   abrirHoja(`<h2>Tu semana</h2>
     <p class="tenue">Marca los días que puedes entrenar <b>esta semana</b>. Si cambia algo a mitad de semana, vuelve aquí y lo reorganizo.</p>
-    <div class="chips dias">${[1, 2, 3, 4, 5, 6, 7].map(i => `<button class="chip ${ps.dias.includes(i) ? 'on' : ''} ${i < hoy ? 'pasado' : ''}" data-act="entrenador.psDia" data-v="${i}" ${hechos.includes(i) ? 'disabled' : ''}>${DIAS_CORTOS[i]}</button>`).join('')}</div>
+    <div class="chips dias">${[1, 2, 3, 4, 5, 6, 7].map(i => `<button class="chip ${ps.dias.includes(i) ? 'on' : ''} ${i < hoy ? 'pasado' : ''}" data-act="entrenador.psDia" data-v="${i}" ${hechos.includes(i) || i < hoy ? 'disabled' : ''} ${i < hoy && !hechos.includes(i) ? `aria-label="${h(DIAS[i])}: ya ha pasado"` : ''}>${DIAS_CORTOS[i]}</button>`).join('')}</div>
     <div class="campo col"><span>Minutos por sesión</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ps.minutos === m ? 'on' : ''}" data-act="entrenador.psMin" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ps.lugares.includes(l) ? 'on' : ''}" data-act="entrenador.psLugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     ${libres.length ? `<button class="btn grande" data-act="entrenador.crearPlan" data-ia="1" ${enLinea() ? '' : 'disabled'}>${ICONOS.ia} Que me la monte el entrenador IA</button>
@@ -236,14 +252,16 @@ function hojaPlan() {
       <p class="tenue pie">${libres.length} día${libres.length > 1 ? 's' : ''} por planificar${hechos.length ? `; lo que ya has hecho se queda` : ''}.</p>`
     : '<p class="tenue">Marca al menos un día de hoy en adelante.</p>'}`);
 }
+// Los días que ya han pasado (sin hacer) no se marcan ni cuentan: ni para la semana ni para el perfil (E2).
+const diasVivos = (S, dias) => { const hoy = diaSemana(), hechos = estadoDias(S).filter(d => d.estado === 'hecho').map(d => d.diaSemana); return dias.filter(d => d >= hoy || hechos.includes(d)); };
 export function abrirPlan() {
   const S = estado(), d = S.perfil.disponibilidad, p = planDeLaSemana(S);
-  ps = { dias: p ? p.dias.map(x => x.diaSemana) : diasPorDefecto(S), minutos: d.minutos, lugares: S.perfil.lugares.slice() };
+  ps = { dias: diasVivos(S, p ? p.dias.map(x => x.diaSemana) : diasPorDefecto(S)), minutos: d.minutos, lugares: S.perfil.lugares.slice() };
   hojaPlan();
 }
 
 // ── Reorganizar lo que queda ──
-let ro = null;
+let ro = null, roHoyNo = false;
 function hojaReorganizar() {
   const S = estado(), hoy = diaSemana();
   const pend = estadoDias(S).filter(d => d.estado !== 'hecho');
@@ -255,7 +273,9 @@ function hojaReorganizar() {
 }
 
 // ── Tarjeta del plan (la usa Hoy) ──
-const ETIQUETA = { hecho: 'Hecho', hoy: 'Hoy', pendiente: '', saltado: 'No hecho' };
+const ETIQUETA = { hecho: 'Hecho', hoy: 'Hoy', pendiente: '', saltado: 'No hecho', noPuedo: 'Hoy no puedes' };
+// Un «Hoy no puedo» de un día que ya pasó es un día no entrenado.
+const etiquetaDia = d => (d.estado === 'noPuedo' && d.diaSemana < diaSemana() ? 'No entrenado' : ETIQUETA[d.estado]);
 export function tarjetaPlan(S) {
   const p = planDeLaSemana(S);
   if (!p) return '';
@@ -271,7 +291,7 @@ export function tarjetaPlan(S) {
     <ul class="lista">${dias.map(d => `<li class="${d.estado === 'saltado' || d.estado === 'hecho' ? 'apagada' : ''}">
       <button class="fila" data-act="entrenador.verDia" data-v="${+d.diaSemana}">
         <span class="grow"><b>${h(DIAS[d.diaSemana])} · ${h(d.nombre)}</b><span class="tenue">${h(LUGARES[d.lugar])} · ${+d.ejercicios.length} ejercicios · unos ${+tiempoSesion(d)} min</span></span>
-        ${ETIQUETA[d.estado] ? `<span class="etiqueta">${d.estado === 'hecho' ? ICONOS.check + ' ' : ''}${ETIQUETA[d.estado]}</span>` : ICONOS.sig}</button></li>`).join('')}</ul>
+        ${etiquetaDia(d) ? `<span class="etiqueta">${d.estado === 'hecho' ? ICONOS.check + ' ' : ''}${etiquetaDia(d)}</span>` : ICONOS.sig}</button></li>`).join('')}</ul>
     <details class="plegable"><summary>Por qué esta semana</summary>
       ${p.criterios ? `<p>${h(p.criterios)}</p>` : ''}${p.progresion ? `<p><b>Progresión:</b> ${h(p.progresion)}</p>` : ''}
     </details>
@@ -356,6 +376,7 @@ acciones({
   'entrenador.ciDolor': async el => {
     const v = +el.value, antes = +ci.dolorHoy[el.dataset.z] || 0;
     // Pasar a 7 o más lleva al día de dolor alto: se confirma (C-DOLOR-0).
+    if (v >= 7 && antes < 7) guardarScrollCi();
     if (v >= 7 && antes < 7 && !await confirmar('¿Hoy de verdad 7 o más?', { si: 'Sí, 7 o más', no: 'No' })) { hojaCheckin(); return; }
     ci.dolorHoy[el.dataset.z] = v; hojaCheckin();
   },
@@ -406,23 +427,31 @@ acciones({
     await montarPlan({ ...p.iaFallo.semana }, true);
   },
   'entrenador.plan': abrirPlan,
-  'entrenador.psDia': el => { const v = +el.dataset.v, i = ps.dias.indexOf(v); if (i >= 0) ps.dias.splice(i, 1); else ps.dias.push(v); ps.dias.sort(); hojaPlan(); },
+  'entrenador.psDia': el => { const v = +el.dataset.v, i = ps.dias.indexOf(v); if (v < diaSemana()) return; if (i >= 0) ps.dias.splice(i, 1); else ps.dias.push(v); ps.dias.sort(); hojaPlan(); },
   'entrenador.psMin': el => { ps.minutos = +el.dataset.v; hojaPlan(); },
   'entrenador.psLugar': el => { const v = el.dataset.v, i = ps.lugares.indexOf(v); if (i >= 0 && ps.lugares.length > 1) ps.lugares.splice(i, 1); else if (i < 0) ps.lugares.push(v); hojaPlan(); },
   'entrenador.crearPlan': async el => {
     const conIA = el.dataset.ia === '1';
-    const datos = { ...ps, dias: ps.dias.slice(), lugares: ps.lugares.slice() };
-    // Lo que marque aquí pasa a ser su disponibilidad de la semana.
-    cambiar(S => { S.perfil.disponibilidad.diasSemana = datos.dias.slice(); S.perfil.disponibilidad.dias = datos.dias.length || S.perfil.disponibilidad.dias; S.perfil.disponibilidad.minutos = datos.minutos; }, 'perfil-silencio');
+    const datos = { ...ps, dias: diasVivos(estado(), ps.dias), lugares: ps.lugares.slice() };
+    // Lo que marque aquí pasa a ser su disponibilidad, pero solo si la hoja abarca la semana entera (lunes):
+    // a mitad de semana solo se ven los días que quedan y «2 días» no es lo que entrena de normal (E2).
+    const enteraSemana = diaSemana() === 1;
+    cambiar(S => {
+      if (enteraSemana) { S.perfil.disponibilidad.diasSemana = datos.dias.slice(); S.perfil.disponibilidad.dias = datos.dias.length || S.perfil.disponibilidad.dias; }
+      S.perfil.disponibilidad.minutos = datos.minutos;
+    }, 'perfil-silencio');
     await montarPlan(datos, conIA);
   },
-  'entrenador.reorg': () => { const hoy = diaSemana(); ro = [1, 2, 3, 4, 5, 6, 7].filter(d => d >= hoy && (estado().perfil.disponibilidad.diasSemana.includes(d) || !estado().perfil.disponibilidad.diasSemana.length)); hojaReorganizar(); },
+  'entrenador.reorg': () => { roHoyNo = false; const hoy = diaSemana(); ro = [1, 2, 3, 4, 5, 6, 7].filter(d => d >= hoy && (estado().perfil.disponibilidad.diasSemana.includes(d) || !estado().perfil.disponibilidad.diasSemana.length)); hojaReorganizar(); },
   'entrenador.roDia': el => { const v = +el.dataset.v, i = ro.indexOf(v); if (i >= 0) ro.splice(i, 1); else ro.push(v); hojaReorganizar(); },
-  'entrenador.reorganizar': () => { const nota = reorganizar(ro.slice()); cerrarHoja(); if (nota) aviso(nota, 'info'); },
+  'entrenador.reorganizar': () => { const nota = reorganizar(ro.slice(), { quitarHoy: roHoyNo }); cerrarHoja(); if (nota) aviso(nota, 'info'); },
   'entrenador.hoyNo': () => {
     const hoy = diaSemana();
     const libres = [1, 2, 3, 4, 5, 6, 7].filter(d => d > hoy);
     ro = libres.filter(d => !estadoDias(estado()).some(x => x.diaSemana === d && x.estado === 'hecho'));
+    // Último día de la semana: no hay a dónde moverlo; se apunta que hoy no se entrena y se dice (E13).
+    if (!ro.length) { const nota = noPuedoHoy(); if (nota) aviso(nota, 'info'); return; }
+    roHoyNo = true;
     hojaReorganizar();
   },
   'entrenador.verDia': el => hojaDia(+el.dataset.v),

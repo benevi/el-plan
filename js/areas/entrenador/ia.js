@@ -6,16 +6,16 @@
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamarEnVivo, enLinea, textoError } from '../../nucleo/api.js';
-import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada } from '../../nucleo/modelo.js';
+import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada, trabajoHecho } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta } from './dia.js';
+import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
-import { alarmaPendiente, preguntaAlarma, respondidasNo, T2 } from './alarma.js';
+import { alarmaPendiente, preguntaAlarma, respondidasNo, normalizarTexto, T2 } from './alarma.js';
 import { etiquetasSalud } from './salud.js';
 import { miaDe, ejerciciosMia } from './mias.js';
 
@@ -72,6 +72,22 @@ function apuntarAlarma(a) {
       if (S.plan && S.plan.hechos) Object.keys(S.plan.hechos).forEach(d => { if (S.plan.hechos[d] === s.id) delete S.plan.hechos[d]; });
     });
   }, 'alarma');
+}
+// «Algo va mal» con una señal de alarma durante la sesión (T3, C-ALAR-1): se para la sesión en curso. Lo hecho
+// hasta ahí (series, tareas o un «dolor durante») se guarda, marcado `parada: 'alarma'`, y el día cuenta como
+// entrenado (excepción D-A de C-ALAR-1); sin nada hecho, la sesión no queda. Hoy queda «sin
+// entrenar por precaución» (T2) y no se llama a la IA.
+export function pararPorAlarma(idSesion) {
+  const ahora = new Date().toISOString();
+  cambiar(S => {
+    const s = S.sesiones[idSesion]; if (!s || s.estado === 'hecha') return;
+    if (trabajoHecho(s)) Object.assign(s, { estado: 'hecha', empezada: s.empezada || ahora, terminada: ahora, cierre: { esfuerzo: null, dolor: {}, comentario: '' }, parada: 'alarma' });
+    else {
+      delete S.sesiones[idSesion];
+      if (S.plan && S.plan.hechos) Object.keys(S.plan.hechos).forEach(d => { if (S.plan.hechos[d] === idSesion) delete S.plan.hechos[d]; });
+    }
+  }, 'sesion');
+  apuntarAlarma({ respuesta: 'si', frase: '«Algo va mal» durante la sesión' });
 }
 export const sinEntrenarHoy = S => (S.alarmas || []).some(a => a.fecha === hoyISO() && a.respuesta === 'si');
 
@@ -183,10 +199,12 @@ export async function crearSesionHoy(ci, op = {}) {
     }
   }
   // Lo que se escribió en el check-in sin que la IA lo leyera: se guarda y se dice (PR 12).
-  const sinAtender = peticion.length > 3 && (!decide.usar || !!fallo);
+  // Lo que las reglas sí entendieron (tren superior o inferior) se dice aparte; si no pedía nada más, no hay nada sin atender.
+  const leida = local.peticion || {};
+  const sinAtender = peticion.length > 3 && (!decide.usar || !!fallo) && !leida.completa;
   const porqueNo = { red: 'no había conexión', ahorro: 'tienes el modo ahorro (la IA solo hace el plan)', dolor: 'con dolor de 7 o más la prepara la app', salud: 'por tus datos de salud hoy la prepara la app' };
   const iaFallo = fallo || sinAtender ? {
-    motivo: fallo || porqueNo[decide.por] || 'no se usó la IA', ...(sinAtender ? { peticion } : {}),
+    motivo: fallo || porqueNo[decide.por] || 'no se usó la IA', ...(sinAtender ? { peticion, ...(leida.atendido ? { atendido: leida.atendido } : {}) } : {}),
     diaPlan: dia ? dia.diaSemana : null, reintentable: !['dolor', 'salud'].includes(decide.por),
   } : null;
   const S1 = estado();
@@ -296,10 +314,38 @@ function normalizarPlan(S, p, lugares, dias, minutos, maxSuaves = 0) {
   }).filter(Boolean);
   // Días que la IA se dejó (o que no se pudieron corregir): los completa la app.
   const faltan = dias.filter(d => !vistos.has(d));
-  if (faltan.length) planReglas(S, { dias: faltan, minutos, lugares }).dias.forEach(d => out.push({ ...d, explicacion: [...d.explicacion.slice(0, 1), 'Día completado por la app.', ...d.explicacion.slice(1)] }));
+  const rehechos = faltan.length ? planReglas(S, { dias: faltan, minutos, lugares }).dias : [];
+  rehechos.forEach(d => out.push({ ...d, explicacion: [...d.explicacion.slice(0, 1), 'Día completado por la app.', ...d.explicacion.slice(1)] }));
+  out.sort((a, b) => a.diaSemana - b.diaSemana);
   return {
     semana: semanaISO(), creado: new Date().toISOString(), fuente: 'ia',
-    resumen: String(p.resumen || ''), criterios: String(p.criterios || ''), progresion: String(p.progresion || ''),
-    dias: out.sort((a, b) => a.diaSemana - b.diaSemana), hechos: {},
+    ...textosPlanIA(p, out, rehechos),
+    dias: out, hechos: {},
   };
+}
+
+// Los textos de la semana de la IA tienen que decir lo mismo que los días guardados: si la app ha rehecho un
+// día, fuera las frases que hablan de él (el «domingo suave en la piscina» que ya no existe) y se dice qué
+// ha puesto la app en su lugar.
+const frases = t => String(t || '').split(/(?<=[.!?])\s+/).map(f => f.trim()).filter(Boolean);
+export function textosPlanIA(p, dias, rehechos = []) {
+  const txt = { resumen: String(p.resumen || ''), criterios: String(p.criterios || ''), progresion: String(p.progresion || '') };
+  if (!rehechos.length) return txt;
+  const nombre = d => normalizarTexto(DIAS[d.diaSemana]);
+  const rehechosN = rehechos.map(nombre), mantenidos = dias.filter(d => !rehechos.some(r => r.diaSemana === d.diaSemana)).map(nombre);
+  const nombra = (f, ns) => { const t = normalizarTexto(f); return ns.some(n => new RegExp(`(^|[^a-z])${n}([^a-z]|$)`).test(t)); };
+  const punto = f => (/[.!?]$/.test(f) ? f : f + '.');
+  // Una frase que habla de un día rehecho se quita; si también habla de un día que se mantiene, se quita solo
+  // la parte (separada por comas, «;» o «y») del día rehecho.
+  const limpiar = f => {
+    if (!nombra(f, rehechosN)) return f;
+    if (!nombra(f, mantenidos)) return '';
+    const partes = f.replace(/[.!?]$/, '').split(/\s*(?:,|;|\by\b)\s*/).filter(p => p && !nombra(p, rehechosN));
+    return partes.length ? punto(partes.join(', ')) : '';
+  };
+  const sin = t => frases(t).map(limpiar).filter(Boolean).join(' ');
+  const quedan = sin(txt.resumen) ? punto(sin(txt.resumen)) : '';
+  const lista0 = `${dias.length} día${dias.length > 1 ? 's' : ''}: ${lista(dias.map(d => `${minus(DIAS[d.diaSemana])} (${d.nombre})`))}.`;
+  const nota = `La app ha preparado ${lista(rehechos.map(d => `el ${minus(DIAS[d.diaSemana])} (${d.nombre}, ${minus(LUGARES[d.lugar] || d.lugar)})`))}: lo que proponía el entrenador IA para ${rehechos.length > 1 ? 'esos días' : 'ese día'} no cumplía las reglas de la app o no venía.`;
+  return { resumen: [quedan || lista0, nota].join(' '), criterios: sin(txt.criterios), progresion: sin(txt.progresion) };
 }
