@@ -10,7 +10,7 @@ import { RAIZ, ruta } from './ayuda/comun.mjs';
 const sw = fs.readFileSync(ruta('sw.js'), 'utf8');
 const APP = [...vm.runInNewContext(sw.match(/const APP = (\[[\s\S]*?\]);/)[1])].map(x => x.replace(/^\.\//, ''));
 const recorrer = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
-  ['.git', 'node_modules', 'tests', 'test-results', 'playwright-report'].includes(e.name) ? [] : e.isDirectory() ? recorrer(path.join(d, e.name)) : [path.join(d, e.name)]);
+  ['.git', 'node_modules', 'tests', 'test-results', 'playwright-report', 'prototipos'].includes(e.name) ? [] : e.isDirectory() ? recorrer(path.join(d, e.name)) : [path.join(d, e.name)]);
 const archivos = recorrer(RAIZ).map(f => path.relative(RAIZ, f).split(path.sep).join('/'));
 const front = archivos.filter(f => /^(css|js|icons)\//.test(f) || /^fonts\/.*\.woff2$/.test(f) || ['index.html', 'manifest.webmanifest'].includes(f));
 
@@ -46,7 +46,7 @@ const FUERA_DE_APP = [
 ];
 test('todo archivo servible está en APP salvo lo excluido a sabiendas (VERSION cubre toda la app)', () => {
   const todo = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
-    ['.git', 'node_modules', 'test-results', 'playwright-report'].includes(e.name) ? [] : e.isDirectory() ? todo(path.join(d, e.name)) : [path.join(d, e.name)]);
+    ['.git', 'node_modules', 'test-results', 'playwright-report', 'prototipos'].includes(e.name) ? [] : e.isDirectory() ? todo(path.join(d, e.name)) : [path.join(d, e.name)]);
   const sueltos = todo(RAIZ).map(f => path.relative(RAIZ, f).split(path.sep).join('/'))
     .filter(f => !APP.includes(f) && !FUERA_DE_APP.some(r => r.test(f)));
   assert.deepEqual(sueltos, [], 'súmalos a APP en sw.js (y npm run version) o a FUERA_DE_APP en esta prueba');

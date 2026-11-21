@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" rx="112" fill="#081723"/>
+<defs>
+  <clipPath id="marea-p"><path d="M156 104 H288 A100 100 0 0 1 288 304 H224 V408 H156 Z M224 164 V244 H284 A40 40 0 0 0 284 164 Z" clip-rule="evenodd"/></clipPath>
+</defs>
+<g clip-path="url(#marea-p)">
+  <rect x="140" y="90" width="260" height="330" fill="#EDF3F7"/>
+  <path d="M140 252 C176 232 212 232 248 252 S320 272 356 252 S400 236 410 242 V430 H140 Z" fill="#7FCFE0"/>
+  <path d="M140 252 C176 232 212 232 248 252 S320 272 356 252 S400 236 410 242" fill="none" stroke="#081723" stroke-width="14"/>
+</g>
+</svg>

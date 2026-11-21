@@ -1,0 +1,267 @@
+/* Dirección «Carril 2» · Carril más sobria y elegante.
+   La piscina ya no es el tema: queda la noche azul, la línea del agua del logo, el nivel que sube y las ondas.
+   Lo demás es aire, una sola familia fina (Instrument Sans, estrecha para las cifras) y movimiento cuidado. */
+@font-face { font-family: 'Instrument Sans'; src: url('fuentes/instrument-sans.woff2') format('woff2'); font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; }
+
+:root {
+  --fondo: #081723;        /* noche azul */
+  --sup: #0D1F2E;          /* panel (L1) */
+  --sup-2: #16293B;        /* control y descanso (L2) */
+  --agua: #0F2C42;         /* fondo del final, cuando el agua ha subido */
+  --texto: #EDF3F7;
+  --texto-2: #AFC1CF;
+  --texto-3: #88A2B6;
+  --borde: #1C3246;        /* filete fino entre filas */
+  --borde-control: #5E7F98;
+  --ok: #93DDB8;
+  --acento: #C9E77E;       /* Víctor: lima suave */
+  --sobre-acento: #081723;
+  --f-titulo: 'Instrument Sans', system-ui, sans-serif;
+  --f-texto: 'Instrument Sans', system-ui, sans-serif;
+  /* Movimiento: 100/200/300 para la interfaz; 600/900 solo en celebraciones y progreso (pedido de Víctor) */
+  --t-1: 100ms; --t-2: 200ms; --t-3: 300ms; --t-largo: 600ms; --t-fluye: 900ms;
+  --sale: cubic-bezier(.16, 1, .3, 1);
+  --entra: cubic-bezier(.7, 0, .84, 0);
+  --nav: 64px;
+}
+[data-persona="virginia"] { --acento: #F29BC2; } /* Virginia: rosa suave */
+
+body { font: 400 16px/1.55 var(--f-texto); letter-spacing: .005em; padding-bottom: calc(var(--nav) + 104px + env(safe-area-inset-bottom)); }
+body.sin-nav { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+main, .saliente-dentro { max-width: 560px; margin: 0 auto; padding: 0 20px; }
+main { outline: none; }
+h1 { font: 500 30px/1.12 var(--f-titulo); letter-spacing: -.02em; }
+.sec { font: 500 14px/1.3 var(--f-texto); color: var(--texto-2); letter-spacing: .01em; }
+.pie { color: var(--texto-2); font-size: 14px; }
+.num, .reloj, .titular b, .cierre-datos dd { font-family: var(--f-titulo); font-stretch: 75%; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+.cab { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 28px; }
+.cab img { height: 28px; width: auto; }
+.cab-fecha { font-size: 14px; color: var(--texto-2); }
+
+.boton-principal {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 56px; padding: 0 24px;
+  border-radius: 28px; background: var(--acento); color: var(--sobre-acento); font: 600 17px/1 var(--f-texto); letter-spacing: .01em;
+  transition: transform var(--t-1) var(--sale);
+}
+.boton-principal:active { transform: scale(.98); }
+
+/* ---- pestañas ---- */
+.pestanas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; height: calc(var(--nav) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom); background: var(--fondo); border-top: 1px solid var(--borde);
+}
+body.sin-nav .pestanas { display: none; }
+.pestanas a { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; color: var(--texto-3); font-size: 12px; font-weight: 500; }
+.pestanas svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.pestanas a[aria-current] { color: var(--texto); }
+.pestanas a[aria-current]::before { content: ''; position: absolute; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--acento); animation: c2-punto var(--t-3) var(--sale) both; }
+@keyframes c2-punto { from { transform: scale(0); } }
+
+/* ---- Hoy ---- */
+.hoy .bloque + .bloque { margin-top: 32px; }
+.meta { color: var(--texto-2); margin-top: 8px; }
+.calle { display: flex; gap: 4px; height: 4px; margin-top: 20px; }
+.tramo { flex: 1 1 0; border-radius: 2px; transform-origin: left; }
+.t0 { background: var(--texto-3); } .t1 { background: var(--acento); } .t2 { background: var(--texto-2); } .t3 { background: var(--borde-control); }
+.partes { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--borde); }
+.hoy .partes { margin-top: 24px; }
+.partes li { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--borde); }
+.punto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.partes div { flex: 1; display: flex; flex-direction: column; }
+.partes b { font-weight: 500; }
+.partes div span { font-size: 14px; color: var(--texto-2); }
+.min { font-size: 15px; color: var(--texto-2); }
+.porque { margin-top: 6px; max-width: 34em; }
+.sec-fila { display: flex; justify-content: space-between; align-items: baseline; }
+.sec-fila p { font-size: 14px; color: var(--texto-2); }
+.dias { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.dia { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.dia-l { font-size: 12px; color: var(--texto-3); }
+.dia-c { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; font-size: 14px; font-weight: 500; color: var(--texto-3); }
+.dia-c svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.d-hecho .dia-c { background: var(--acento); color: var(--sobre-acento); }
+.d-hoy .dia-c { box-shadow: inset 0 0 0 2px var(--acento); color: var(--texto); }
+.d-plan .dia-c { border: 1.5px dashed var(--borde-control); color: var(--texto-2); }
+.accion { position: fixed; left: 0; right: 0; bottom: calc(var(--nav) + env(safe-area-inset-bottom)); z-index: 25; padding: 12px 20px 14px; background: linear-gradient(to top, var(--fondo) 72%, transparent); }
+.accion .boton-principal { max-width: 520px; margin: 0 auto; }
+
+/* ---- Sesión ---- */
+.barra-sesion { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+.volver, .terminar { display: grid; place-items: center; min-width: 48px; min-height: 48px; border-radius: 24px; }
+.volver { margin-left: -12px; }
+.volver svg { width: 24px; height: 24px; fill: none; stroke: var(--texto); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.terminar { padding: 0 16px; border: 1px solid var(--borde-control); font-weight: 500; font-size: 15px; }
+.avance { flex: 1; display: flex; gap: 4px; }
+.avance span { flex: 1; height: 3px; border-radius: 2px; background: var(--borde); }
+.avance .pasado { background: var(--texto-3); }
+.avance .ahora { background: var(--acento); }
+.orden { font-size: 14px; color: var(--texto-2); margin-top: 8px; }
+.sesion h1 { font-size: 26px; margin-top: 2px; }
+.objetivo { margin-top: 6px; }
+.ultima { color: var(--texto-2); font-size: 14px; }
+.series { list-style: none; margin: 16px 0 0; padding: 0; }
+.serie { position: relative; display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--borde); }
+.serie:first-child { border-top: 1px solid var(--borde); }
+.serie-n { color: var(--texto-3); font-size: 14px; }
+.serie.hecha { color: var(--texto-2); }
+.serie.pendiente { color: var(--texto-3); }
+.ok { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--ok); }
+.ok svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.serie.actual { display: block; padding: 14px 16px 16px; margin: 8px 0; border: 1px solid var(--borde-control); border-radius: 20px; background: var(--sup); }
+.serie-t { font-size: 14px; color: var(--texto-2); }
+.valores { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 14px; }
+.valor p { display: flex; align-items: baseline; gap: 6px; }
+.valor .num { font-size: 56px; line-height: 1.05; }
+.valor p span { color: var(--texto-2); font-size: 14px; }
+.paso { display: grid; grid-template-columns: 1fr 1fr; margin-top: 6px; border: 1px solid var(--borde-control); border-radius: 24px; overflow: hidden; }
+.paso button { min-height: 48px; font-size: 22px; line-height: 1; color: var(--texto); }
+.paso button + button { border-left: 1px solid var(--borde-control); }
+.paso button:active { background: var(--sup-2); }
+.todo { margin-top: 16px; }
+.todo p { margin-bottom: 12px; }
+.tecnica { margin-top: 8px; border-bottom: 1px solid var(--borde); }
+.tecnica summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 500; list-style: none; }
+.tecnica summary::after { content: ''; width: 8px; height: 8px; border-right: 1.5px solid var(--texto-2); border-bottom: 1.5px solid var(--texto-2); transform: rotate(45deg); transition: transform var(--t-2) var(--sale); margin-right: 4px; }
+.tecnica[open] summary::after { transform: rotate(-135deg); }
+.tecnica p { color: var(--texto-2); padding-bottom: 12px; }
+.siguiente { color: var(--texto-3); font-size: 14px; margin-top: 12px; }
+
+/* Descanso: una franja baja. Arriba, el nivel del agua baja según pasa el tiempo; el número fluye dígito a dígito. */
+.descanso { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--sup-2); border-top: 1px solid var(--borde-control); overflow: hidden; }
+.nivel { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--acento); transform-origin: left; transform: scaleX(var(--p, 1)); transition: transform 1000ms linear; }
+.descanso-fila { display: flex; align-items: center; gap: 8px; max-width: 520px; margin: 0 auto; }
+.descanso-txt { position: relative; flex: 1; display: flex; flex-direction: column; line-height: 1; }
+.descanso-et, .descanso-fin { font-size: 14px; color: var(--texto-2); margin-bottom: 4px; }
+.descanso-fin { display: none; }
+.reloj { font-size: 48px; line-height: 1; font-weight: 400; }
+.descanso button { min-height: 52px; min-width: 64px; padding: 0 16px; border: 1px solid var(--borde-control); border-radius: 26px; font-weight: 500; position: relative; }
+.eco { position: absolute; left: 24px; top: 30px; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; border: 2px solid var(--sobre-acento); opacity: 0; pointer-events: none; }
+.descanso.alarma { background: var(--acento); color: var(--sobre-acento); border-color: var(--acento); }
+.descanso.alarma .descanso-et { display: none; }
+.descanso.alarma .descanso-fin { display: block; color: var(--sobre-acento); font-weight: 600; }
+.descanso.alarma button { border-color: var(--sobre-acento); }
+.descanso.alarma .nivel { background: var(--sobre-acento); }
+.descanso.alarma .eco { animation: c2-eco var(--t-largo) var(--sale) 3; }
+.descanso.alarma { animation: c2-alarma var(--t-3) var(--sale) both; }
+@keyframes c2-alarma { from { transform: translateY(8px); } }
+@keyframes c2-eco { 0% { opacity: .7; transform: scale(.4); } 100% { opacity: 0; transform: scale(2.6); } }
+
+/* Serie recién marcada: una onda pequeña desde la marca de hecha */
+.serie.recien .ok svg { animation: c2-marca var(--t-3) var(--sale) both; }
+.serie.recien::after { content: ''; position: absolute; right: 30px; top: 50%; width: 32px; height: 32px; margin-top: -16px; border-radius: 50%; border: 2px solid var(--ok); opacity: 0; animation: c2-eco var(--t-largo) var(--sale) both; pointer-events: none; }
+@keyframes c2-marca { from { transform: scale(.3); opacity: 0; } }
+
+/* ---- Cifras que fluyen ---- */
+.rodillo { display: inline-flex; }
+.rd { display: inline-block; height: 1em; line-height: 1; overflow: hidden; vertical-align: top; }
+.rd-tira { display: flex; flex-direction: column; transform: translateY(calc(var(--d, 0) * -1em)); transition: transform var(--t-2) var(--sale); }
+.rd-tira > span { height: 1em; line-height: 1; }
+.rd-sep { line-height: 1; }
+
+/* ---- Progreso ---- */
+.progreso .bloque + .bloque { margin-top: 36px; }
+.progreso h1 { font-size: 34px; }
+.progreso .pie { margin-top: 2px; }
+.vasos { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.vasos li { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; line-height: 1.25; text-align: center; color: var(--texto-3); }
+.vaso { position: relative; width: 100%; max-width: 30px; height: 72px; border-radius: 15px; border: 1.5px solid var(--borde-control); overflow: hidden; }
+.vaso i { position: absolute; inset: 0; background: var(--acento); transform-origin: bottom; transform: scaleY(var(--v)); opacity: .9; }
+.vaso.lleno { border-color: var(--acento); }
+.vaso svg { position: absolute; left: 50%; top: 6px; width: 16px; height: 16px; margin-left: -8px; fill: none; stroke: var(--sobre-acento); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.titular { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.titular b { font-size: 72px; line-height: 1; color: var(--acento); }
+.titular > span { font-size: 18px; font-weight: 500; }
+.grafico-caja { position: relative; margin-top: 16px; }
+.grafico { display: block; width: 100%; height: auto; overflow: visible; }
+.g-a1 { stop-color: var(--acento); stop-opacity: .22; } .g-a2 { stop-color: var(--acento); stop-opacity: 0; }
+.g-area { fill: url(#g-area); }
+.g-linea { fill: none; stroke: var(--acento); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.g-fin { fill: var(--fondo); stroke: var(--acento); stroke-width: 2.5; }
+.cortina { position: absolute; inset: -8px -8px 18px; background: var(--fondo); transform-origin: right; transform: scaleX(0); }
+.ejes { display: flex; justify-content: space-between; font-size: 12px; color: var(--texto-3); margin-top: 6px; }
+.otros { list-style: none; margin: 20px 0 0; padding: 0; border-top: 1px solid var(--borde); }
+.otros li { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--borde); font-size: 15px; }
+.otros li > span:last-child { color: var(--texto-2); white-space: nowrap; }
+.otros b { color: var(--texto); font-weight: 500; }
+.flecha { color: var(--texto-3); }
+.dolor { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; align-items: end; height: 76px; }
+.dolor li { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; font-size: 12px; color: var(--texto-2); }
+.dolor .b { width: 100%; max-width: 30px; height: 52px; border-radius: 6px; background: var(--texto-3); transform-origin: bottom; transform: scaleY(var(--v)); }
+
+/* ---- Final ---- */
+.capa { position: fixed; inset: 0; z-index: 50; background: var(--fondo); overflow: auto; overflow-x: hidden; }
+.cierre { position: relative; min-height: 100%; }
+.agua { position: absolute; inset: 0; background: var(--agua); }
+.ola { position: absolute; left: 0; top: -39px; width: 200%; height: 40px; fill: var(--agua); }
+.cierre-dentro { position: relative; max-width: 480px; margin: 0 auto; min-height: 100dvh; padding: 72px 24px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.sello { position: relative; width: 64px; height: 64px; }
+.sello span { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: var(--acento); }
+.sello svg { width: 30px; height: 30px; fill: none; stroke: var(--sobre-acento); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sello i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--acento); opacity: 0; }
+.cierre h2 { font: 500 40px/1.08 var(--f-titulo); letter-spacing: -.02em; margin-top: 28px; }
+.cierre-semana { color: var(--texto-2); margin-top: 6px; }
+.cierre-datos { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; margin: 36px 0 0; }
+.cierre-datos div { display: flex; flex-direction: column-reverse; }
+.cierre-datos dt { font-size: 14px; color: var(--texto-2); margin-top: 4px; }
+.cierre-datos dd { margin: 0; font-size: 56px; line-height: 1; }
+.cierre-marca { margin: 28px 0 auto; padding-top: 16px; border-top: 1px solid var(--borde-control); color: var(--texto); }
+.cierre .boton-principal { margin-top: 32px; }
+
+/* ---- Movimiento ----
+   Entre pantallas: eje horizontal compartido. La pantalla que se va sale 32 px y se desvanece (200 ms, ease-in);
+   la nueva llega 40 px desde el lado contrario (300 ms, ease-out) y sus bloques suben en cascada (50 ms entre ellos).
+   Hoy: la calle se llena tramo a tramo y los días aparecen uno tras otro. Progreso: los vasos se llenan, el gráfico
+   se descubre de izquierda a derecha y la cifra fluye. Final: sube el agua con su ola, el sello lanza tres ondas y las
+   cifras fluyen hasta su valor. Durante la serie no se mueve nada salvo el reloj del descanso. */
+.saliente { position: fixed; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; animation: c2-sale 150ms var(--sale) both; }
+.saliente .cab { visibility: hidden; } /* la cabecera es la misma: no se anima, se queda quieta */
+[data-dir="atras"] .saliente { animation-name: c2-sale-atras; }
+@keyframes c2-sale { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes c2-sale-atras { to { opacity: 0; transform: translateX(24px); } }
+main.entra > :not(.cab) { animation: c2-entra var(--t-3) var(--sale) 90ms both; }
+[data-dir="atras"] main.entra > :not(.cab) { animation-name: c2-entra-atras; }
+@keyframes c2-entra { from { opacity: 0; transform: translateX(40px); } }
+@keyframes c2-entra-atras { from { opacity: 0; transform: translateX(-40px); } }
+main.entra .bloque { animation: c2-sube var(--t-3) var(--sale) both; animation-delay: calc(120ms + var(--i, 0) * 50ms); }
+@keyframes c2-sube { from { opacity: 0; transform: translateY(14px); } }
+main.entra .tramo { animation: c2-tramo var(--t-largo) var(--sale) both; animation-delay: calc(200ms + var(--i) * 90ms); }
+@keyframes c2-tramo { from { transform: scaleX(0); } }
+main.entra .dia { animation: c2-dia var(--t-3) var(--sale) both; animation-delay: calc(300ms + var(--i) * 40ms); }
+@keyframes c2-dia { from { opacity: 0; transform: scale(.6); } }
+main.entra .vaso i { animation: c2-llena var(--t-largo) var(--sale) both; animation-delay: calc(250ms + var(--i) * 60ms); }
+@keyframes c2-llena { from { transform: scaleY(0); } }
+main.entra .dolor .b { animation: c2-llena var(--t-largo) var(--sale) both; animation-delay: calc(400ms + var(--i) * 50ms); }
+main.entra .cortina { animation: c2-cortina var(--t-fluye) var(--sale) 300ms both; }
+@keyframes c2-cortina { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+main.entra .titular .rd-tira { animation: c2-fluye var(--t-fluye) var(--sale) 250ms both; }
+@keyframes c2-fluye { from { transform: translateY(0); } }
+
+.celebra .agua { animation: c2-agua var(--t-fluye) cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes c2-agua { from { transform: translateY(100%); } }
+.celebra .ola { animation: c2-ola 1200ms linear 2 both; }
+@keyframes c2-ola { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+.celebra .sello span { animation: c2-marca var(--t-3) var(--sale) 650ms both; }
+.celebra .sello i { animation: c2-eco var(--t-fluye) var(--sale) both; }
+.celebra .sello i:nth-child(1) { animation-delay: 800ms; } .celebra .sello i:nth-child(2) { animation-delay: 950ms; } .celebra .sello i:nth-child(3) { animation-delay: 1100ms; }
+.celebra h2, .celebra .cierre-semana, .celebra .cierre-datos, .celebra .cierre-marca, .celebra .cierre .boton-principal { animation: c2-sube var(--t-3) var(--sale) both; }
+.celebra h2 { animation-delay: 700ms; } .celebra .cierre-semana { animation-delay: 760ms; } .celebra .cierre-datos { animation-delay: 820ms; }
+.celebra .cierre-marca { animation-delay: 1300ms; } .celebra .cierre .boton-principal { animation-delay: 1400ms; }
+.celebra .cierre-datos .rd-tira { transition-duration: var(--t-fluye); transition-delay: calc(900ms + var(--i, 0) * 80ms); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nivel { transition: none; }
+  .ola, .sello i, .eco, .serie.recien::after { display: none; }
+}
+@media (max-width: 340px), (max-height: 600px) {
+  h1 { font-size: 26px; }
+  .sesion h1 { font-size: 22px; }
+  .orden { display: none; }
+  .barra-sesion { min-height: 52px; }
+  .valor .num { font-size: 44px; }
+  .serie.actual { padding: 10px 14px 14px; }
+  .valores { margin-bottom: 10px; }
+  .reloj { font-size: 40px; }
+  .descanso { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .cierre-datos dd { font-size: 44px; }
+}

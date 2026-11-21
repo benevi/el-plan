@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" rx="112" fill="#081723"/>
+<g>
+  <rect x="160" y="100" width="64" height="312" rx="32" fill="#EDF3F7"/>
+  <path d="M252 100 H272 A92 92 0 0 1 272 284 H252 Z M252 160 V224 H272 A32 32 0 0 0 272 160 Z" fill="#7FCFE0" fill-rule="evenodd"/>
+</g>
+</svg>

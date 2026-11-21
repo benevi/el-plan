@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#151618">
+<title>Pipos Fitness, propuestas de logo</title>
+<link rel="icon" href="giro/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../indice.css">
+<link rel="stylesheet" href="logos.css">
+<script type="module" src="logos.js"></script>
+</head>
+<body>
+<header class="intro">
+  <p><a href="../">‹ Las identidades</a></p>
+  <h1>Cinco propuestas de logo</h1>
+  <p>Para Carril 2. Cada una con su icono de app, su versión maskable (Android recorta en círculo o en otras formas) y el logo con el nombre. Mira sobre todo el tamaño de 16 y 32 px y cómo queda entre otros iconos.</p>
+</header>
+
+<section class="finalistas" aria-labelledby="fin-t">
+  <h2 id="fin-t">Las dos finalistas</h2>
+  <div class="dos">
+    <article>
+      <img src="giro/icono-512.png" alt="Giro: dos P que comparten el asta y giran media vuelta" width="120" height="120">
+      <h3>1 · Giro</h3>
+      <p>Dos P que comparten el asta y giran media vuelta. Dice tres cosas sin dibujar nada literal: <b>P</b> de Pipos, <b>dos</b> personas y un <b>ciclo</b> (la constancia de cada semana). La simetría por giro la hace memorable: se reconoce del revés, en negativo y a 16 px queda una forma de «S» firme que no se confunde con las letras de otras apps. Es la que propongo para la app.</p>
+      <p class="riesgo">Lo que vigilar: no tiene nada de agua; la piscina queda solo en la interfaz. A 16 px se lee como una «S» con asta. No conozco ninguna marca con esta forma, pero no puedo comprobarlo contra todas: miradlo también vosotros antes de cerrarla.</p>
+    </article>
+    <article>
+      <img src="marea/icono-512.png" alt="Marea: una P sólida con una línea de agua ondulada a media altura" width="120" height="120">
+      <h3>2 · Marea</h3>
+      <p>Una P sólida con la línea del agua a media altura: la piscina como alusión, no como tema, y la ola como «nivel» que sube con el progreso (la misma idea del final de sesión, cuando sube el agua). Es la más legible pequeña y la más fácil de entender sin explicación.</p>
+      <p class="riesgo">Lo que vigilar: es menos propia que Giro (una letra con un recurso), y el segundo tono se pierde a 16 px; ahí queda solo la P.</p>
+    </article>
+  </div>
+</section>
+
+<section aria-labelledby="tam-t">
+  <h2 id="tam-t">A varios tamaños</h2>
+  <div class="seg" role="group" aria-label="Fondo">
+    <button type="button" data-fondo="oscuro" aria-pressed="true">Fondo oscuro</button>
+    <button type="button" data-fondo="claro" aria-pressed="false">Fondo claro</button>
+  </div>
+  <div class="tabla-logos" id="tabla" data-fondo="oscuro">
+    <!-- filas generadas por logos.js -->
+  </div>
+</section>
+
+<section aria-labelledby="movil-t">
+  <h2 id="movil-t">En la pantalla del móvil</h2>
+  <p class="nota">Los cuadros grises son otras apps, de relleno. Arriba, iconos redondeados (como en iPhone); abajo, recortados en círculo (Android, versión maskable).</p>
+  <div class="moviles" id="moviles"></div>
+</section>
+
+<footer class="pie"><p>Los SVG, PNG (192, 512 y maskable 512) y logos de cada propuesta están en <code>prototipos/identidad/logos/&lt;propuesta&gt;/</code>. Se generan con <code>herramientas/logos.py</code> y <code>herramientas/iconos.mjs</code>.</p></footer>
+</body>
+</html>

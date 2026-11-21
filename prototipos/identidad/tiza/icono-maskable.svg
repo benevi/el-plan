@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" fill="#1A221E"/>
+<g transform="translate(256 256) scale(.8) translate(-256 -256)">
+<g fill="none" stroke="#EEEDE6" stroke-linecap="round" stroke-width="34">
+  <path d="M158 146 L154 368"/>
+  <path d="M216 140 L214 372"/>
+  <path d="M274 146 L276 366"/>
+  <path d="M332 142 L330 370"/>
+  <path d="M116 330 C190 290 300 220 396 176"/>
+</g>
+</g>
+</svg>

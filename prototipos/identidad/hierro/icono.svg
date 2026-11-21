@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pipos Fitness">
+<rect width="512" height="512" rx="112" fill="#16120F"/>
+<g>
+  <rect x="166" y="190" width="56" height="226" rx="10" fill="#F4EEE6"/>
+  <rect x="150" y="372" width="88" height="24" rx="6" fill="#F4EEE6"/>
+  <circle cx="290" cy="214" r="116" fill="#F4EEE6"/>
+  <circle cx="290" cy="214" r="86" fill="none" stroke="#16120F" stroke-width="8"/>
+  <circle cx="290" cy="214" r="30" fill="#16120F"/>
+</g>
+</svg>

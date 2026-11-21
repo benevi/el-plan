@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#151618">
+<title>Pipos Fitness, identidad</title>
+<link rel="stylesheet" href="indice.css">
+<script type="module" src="indice.js"></script>
+</head>
+<body>
+<header class="intro">
+  <h1>Identidad de Pipos Fitness</h1>
+  <p>Solo tema oscuro. Cada una trae logo, iconos, colores de Víctor y Virginia, letra, movimiento y tres pantallas con datos de ejemplo. Elige una, o una mezcla («la letra de Hierro con los colores de Carril»).</p>
+</header>
+
+<section class="vuelta" aria-labelledby="vuelta-t">
+  <h2 id="vuelta-t">Segunda vuelta: Carril 2</h2>
+  <p>Carril, más sobria y elegante: menos piscina literal, más aire, una letra más fina (Instrument Sans) y más movimiento (el agua sube al terminar, las cifras fluyen, las pantallas se cruzan). Víctor la ha aprobado. Logo: <b>Trenza</b>, elegido por Víctor el 20-11-2026 (dos trazos, lima y rosa, que se cruzan por encima y por debajo), ya aplicado en Carril 2.</p>
+  <nav class="enlaces" aria-label="Carril 2"><a class="destacado" href="carril-2/">Abrir Carril 2</a><a href="logos-2/">Logo: Trenza</a><a href="../sistema/">Sistema de diseño (DIS 3)</a><a class="destacado" href="../app/">Prototipos de la app (DIS 4)</a><a href="logos/">Primera ronda de logos</a><a href="carril-2/?cierre#sesion">Ver el final</a></nav>
+</section>
+
+<section class="comparar" aria-labelledby="comparar-t">
+  <h2 id="comparar-t">Comparar la misma pantalla</h2>
+  <div class="controles">
+    <div class="seg" role="group" aria-label="Pantalla">
+      <button type="button" data-k="vista" data-v="hoy" aria-pressed="true">Hoy</button>
+      <button type="button" data-k="vista" data-v="sesion" aria-pressed="false">Sesión</button>
+      <button type="button" data-k="vista" data-v="progreso" aria-pressed="false">Progreso</button>
+      <button type="button" data-k="vista" data-v="cierre" aria-pressed="false">Final</button>
+    </div>
+    <div class="seg" role="group" aria-label="Persona">
+      <button type="button" data-k="p" data-v="victor" aria-pressed="true">Víctor</button>
+      <button type="button" data-k="p" data-v="virginia" aria-pressed="false">Virginia</button>
+    </div>
+    <div class="seg" role="group" aria-label="Tamaño de móvil">
+      <button type="button" data-k="tam" data-v="360x640" aria-pressed="false">360 × 640</button>
+      <button type="button" data-k="tam" data-v="390x844" aria-pressed="true">390 × 844</button>
+    </div>
+  </div>
+  <p class="nota">Desliza en horizontal para pasar de una dirección a otra (la primera es Carril 2). Los móviles se ven a escala si no caben.</p>
+  <div class="carrusel" id="carrusel">
+    <figure class="marco" data-dir="carril-2"><figcaption><b>Carril 2</b><a href="carril-2/">Abrir entera</a></figcaption><div class="caja"><iframe title="Carril 2" loading="lazy"></iframe></div></figure>
+    <figure class="marco" data-dir="tiza"><figcaption><b>Tiza</b><a href="tiza/">Abrir entera</a></figcaption><div class="caja"><iframe title="Tiza" loading="lazy"></iframe></div></figure>
+    <figure class="marco" data-dir="carril"><figcaption><b>Carril</b><a href="carril/">Abrir entera</a></figcaption><div class="caja"><iframe title="Carril" loading="lazy"></iframe></div></figure>
+    <figure class="marco" data-dir="hierro"><figcaption><b>Hierro</b><a href="hierro/">Abrir entera</a></figcaption><div class="caja"><iframe title="Hierro" loading="lazy"></iframe></div></figure>
+  </div>
+</section>
+
+<section class="direcciones" aria-label="Las tres direcciones">
+  <article class="dir d-tiza">
+    <div class="dir-cab"><img src="tiza/icono-192.png" alt="" width="64" height="64"><img class="logo" src="tiza/logo.svg" alt="Logo de Tiza: palotes de constancia" width="200" height="37"></div>
+    <h2>Tiza</h2>
+    <p>La pizarra del gimnasio. Verde pizarra mate y tiza blanca; cada semana se apunta con palotes y el tachón cierra lo completo. Letra muy legible para leer de lejos con reflejos.</p>
+    <ul class="muestras">
+      <li><i class="m1"></i>Pizarra <code>#1A221E</code></li><li><i class="m2"></i>Panel <code>#222B26</code></li><li><i class="m3"></i>Tiza <code>#EEEDE6</code></li>
+      <li><i class="m4"></i>Víctor, tiza azul <code>#8CC8F2</code></li><li><i class="m5"></i>Virginia, tiza amarilla <code>#F2D04E</code></li>
+    </ul>
+    <p class="letra">Bricolage Grotesque (títulos y cifras) y Atkinson Hyperlegible Next (texto). 74 KB.</p>
+    <p class="mov">Las pantallas aparecen subiendo 6 px y el subrayado se dibuja. Al terminar, los palotes se escriben uno a uno y el tachón suelta polvo de tiza.</p>
+    <nav class="enlaces" aria-label="Pantallas de Tiza"><a href="tiza/#hoy">Hoy</a><a href="tiza/#sesion">Sesión</a><a href="tiza/#progreso">Progreso</a><a href="tiza/?cierre#sesion">Final</a></nav>
+  </article>
+  <article class="dir d-carril">
+    <div class="dir-cab"><img src="carril/icono-192.png" alt="" width="64" height="64"><img class="logo" src="carril/logo.svg" alt="Logo de Carril: una P cuyo pie es la T del final de la calle" width="200" height="42"></div>
+    <h2>Carril</h2>
+    <p>La piscina climatizada de noche. Azul de agua, calles y corcheras como estructura, la T de la pared como señal de «completo» y cifras estrechas de marcador de competición.</p>
+    <ul class="muestras">
+      <li><i class="m1"></i>Agua <code>#062033</code></li><li><i class="m2"></i>Calle <code>#0B2C45</code></li><li><i class="m3"></i>Azulejo <code>#EAF6FB</code></li>
+      <li><i class="m4"></i>Víctor, lima <code>#C6F04D</code></li><li><i class="m5"></i>Virginia, rosa <code>#FF7EB6</code></li>
+    </ul>
+    <p class="letra">Saira, una sola familia variable en peso y anchura: normal para leer, estrecha para las cifras. 97 KB.</p>
+    <p class="mov">Todo se mueve en horizontal, como un largo: las pantallas llegan desde la derecha (y vuelven desde la izquierda). Al terminar, la calle se completa hasta la pared y salen ondas.</p>
+    <nav class="enlaces" aria-label="Pantallas de Carril"><a href="carril/#hoy">Hoy</a><a href="carril/#sesion">Sesión</a><a href="carril/#progreso">Progreso</a><a href="carril/?cierre#sesion">Final</a></nav>
+  </article>
+  <article class="dir d-hierro">
+    <div class="dir-cab"><img src="hierro/icono-192.png" alt="" width="64" height="64"><img class="logo" src="hierro/logo.svg" alt="Logo de Hierro: una p hecha con un disco y la barra" width="180" height="47"></div>
+    <h2>Hierro</h2>
+    <p>Cartel de sala de pesas. Negro de hierro cálido, cifras enormes en una letra muy estrecha y una rejilla rígida. Los discos son la unidad: la semana, el progreso y la celebración se miden en discos.</p>
+    <ul class="muestras">
+      <li><i class="m1"></i>Hierro <code>#16120F</code></li><li><i class="m2"></i>Panel <code>#221C17</code></li><li><i class="m3"></i>Papel <code>#F4EEE6</code></li>
+      <li><i class="m4"></i>Víctor, ámbar <code>#F5B13D</code></li><li><i class="m5"></i>Virginia, lavanda <code>#A99BFF</code></li>
+    </ul>
+    <p class="letra">Sofia Sans Extra Condensed (titulares y cifras) y Onest (texto). 73 KB.</p>
+    <p class="mov">Las pantallas suben 12 px y las cifras grandes salen de su línea base, como un cartel que se pega. Al terminar, los discos entran en la barra desde los lados y el total cuenta hasta su valor.</p>
+    <nav class="enlaces" aria-label="Pantallas de Hierro"><a href="hierro/#hoy">Hoy</a><a href="hierro/#sesion">Sesión</a><a href="hierro/#progreso">Progreso</a><a href="hierro/?cierre#sesion">Final</a></nav>
+  </article>
+</section>
+
+<footer class="pie">
+  <p>Prototipo de diseño (DIS 2). No guarda nada; los datos son de ejemplo. Detalles, contrastes y daltonismo en <code>docs/diseno/identidad.md</code>.</p>
+</footer>
+</body>
+</html>
