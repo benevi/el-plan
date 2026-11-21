@@ -911,11 +911,11 @@ Por defecto: **contractura**. Dolor que baja por el brazo = A4.
 | **Fase 3** | `ytw-tumbado` con la frente apoyada; `face-pull` |
 | **Derivar** | A4, A10, dolor tras golpe o accidente de coche, rigidez con fiebre |
 
-### 12.9 Espalda alta (dorsal) [Pendiente de aprobación de Víctor]
+### 12.9 Espalda alta (dorsal) [Aprobada por Víctor el 21-11-2026]
 
 Zona nueva, pedida por Víctor el 21-11-2026 (hasta ahora solo había «Lumbar» y «Cuello»). Cubre el dolor **entre los omóplatos y en la zona torácica** de origen mecánico: contractura, sobrecarga de los músculos entre los omóplatos (romboides, trapecio medio, erectores dorsales) y dolor postural de muchas horas sentado. Sin campo «detalle»: lo que no encaja en un dolor mecánico (no cambia con el movimiento, rodea las costillas, va con síntomas del pecho) no se entrena, se consulta (ver **Derivar**).
 
-**C-ZONA-DORSAL [Pendiente de aprobación de Víctor] [PR zona-dorsal]** Criterio, de lo más prudente a lo razonable:
+**C-ZONA-DORSAL [Aprobada por Víctor el 21-11-2026] [PR 36]** Criterio, de lo más prudente a lo razonable:
 - El dolor dorsal mecánico suele mejorar con **movimiento sin dolor y fuerza de los músculos que juntan los omóplatos** (remos con el pecho apoyado, separación de banda, face pull, Y-T-W), mejor que con reposo. Lo que más lo irrita: **cargas que no se pueden regular** sobre la espalda alta (barra apoyada en ella, colgarse con todo el peso), **flexión o rotación del tronco con carga** y posturas mantenidas.
 - La espalda torácica es, junto al cuello, donde más a menudo un dolor «de espalda» viene **de otro sitio** (corazón, aorta, pulmón, vesícula, herpes) o de un hueso (fractura por osteoporosis). Por eso la lista de derivar es más larga que en las otras zonas y remite a las alarmas A1, A4, A8, A11 y a T5.
 - Músculos de la zona (C-VOL-4): **ninguno**, como lumbar y cervical: se cambia el tipo de ejercicio (las r), no el volumen.
@@ -1284,9 +1284,9 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 11. **Lesiones migradas** (dolor = severidad × 3): pedir el dolor real y tratarlas como mucho como B2 hasta entonces: **aprobar**.
 12. **A8** (dolor que no deja dormir, sin fiebre): entrenar sin esa zona hasta consultar, en vez de parar la sesión entera: **aprobar**.
 
-**Pendiente de aprobación (21-11-2026):**
+**Aprobada el 21-11-2026:**
 
-13. **Zona nueva «Espalda alta (dorsal)»** (sección 12.9): qué evitar, rehabilitación por fases, techo 3 y cuándo consultar. Recomendación: **aprobar**; techo crónico en 3 (como lumbar y cervical), con la opción de subirlo a 5.
+13. **Zona nueva «Espalda alta (dorsal)»** (sección 12.9): qué evitar, rehabilitación por fases, techo 3 (también en crónica, como lumbar y cervical) y cuándo consultar: **aprobada**.
 
 ---
 
