@@ -1,5 +1,6 @@
 /* Estilos propios de cada pantalla aún no rediseñada, con los tokens del sistema (PR 13).
-   Los PR 14-16 pasan cada pantalla a su propio archivo (css/<area>.css) con el diseño aprobado. */
+   Los PR 14-16 pasan cada pantalla a su propio archivo (css/<area>.css) con el diseño aprobado
+   (la sesión y el descanso ya están en css/sesion.css, PR 15). */
 
 /* ── Bienvenida ── */
 .bienvenida { text-align: center; padding: 10vh 0 0; }
@@ -29,71 +30,7 @@
 .tira-semana li.hoy { color: var(--texto-1); font-weight: var(--f-peso-fuerte); box-shadow: inset 0 0 0 1.5px var(--acento); }
 .hecha .etiqueta { color: var(--estado-bien); }
 
-/* ── Sesión ── */
-.cab-sesion { display: flex; align-items: center; gap: var(--e-3); position: sticky; top: 0; z-index: 10; margin: 0 calc(-1 * var(--e-margen)); padding: calc(env(safe-area-inset-top) + var(--e-2)) var(--e-margen) var(--e-2); background: var(--sup-fondo); border-bottom: 1px solid var(--borde-fino); }
-.cab-sesion h1 { font-size: var(--t-subtitulo); }
-.cab-sesion p { margin: 0; font-size: var(--t-secundario); }
-.cab-sesion .barra { margin: var(--e-2) 0 0; }
-.cab-sesion .btn.pequeño { margin: 0; min-height: var(--toque-min); padding: 0 var(--e-4); font-size: 15px; }
-.modo-sesion { margin: var(--e-3) 0 var(--e-1); }
-.pasos-sesion { display: flex; gap: var(--e-2); overflow-x: auto; padding: var(--e-3) 0 var(--e-1); scrollbar-width: none; }
-.pasos-sesion::-webkit-scrollbar { display: none; }
-.pasos-sesion button { flex: 0 0 auto; width: var(--toque-min); height: var(--toque-min); border: 0; border-radius: var(--r-pildora); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-2); font-weight: var(--f-peso-fuerte); display: grid; place-items: center; cursor: pointer; }
-.pasos-sesion button svg { width: 18px; height: 18px; }
-.pasos-sesion button.hecho { color: var(--texto-1); background: var(--acento-tinte); }
-.pasos-sesion button.actual { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }
-.t-nombre { display: flex; align-items: baseline; gap: var(--e-2); flex-wrap: wrap; }
-.t-nombre .dur { font-size: var(--t-meta); color: var(--texto-2); box-shadow: inset 0 0 0 1px var(--borde-control); border-radius: var(--r-pildora); padding: 1px var(--e-2); white-space: nowrap; }
-.bloque > summary .tenue svg { width: 18px; height: 18px; color: var(--acento); }
-.bloque > summary h2 { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); }
-.plegada > summary { display: flex; align-items: center; gap: var(--e-3); cursor: pointer; list-style: none; }
-.plegada > summary::-webkit-details-marker { display: none; }
-.plegada > summary .grow { display: flex; flex-direction: column; min-width: 0; }
-.plegada > summary .tenue { font-size: var(--t-secundario); }
-.plegada > header, .plegada > .nota, .plegada > .motivo { display: none; }
-.tecnica { margin: var(--e-3) 0 0; padding: 0 var(--e-3); border-top: 0; border-radius: var(--r-pequeno); background: var(--sup-control); }
-.tecnica > summary { gap: var(--e-2); min-height: var(--toque-min); font-weight: var(--f-peso-medio); color: var(--texto-1); }
-.tecnica > summary svg { width: 18px; height: 18px; color: var(--acento); }
-.tecnica[open] { padding-bottom: var(--e-3); }
-.tecnica .video-ficha { margin: var(--e-1) 0 var(--e-3); }
-.tecnica .pasos { margin: 0; }
-.tecnica .evita { margin: var(--e-3) 0 2px; font-size: var(--t-secundario); font-weight: var(--f-peso-fuerte); color: var(--texto-2); }
-.tecnica .errores { margin: 0; }
-.tecnica .consejo { margin: var(--e-3) 0 0; font-size: var(--t-secundario); color: var(--texto-2); box-shadow: inset 3px 0 0 var(--acento); padding-left: var(--e-3); }
-.plegada .tecnica { display: none; }
-.porque-resumen { display: flex; gap: var(--e-3); align-items: flex-start; margin: 0; font-size: 15px; line-height: 1.4; }
-.porque-resumen svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--acento); margin-top: 1px; }
-.porque .plegable { margin-top: var(--e-2); }
-.porque ul { margin: var(--e-2) 0 0; padding-left: var(--e-5); font-size: var(--t-secundario); color: var(--texto-2); }
-.tareas { list-style: none; padding: 0; margin: var(--e-3) 0 0; }
-.tareas li { display: flex; align-items: center; gap: var(--e-3); padding: var(--e-3) 0; border-top: 1px solid var(--borde-fino); }
-.tareas li p { margin: 2px 0 0; font-size: var(--t-secundario); }
-.tareas li .grow b, .tareas li .grow strong { font-weight: var(--f-peso-fuerte); }
-.tareas li.hecho .grow { color: var(--texto-2); }
-button.marca { width: var(--toque-sesion); height: var(--toque-sesion); flex-shrink: 0; border: 0; border-radius: var(--r-pildora); background: transparent; box-shadow: inset 0 0 0 1.5px var(--borde-control); display: grid; place-items: center; cursor: pointer; color: var(--texto-sobre-acento); }
-button.marca[aria-pressed="true"] { background: var(--acento); box-shadow: none; }
-.ejercicio header { display: flex; align-items: flex-start; gap: var(--e-3); }
-.ejercicio h3 { font-size: var(--t-subtitulo); margin: 2px 0; }
-.ejercicio header p { margin: 0; font-size: var(--t-secundario); }
-.ejercicio .num { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--borde-control); color: var(--texto-2); font-weight: var(--f-peso-fuerte); font-variant-numeric: tabular-nums; }
-.ejercicio .num svg { width: 18px; height: 18px; }
-.ejercicio.completo .num { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; }
-.motivo { font-size: var(--t-secundario); color: var(--texto-2); box-shadow: inset 3px 0 0 var(--acento); padding: var(--e-1) var(--e-3); margin: var(--e-3) 0; }
-.comentario { font-size: var(--t-secundario); color: var(--texto-2); font-style: italic; }
-/* Series viejas (campos con teclado): el selector ± del sistema llega con el PR 15 */
-.ejercicio .series { list-style: none; padding: 0; margin: var(--e-3) 0 0; display: grid; gap: var(--e-2); }
-.ejercicio .serie { display: flex; align-items: center; gap: var(--e-2); min-height: 0; border-bottom: 0; }
-.serie .n { width: 22px; text-align: center; color: var(--texto-2); font-weight: var(--f-peso-fuerte); font-variant-numeric: tabular-nums; }
-.serie .dato { flex: 1; position: relative; }
-.serie .dato input { text-align: center; font-size: 18px; font-weight: var(--f-peso-fuerte); padding-left: var(--e-2); padding-right: 38px; min-width: 0; font-variant-numeric: tabular-nums; }
-.serie .dato input::placeholder { font-size: .78em; }
-.serie .dato small { position: absolute; right: var(--e-2); top: 50%; transform: translateY(-50%); pointer-events: none; font-size: var(--t-meta); }
-.serie.hecha .dato input { background: var(--acento-tinte); }
-.serie button.marca { width: var(--toque-sesion); height: var(--toque-sesion); }
-button.icono.play { color: var(--acento); box-shadow: inset 0 0 0 1.5px var(--acento); }
-.ejercicio.grande h3 { font-size: var(--t-titulo); }
-.ejercicio.grande .serie .dato input { min-height: var(--toque-principal); font-size: 22px; }
-.ejercicio.grande button.marca { width: var(--toque-principal); height: var(--toque-principal); }
+/* ── Ficha y gustos (los usan Ejercicios y la sesión; la sesión está en css/sesion.css desde el PR 15) ── */
 .gustos { display: flex; gap: var(--e-2); flex-wrap: wrap; margin-top: var(--e-2); }
 .gustos button { flex: 1; min-height: var(--toque-sesion); border: 0; border-radius: var(--r-pildora); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); cursor: pointer; font-size: var(--t-secundario); white-space: nowrap; color: var(--texto-2); }
 .gustos button.on { box-shadow: inset 0 0 0 1.5px var(--acento); background: var(--acento-tinte); color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
@@ -103,51 +40,6 @@ button.icono.play { color: var(--acento); box-shadow: inset 0 0 0 1.5px var(--ac
 .pasos li::marker { color: var(--texto-2); font-weight: var(--f-peso-fuerte); }
 .errores { color: var(--texto-2); }
 .errores li::marker { color: var(--estado-error); }
-
-/* Temporizador y alarma (los rediseña el PR 15; aquí solo pasan a los tokens) */
-.temporizador { position: fixed; left: var(--e-3); right: var(--e-3); bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--e-3)); z-index: var(--z-descanso); max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: var(--e-3); padding: var(--e-3) var(--e-3) var(--e-3) var(--e-4); border-radius: var(--r-medio); background: var(--descanso-fondo); box-shadow: var(--prof-2), inset 0 0 0 1px var(--borde-control); overflow: hidden; }
-body.sin-nav .temporizador { bottom: calc(env(safe-area-inset-bottom) + var(--e-3)); }
-.t-progreso { position: absolute; left: 0; top: 0; height: 3px; background: var(--acento); transition: width .25s linear; }
-.t-texto { position: relative; flex: 1; min-width: 0; }
-.t-texto small { display: block; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.t-texto b { font-size: var(--t-cifra-s); font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; line-height: 1.1; }
-.temporizador.final b { color: var(--acento); }
-.t-botones { position: relative; display: flex; gap: var(--e-2); }
-.t-botones button { min-width: var(--toque-sesion); height: var(--toque-sesion); border: 0; border-radius: var(--r-pildora); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); font-weight: var(--f-peso-fuerte); cursor: pointer; display: grid; place-items: center; }
-.t-botones .t-fin { background: var(--acento); color: var(--texto-sobre-acento); box-shadow: none; padding: 0 var(--e-3); }
-.temporizador.pausado b { color: var(--texto-2); }
-.temporizador.destello { animation: destello-t .45s steps(2) 4; }
-@keyframes destello-t { 50% { background: var(--acento); color: var(--texto-sobre-acento); } }
-/* Ejercicio por tiempo: pantalla completa, legible desde el suelo */
-body .temporizador.cuenta { inset: 0; bottom: 0; max-width: none; margin: 0; border-radius: 0; z-index: var(--z-pantalla); flex-direction: column; align-items: stretch; gap: 0; padding: calc(env(safe-area-inset-top) + var(--e-3)) var(--e-5) calc(env(safe-area-inset-bottom) + var(--e-5)); background: var(--sup-fondo); box-shadow: none; }
-.c-cab { display: flex; align-items: center; gap: var(--e-3); }
-.c-cab small { flex: 1; min-width: 0; font-size: 15px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.c-centro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--e-2); }
-.c-arriba { margin: 0; font-size: 17px; font-weight: var(--f-peso-fuerte); color: var(--texto-2); }
-.c-num { font-size: var(--t-cifra-xl); font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.c-abajo { margin: var(--e-1) 0 var(--e-5); font-size: 18px; min-height: 1.4em; }
-.c-barra { position: relative; width: 100%; max-width: 420px; height: 8px; border-radius: var(--r-pildora); background: var(--borde-fino); }
-.c-barra i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--r-pildora); background: var(--acento); transition: width .2s linear; }
-.c-barra span { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--texto-1); }
-.c-botones { display: flex; gap: var(--e-3); }
-.c-botones .btn { flex: 1; min-height: 64px; font-size: 18px; }
-.cuenta.previa .c-num { color: var(--texto-2); }
-.cuenta.logrado .c-num, .cuenta.superado .c-num { color: var(--acento); }
-.cuenta.superado { background: var(--sup-agua); }
-.cuenta.destello { animation: destello .45s steps(2) 4; }
-body.con-cuenta { overflow: hidden; }
-.alarma { position: fixed; inset: 0; z-index: var(--z-alarma); border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--e-3); color: var(--texto-sobre-acento); background: var(--acento); animation: destello 1s steps(2) infinite; cursor: pointer; font: inherit; }
-.alarma b { font-size: var(--t-portada); font-weight: var(--f-peso-fuerte); text-align: center; padding: 0 var(--e-5); line-height: 1.1; }
-.alarma svg { width: 64px; height: 64px; }
-.alarma span { font-size: 17px; padding: 0 var(--e-6); text-align: center; }
-/* La alarma es crítica: con «reducir movimiento» sigue avisando, con un parpadeo lento de 1 Hz (dos estados por
-   segundo, muy por debajo de 3 destellos/s) que la regla general de componentes.css no apaga. */
-@media (prefers-reduced-motion: reduce) {
-  .alarma { animation: destello 1s steps(2) infinite !important; }
-  .temporizador.destello { animation: destello-t 1s steps(2) 4 !important; }
-  .cuenta.destello { animation: destello 1s steps(2) 4 !important; }
-}
-@keyframes destello { 50% { background: var(--sup-fondo); color: var(--acento); } }
 
 /* ── Progreso ── */
 .barras { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--e-2); height: 120px; align-items: end; margin: var(--e-4) 0 var(--e-6); }
