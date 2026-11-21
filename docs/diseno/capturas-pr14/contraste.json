@@ -1,0 +1,222 @@
+{
+ "victor": {
+  "hoy-con-plan": {
+   "pares": 77,
+   "cumplen": 77,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-primera-vez": {
+   "pares": 14,
+   "cumplen": 14,
+   "minimo": 6.82,
+   "malos": []
+  },
+  "hoy-sin-plan-esta-semana": {
+   "pares": 23,
+   "cumplen": 23,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoy-dia-de-descanso": {
+   "pares": 72,
+   "cumplen": 72,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-en-marcha": {
+   "pares": 76,
+   "cumplen": 76,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-de-ayer-sin-cerrar": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-hecha": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-hoy-no-entrenas": {
+   "pares": 73,
+   "cumplen": 73,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-precaucion": {
+   "pares": 77,
+   "cumplen": 77,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-la-ha-hecho-la-app": {
+   "pares": 82,
+   "cumplen": 82,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sin-conexion": {
+   "pares": 82,
+   "cumplen": 82,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-sin-conexion": {
+   "pares": 164,
+   "cumplen": 164,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-antes-de-empezar": {
+   "pares": 159,
+   "cumplen": 159,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-dolor-nuevo": {
+   "pares": 166,
+   "cumplen": 166,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-mis-sesiones": {
+   "pares": 160,
+   "cumplen": 160,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-senales-de-alarma": {
+   "pares": 158,
+   "cumplen": 158,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-espera-de-la-ia": {
+   "pares": 85,
+   "cumplen": 85,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-fallo-de-la-ia": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 3.56,
+   "malos": []
+  }
+ },
+ "virginia": {
+  "hoy-con-plan": {
+   "pares": 77,
+   "cumplen": 77,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-primera-vez": {
+   "pares": 14,
+   "cumplen": 14,
+   "minimo": 6.82,
+   "malos": []
+  },
+  "hoy-sin-plan-esta-semana": {
+   "pares": 23,
+   "cumplen": 23,
+   "minimo": 4.61,
+   "malos": []
+  },
+  "hoy-dia-de-descanso": {
+   "pares": 72,
+   "cumplen": 72,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-en-marcha": {
+   "pares": 76,
+   "cumplen": 76,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-de-ayer-sin-cerrar": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sesion-hecha": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-hoy-no-entrenas": {
+   "pares": 73,
+   "cumplen": 73,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-precaucion": {
+   "pares": 77,
+   "cumplen": 77,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-la-ha-hecho-la-app": {
+   "pares": 82,
+   "cumplen": 82,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "hoy-sin-conexion": {
+   "pares": 82,
+   "cumplen": 82,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-sin-conexion": {
+   "pares": 169,
+   "cumplen": 169,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-antes-de-empezar": {
+   "pares": 164,
+   "cumplen": 164,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-dolor-nuevo": {
+   "pares": 172,
+   "cumplen": 172,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-mis-sesiones": {
+   "pares": 168,
+   "cumplen": 168,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-senales-de-alarma": {
+   "pares": 163,
+   "cumplen": 163,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-espera-de-la-ia": {
+   "pares": 85,
+   "cumplen": 85,
+   "minimo": 3.56,
+   "malos": []
+  },
+  "check-in-fallo-de-la-ia": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 3.56,
+   "malos": []
+  }
+ }
+}
