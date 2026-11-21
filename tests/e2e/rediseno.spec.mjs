@@ -141,7 +141,7 @@ test('con «reducir movimiento», la alarma sigue parpadeando despacio (1 Hz) y 
     el.remove(); t.remove(); return r;
   });
   expect(anim).toEqual(['destello', '1s', 'steps(2)', 'infinite', '1s']);
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => document.fonts.load('16px "Instrument Sans"', '→←'));
   expect(await page.evaluate(() => document.fonts.check('16px "Instrument Sans"', '→←'))).toBe(true);
   const ancho = await page.evaluate(() => { const s = document.createElement('span'); s.textContent = '→'; s.style.font = '40px "Instrument Sans", monospace'; document.body.append(s); const w = s.getBoundingClientRect().width; s.style.font = '40px monospace'; const m = s.getBoundingClientRect().width; s.remove(); return [w, m]; });
   expect(ancho[0]).not.toBe(ancho[1]); // dibujada por Instrument Sans, no por la letra de reserva
@@ -151,6 +151,7 @@ test('con «reducir movimiento», la alarma sigue parpadeando despacio (1 Hz) y 
 test('solo con el teclado: pestañas, foco al h1, hoja con foco al título, Tab dentro y Escape devuelve el foco', async ({ page, context }) => {
   const errores = await preparar(page, context);
   await page.goto('/');
+  await expect(page.locator('[data-act="bienvenida.elegir"][data-v="virginia"]')).toBeVisible();
   // Bienvenida: Tab hasta el botón de Virginia y Enter
   for (let i = 0; i < 6; i++) {
     await page.keyboard.press('Tab');

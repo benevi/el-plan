@@ -44,7 +44,7 @@ test('un toque en la serie la marca y arranca el descanso', async () => {
   assert.ok(a.doc.querySelector('#temporizador'));
 });
 
-test('un doble toque accidental no desmarca la serie', { todo: 'PR 15: protección contra el doble toque' }, async () => {
+test('un doble toque accidental no desmarca la serie', async () => {
   await reiniciar(base());
   await a.ir('sesion/s1');
   a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]');
@@ -52,7 +52,7 @@ test('un doble toque accidental no desmarca la serie', { todo: 'PR 15: protecci�
   assert.equal(S1().ejercicios[0].sets[0].hecha, true);
 });
 
-test('«Cambiar por otro» con series ya hechas pide confirmación', { todo: 'PR 15: cambiar sin aviso' }, async () => {
+test('«Cambiar por otro» con series ya hechas pide confirmación', async () => {
   await reiniciar(base());
   await a.ir('sesion/s1');
   a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
@@ -62,14 +62,16 @@ test('«Cambiar por otro» con series ya hechas pide confirmación', { todo: 'PR
   assert.equal(S1().ejercicios[0].id, 'press-pecho-maquina', `cambiado a ${S1().ejercicios[0].id} sin confirmar`);
 });
 
-test('el dolor del cierre parte del último valor conocido de la lesión', { todo: 'PR 15: dolor 0 por defecto en el cierre' }, async () => {
+test('el dolor del cierre parte del último valor conocido de la lesión', async () => {
   await reiniciar(base());
   await a.ir('sesion/s1');
+  // Una serie hecha: sin ninguna, «Terminar» no ofrece el cierre (E7, posterior a esta prueba).
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
   a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => a.doc.querySelector('.hoja [data-zona="tobillo_pie"]'));
   assert.equal(a.doc.querySelector('.hoja [data-zona="tobillo_pie"]').value, '5');
 });
 
-test('una sesión ya hecha se ve en modo lectura (tocar una serie no arranca un descanso)', { todo: 'PR 15: sesión hecha editable' }, async () => {
+test('una sesión ya hecha se ve en modo lectura (tocar una serie no arranca un descanso)', async () => {
   await reiniciar(base());
   a.w.localStorage.removeItem('pipos-temporizador');
   await a.ir('sesion/h1');
@@ -79,7 +81,7 @@ test('una sesión ya hecha se ve en modo lectura (tocar una serie no arranca un 
   assert.equal(a.w.localStorage.getItem('pipos-temporizador'), null);
 });
 
-test('la cuenta atrás de un ejercicio por tiempo no apunta 10 minutos si el móvil se bloquea', { todo: 'PR 15: ejercicio por tiempo con el móvil bloqueado (tope y confirmación)' }, async () => {
+test('la cuenta atrás de un ejercicio por tiempo no apunta 10 minutos si el móvil se bloquea', async () => {
   const ses = sesionDemo();
   ses.ejercicios[0] = { id: 'plancha', rol: 'principal', series: 3, reps: '30-45s', descanso: 60, kg: null, nota: '', motivo: '', sets: [1, 2, 3].map(() => ({ kg: null, valor: '', hecha: false })), gusto: null, comentario: '' };
   await reiniciar(estadoBase({ sesiones: { s1: ses } }));
