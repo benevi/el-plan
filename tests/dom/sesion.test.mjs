@@ -16,12 +16,12 @@ async function reiniciar(datos) {
   await a.ir('perfil'); await a.ir('hoy');
 }
 
-test('«atrás» con la hoja de cierre abierta no da por guardada una sesión que no se guardó', { todo: 'PR 13: hojas y botón atrás; guardar falso tras cerrar la hoja' }, async () => {
+test('«atrás» con la hoja de cierre abierta no da por guardada una sesión que no se guardó', async () => {
   await a.ir('sesion/s1');
   a.clic('[data-act="sesion.serie"][data-s="0"]'); await a.tic();
   a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => a.doc.querySelector('#c-com'));
   a.doc.querySelector('#c-com').value = 'Me molestó el hombro en el press';
-  a.w.history.back(); await a.esperar(() => a.w.location.hash !== '#sesion/s1'); await a.tic();
+  a.w.history.back(); await a.esperar(() => a.w.location.hash !== '#sesion/s1' || !a.doc.querySelector('.hoja')); await a.tic();
   const hojaAbierta = !!a.doc.querySelector('.hoja');
   if (hojaAbierta) { a.clic('[data-act="sesion.cerrar"]'); await a.esperar(() => (a.doc.querySelector('#aviso') || {}).textContent); }
   const aviso = (a.doc.querySelector('#aviso') || {}).textContent || '';

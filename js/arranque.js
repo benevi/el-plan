@@ -51,7 +51,7 @@
     var s = panel.style;
     s.position = 'fixed'; s.inset = '0'; s.zIndex = '1000'; s.display = 'flex'; s.flexDirection = 'column';
     s.alignItems = 'center'; s.justifyContent = 'center'; s.gap = '18px'; s.padding = '24px';
-    s.background = '#07080F'; s.color = '#EEF0F7'; s.textAlign = 'center';
+    s.background = '#081723'; s.color = '#EDF3F7'; s.textAlign = 'center'; // --sup-fondo y --texto-1 (aún sin CSS)
     s.font = '17px/1.45 system-ui, -apple-system, sans-serif';
     var p = document.createElement('p');
     p.style.margin = '0';
@@ -63,8 +63,8 @@
       b.type = 'button';
       b.textContent = 'Volver a intentar';
       var bs = b.style;
-      bs.minHeight = '48px'; bs.padding = '0 22px'; bs.border = '0'; bs.borderRadius = '14px';
-      bs.background = '#4DD0E8'; bs.color = '#06121A'; bs.font = '600 16px system-ui, sans-serif';
+      bs.minHeight = '48px'; bs.padding = '0 22px'; bs.border = '0'; bs.borderRadius = '999px';
+      bs.background = '#EDF3F7'; bs.color = '#081723'; bs.font = '600 16px system-ui, sans-serif';
       b.addEventListener('click', reintentar);
       panel.appendChild(b);
     }

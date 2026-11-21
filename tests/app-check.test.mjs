@@ -117,10 +117,11 @@ test('sin fuentes de Google: la app no depende de la red para pintar el texto', 
 
 test('las fuentes alojadas pesan ≤ 150 KB en total y llevan su licencia', () => {
   const fuentes = archivos.filter(f => f.startsWith('fonts/') && f.endsWith('.woff2'));
-  assert.ok(fuentes.length >= 4);
+  // PR 13: la identidad aprobada (Carril 2) usa una sola familia, Instrument Sans (DIS 2).
+  assert.ok(fuentes.length >= 1);
   const total = fuentes.reduce((n, f) => n + fs.statSync(ruta(f)).size, 0);
   assert.ok(total <= 150 * 1024, `fuentes: ${total} bytes`);
-  assert.ok(fs.existsSync(ruta('fonts/OFL-Archivo.txt')) && fs.existsSync(ruta('fonts/OFL-Outfit.txt')));
+  assert.ok(fs.existsSync(ruta('fonts/OFL-instrument-sans.txt')));
 });
 
 test('los PNG de icons/ pesan menos de 50 KB', () => {

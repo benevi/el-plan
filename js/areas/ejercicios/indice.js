@@ -27,7 +27,7 @@ export function abrirFicha(id) {
   abrirHoja(`<h2>${h(e.n)}</h2>
     <p class="tenue">${e.m.map(m => MUSCULOS[m]).join(', ')}${e.s && e.s.length ? ' · también ' + e.s.map(m => MUSCULOS[m].toLowerCase()).join(', ') : ''} · ${h(NIVELES[e.niv])}</p>
     ${rg !== 'ok' ? `<p class="nota ${rg === 'evitar' ? 'peligro' : 'aviso-nota'}">${rg === 'evitar' ? 'Evítalo por ahora' : 'Con cuidado'}: carga tu ${zonas.map(z => ZONAS[z].corta.toLowerCase()).join(' y ')}.</p>` : ''}
-    ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver vídeo de ${h(e.n)}"><img src="${miniatura(e)}" alt="" loading="lazy" onerror="this.remove()"><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
+    ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver vídeo de ${h(e.n)}"><img src="${miniatura(e)}" alt="" loading="lazy" data-quitar-si-falla><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
     <h3>Cómo se hace</h3><ol class="pasos">${e.p.map(p => `<li>${h(p)}</li>`).join('')}</ol>
     ${e.e && e.e.length ? `<h3>Errores típicos</h3><ul class="errores">${e.e.map(x => `<li>${h(x)}</li>`).join('')}</ul>` : ''}
     ${e.c ? `<p class="nota">${h(e.c)}</p>` : ''}
@@ -62,7 +62,7 @@ function vista() {
     ${lista.length ? `<ul class="lista ejercicios">${lista.map(e => {
       const g = gustos[e.id], rg = riesgo(e, niveles), img = miniatura(e);
       return `<li class="${g === 'rechazo' ? 'apagada' : ''}"><button class="fila" data-act="ejercicios.ficha" data-id="${h(e.id)}">
-        <span class="mini">${img ? `<img src="${img}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ''}${ICONOS.ejercicios}${e.v ? `<i>${ICONOS.play}</i>` : ''}</span>
+        <span class="mini">${img ? `<img src="${img}" alt="" loading="lazy" decoding="async" data-quitar-si-falla>` : ''}${ICONOS.ejercicios}${e.v ? `<i>${ICONOS.play}</i>` : ''}</span>
         <span class="grow"><b>${h(e.n)}</b><span class="tenue">${e.m.map(m => MUSCULOS[m]).join(', ')} · ${e.mat.map(m => MATERIAL[m] || m).join(', ')}</span>
           ${rg !== 'ok' || g ? `<span class="marcas">${rg === 'evitar' ? '<span class="insignia peligro">Evitar por tu lesión</span>' : rg === 'precaucion' ? '<span class="insignia cuidado">Con cuidado</span>' : ''}${g ? `<span class="insignia g-${g}">${GUSTOS[g].icono} ${h(GUSTOS[g].nombre)}</span>` : ''}</span>` : ''}</span>
         </button></li>`;

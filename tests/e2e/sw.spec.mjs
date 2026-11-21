@@ -120,7 +120,8 @@ test('se instala, arranca sin red con sus fuentes y no pide nada fuera del sitio
   await expect(page.locator('#red')).toBeVisible();
   expect(await page.evaluate(async () => {
     await document.fonts.ready;
-    return document.fonts.check('800 20px Archivo') && document.fonts.check('400 16px Outfit') && [...document.fonts].filter(f => f.status === 'loaded').length >= 2;
+    // PR 13: una sola familia variable (Instrument Sans, identidad Carril 2), alojada en fonts/.
+    return document.fonts.check('400 16px "Instrument Sans"') && document.fonts.check('600 16px "Instrument Sans"') && [...document.fonts].some(f => f.status === 'loaded');
   })).toBe(true);
   // La versión, discreta, en Perfil → Ajustes.
   await page.click('#nav a[href="#perfil"]');
@@ -255,23 +256,22 @@ test('«red que miente» (onLine sin respuesta) y la app no arranca por otra cau
   await context.setOffline(false);
 });
 
-test('Outfit 400, 500 y 600 se cargan y se usan donde el CSS los pide', async ({ page }) => {
+test('Instrument Sans (variable) se carga y dibuja cada peso y las cifras estrechas donde el CSS los pide', async ({ page }) => {
+  // PR 13: la letra de la identidad aprobada sustituye a Archivo y Outfit. Es un archivo variable (peso
+  // 400-700 y anchura 75-100 %): si no cargara, los pesos y la anchura se sintetizarían y medirían igual.
   await instalar(page);
-  const pesos = async () => page.evaluate(async () => {
-    await document.fonts.ready;
-    return [...document.fonts].filter(f => f.family.replace(/"/g, '') === 'Outfit' && f.status === 'loaded').map(f => f.weight).sort();
-  });
-  // Hoy y Perfil pintan texto normal (400), etiquetas (500/600) y botones (600) en Outfit.
   await page.click('#nav a[href="#perfil"]');
   await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
   await page.click('#nav a[href="#hoy"]');
-  await expect.poll(pesos).toEqual(['400', '500', '600']);
-  // Y cada peso dibuja distinto (si 600 no cargara, se sintetizaría desde 500 y mediría lo mismo).
-  // 700 sí mide como 600: no hay Outfit 700 (tampoco lo había con Google) y se sintetiza desde 600.
-  const anchos = await page.evaluate(() => [400, 500, 600].map(w => {
+  await expect.poll(() => page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts].some(f => f.family.replace(/"/g, '') === 'Instrument Sans' && f.status === 'loaded');
+  })).toBe(true);
+  const anchos = await page.evaluate(() => [['400', '100%'], ['500', '100%'], ['600', '100%'], ['400', '75%']].map(([w, st]) => {
     const s = document.createElement('span');
     s.textContent = 'Pipos Fitness ñáé 0123456789';
-    s.style.font = `${w} 40px Outfit`;
+    s.style.font = `${w} 40px "Instrument Sans"`;
+    s.style.fontStretch = st;
     s.style.position = 'absolute';
     s.style.whiteSpace = 'nowrap';
     document.body.append(s);
@@ -279,16 +279,17 @@ test('Outfit 400, 500 y 600 se cargan y se usan donde el CSS los pide', async ({
     s.remove();
     return x;
   }));
-  expect(new Set(anchos).size).toBe(3);
-  // Los pesos de Outfit que pide el CSS en Hoy y en Perfil → Ajustes: 400 y 600 al menos, y todos cargados.
-  const usados = () => page.evaluate(() => [...new Set([...document.querySelectorAll('body *')].map(e => getComputedStyle(e))
-    .filter(c => c.fontFamily.startsWith('Outfit') && +c.fontWeight <= 600).map(c => c.fontWeight))]);
-  const pedidos = new Set(await usados());
-  await page.click('#nav a[href="#perfil"]');
-  await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
-  for (const w of await usados()) pedidos.add(w);
-  expect([...pedidos]).toEqual(expect.arrayContaining(['400', '600']));
-  for (const w of pedidos) expect(await page.evaluate(w => document.fonts.check(`${w} 16px Outfit`), w)).toBe(true);
+  expect(new Set(anchos).size).toBe(4);
+  expect(anchos[3]).toBeLessThan(anchos[0]); // las cifras estrechas (75 %) ocupan menos
+  // Todo el texto de Hoy y de Perfil → Ajustes usa la letra alojada, con pesos 400 y 500 o 600.
+  const usados = () => page.evaluate(() => {
+    const cs = [...document.querySelectorAll('#vista *, #nav *')].map(e => getComputedStyle(e)).filter(c => c.fontFamily);
+    return { familias: [...new Set(cs.map(c => c.fontFamily.split(',')[0].replace(/"/g, '').trim()))], pesos: [...new Set(cs.map(c => c.fontWeight))] };
+  });
+  const hoy = await usados();
+  expect(hoy.familias).toEqual(['Instrument Sans']);
+  expect(hoy.pesos).toEqual(expect.arrayContaining(['400']));
+  for (const w of hoy.pesos) expect(await page.evaluate(w => document.fonts.check(`${w} 16px "Instrument Sans"`), w)).toBe(true);
 });
 
 test('al volver a primer plano avisa de la versión nueva; con una sesión en curso, no', async ({ page, browser }) => {

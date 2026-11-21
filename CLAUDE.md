@@ -4,7 +4,7 @@ Léelo entero antes de tocar nada. Los detalles técnicos (guardado, copias, ser
 
 ## Qué es
 - App **privada** de entrenamiento de **Víctor y Virginia** (pareja). No se vende ni se publica.
-- Cada uno la usa en **su móvil**, con **sus datos** y **su color** (`--acc` / `--acc-2` en CSS). No hay datos compartidos entre ellos ni base de datos propia: todo vive en el navegador de cada móvil (más copias cifradas opcionales en Vercel Blob).
+- Cada uno la usa en **su móvil**, con **sus datos** y **su color** (`data-persona` en `<html>`, que cambia `--acento` en `css/tokens.css`). No hay datos compartidos entre ellos ni base de datos propia: todo vive en el navegador de cada móvil (más copias cifradas opcionales en Vercel Blob).
 - Entrenan en un **centro deportivo con gimnasio y piscina climatizada**; a veces en casa o en la calle.
 - PWA sin paso de compilación (HTML + módulos ES + CSS), alojada en Vercel. La IA va en funciones del servidor (`api/`) con la clave de Anthropic, que nunca sale de Vercel.
 - Todo en **español de España**: interfaz, código, comentarios, commits y PR.
@@ -38,10 +38,10 @@ Léelo entero antes de tocar nada. Los detalles técnicos (guardado, copias, ser
 | `js/reglas/` | Barandillas compartidas: catálogo y seguridad, progresión, contexto que se manda a la IA |
 | `js/areas/entrenador/` | Lógica del entrenador: `dia.js` (sesión por reglas), `plan.js` (semana), `checkin.js`, `ia.js` (puente con la IA), `validar.js` (validador único), `indice.js` (pantallas) |
 | `js/areas/{hoy,perfil,sesion,progreso,ejercicios}/` | Cada pantalla; `sesion/temporizador.js` es el cronómetro |
-| `js/aspecto/` | Movimiento y confeti |
+| `js/aspecto/` | Movimiento (cambio de pantalla) y celebración |
 | `api/entrenador.js`, `api/_comun.js` | Función de la IA (modos `sesion` y `plan`), saneado y llamada a Claude |
 | `api/copia.js` | Copias cifradas en Vercel Blob |
-| `css/` | `base.css`, `componentes.css`, `areas.css` |
+| `css/` | `tokens.css` y `componentes.css` (sistema de diseño), `marco.css`, `legado.css` (lo aún no rediseñado), `areas.css` |
 | `sw.js`, `scripts/version.mjs` | Modo sin conexión y versiones (lista `APP`, `VERSION`, `HUELLAS`) |
 | `docs/criterio.md` | Especificación de salud y entrenamiento (aprobada por Víctor el 20-11-2026) |
 | `tests/` | `node:test` + jsdom, y e2e con Playwright |
