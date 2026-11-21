@@ -19,12 +19,12 @@ import './areas/ejercicios/indice.js';
 import './areas/perfil/indice.js';
 import './aspecto/vida.js';
 
+// El color de la persona sale de los tokens (css/tokens.css) según data-persona en <html>:
+// lima suave para Víctor y rosa suave para Virginia. Ningún componente pregunta por la persona.
 function colorPersona() {
-  const p = PERSONAS[estado().dueño];
-  const r = document.documentElement.style;
-  r.setProperty('--acc', p ? p.color : '#4DD0E8');
-  r.setProperty('--acc-2', p ? p.color2 : '#2A9BC2');
-  document.body.dataset.persona = estado().dueño || '';
+  const d = estado().dueño;
+  if (PERSONAS[d]) document.documentElement.dataset.persona = d;
+  else delete document.documentElement.dataset.persona;
 }
 
 // Antes de cargar una copia se prueban todas las pantallas con sus datos (estado.importar).

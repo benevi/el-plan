@@ -67,7 +67,7 @@ function tecnica(x) {
   const abierto = x.id in tecnicaAbierta ? tecnicaAbierta[x.id] : nuevo;
   return `<details class="tecnica" data-id="${h(x.id)}" ${abierto ? 'open' : ''}>
     <summary>${ICONOS.info} Cómo se hace${nuevo ? ' <span class="insignia">Nuevo para ti</span>' : ''}</summary>
-    ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver vídeo de ${h(e.n)}"><img src="${miniatura(e)}" alt="" loading="lazy" onerror="this.remove()"><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
+    ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver vídeo de ${h(e.n)}"><img src="${miniatura(e)}" alt="" loading="lazy" data-quitar-si-falla><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
     <ol class="pasos">${e.p.map(t => `<li>${h(t)}</li>`).join('')}</ol>
     ${e.e && e.e.length ? `<p class="evita">Evita</p><ul class="errores">${e.e.map(t => `<li>${h(t)}</li>`).join('')}</ul>` : ''}
     ${e.c ? `<p class="consejo">${h(e.c)}</p>` : ''}
@@ -177,11 +177,11 @@ function conSesion(fn, motivo = 'sesion') {
 
 function hojaCierre() {
   const s = sesion(idActual());
-  // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
+  // Solo zonas del catálogo: su clave va dentro de un id (y del data-eco que lo rellena).
   const zonas = [...new Set([...Object.keys((s.checkin && s.checkin.dolor) || {}), ...estado().perfil.lesiones.filter(l => l.activa).map(l => l.zona)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   abrirHoja(`<h2>¿Qué tal ha ido?</h2>
     <div class="campo col"><span>Esfuerzo</span><div class="segmentos" id="c-esf">${[['1', 'Muy fácil'], ['2', 'Fácil'], ['3', 'Justo'], ['4', 'Duro'], ['5', 'Al límite']].map(([v, t]) => `<button data-v="${v}" class="${v === '3' ? 'on' : ''}">${v}<small>${t}</small></button>`).join('')}</div></div>
-    ${zonas.map(z => `<label class="campo col"><span>Dolor ahora · ${h(ZONAS[z].corta)}: <b id="c-${h(z)}-v">${+(s.checkin && s.checkin.dolor[z]) || 0}</b>/10</span><input type="range" min="0" max="10" value="${+(s.checkin && s.checkin.dolor[z]) || 0}" data-zona="${h(z)}" oninput="document.getElementById('c-${h(z)}-v').textContent=this.value"></label>`).join('')}
+    ${zonas.map(z => `<label class="campo col"><span>Dolor ahora · ${h(ZONAS[z].corta)}: <b id="c-${h(z)}-v">${+(s.checkin && s.checkin.dolor[z]) || 0}</b>/10</span><input type="range" min="0" max="10" value="${+(s.checkin && s.checkin.dolor[z]) || 0}" data-zona="${h(z)}" data-eco="c-${h(z)}-v"></label>`).join('')}
     <label class="campo col"><span>Para tu entrenador <small>molestias, qué cambiarías…</small></span><textarea id="c-com" rows="3"></textarea></label>
     <button class="btn grande" data-act="sesion.cerrar">Guardar sesión</button>`);
   $('#c-esf').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#c-esf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });

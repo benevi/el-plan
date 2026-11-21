@@ -17,7 +17,7 @@ test('a las 23:40 Hoy muestra la sesión en marcha', async () => {
   assert.ok(a.doc.querySelector('a[href="#sesion/s1"]'));
 });
 
-test('al volver a la app pasada la medianoche, Hoy se repinta con el día nuevo', { todo: 'PR 13: Hoy sin refrescar al volver a la app' }, async () => {
+test('al volver a la app pasada la medianoche, Hoy se repinta con el día nuevo', async () => {
   reloj.avanzar(30 * 60 * 1000); // 00:10
   await a.ocultar(false);
   assert.match(fecha(), /viernes, 20 de noviembre/);

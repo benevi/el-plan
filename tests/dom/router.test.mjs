@@ -9,7 +9,7 @@ let a = null;
 try { a = await montar({ ls: { pipos4: estadoBase() }, hash: '%E0%A4%A' }); } catch (e) { fallo = e; }
 after(() => a && a.cerrar());
 
-test('un hash mal formado no deja la pantalla en blanco', { todo: 'PR 13: hash mal formado fuera del try' }, async () => {
+test('un hash mal formado no deja la pantalla en blanco', async () => {
   assert.equal(fallo, null, fallo && fallo.message);
   await tic();
   assert.ok(a.vista().textContent.trim().length > 0);

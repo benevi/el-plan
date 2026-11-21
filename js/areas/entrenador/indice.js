@@ -26,7 +26,7 @@ let ci = null;
 
 function hojaCheckin() {
   const S = estado();
-  // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
+  // Solo zonas del catálogo: su clave va dentro de un id (y del data-eco que lo rellena).
   const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   const otras = Object.keys(ZONAS).filter(z => !zonas.includes(z));
   const deLesion = S.perfil.lesiones.filter(l => l.activa).map(l => l.zona);
@@ -49,7 +49,7 @@ function hojaCheckin() {
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
     ${zonas.map(z => `<div class="campo col"><label class="col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
-      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>
+      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" data-eco="ci-${h(z)}"></label>
       ${deLesion.includes(z) ? '' : `<button class="enlace" data-act="entrenador.ciQuitarZona" data-v="${h(z)}">Quitar ${h(minus(ZONAS[z].corta))}</button>`}</div>`).join('')}
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
     <div class="campo col alarma-ci"><span>Señales de alarma</span>
@@ -165,7 +165,7 @@ async function conEspera(tipo, titulo, hacer) {
     <div class="cargando espera"><div class="giro"></div>
       <p id="espera-fase" aria-live="polite">Conectando con tu entrenador…</p>
       <p class="tenue"><span id="espera-tiempo">0:00</span> · suele tardar entre 20 y 90 segundos</p></div>
-    <button class="btn sec" data-act="entrenador.cancelarIA">Cancelar y hacerla con la app</button>`, { clase: 'espera', fija: true });
+    <button class="btn sec" data-act="entrenador.cancelarIA" data-atras>Cancelar y hacerla con la app</button>`, { clase: 'espera', fija: true });
   const reloj = setInterval(() => { const t = $('#espera-tiempo'); if (t) t.textContent = mmss((Date.now() - yo.inicio) / 1000); }, 1000);
   const alProgreso = p => { const f = $('#espera-fase'); if (f && enCurso === yo) f.textContent = TEXTO_FASE[tipo](p); };
   try {

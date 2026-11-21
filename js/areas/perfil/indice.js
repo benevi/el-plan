@@ -293,8 +293,8 @@ function hojaLesion(l) {
   abrirHoja(`<h2>${nueva ? 'Nueva lesión o dolor' : 'Editar lesión'}</h2>
     <label class="campo col"><span>Zona</span><select id="l-zona" data-cambio="perfil.lesionZona">${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}" ${k === l.zona ? 'selected' : ''}>${h(z.nombre)}</option>`).join('')}</select></label>
     ${detallesLesion(l)}
-    <label class="campo col"><span>Dolor habitual: <b id="l-dolor-v">${+l.dolor}</b>/10</span><input type="range" id="l-dolor" min="0" max="10" value="${+l.dolor}" oninput="document.getElementById('l-dolor-v').textContent=this.value"></label>
-    <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo">${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${h(n)}</button>`).join('')}</div></div>
+    <label class="campo col"><span>Dolor habitual: <b id="l-dolor-v">${+l.dolor}</b>/10</span><input type="range" id="l-dolor" min="0" max="10" value="${+l.dolor}" data-eco="l-dolor-v"></label>
+    <div class="campo col"><span>Qué es</span><div class="chips" id="l-tipo" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${(l.tipo || 'lesion') === k ? 'on' : ''}" data-v="${k}">${h(n)}</button>`).join('')}</div></div>
     <label class="campo col"><span>Desde</span><input type="date" id="l-desde" value="${h(l.desde || '')}"></label>
     <label class="campo col"><span>Nota <small>qué movimientos duelen, diagnóstico…</small></span><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></label>
     ${nueva ? '' : `<label class="interruptor"><input type="checkbox" id="l-activa" ${l.activa ? 'checked' : ''}><span>Sigue activa</span></label>`}
