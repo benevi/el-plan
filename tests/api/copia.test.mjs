@@ -10,6 +10,7 @@ import handler, { ponerAlmacen, reiniciarRitmo, sobrantes, nombreCopia, nombreCo
 let registros, errores, logAntes, errorAntes, blob;
 beforeEach(() => {
   process.env.APP_CODE = 'secreto';
+  process.env.VERCEL_ENV = 'production'; // las rutas de siempre; las vistas previas, al final
   delete process.env.BLOB_READ_WRITE_TOKEN; delete process.env.BLOB_STORE_ID;
   blob = new BlobSimulado(); ponerAlmacen(blob); reiniciarRitmo();
   registros = []; errores = [];
@@ -288,4 +289,29 @@ test('tope de 30 subidas al día por persona (contador en el Blob, aunque la ret
   blob.blobs.set('cuentas/virginia/2020-01-01.json', { pathname: 'cuentas/virginia/2020-01-01.json', bytes: Buffer.from('{"n":3}'), uploadedAt: new Date() });
   reiniciarRitmo(); await subir(cifrado(), { persona: 'virginia' });
   assert.ok(!blob.blobs.has('cuentas/virginia/2020-01-01.json'));
+});
+
+// ── Vistas previas: copias aparte de las de producción ──
+test('en una vista previa (o sin VERCEL_ENV) las copias y los contadores van bajo preview/ y no se ven desde producción', async () => {
+  for (const entorno of ['preview', 'development', undefined]) {
+    blob = new BlobSimulado(); ponerAlmacen(blob); reiniciarRitmo();
+    if (entorno) process.env.VERCEL_ENV = entorno; else delete process.env.VERCEL_ENV;
+    const r = await subir();
+    assert.equal(r.codigo, 200, String(entorno));
+    const claves = [...blob.blobs.keys()];
+    assert.ok(claves.length >= 2 && claves.every(k => k.startsWith('preview/')), `${entorno}: ${claves.join(', ')}`);
+    assert.match(r.cuerpo.copia.nombre, /^preview\/copias\/victor\//);
+    const l = await json({ accion: 'listar', persona: 'victor' });
+    assert.equal(l.cuerpo.copias.length, 1);
+    const b = await json({ accion: 'bajar', persona: 'victor', nombre: r.cuerpo.copia.nombre });
+    assert.equal(b.codigo, 200);
+    // Producción no las lista ni las baja (ni al revés).
+    process.env.VERCEL_ENV = 'production';
+    assert.equal((await json({ accion: 'listar', persona: 'victor' })).cuerpo.copias.length, 0);
+    assert.equal((await json({ accion: 'bajar', persona: 'victor', nombre: r.cuerpo.copia.nombre })).codigo, 400);
+    const p = await subir();
+    assert.match(p.cuerpo.copia.nombre, /^copias\/victor\//);
+    if (entorno) process.env.VERCEL_ENV = entorno; else delete process.env.VERCEL_ENV;
+    assert.deepEqual((await json({ accion: 'listar', persona: 'victor' })).cuerpo.copias.map(c => c.nombre), [r.cuerpo.copia.nombre]);
+  }
 });
