@@ -107,14 +107,15 @@ function hojaCheckin({ arriba = false } = {}) {
   pet.addEventListener('change', () => { const v = $('.hoja.checkin .previa'); if (v) v.outerHTML = htmlPrevia(previaCheckin(ci)); });
 }
 // Dolor de hoy por zona: selector ± del sistema (un toque, sin teclado del móvil). El deslizador nativo se queda
-// como control accesible (flechas, Re Pág/Av Pág, Inicio y Fin) sin verse: el valor grande es su eco.
+// como ÚNICO control accesible (flechas, Re Pág/Av Pág, Inicio y Fin) sin verse: el valor grande es su eco y los
+// botones ± son solo para el dedo (fuera del orden de Tab y del lector: una parada y un control por zona).
 function selectorDolor(z, quitable) {
   const v = +ci.dolorHoy[z] || 0, nombre = ZONAS[z].corta;
   return `<div class="grupo"><div class="selector selector--dolor">
     <label class="selector-et" for="ci-r-${h(z)}">Dolor hoy · ${h(nombre)}</label>
     <div class="selector-valor" aria-hidden="true"><b id="ci-${h(z)}">${v}</b><span>de 10</span></div>
     <input type="range" class="solo-lector" id="ci-r-${h(z)}" min="0" max="10" step="1" value="${v}" aria-valuetext="${v} de 10" data-no-foco="1" data-cambio="entrenador.ciDolor" data-z="${h(z)}" data-eco="ci-${h(z)}">
-    <div class="selector-pasos"><button type="button" data-act="entrenador.ciDolorPaso" data-z="${h(z)}" data-v="-1" aria-label="Menos dolor en ${h(minus(nombre))}" aria-disabled="${v <= 0}">${ICONOS.menos}</button><button type="button" data-act="entrenador.ciDolorPaso" data-z="${h(z)}" data-v="1" aria-label="Más dolor en ${h(minus(nombre))}" aria-disabled="${v >= 10}">${ICONOS.mas}</button></div>
+    <div class="selector-pasos" aria-hidden="true"><button type="button" tabindex="-1" data-act="entrenador.ciDolorPaso" data-z="${h(z)}" data-v="-1" aria-disabled="${v <= 0}">${ICONOS.menos}</button><button type="button" tabindex="-1" data-act="entrenador.ciDolorPaso" data-z="${h(z)}" data-v="1" aria-disabled="${v >= 10}">${ICONOS.mas}</button></div>
     ${quitable ? `<button type="button" class="boton boton--texto selector-nota" data-act="entrenador.ciQuitarZona" data-v="${h(z)}">Quitar ${h(minus(nombre))}</button>` : ''}
   </div></div>`;
 }
@@ -197,14 +198,16 @@ function elegirMia(S, id) {
 
 // Dolor de una zona (el deslizador o el selector ±). Pasar a 7 o más lleva al día de dolor alto: se
 // confirma (C-DOLOR-0) y, si no, se queda como estaba.
+// Después, el foco va al control de dolor de esa zona (también al volver de la confirmación).
+const focoDolor = z => { const r = document.getElementById('ci-r-' + z); if (r) { try { r.focus({ preventScroll: true }); } catch { /* nada */ } } };
 async function ponerDolor(z, v) {
   v = Math.max(0, Math.min(10, Math.round(+v || 0)));
   const antes = +ci.dolorHoy[z] || 0;
   if (v >= 7 && antes < 7) {
     guardarScrollCi();
-    if (!await confirmar('¿Hoy de verdad 7 o más?', { si: 'Sí, 7 o más', no: 'No' })) { hojaCheckin(); return; }
+    if (!await confirmar('¿Hoy de verdad 7 o más?', { si: 'Sí, 7 o más', no: 'No' })) { hojaCheckin(); focoDolor(z); return; }
   }
-  ci.dolorHoy[z] = v; hojaCheckin();
+  ci.dolorHoy[z] = v; hojaCheckin(); focoDolor(z);
 }
 
 // Señal de alarma marcada o confirmada: se apunta y no se prepara nada (C-ALAR-1).

@@ -285,6 +285,42 @@ test('la tira de la semana se lee sin color y el botón de abajo no la tapa (390
     const barra2 = await page.locator('.accion-hoy').boundingBox();
     expect(ultimo.y + ultimo.height, `${w} × ${h}: lo último tapado`).toBeLessThanOrEqual(barra2.y + 1);
   }
+  // Con la barra de descanso, el aviso de versión nueva o los dos: lo último sigue a la vista y los avisos
+  // (#aviso y el de versión) van por encima de la barra de Hoy (revisión del PR #41).
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async () => {
+    const v = document.createElement('div'); v.id = 'aviso-version'; v.className = 'aviso-version'; v.hidden = true;
+    v.innerHTML = '<span>Hay una versión nueva.</span><button class="btn" type="button">Actualizar</button>';
+    document.body.append(v);
+  });
+  for (const clases of [['con-temporizador'], ['con-aviso-version'], ['con-temporizador', 'con-aviso-version']]) {
+    // Descanso de verdad (la barra del temporizador) y el aviso de versión como lo pone version.js
+    await page.evaluate(async c => {
+      const t = await import('/js/areas/sesion/temporizador.js');
+      if (c.includes('con-temporizador')) t.descanso(120); else t.parar();
+      document.body.classList.toggle('con-aviso-version', c.includes('con-aviso-version'));
+      document.getElementById('aviso-version').hidden = !c.includes('con-aviso-version');
+    }, clases);
+    if (clases.includes('con-temporizador')) { await expect(page.locator('#temporizador')).toBeVisible(); await expect(page.locator('body')).toHaveClass(/con-temporizador/); }
+    await page.evaluate(async () => (await import('/js/nucleo/ui.js')).aviso('Medidas guardadas'));
+    await page.waitForTimeout(50);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const barra = await page.locator('.accion-hoy').boundingBox();
+    const ultimo = await page.locator('#vista > :not(.accion-hoy)').last().boundingBox();
+    let techo = barra.y;
+    if (clases.includes('con-temporizador')) {
+      const tmp = await page.locator('#temporizador').boundingBox();
+      expect(barra.y + barra.height, `${clases}: la barra de Hoy encima del descanso`).toBeLessThanOrEqual(tmp.y + 1);
+    }
+    if (clases.includes('con-aviso-version')) {
+      const ver = await page.locator('#aviso-version').boundingBox();
+      expect(ver.y + ver.height, `${clases}: el aviso de versión bajo la barra`).toBeLessThanOrEqual(barra.y + 1);
+      techo = Math.min(techo, ver.y);
+    }
+    expect(ultimo.y + ultimo.height, `${clases}: lo último tapado`).toBeLessThanOrEqual(techo + 1);
+    const av = await page.locator('#aviso').boundingBox();
+    expect(av.y + av.height, `${clases}: #aviso bajo la barra`).toBeLessThanOrEqual(barra.y + 1);
+  }
   expect(errores).toEqual([]);
 });
 

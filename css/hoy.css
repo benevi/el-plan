@@ -29,6 +29,8 @@ a.boton { text-decoration: none; }
 .semana .dia-c .icono { width: 16px; height: 16px; stroke-width: 2.4; }
 .dia--perdida .dia-c .icono { width: 14px; height: 14px; }
 .dia--no .dia-c { color: var(--texto-2); }
+/* Hoy, ya hecho: relleno de hecho y el anillo de hoy por fuera */
+.dia--hecha.dia--hoy .dia-c { color: var(--texto-sobre-acento); box-shadow: 0 0 0 2px var(--sup-fondo), 0 0 0 4px var(--acento); }
 
 /* El porqué del entrenador, en una línea con el destello */
 .porque { display: flex; gap: var(--e-2); align-items: flex-start; margin: var(--e-3) 0 0; color: var(--texto-2); font-size: var(--t-secundario); }
@@ -87,9 +89,18 @@ a.boton { text-decoration: none; }
 .accion-hoy .boton { display: flex; }
 .nota-accion { margin-top: var(--e-2); text-align: center; font-size: var(--t-secundario); color: var(--texto-2); }
 main#vista.entra > .accion-hoy { animation: none; }
+/* Con la barra de descanso (abajo, encima de las pestañas) la barra sube; los avisos (#aviso y el de versión
+   nueva) van siempre por encima de la barra, y el relleno de abajo cuenta todo lo que flota, para que lo
+   último de Hoy («Cambiar días», «Hoy no puedo») nunca quede tapado. */
 body.con-temporizador .accion-hoy { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 96px); }
 body:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 128px); }
-body:has(.accion-hoy) #aviso, body:has(.accion-hoy) .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 120px); }
+body.con-temporizador:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 224px); }
+body.con-aviso-version:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 208px); }
+body.con-temporizador.con-aviso-version:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 304px); }
+body:has(.accion-hoy) #aviso, body:has(.accion-hoy) .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 132px); }
+body.con-temporizador:has(.accion-hoy) #aviso, body.con-temporizador:has(.accion-hoy) .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 228px); }
+/* Con una hoja abierta el aviso va arriba (marco.css): sin «bottom», que lo estiraría de arriba abajo */
+body.con-hoja:has(.accion-hoy) #aviso, body.con-hoja.con-temporizador:has(.accion-hoy) #aviso { bottom: auto; }
 
 /* ---------- Hojas de la semana y del entrenador ---------- */
 .hoja .grupo { margin-top: var(--e-5); }

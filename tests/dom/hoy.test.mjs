@@ -167,3 +167,57 @@ test('sin conexión: Hoy lo dice y el check-in también (sin «Pedírsela igualm
   }
   assert.equal(a.doc.querySelector('.sin-red'), null);
 });
+
+// ── Revisión del PR #41 ──
+test('la tira sigue diciendo «hoy» cuando la sesión de hoy está hecha', async () => {
+  const s = sesionDemo('h', { estado: 'hecha', cierre: { esfuerzo: 3, dolor: {}, comentario: '' } });
+  s.ejercicios[0].sets[0].hecha = true;
+  await reiniciar(conPlan({ sesiones: { h: s } }));
+  const sab = a.doc.querySelectorAll('.semana .dia')[5];
+  assert.ok(sab.classList.contains('dia--hoy') && sab.classList.contains('dia--hecha'));
+  assert.match(sab.querySelector('.dia-c').getAttribute('aria-label'), /^Sábado 21: hoy, .+, hecho$/);
+});
+
+test('sesión sin cerrar: región con título, solo tareas sin «0 de N series», el mes si es de hace más de una semana y el foco tras descartar', async () => {
+  const s = sesionDemo('vieja', { fecha: dia(-16), estado: 'en_curso', nombre: 'Movilidad', calentamiento: [{ id: null, nombre: 'Bici', detalle: '', duracion: '5 min', hecho: true }] });
+  await reiniciar(conPlan({ sesiones: { vieja: s } }));
+  const av = a.doc.querySelector('.sin-cerrar');
+  assert.equal(av.getAttribute('role'), 'region');
+  assert.equal(a.doc.getElementById(av.getAttribute('aria-labelledby')).textContent, 'La sesión del jueves 5 de noviembre está sin cerrar');
+  assert.match(av.textContent, /Movilidad: 1 tarea hecha de calentamiento o vuelta a la calma\./);
+  assert.doesNotMatch(av.textContent, /0 de \d+ series/);
+  a.clic('[data-act="hoy.descartarAnterior"]');
+  await a.esperar(() => /¿Descartar «Movilidad»/.test((hoja() || {}).textContent || ''));
+  assert.doesNotMatch(hoja().textContent, /0 de \d+ series/);
+  a.clic('.hoja [data-r="1"]');
+  await a.esperar(() => !a.estado.estado().sesiones.vieja);
+  await a.tic();
+  assert.equal(a.doc.activeElement, a.doc.querySelector('#vista h1'), 'el foco se pierde tras descartar');
+});
+
+test('sin plan y con precaución T2, «Montar mi semana» es secundaria y no hay barra de acción', async () => {
+  const b = estadoBase(); b.alarmas = [{ fecha: isoLocal(new Date()), respuesta: 'si', frase: '' }];
+  await reiniciar(b);
+  assert.match(vista(), /Sin entrenar por precaución/);
+  assert.equal(a.doc.querySelector('.accion-hoy'), null);
+  assert.ok(a.doc.querySelector('.sin-plan [data-act="entrenador.plan"]').classList.contains('boton--secundario'));
+});
+
+test('selector de dolor: una sola parada y un solo control para el lector (el deslizador); el foco vuelve a él tras ± y tras «No»', async () => {
+  const b = estadoBase(); b.perfil.lesiones.push({ id: 'l1', zona: 'rodilla', dolor: 6, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true });
+  await reiniciar(b);
+  await abrirCheckin();
+  const pasos = a.doc.querySelector('.selector--dolor .selector-pasos');
+  assert.equal(pasos.getAttribute('aria-hidden'), 'true');
+  assert.ok([...pasos.querySelectorAll('button')].every(x => x.tabIndex === -1));
+  a.clic('[data-act="entrenador.ciDolorPaso"][data-z="rodilla"][data-v="-1"]'); await a.tic();
+  assert.equal(a.doc.activeElement, a.doc.querySelector('#ci-r-rodilla'));
+  a.clic('[data-act="entrenador.ciDolorPaso"][data-z="rodilla"][data-v="1"]'); await a.tic();
+  a.clic('[data-act="entrenador.ciDolorPaso"][data-z="rodilla"][data-v="1"]');
+  await a.esperar(() => /¿Hoy de verdad 7 o más\?/.test((hoja() || {}).textContent || ''));
+  a.clic('.hoja [data-r="0"]');
+  await a.esperar(() => a.doc.querySelector('#ci-rodilla'));
+  assert.equal(a.doc.querySelector('#ci-rodilla').textContent, '6');
+  assert.equal(a.doc.activeElement, a.doc.querySelector('#ci-r-rodilla'));
+  a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
+});

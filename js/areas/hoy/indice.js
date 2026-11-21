@@ -42,7 +42,7 @@ function tiraSemana(S) {
   return `<section class="semana-hoy" aria-label="Esta semana"><ol class="semana">${[1, 2, 3, 4, 5, 6, 7].map(i => {
     const d = dias.find(x => x.diaSemana === i), n = fechaDelDia(i), esHoy = i === hoy;
     let clase = '', marca = `<span class="cifra">${+n}</span>`, txt = esHoy ? 'hoy, descanso' : 'descanso';
-    if (d && d.estado === 'hecho') { clase = 'dia--hecha'; marca = ICONOS.check; txt = `${d.nombre}, hecho`; }
+    if (d && d.estado === 'hecho') { clase = esHoy ? 'dia--hecha dia--hoy' : 'dia--hecha'; marca = ICONOS.check; txt = `${esHoy ? 'hoy, ' : ''}${d.nombre}, hecho`; }
     else if (d && (d.estado === 'saltado' || (d.estado === 'noPuedo' && i < hoy))) { clase = 'dia--perdida'; marca = ICONOS.x; txt = `${d.nombre}, no hecho`; }
     else if (d && d.estado === 'noPuedo') { clase = 'dia--hoy dia--no'; marca = ICONOS.x; txt = `hoy, ${d.nombre}: hoy no puedes`; }
     else if (esHoy) { clase = 'dia--hoy'; txt = d ? `hoy, ${d.nombre}` : 'hoy, descanso'; }
@@ -63,16 +63,26 @@ function cuandoFue(fecha) {
   const ayer = new Date(hoyISO() + 'T12:00'); ayer.setDate(ayer.getDate() - 1);
   if (fecha === hoyISO(ayer)) return { de: 'de ayer', la: 'la de ayer' };
   const d = new Date(fecha + 'T12:00');
-  const dia = `${minus(DIAS[diaSemana(d)])} ${d.getDate()}`;
+  const hace = Math.round((new Date(hoyISO() + 'T12:00') - d) / 864e5);
+  // De hace más de una semana, con el mes: «el jueves 5 de noviembre»
+  const dia = `${minus(DIAS[diaSemana(d)])} ${d.getDate()}${hace > 7 ? ` de ${d.toLocaleDateString('es-ES', { month: 'long' })}` : ''}`;
   return { de: `del ${dia}`, la: `la del ${dia}` };
+}
+// Lo apuntado en una sesión, sin decir «0 de 12 series» si solo hay tareas de calentamiento o vuelta a la calma.
+function loApuntado(s) {
+  const hechas = seriesHechas(s);
+  if (hechas) return plural(hechas, 'serie', 'series', series(s));
+  const tareas = [...(s.calentamiento || []), ...(s.vuelta || [])].filter(t => t.hecho).length;
+  if (tareas) return plural(tareas, 'tarea hecha', 'tareas hechas') + ' de calentamiento o vuelta a la calma';
+  return 'un ejercicio parado por dolor';
 }
 function avisoSinCerrar(S) {
   const s = sesionSinCerrar(S);
   if (!s) return '';
   const c = cuandoFue(s.fecha);
-  return `<div class="aviso aviso--aviso sin-cerrar" role="status">${ICONOS.alerta}<div class="aviso-texto">
-    <b>La sesión ${h(c.de)} está sin cerrar</b>
-    <p>${h(s.nombre)}: ${plural(seriesHechas(s), 'serie', 'series', series(s))}. Ciérrala para que cuente en tu semana y el entrenador lo sepa.</p>
+  return `<div class="aviso aviso--aviso sin-cerrar" role="region" aria-labelledby="t-sin-cerrar" tabindex="-1">${ICONOS.alerta}<div class="aviso-texto">
+    <b id="t-sin-cerrar">La sesión ${h(c.de)} está sin cerrar</b>
+    <p>${h(s.nombre)}: ${loApuntado(s)}. Ciérrala para que cuente en tu semana y el entrenador lo sepa.</p>
     <div class="aviso-acciones"><a class="boton" href="#sesion/${h(s.id)}" data-act="hoy.cerrarAnterior" data-v="${h(s.id)}">Cerrar ${h(c.la)}</a><button type="button" class="boton boton--secundario" data-act="hoy.descartarAnterior" data-v="${h(s.id)}">Descartarla</button></div>
   </div><span></span></div>`;
 }
@@ -158,7 +168,8 @@ function vista() {
   } else {
     // Sin plan: la sesión de hoy (si ya hay una) manda; si no, montar la semana es lo principal.
     const t = sesionDeHoy(S) || sinEntrenarHoy(S) ? deHoy(S) : null;
-    const sp = sinPlan(S, !(t && t.accion));
+    // Con la tarjeta de hoy (sesión o precaución T2), «Montar mi semana» pasa a secundaria.
+    const sp = sinPlan(S, !t);
     cuerpo = `${t ? t.tarjeta : ''}${sp.tarjeta}${constancia}`;
     accion = (t && t.accion) || sp.accion;
   }
@@ -183,11 +194,14 @@ async function cerrarAnterior(id) {
 async function descartarAnterior(id) {
   const s = estado().sesiones[id]; if (!s) return;
   const c = cuandoFue(s.fecha);
-  if (!await confirmar(`¿Descartar «${s.nombre}», la sesión ${c.de}? Se borra lo apuntado en ella (${seriesHechas(s)} de ${series(s)} series) y no cuenta en tu semana.`, { si: 'Descartar sesión', no: 'Cancelar', peligro: true })) return;
+  if (!await confirmar(`¿Descartar «${s.nombre}», la sesión ${c.de}? Se borra lo apuntado en ella (${loApuntado(s)}) y no cuenta en tu semana.`, { si: 'Descartar sesión', no: 'Cancelar', peligro: true })) return;
   const crono = cronometro();
   if (crono && crono.meta && crono.meta.sesion === id) pararCronometro();
   cambiar(S => { delete S.sesiones[id]; }, 'sesion');
   aviso(`Sesión ${c.de} descartada.`, 'info');
+  // El foco no se pierde: al siguiente aviso de sesión sin cerrar o al título de Hoy.
+  const destino = $('#vista .sin-cerrar') || $('#vista h1');
+  if (destino) { if (!destino.hasAttribute('tabindex')) destino.setAttribute('tabindex', '-1'); try { destino.focus({ preventScroll: false }); } catch { /* nada */ } }
 }
 
 // Con o sin red, Hoy lo dice al momento (si no hay una hoja encima).
@@ -197,7 +211,6 @@ if (typeof window !== 'undefined') { window.addEventListener('online', alCambiar
 rutas({ hoy: { titulo: 'Hoy', vista } });
 pestaña({ ruta: 'hoy', nombre: 'Hoy', icono: ICONOS.hoy, orden: 10 });
 acciones({
-  'hoy.ir': el => ir(el.dataset.v),
   'hoy.cerrarAnterior': el => cerrarAnterior(el.dataset.v),
   'hoy.descartarAnterior': el => descartarAnterior(el.dataset.v),
 });
