@@ -232,6 +232,7 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 | Rodilla (incluye menisco y ligamento) | 3 |
 | Muñeca | 3 |
 | Lumbar | 3 |
+| Espalda alta (dorsal) [pendiente, sección 12.9] | 3 |
 | Cervical | 3 |
 | **Dolor irradiado** (baja al brazo o a la pierna) en cualquier zona | **Sin aumento**: si sube o baja más hacia la mano o el pie, se para (y es A4 si va a más) |
 
@@ -323,7 +324,7 @@ No hay progresión de carga en lo que implica la zona mientras sea nueva; sí de
 
 ### 4.4 Cardio con lesión
 
-**C-CARDIO-6 [Criterio] [PR 8, PR 9]** **El permiso lo dan las etiquetas r, igual que en cualquier ejercicio** (C-DOLOR-1): en B1 se permite el cardio sin r=2 en la zona; en B2 y en D2, solo el cardio sin r en la zona. Lo no listado en la tabla **está permitido si sus r lo permiten**: no hay listas de prohibidos aparte (las r de la sección 12.9 las recogen). La tabla da el **orden de preferencia** y las **condiciones de uso** para la nota. Estructura en `lesiones.js` (PR 9):
+**C-CARDIO-6 [Criterio] [PR 8, PR 9]** **El permiso lo dan las etiquetas r, igual que en cualquier ejercicio** (C-DOLOR-1): en B1 se permite el cardio sin r=2 en la zona; en B2 y en D2, solo el cardio sin r en la zona. Lo no listado en la tabla **está permitido si sus r lo permiten**: no hay listas de prohibidos aparte (las r de la sección 12.10 las recogen). La tabla da el **orden de preferencia** y las **condiciones de uso** para la nota. Estructura en `lesiones.js` (PR 9):
 
 ```
 ZONAS[z].cardio = {
@@ -341,6 +342,7 @@ ZONAS[z].cardio = {
 | Hombro | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` en B1 | Elíptica sin usar los brazos |
 | Codo / muñeca | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`, `nado-continuo` (B1) | Sin agarrar fuerte el manillar |
 | Cervical | `bici-estatica`, `eliptica`, `cinta-inclinada` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida; sin crol en B2 |
+| Espalda alta (dorsal) [pendiente, sección 12.9] | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida con el manillar alto; cinta sin agarrarse; elíptica sin tirar de las asas; sin crol ni remo en B2 |
 
 ---
 
@@ -502,7 +504,7 @@ Dentro de la banda: músculo, mitad alta; fuerza y perder grasa, mitad; salud, r
 | Tobillo/pie | gemelo |
 | Hombro | hombro y pecho |
 | Codo, muñeca | bíceps y tríceps |
-| Lumbar, cervical | ninguno: se cambia el tipo de ejercicio, no el volumen |
+| Lumbar, espalda alta (dorsal, pendiente: sección 12.9), cervical | ninguno: se cambia el tipo de ejercicio, no el volumen |
 
 Volumen de esos músculos por banda (el mismo que en la tabla de C-DOLOR-1):
 
@@ -909,7 +911,42 @@ Por defecto: **contractura**. Dolor que baja por el brazo = A4.
 | **Fase 3** | `ytw-tumbado` con la frente apoyada; `face-pull` |
 | **Derivar** | A4, A10, dolor tras golpe o accidente de coche, rigidez con fiebre |
 
-### 12.9 Todas las etiquetas a corregir (para el script de coherencia del PR 9)
+### 12.9 Espalda alta (dorsal) [Pendiente de aprobación de Víctor]
+
+Zona nueva, pedida por Víctor el 21-11-2026 (hasta ahora solo había «Lumbar» y «Cuello»). Cubre el dolor **entre los omóplatos y en la zona torácica** de origen mecánico: contractura, sobrecarga de los músculos entre los omóplatos (romboides, trapecio medio, erectores dorsales) y dolor postural de muchas horas sentado. Sin campo «detalle»: lo que no encaja en un dolor mecánico (no cambia con el movimiento, rodea las costillas, va con síntomas del pecho) no se entrena, se consulta (ver **Derivar**).
+
+**C-ZONA-DORSAL [Pendiente de aprobación de Víctor] [PR zona-dorsal]** Criterio, de lo más prudente a lo razonable:
+- El dolor dorsal mecánico suele mejorar con **movimiento sin dolor y fuerza de los músculos que juntan los omóplatos** (remos con el pecho apoyado, separación de banda, face pull, Y-T-W), mejor que con reposo. Lo que más lo irrita: **cargas que no se pueden regular** sobre la espalda alta (barra apoyada en ella, colgarse con todo el peso), **flexión o rotación del tronco con carga** y posturas mantenidas.
+- La espalda torácica es, junto al cuello, donde más a menudo un dolor «de espalda» viene **de otro sitio** (corazón, aorta, pulmón, vesícula, herpes) o de un hueso (fractura por osteoporosis). Por eso la lista de derivar es más larga que en las otras zonas y remite a las alarmas A1, A4, A8, A11 y a T5.
+- Músculos de la zona (C-VOL-4): **ninguno**, como lumbar y cervical: se cambia el tipo de ejercicio (las r), no el volumen.
+- Techo (C-DOLOR-6): **3 en lesión nueva y 3 en crónica**, igual que lumbar y cervical (columna). Se podría subir a 5 en crónica si Víctor lo prefiere; se deja en 3 por prudencia.
+
+| | |
+|---|---|
+| **Evitar (r=2)** | Barra apoyada en la espalda alta (`sentadilla-barra`, `sentadilla-smith`, `buenos-dias`), `remo-barra` inclinado, `pullover-mancuerna`, rotación con carga (`lenador-polea`), `dominadas` y `dominadas-negativas` (todo el peso del cuerpo, no se puede regular) |
+| **Con dolor ≥ 4 (r=1)** | Remos sin apoyo del pecho (`remo-sentado-polea`, `remo-mancuerna`, `remo-mochila`, `remo-australiano`), `pajaros`, `remo-ergometro`; jalones (`jalon-pecho`, `jalon-maquina`), `dominadas-asistidas-maquina`, `dominadas-escapulares`; press por encima de la cabeza (`press-hombro-maquina`, `press-militar-mancuernas`, `press-hombro-botellas`, `press-hombro-banda`, `pike-pushup`) y `press-banca-barra`; `peso-muerto-rumano`, `peso-muerto-rumano-una-pierna`, `hiperextension-45`, `superman`, `hip-thrust` (la espalda alta hace de bisagra en el banco), `sentadilla-goblet` (el peso delante carga la espalda alta), `paseo-granjero`; `crunch`, `crunch-maquina`, `rueda-abdominal`; crol y su técnica (`crol`, `crol-un-brazo`, `crol-catch-up`, `crol-pull-buoy`, `patada-lateral`, `series-50-crol`, `nado-continuo`) y `boxeo-sombra` (rotación repetida) |
+| **Sin r** | Remos con el pecho apoyado (`remo-maquina`), `remo-banda`, `remo-toalla`, `jalon-banda`, `face-pull`, `face-pull-banda`, `separacion-banda`, `ytw-tumbado`, `pallof-press` (anti-rotación sin carga), `espalda` (estilo), press de pecho en máquina y con mancuernas, flexiones, piernas en máquina |
+| **Calentar** | `retraccion-escapular-isometrica` (`activacion`); `apertura-libro` (`alivio`); `gato-camello` (`alivio`); `circulos-brazos` (`normal`) |
+| **Estirar** | `estiramiento-espalda-alta` (`alivio`); `estiramiento-pectoral-pared` (`normal`); `extension-toracica-silla` (`normal`: la extensión puede irritar, solo B0-B1) |
+| **Fase 1** | `retraccion-escapular-isometrica` 4 × 30-45 s al 50-70 % (vale de pie en la piscina y en la calle). La movilidad suave (`apertura-libro`, `gato-camello`) va en el calentamiento como `alivio`, no como rehabilitación: la nota de fase 1 dice «aguanta sin moverte» y no encaja con un ejercicio de movimiento |
+| **Fase 2** | `separacion-banda` 3 × 15; `face-pull-banda` 3 × 15; `ytw-tumbado` 3 × 10-12 con la frente apoyada; `rotacion-toracica-cuadrupedia` 2 × 8 por lado. En la piscina no hay fase 2: se baja a la fase 1 (`rehabDeFase`) |
+| **Fase 3 (B0)** | `remo-maquina` con el pecho apoyado; `face-pull`; `remo-banda`; `remo-mancuerna` ligero (r=1, dosis «con precaución»). Sin r=2 (nada de barra en la espalda ni dominadas) |
+| **Cardio preferente** | Gimnasio: `bici-estatica` (erguido, manillar alto), `cinta-inclinada` (brazos sueltos), `eliptica` (sin tirar fuerte de las asas). Casa: `marcha-estatica`, `step-bajo`. Calle: `marcha-rapida`. Piscina: `aquajogging`; `nado-continuo` de espalda (sin crol con dolor 4 o más) |
+| **Piscina** | Con dolor 4 o más: espalda o `aquajogging`, sin crol ni sus ejercicios de técnica (como cervical en C-PISC-3) |
+| **Derivar** | **A1: dolor u opresión en el pecho o entre los omóplatos con falta de aire, sudor frío, náuseas o que se extiende al brazo, el cuello o la mandíbula → parar y 112** (el dolor cardíaco y el de la aorta pueden sentirse en la espalda alta). Dolor que **no cambia** al moverse ni con la postura, o que **despierta por la noche** (A8). Con **fiebre** (A11) o **pérdida de peso** sin explicación (A8). Tras un **golpe o una caída**, o que aparece de golpe con **osteoporosis** (posible fractura). Dolor que **rodea las costillas como un cinturón**, con hormigueo o con granitos o ampollas en la piel. **Hormigueo, debilidad en las piernas o torpeza al caminar** (A4). Más de 6 semanas sin mejora |
+
+**Ejercicios nuevos de la zona** (sin vídeo, D9; ficha completa con pasos, errores y consejo):
+
+| NUEVO: id | Nombre | m | l | mat | niv | t | d | r | `rehab` / uso |
+|---|---|---|---|---|---|---|---|---|---|
+| `retraccion-escapular-isometrica` | Retracción escapular isométrica | espalda | casa/gym/calle/piscina | peso corporal | 1 | tiempo | [4, '30-45s', 30] | — | dorsal 1; activación del calentamiento |
+| `apertura-libro` | Apertura de libro (rotación torácica tumbado de lado) | movilidad | casa/gym | peso corporal | 1 | reps | [2, '8 c/lado', 0] | cadera_lateral 2 (tumbado sobre cada lado) | Calentar, `alivio` |
+| `extension-toracica-silla` | Extensión torácica en silla | movilidad | casa/gym/calle | peso corporal/banco | 1 | reps | [2, '8-10', 0] | — | Estirar, `normal` |
+| `estiramiento-espalda-alta` | Estiramiento de espalda alta (abrazo) | movilidad | casa/gym/calle/piscina | peso corporal | 1 | tiempo | [2, '30s', 10] | hombro 1 (como el brazo cruzado) | Estirar, `alivio` |
+
+Rehabilitación añadida a ejercicios que ya existían: `separacion-banda`, `face-pull-banda`, `ytw-tumbado` y `rotacion-toracica-cuadrupedia` → dorsal 2; `remo-maquina`, `face-pull`, `remo-banda` y `remo-mancuerna` → dorsal 3. Ninguno de fase 1-2 tiene r en dorsal y el de fase 3 con r tiene r=1 (C-ZONA-0).
+
+### 12.10 Todas las etiquetas a corregir (para el script de coherencia del PR 9)
 
 | Id | Cambio |
 |---|---|
@@ -1246,6 +1283,10 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 10. **Principiante con 4 días: cuerpo completo en L, X, V y S** por defecto: **aprobar**.
 11. **Lesiones migradas** (dolor = severidad × 3): pedir el dolor real y tratarlas como mucho como B2 hasta entonces: **aprobar**.
 12. **A8** (dolor que no deja dormir, sin fiebre): entrenar sin esa zona hasta consultar, en vez de parar la sesión entera: **aprobar**.
+
+**Pendiente de aprobación (21-11-2026):**
+
+13. **Zona nueva «Espalda alta (dorsal)»** (sección 12.9): qué evitar, rehabilitación por fases, techo 3 y cuándo consultar. Recomendación: **aprobar**; techo crónico en 3 (como lumbar y cervical), con la opción de subirlo a 5.
 
 ---
 
