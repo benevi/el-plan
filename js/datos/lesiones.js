@@ -196,6 +196,65 @@ const DATOS = {
       }
     }
   },
+  // Espalda alta (docs/criterio.md, sección 12.9): pendiente de aprobación de Víctor.
+  "dorsal": {
+    "corta": "Espalda alta",
+    "nombre": "Espalda alta (dorsal)",
+    "icono": "🎒",
+    "desc": "Dolor entre los omóplatos o en la zona dorsal: contractura, sobrecarga o dolor postural.",
+    "evitar": [
+      "Sin barra apoyada en la espalda alta (sentadilla con barra o en Smith, buenos días)",
+      "Sin remo con barra inclinado ni pullover",
+      "Sin rotaciones con carga (leñador)",
+      "Sin dominadas ni dominadas negativas: cargan todo tu peso y no se puede regular",
+      "Con dolor 4 o más: sin remos sin apoyar el pecho (polea, mancuerna, mochila, australiano), pájaros ni remo ergómetro",
+      "Con dolor 4 o más: sin jalón, dominadas asistidas ni escapulares",
+      "Con dolor 4 o más: sin press por encima de la cabeza (máquina, mancuernas, botellas, banda, pike) ni press de banca con barra",
+      "Con dolor 4 o más: sin peso muerto rumano, hiperextensión, superman, hip thrust, sentadilla goblet ni paseo del granjero",
+      "Con dolor 4 o más: sin crunch ni rueda abdominal",
+      "Con dolor 4 o más: sin crol ni sus ejercicios de técnica (tampoco nado continuo a crol) ni boxeo de sombra",
+      "Remos mejor con el pecho apoyado y sin encoger los hombros"
+    ],
+    "tareas": {
+      "calentar": [
+        { "id": "retraccion-escapular-isometrica", "uso": "activacion" },
+        { "id": "apertura-libro", "uso": "alivio" },
+        { "id": "gato-camello", "uso": "alivio" },
+        { "id": "circulos-brazos", "uso": "normal" }
+      ],
+      "estirar": [
+        { "id": "estiramiento-espalda-alta", "uso": "alivio" },
+        { "id": "estiramiento-pectoral-pared", "uso": "normal" },
+        { "id": "extension-toracica-silla", "uso": "normal" }
+      ]
+    },
+    "consejo": "Moverse suele sentar mejor que el reposo: movilidad de la espalda alta sin dolor y fuerza de los músculos que juntan los omóplatos (remos con el pecho apoyado, separación de banda). Si pasas muchas horas sentado, cambia de postura a menudo.",
+    "techo": { "nueva": 3, "cronica": 3 },
+    "derivar": [
+      "Dolor u opresión en el pecho o entre los omóplatos con falta de aire, sudor frío o náuseas, o que se extiende al brazo, el cuello o la mandíbula: para y llama al 112",
+      "Dolor que no cambia al moverte ni al cambiar de postura, o que te despierta por la noche",
+      "Dolor con fiebre o con pérdida de peso sin explicación",
+      "Dolor después de un golpe o una caída, o que aparece de golpe si tienes osteoporosis",
+      "Dolor que rodea las costillas como un cinturón, con hormigueo o con granitos o ampollas en la piel",
+      "Hormigueo o debilidad en las piernas, o torpeza al caminar",
+      "Más de 6 semanas sin mejora"
+    ],
+    "cardio": {
+      "preferente": {
+        "gym": ["bici-estatica", "cinta-inclinada", "eliptica"],
+        "casa": ["marcha-estatica", "step-bajo"],
+        "calle": ["marcha-rapida"],
+        "piscina": ["aquajogging", "nado-continuo"]
+      },
+      "condiciones": {
+        "bici-estatica": "Erguido y con el manillar alto.",
+        "cinta-inclinada": "Con los brazos sueltos, sin agarrarte a la barra.",
+        "eliptica": "Erguido y sin tirar fuerte de las asas.",
+        "nado-continuo": "De espalda; sin crol con dolor 4 o más.",
+        "remo-ergometro": "Con dolor 4 o más, sin remo."
+      }
+    }
+  },
   "codo": {
     "corta": "Codo",
     "nombre": "Codo / Epicondilitis",

@@ -468,3 +468,8 @@ test('pruebas: el plan no cambia de modelo ni de esfuerzo', async () => {
   assert.equal(cliente.llamadas[0].params.model, 'claude-opus-5-5');
   assert.equal(cliente.llamadas[0].params.output_config.effort, 'medium');
 });
+
+test('C-ZONA-DORSAL: el prompt avisa de que el dolor de la espalda alta puede venir del pecho', () => {
+  assert.match(SISTEMA, /Espalda alta \(zona "dorsal", C-ZONA-DORSAL\)/);
+  assert.match(SISTEMA, /no programas nada para esa zona/);
+});

@@ -64,7 +64,8 @@ export function fechaISO(v) {
 }
 
 // Zonas de lesión: las del catálogo (js/datos/lesiones.js) y algunos nombres sueltos que se entienden.
-const ALIAS_ZONAS = { cadera: 'cadera_lateral', trocanter: 'cadera_lateral', trocanteritis: 'cadera_lateral', tobillo: 'tobillo_pie', pie: 'tobillo_pie', cuello: 'cervical', muneca: 'muñeca', lumbares: 'lumbar' };
+const ALIAS_ZONAS = { cadera: 'cadera_lateral', trocanter: 'cadera_lateral', trocanteritis: 'cadera_lateral', tobillo: 'tobillo_pie', pie: 'tobillo_pie', cuello: 'cervical', muneca: 'muñeca', lumbares: 'lumbar',
+  espalda_alta: 'dorsal', dorsales: 'dorsal', toracica: 'dorsal', toracico: 'dorsal' };
 export function zona(v) {
   if (typeof v !== 'string') return null;
   if (Object.prototype.hasOwnProperty.call(ZONAS, v)) return v;
