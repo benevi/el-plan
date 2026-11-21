@@ -1,0 +1,197 @@
+/* Pipos Fitness · HOY y CHECK-IN (PR 14), como en los prototipos aprobados (DIS 4).
+   Hoy = un vistazo y una acción: saludo, tira de la semana arriba, avisos (sesión sin cerrar, sin conexión),
+   la tarjeta de hoy, la constancia y «Tu semana»; la acción principal, en una barra fija encima de las
+   pestañas. El check-in («Antes de empezar») es una hoja a pantalla completa con la flecha atrás y la acción
+   fija abajo. También las hojas de la semana (montar, reorganizar, ver un día) y la espera de la IA.
+   Solo tokens. Carga después de legado.css y areas.css. */
+
+/* ---------- Saludo ---------- */
+.saludo { margin: var(--e-2) 0 var(--e-6); }
+.saludo p { margin: 0; color: var(--texto-2); font-size: var(--t-secundario); }
+.saludo p::first-letter { text-transform: uppercase; }
+.saludo h1 { margin: 0; font-size: var(--t-portada); line-height: var(--t-portada-alto); font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); }
+
+/* ---------- Bloques de Hoy ---------- */
+.semana-hoy { margin: 0 0 var(--e-bloque); }
+.sin-cerrar, .sin-red { margin: 0 0 var(--e-6); }
+.hoy-cuerpo { display: grid; gap: var(--e-bloque); }
+.hoy-cuerpo > .tarjeta { margin: 0; }
+.hoy-cuerpo + * { margin-top: var(--e-bloque); }
+.meta { margin: var(--e-1) 0 0; font-size: var(--t-meta); color: var(--texto-3); }
+.pequeno { font-size: var(--t-secundario); }
+.texto-2 { color: var(--texto-2); }
+a.boton { text-decoration: none; }
+.boton .icono { width: 20px; height: 20px; }
+.boton:disabled { background: var(--sup-control); color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-fino); cursor: not-allowed; transform: none; }
+.boton--texto.centro { display: flex; margin: var(--e-2) auto 0; }
+
+/* Tira de la semana: la fecha, ✓, × o el anillo de hoy (con nombre accesible por día) */
+.semana .dia-c .icono { width: 16px; height: 16px; stroke-width: 2.4; }
+.dia--perdida .dia-c .icono { width: 14px; height: 14px; }
+.dia--no .dia-c { color: var(--texto-2); }
+/* Hoy, ya hecho: relleno de hecho y el anillo de hoy por fuera */
+.dia--hecha.dia--hoy .dia-c { color: var(--texto-sobre-acento); box-shadow: 0 0 0 2px var(--sup-fondo), 0 0 0 4px var(--acento); }
+
+/* El porqué del entrenador, en una línea con el destello */
+.porque { display: flex; gap: var(--e-2); align-items: flex-start; margin: var(--e-3) 0 0; color: var(--texto-2); font-size: var(--t-secundario); }
+.porque .icono { width: 16px; height: 16px; margin-top: 3px; color: var(--acento); }
+
+/* ---------- Tarjeta de hoy ---------- */
+.hoy-tarjeta { padding: var(--e-5) var(--e-5) var(--e-4); border-color: var(--borde-fino); }
+.hoy-tarjeta .etiqueta { display: flex; align-items: center; gap: var(--e-1); margin: 0; font-size: var(--t-secundario); color: var(--texto-2); }
+.hoy-tarjeta .etiqueta .icono { width: 16px; height: 16px; color: var(--acento); }
+.hoy-tarjeta.hecha .etiqueta .icono { color: var(--estado-bien); }
+.hoy-tarjeta.precaucion { box-shadow: var(--prof-1), inset 3px 0 0 var(--estado-aviso); }
+.hoy-tarjeta.precaucion .etiqueta .icono { color: var(--estado-aviso); }
+.hoy-tarjeta > h2 { display: block; margin: var(--e-1) 0 0; font-size: var(--t-titulo); line-height: var(--t-titulo-alto); font-weight: var(--f-peso-medio); letter-spacing: var(--f-titulo-tracking); }
+.hoy-tarjeta .datos { margin: var(--e-1) 0 0; color: var(--texto-2); }
+.hoy-tarjeta .datos + .datos { margin-top: var(--e-2); }
+.hoy-tarjeta .boton { margin-top: var(--e-4); }
+.hoy-tarjeta .boton + .boton { margin-top: var(--e-2); }
+.hoy-tarjeta .boton--texto { padding: 0; margin-top: var(--e-2); }
+.hoy-tarjeta .avance { margin-top: var(--e-3); }
+.hoy-tarjeta .nota-fallo { margin-top: var(--e-4); }
+
+/* Constancia (pieza de Progreso) dentro de Hoy */
+.hoy-cuerpo .constancia-hoy { padding: var(--e-5); }
+.hoy-cuerpo .constancia-hoy h2 { margin: 0; font-size: var(--t-cuerpo); font-weight: var(--f-peso-medio); }
+.hoy-cuerpo .constancia-hoy p { margin: var(--e-1) 0 0; }
+.hoy-cuerpo .constancia-hoy .racha { box-shadow: none; padding: 0; text-align: right; }
+.hoy-cuerpo .puntos-semana { gap: var(--e-2); margin: var(--e-3) 0 var(--e-1); }
+.hoy-cuerpo .puntos-semana i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--borde-control); }
+.hoy-cuerpo .puntos-semana i.on { background: var(--acento); box-shadow: none; }
+
+/* ---------- Tu semana ---------- */
+.bloque-fila { display: flex; justify-content: space-between; align-items: baseline; gap: var(--e-3); margin-bottom: var(--e-2); }
+.bloque-titulo { margin: 0; font-size: var(--t-secundario); color: var(--texto-2); font-weight: var(--f-peso-medio); }
+.bloque-fila p { margin: 0; font-size: var(--t-secundario); color: var(--texto-2); }
+.plan-resumen, .plan-cambio { max-width: var(--ancho-lectura); margin: 0 0 var(--e-3); font-size: var(--t-secundario); color: var(--texto-2); }
+.plan-semana > .aviso { margin: var(--e-3) 0; }
+.dias-plan { border-top: 1px solid var(--borde-fino); }
+.dias-plan li + li { border-top: 0; }
+.dias-plan > li { border-bottom: 1px solid var(--borde-fino); }
+.dias-plan .fila > .icono { width: 18px; height: 18px; color: var(--texto-3); }
+.estado-dia { display: inline-flex; align-items: center; gap: var(--e-1); font-size: var(--t-secundario); color: var(--texto-2); white-space: nowrap; }
+.estado-dia .icono { width: 16px; height: 16px; }
+.estado-dia--hecho .icono { color: var(--estado-bien); }
+.dias-plan .apagada .fila b { color: var(--texto-2); }
+.plan-semana .tecnica, .dia-plan .tecnica, .checkin-pantalla .tecnica { margin: var(--e-2) 0 0; padding: 0; border-radius: 0; background: none; border-top: 1px solid var(--borde-fino); }
+.plan-semana .tecnica-texto, .dia-plan .tecnica-texto, .checkin-pantalla .tecnica-texto { margin: 0; font-size: var(--t-secundario); }
+.plan-semana .fila-botones { margin-top: var(--e-4); }
+.plan-semana .fila-botones .boton { flex: 1 1 auto; }
+
+/* ---------- Barra de la acción principal (encima de las pestañas) ---------- */
+.accion-hoy {
+  position: fixed; left: 0; right: 0; bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom)); z-index: var(--z-accion);
+  padding: var(--e-3) var(--e-margen); background: var(--sup-fondo); border-top: 1px solid var(--borde-fino);
+}
+.accion-hoy > * { max-width: 520px; margin-left: auto; margin-right: auto; }
+.accion-hoy .boton { display: flex; }
+.nota-accion { margin-top: var(--e-2); text-align: center; font-size: var(--t-secundario); color: var(--texto-2); }
+main#vista.entra > .accion-hoy { animation: none; }
+/* Con la barra de descanso (abajo, encima de las pestañas) la barra sube; los avisos (#aviso y el de versión
+   nueva) van siempre por encima de la barra, y el relleno de abajo cuenta todo lo que flota, para que lo
+   último de Hoy («Cambiar días», «Hoy no puedo») nunca quede tapado. */
+body.con-temporizador .accion-hoy { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 96px); }
+body:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 128px); }
+body.con-temporizador:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 224px); }
+body.con-aviso-version:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 208px); }
+body.con-temporizador.con-aviso-version:has(.accion-hoy) { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 304px); }
+body:has(.accion-hoy) #aviso, body:has(.accion-hoy) .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 132px); }
+body.con-temporizador:has(.accion-hoy) #aviso, body.con-temporizador:has(.accion-hoy) .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 228px); }
+/* Con una hoja abierta el aviso va arriba (marco.css): sin «bottom», que lo estiraría de arriba abajo */
+body.con-hoja:has(.accion-hoy) #aviso, body.con-hoja.con-temporizador:has(.accion-hoy) #aviso { bottom: auto; }
+
+/* ---------- Hojas de la semana y del entrenador ---------- */
+.hoja .grupo { margin-top: var(--e-5); }
+.grupo-et { margin: 0; font-weight: var(--f-peso-medio); }
+.grupo-et small { color: var(--texto-2); font-weight: var(--f-peso-normal); font-size: var(--t-secundario); }
+.grupo > .chips, .grupo > .segmento, .grupo > .chips + .chips { margin-top: var(--e-2); }
+.hoja .segmento { display: flex; flex-wrap: wrap; border-radius: var(--r-medio); }
+.hoja .segmento [role="radio"] { flex: 1 1 auto; }
+.ayuda { margin: var(--e-3) 0 0; font-size: var(--t-secundario); color: var(--texto-2); }
+.hoja-botones { display: grid; gap: var(--e-2); margin-top: var(--e-5); }
+.hoja-botones .boton-motivo { margin: 0; }
+.hoja .chips.dias { margin-top: var(--e-4); }
+.chips.dias .chip .icono { width: 14px; height: 14px; }
+.chip:disabled { color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-fino); cursor: not-allowed; }
+.dia-plan .lista-dia { margin: 0; padding-left: var(--e-5); }
+.dia-plan .lista-dia li + li { margin-top: var(--e-1); }
+.dia-plan .porque { margin-bottom: var(--e-2); }
+.señales-cortas { margin: var(--e-2) 0 0; padding-left: var(--e-5); font-size: var(--t-secundario); color: var(--texto-2); }
+.señales-cortas li + li { margin-top: var(--e-1); }
+
+/* ---------- Check-in («Antes de empezar»): hoja a pantalla completa ---------- */
+.hoja-velo:has(> .checkin-pantalla) { align-items: stretch; background: var(--sup-fondo); }
+.hoja.checkin-pantalla {
+  max-width: 560px; height: 100dvh; max-height: none; border-radius: 0; box-shadow: none; background: var(--sup-fondo);
+  padding: 0 var(--e-margen);
+}
+.checkin-pantalla .hoja-asa { display: none; }
+.checkin-pantalla .hoja-cab {
+  position: sticky; top: 0; z-index: 2; justify-content: flex-start; gap: var(--e-3); min-height: calc(64px + env(safe-area-inset-top));
+  margin: 0 calc(-1 * var(--e-margen)) var(--e-1); padding: env(safe-area-inset-top) var(--e-margen) 0; background: var(--sup-fondo);
+}
+.checkin-pantalla .hoja-cab [data-cerrar-hoja] { order: -1; align-self: center; }
+.checkin-pantalla .hoja-cab h2 { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); }
+.ci-red { margin: 0 0 var(--e-3); }
+.ci-intro { max-width: var(--ancho-lectura); margin: 0; color: var(--texto-2); }
+.ci-intro b { color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
+.checkin-pantalla .grupo, .checkin-pantalla .campo { margin: var(--e-6) 0 0; }
+.checkin-pantalla .chip, .hoja.checkin .chip { min-height: var(--toque-sesion); }
+.checkin-pantalla .campo { display: flex; flex-direction: column; align-items: stretch; gap: var(--e-2); }
+.checkin-pantalla .campo > label { font-weight: var(--f-peso-medio); }
+.checkin-pantalla .campo input { min-height: var(--toque-sesion); padding: var(--e-3) var(--e-4); }
+.ci-accion {
+  position: sticky; bottom: 0; z-index: 2; margin: var(--e-6) calc(-1 * var(--e-margen)) 0;
+  padding: var(--e-3) var(--e-margen) calc(var(--e-3) + env(safe-area-inset-bottom)); background: var(--sup-fondo); border-top: 1px solid var(--borde-fino);
+}
+.ci-accion .boton { display: flex; }
+
+/* Casilla con aspecto de chip: caja visible y ✓ al marcarla (el estado no va solo por color) */
+.casilla { position: relative; gap: var(--e-3); padding: var(--e-2) var(--e-4); color: var(--texto-1); line-height: 1.35; text-align: left; cursor: pointer; }
+.casilla input { position: absolute; left: var(--e-4); top: 50%; width: 20px; height: 20px; margin: -10px 0 0; opacity: 0; pointer-events: none; }
+.casilla .caja { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--borde-control); }
+.chip.casilla .caja .icono { display: none; width: 14px; height: 14px; stroke-width: 3; color: var(--texto-sobre-acento); }
+.casilla:has(input:checked) { background: var(--acento-tinte); box-shadow: inset 0 0 0 1.5px var(--acento); }
+.casilla:has(input:checked) .caja { background: var(--acento); box-shadow: none; }
+.chip.casilla:has(input:checked) .caja .icono { display: block; }
+.casilla:has(input:focus-visible) { outline: 2px solid var(--borde-foco); outline-offset: 2px; }
+.casilla-texto b { font-weight: var(--f-peso-fuerte); }
+.casilla--alarma:has(input:checked) { background: var(--sup-control); box-shadow: inset 0 0 0 1.5px var(--estado-aviso); }
+.casilla--alarma:has(input:checked) .caja { background: var(--estado-aviso); }
+
+/* Dolor por zona: selector ± del sistema; el deslizador nativo (sin verse) es el control del teclado */
+.selector--dolor { position: relative; }
+.selector--dolor:has(input:focus-visible) .selector-valor { outline: 2px solid var(--borde-foco); outline-offset: 2px; }
+.selector--dolor .selector-nota { justify-self: start; min-height: var(--toque-sesion); padding: 0; margin-top: var(--e-1); }
+
+/* Vista previa en vivo */
+.previa { margin-top: var(--e-6); padding: var(--e-4); border-radius: var(--r-medio); background: var(--sup-panel); border: 1px solid var(--borde-control); }
+.hoja .previa h3 { margin: 0; font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); }
+.previa ul { margin: var(--e-2) 0 0; padding-left: var(--e-5); }
+.previa li + li { margin-top: var(--e-1); }
+.previa p { margin: var(--e-2) 0 0; font-size: var(--t-secundario); color: var(--texto-2); }
+.previa .porque { margin-top: var(--e-2); }
+.previa .chips { margin-top: var(--e-3); }
+
+/* ---------- Espera de la IA: pasos marcados, tiempo y «Cancelar» ---------- */
+.espera-pasos { list-style: none; margin: var(--e-2) 0 0; padding: 0; display: grid; gap: var(--e-3); }
+.espera-pasos li { display: flex; align-items: center; gap: var(--e-3); color: var(--texto-2); }
+.espera-pasos .marca-paso { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--borde-control); }
+.espera-pasos li.hecho .marca-paso { background: var(--acento); box-shadow: none; color: var(--texto-sobre-acento); }
+.espera-pasos li.hecho .icono { width: 14px; height: 14px; stroke-width: 3; }
+.espera-pasos li.ahora { color: var(--texto-1); font-weight: var(--f-peso-medio); }
+.espera-pasos li.ahora .marca-paso { box-shadow: none; }
+.espera-pasos li.ahora .giro { width: 20px; height: 20px; color: var(--acento); }
+.espera-tiempo { margin: var(--e-4) 0; font-size: var(--t-secundario); color: var(--texto-2); }
+
+/* ---------- Nota «La ha hecho la app porque…» (aviso del sistema, también en la sesión) ---------- */
+.nota-fallo { box-shadow: var(--prof-1), inset 3px 0 0 var(--aviso-color); }
+.nota-fallo .aviso-texto p { color: var(--texto-2); font-size: var(--t-secundario); }
+.nota-fallo .aviso-texto p b { display: inline; color: var(--texto-1); }
+
+@media (max-width: 340px) {
+  .saludo h1 { font-size: var(--t-titulo); }
+  .hoy-tarjeta > h2 { font-size: var(--t-subtitulo); }
+}
