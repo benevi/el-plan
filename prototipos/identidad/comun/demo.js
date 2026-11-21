@@ -147,7 +147,7 @@ export function iniciar({ nombre, pantallas, salida = false }) {
     if (r) { r.classList.add('alarma'); r.hidden = false; }
     const vivo = app.querySelector('[data-vivo]');
     if (vivo) vivo.textContent = 'Descanso terminado. Toca la serie ' + (ses.actual + 1) + '.';
-    try { navigator.vibrate?.([300, 120, 300]); } catch { /* sin vibración */ }
+    try { navigator.vibrate?.([250, 120, 250, 120, 250]); } catch { /* sin vibración: tres toques seguidos */ }
     clearTimeout(alarmaFin);
     alarmaFin = setTimeout(() => { app.querySelector('[data-descanso]')?.classList.remove('alarma'); pintarReloj(); }, 8000);
   }

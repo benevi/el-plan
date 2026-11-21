@@ -167,7 +167,7 @@ function empezarDescanso(seg = 12) {
       desc.quedan = 0; clearInterval(desc.reloj);
       dv.classList.add('descanso--alarma', 'suena', 'sobre-acento');
       $('#descanso-anuncio').textContent = 'Descanso terminado. A por la serie 3.';
-      try { navigator.vibrate?.([300, 120, 300]); } catch { /* sin vibración */ }
+      try { navigator.vibrate?.([250, 120, 250, 120, 250]); } catch { /* sin vibración: tres toques seguidos */ }
       desc.alarma = setTimeout(() => { dv.classList.remove('descanso--alarma', 'suena', 'sobre-acento'); pintarDescanso(); }, 8000);
     }
     pintarDescanso();

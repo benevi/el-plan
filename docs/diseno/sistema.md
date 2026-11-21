@@ -2,7 +2,7 @@
 
 Tercera entrega de la fase D. Convierte la identidad elegida (**Carril 2 + logo Trenza**, DIS 2) en tokens, componentes con todos sus estados y gráficos, con su contraste medido por script. Lo heredan los prototipos (DIS 4) y la implementación (fase 5).
 
-**Estado:** pendiente de la aprobación de Víctor.
+**Estado:** preguntas abiertas resueltas por Víctor el 21-11-2026 (apartado 8).
 **Catálogo:** `/prototipos/sistema/` en la vista previa de `diseno-prototipos` (con la barra final). Arriba a la derecha se cambia entre Víctor y Virginia; cada muestra dice su contraste medido.
 
 **Archivos**
@@ -139,8 +139,8 @@ Cada componente tiene su selector real (`:active`, `:focus-visible`, `aria-press
 - **Tarjeta de ejercicio.** Orden: nombre y objetivo → series → «Cómo se hace» plegado (R26). «Cambiar por otro» conserva lo hecho y lo dice (R17).
 - **Hoja inferior.** `role="dialog"`, `aria-modal="true"`, `aria-labelledby`; al abrir, foco al título; Tab no sale de la hoja; Escape, «Cerrar», tocar el velo o el botón atrás del móvil (entrada en el historial) la cierran; el resto de la página queda `inert`; el foco vuelve al botón que la abrió (R10). No abre el teclado (R23). Entra 300 ms desde abajo; sale 200 ms.
 - **Aviso.** `role="status"` (o `alert` si es error). Siempre icono + título + qué hacer. Los errores no se van solos y no enseñan códigos (R13). En la sesión no se animan.
-- **Descanso y alarma.** `role="timer"`. No tapa la serie siguiente ni la acción principal: la pantalla reserva su alto (R09). Últimos 10 s: el reloj toma el color de la persona y la etiqueta dice «Prepárate». Alarma: fondo del color de la persona, texto `--texto-sobre-acento` (≥ 7:1 en todos los fotogramas: solo se mueve el bloque), vibración 300-120-300 ms, anuncio `aria-live="assertive"` y cierre solo a los 8 s o al marcar la serie (R08).
-- **Contador a pantalla completa.** Para ejercicios por tiempo y cardio: mm:ss y texto propio desde 2 min (R18); el agua (tinte de la persona) sube con el tiempo; botones de 56 px.
+- **Descanso y alarma.** `role="timer"`. No tapa la serie siguiente ni la acción principal: la pantalla reserva su alto (R09). Últimos 10 s: el reloj toma el color de la persona y la etiqueta dice «Prepárate». Alarma: fondo del color de la persona, texto `--texto-sobre-acento` (≥ 7:1 en todos los fotogramas: solo se mueve el bloque), vibración de tres toques seguidos (250-120-250-120-250 ms), anuncio `aria-live="assertive"` y cierre solo a los 8 s o al marcar la serie (R08).
+- **Contador a pantalla completa.** Solo para ejercicios por tiempo y cardio; **nunca para descansos**, aunque sean largos: el descanso es siempre la barra de abajo. Para ejercicios por tiempo y cardio: mm:ss y texto propio desde 2 min (R18); el agua (tinte de la persona) sube con el tiempo; botones de 56 px.
 - **Tira de la semana.** Cada estado con forma propia (lleno con ✓, anillo, discontinuo, ×, nada) y texto oculto para el lector.
 - **Pestañas.** Enlaces con `aria-current="page"`; la activa cambia de color y lleva un punto. Ocultas durante la sesión.
 
@@ -278,8 +278,9 @@ _Generado con `node prototipos/sistema/comprobar.mjs --escribir` el 2026-11-20. 
 | R26 orden de la tarjeta | Tarjeta de ejercicio |
 | R27 doble toque | Fila de serie (en vivo) |
 
-## 8. Preguntas abiertas para Víctor
+## 8. Decisiones de Víctor (21-11-2026)
 
-1. ¿Vale el **rosa suave** de Virginia y la **lima suave** de Víctor como colores definitivos, o los queréis elegir vosotros?
-2. **Contador a pantalla completa:** ¿lo queréis también para los descansos largos (más de 2 min) o solo para ejercicios por tiempo y cardio?
-3. **Vibración** de la alarma: ¿300-120-300 ms os parece bien o la queréis más larga (con auriculares)?
+1. **Colores definitivos:** lima suave `#C9E77E` para Víctor y rosa suave `#F29BC2` para Virginia.
+2. **Descansos largos:** basta la barra de abajo. El contador a pantalla completa queda **solo para ejercicios por tiempo y cardio**, nunca para descansos.
+3. **Vibración de la alarma:** tres toques seguidos (250-120-250-120-250 ms). Aplicado en el catálogo (`catalogo.js`) y en los prototipos.
+4. Contexto (no cambia el diseño): en «Mis sesiones» la sesión se guarda entera.

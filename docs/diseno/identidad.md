@@ -61,7 +61,7 @@ Lo que **no** se está eligiendo aquí: el orden de las pantallas ni su contenid
 - **Duraciones** de 100, 200 o 300 ms; curva de salida `cubic-bezier(.16, 1, .3, 1)`; solo se animan `transform` y `opacity`. Dos excepciones documentadas: la barra del descanso avanza en lineal con el segundo (1000 ms, es el propio reloj) y las cifras de la celebración cuentan durante 900 ms (cambia el texto, no se mueve nada).
 - **Movimiento reducido** (`prefers-reduced-motion: reduce`): todas las animaciones pasan a 1 ms y se ve directamente el estado final; las ondas y el polvo de tiza desaparecen; las cifras salen ya con su valor; la alarma no se mueve pero cambia igual de color y se anuncia. La información es la misma (R25).
 - **Durante la serie no se mueve nada** salvo el contador del descanso.
-- **Alarma de fin de descanso**: el bloque del descanso pasa al color de la persona con texto oscuro (≥ 7:1 en todos los fotogramas, R08: solo se mueve el bloque, nunca cambia la legibilidad), vibra (`300-120-300 ms`), se anuncia por lector de pantalla y se cierra sola a los 8 s o al marcar la serie.
+- **Alarma de fin de descanso**: el bloque del descanso pasa al color de la persona con texto oscuro (≥ 7:1 en todos los fotogramas, R08: solo se mueve el bloque, nunca cambia la legibilidad), vibra con tres toques seguidos (`250-120-250-120-250 ms`, decidido por Víctor el 21-11-2026), se anuncia por lector de pantalla y se cierra sola a los 8 s o al marcar la serie.
 
 ## Segunda vuelta: Carril 2
 
