@@ -9,7 +9,7 @@ import { h, ICONOS, fechaLarga } from '../../nucleo/ui.js';
 import { sesionDeHoy, diaSemana } from '../../nucleo/modelo.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
 import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo } from '../entrenador/indice.js';
-import { siguientePendiente, tiempoSesion, sinEntrenarHoy, T2 } from '../entrenador/entrenador.js';
+import { siguientePendiente, tiempoSesion, sinEntrenarHoy, T2, misSesiones } from '../entrenador/entrenador.js';
 import * as progreso from '../progreso/indice.js';
 import { recordatorioCopia } from '../perfil/indice.js';
 
@@ -28,7 +28,7 @@ function tiraSemana(S) {
 function tarjetaHoy(S) {
   // Señal de alarma de hoy: día sin entrenar por precaución (C-ALAR-1).
   if (sinEntrenarHoy(S) && !(sesionDeHoy(S) && sesionDeHoy(S).estado === 'hecha')) {
-    return `<section class="tarjeta destacada alarma"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}</section>`;
+    return `<section class="tarjeta destacada precaucion"><span class="etiqueta">Hoy</span><h2>Sin entrenar por precaución</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="enlace" data-act="entrenador.deshacerAlarma">La marqué por error</button></section>`;
   }
   const s = sesionDeHoy(S);
   if (s && s.estado === 'hecha') {
@@ -43,7 +43,7 @@ function tarjetaHoy(S) {
   if (s) {
     const total = s.ejercicios.reduce((a, x) => a + x.sets.length, 0), hechas = s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
     return `<section class="tarjeta destacada">
-      <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app'}</span>
+      <span class="etiqueta">${s.estado === 'en_curso' ? 'En marcha' : 'Lista'} · ${s.origen ? 'tu sesión, ajustada por la app' : s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app'}</span>
       <h2>${h(s.nombre)}</h2>
       <p class="tenue">${h(s.foco)}${s.foco ? ' · ' : ''}${+s.ejercicios.length} ejercicios · ${h(LUGARES[s.lugar] || '')}</p>
       ${porque(s)}
@@ -77,7 +77,8 @@ function tarjetaSinPlan(S) {
     <h2>¿Qué días puedes entrenar?</h2>
     <p class="tenue">Dímelo y te monto la semana: calentamiento, ejercicios, rehabilitación y estiramientos de cada día. Cada día lo ajusto a cómo estés.</p>
     ${d.diasSemana.length ? `<p class="tenue">La última vez: ${h(d.diasSemana.map(i => DIAS[i]).filter(Boolean).join(', '))}.</p>` : ''}
-    <button class="btn grande" data-act="entrenador.plan">${ICONOS.ia} Montar mi semana</button></section>`;
+    <button class="btn grande" data-act="entrenador.plan">${ICONOS.ia} Montar mi semana</button>
+    ${misSesiones(S).length && !sesionDeHoy(S) && !sinEntrenarHoy(S) ? '<button class="btn sec" data-act="entrenador.prepararMia">Hacer una de mis sesiones</button>' : ''}</section>`;
 }
 
 function vista() {

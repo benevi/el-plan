@@ -355,7 +355,8 @@ function lunesISO() { const h = new Date(); h.setDate(h.getDate() - diaSemana(h)
 export function estadoDias(S) {
   const p = planDeLaSemana(S); if (!p) return [];
   const hoy = diaSemana(), lunes = lunesISO();
-  const hechasSemana = sesionesHechas(S).filter(s => s.fecha >= lunes);
+  // Una de «Mis sesiones» solo cuenta como día del plan si se enlazó al hacerla («Cuenta como el día X»).
+  const hechasSemana = sesionesHechas(S).filter(s => s.fecha >= lunes && !(s.origen && s.origen.tipo === 'mia'));
   const enlazadas = {};
   Object.entries(p.hechos || {}).forEach(([d, id]) => { if (S.sesiones[id] && S.sesiones[id].estado === 'hecha' && !Object.values(enlazadas).includes(id)) enlazadas[d] = id; });
   const usadas = new Set(Object.values(enlazadas));

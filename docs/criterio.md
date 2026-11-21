@@ -29,6 +29,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 18. [Ejercicios nuevos y cambios de datos](#18-ejercicios-nuevos-y-cambios-de-datos)
 19. [Casos de referencia](#19-casos-de-referencia)
 20. [Decisiones para el dueño](#20-decisiones-para-el-dueño)
+21. [Sesiones guardadas («Mis sesiones»)](#21-sesiones-guardadas-mis-sesiones)
 
 ---
 
@@ -40,6 +41,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
   - **[Criterio]**: criterio profesional razonable pero discutible; ante la duda se ha elegido lo más **prudente**. Se aplica salvo que el dueño diga otra cosa.
   - **[D2] / [D3]**: decisión ya tomada por el dueño; se respeta tal cual.
   - **[Decisión n]**: necesita el visto bueno del dueño; remite a la lista de la sección 20.
+  - **[Excepción del dueño]**: excepción aprobada por Víctor a una regla general, con su fecha y su alcance (sección 21).
 - Entre corchetes, el PR que la implementa: **[PR 8]**, **[PR 9]**, **[PR 10]**, **[PR 11]**.
 - Vocabulario:
   - **Zona activa**: lesión del perfil marcada como activa, o zona con dolor ≥ 1 en el check-in de hoy.
@@ -105,7 +107,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 
 ### 2.4 Cómo se pregunta
 
-**C-ALAR-3 [Objetivo] [PR 8]** El check-in tiene **siempre visible** una casilla «Hoy noto algo de esto» con la lista corta de A1-A11 en lenguaje llano. Marcarla aplica C-ALAR-1.
+**C-ALAR-3 [Objetivo] [PR 8]** El check-in tiene **siempre visible** una casilla «Hoy noto alguna de estas señales» junto a la lista corta (lo más frecuente de A1-A11) a la vista y la lista completa desplegable, en lenguaje llano. (Texto cambiado a petición de Víctor el 21-11-2026: «Hoy noto algo de esto» con la lista plegada no se entendía.) Marcarla aplica C-ALAR-1.
 
 **C-ALAR-4 [Objetivo] [PR 8, PR 11]** **Palabras de alarma en textos libres** (comentarios de la última sesión, petición del check-in, notas nuevas). Si aparece una, **no se genera nada** (ni reglas ni IA) hasta que la persona conteste la casilla: «En tu comentario dices "[frase]". ¿Notas algo de esto hoy?». Si responde que no, sigue el flujo normal; si responde que sí, C-ALAR-1. No se propone una «sesión más suave» en su lugar.
 - Expresiones que disparan (expresión regular, sin tildes y en minúsculas): `(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho`, `me aprieta el pecho`, `mare[oóa]|desmay|vertigo`, `palpitacion`, `(me )?falta(ba)? el aire|me ahogaba`, `hormigue`, `se me (duerme|durmio|dormia)`, `no (puedo|podia|pude) apoyar`, `vision doble`, `sudor frio`, `nausea|vomit`, `fiebre`, `orina (muy )?oscura`, `mandibula`.
@@ -432,6 +434,7 @@ Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superse
   - la variante siguiente de uno que ya domina (C-PROG-9);
   - si no hay ninguno de su nivel para ese músculo, lugar y material, el de menor nivel, y la nota lo explica.
 - **Piscina**: `crol` y `espalda` (nivel 2) se permiten a principiantes si el perfil marca «sé nadar 2 × 25 m seguidos» (pregunta nueva, PR 8).
+- **Excepción**: no se aplica a una de «Mis sesiones» (C-MIA-2).
 - Niveles a revisar (PR 9): `curl-nordico-asistido` 2 → 3; `buenos-dias` 2 → 3.
 
 **C-EDAD-1 [Criterio] [PR 8, PR 11]** Con **60 años o más**:
@@ -1243,3 +1246,20 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 10. **Principiante con 4 días: cuerpo completo en L, X, V y S** por defecto: **aprobar**.
 11. **Lesiones migradas** (dolor = severidad × 3): pedir el dolor real y tratarlas como mucho como B2 hasta entonces: **aprobar**.
 12. **A8** (dolor que no deja dormir, sin fiebre): entrenar sin esa zona hasta consultar, en vez de parar la sesión entera: **aprobar**.
+
+---
+
+## 21. Sesiones guardadas («Mis sesiones»)
+
+La persona puede guardar una sesión (p. ej. «solo abdominales y flexiones») y repetirla otro día desde el check-in. Se prepara **sin IA** y pasa por el validador único con el contexto del día (`ctx.mia` en `js/areas/entrenador/validar.js`). Fuera de estas dos excepciones, el resto del documento se aplica igual.
+
+**C-MIA-1 [Excepción del dueño] [aprobada por Víctor el 20-11-2026] [PR 34]** Una sesión guardada se respeta tal cual:
+- **No se rellena** hasta 3 principales (C-DOSIS-4 en su parte de mínimo) ni se quitan principales por energía (C-ENERGIA-1) o por tiempo (C-TIEMPO-2): si dura más de lo marcado, se dice y se deja entera. La energía sí quita una serie y deja el cardio suave.
+- **Siguen siendo obligatorios** el calentamiento (C-CAL-2), el cardio con su mínimo (D3, C-CARDIO-1, C-CARDIO-2) y la vuelta a la calma con estiramientos (C-VUELTA-1); la rehabilitación de las zonas activas se añade como siempre (C-DOLOR-3).
+- **Solo se cambia o quita** lo que choque con el dolor de hoy, las lesiones, el lugar, el material, los rechazos o los datos de salud (C-DOLOR-1, C-EST-4, C-SALUD-0), con su explicación («Ajustado por la app: …»). Como mucho 2 principales con riesgo por zona (C-DOSIS-4) sigue valiendo.
+- Un **día suave** guardado se repite como suave (C-REP-2).
+- Con **dolor ≥ 7**, datos de salud «solo suave» o una **señal de alarma**, manda lo de siempre (C-DOLOR-4, C-SALUD-0, C-ALAR-1): la sesión guardada no se hace ese día.
+
+**C-MIA-2 [Excepción del dueño] [aprobada por Víctor el 20-11-2026] [PR 34]** Si un principal de la sesión guardada es de **nivel superior** al de la persona, **se mantiene** con una nota de técnica («prioriza la técnica, sin llegar al fallo; si no sale limpio, usa una variante más fácil») en vez de cambiarlo: C-DOSIS-10 no se aplica a las sesiones guardadas. El dolor y las lesiones mandan igual (C-DOLOR-*).
+
+Las dos excepciones son **solo** para las sesiones guardadas: el plan, las reglas y la IA siguen con C-DOSIS-4, C-DOSIS-10, C-ENERGIA-1 y C-TIEMPO-2.

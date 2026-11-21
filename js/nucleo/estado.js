@@ -54,6 +54,8 @@ export function nuevo() {
     medidas: [],              // { fecha, peso, cintura, cadera, cuello, pecho, brazo, muslo, grasa, vid? }
     dolor: [],                // { fecha, zona, dolor, momento: 'antes'|'despues'|'dia'|'perfil', sesion, vid? }
     // alarmas?: [{ fecha, respuesta 'si'|'no', frase }]  señales de alarma apuntadas (opcional, PR 8)
+    // misSesiones?: [{ id, nombre, lugar, minutos, creada, ejercicios: [{ id, rol, series, reps, descanso }] }]
+    //   sesiones guardadas para repetir (opcional; js/areas/entrenador/mias.js)
     ajustes: { codigo: '', vibrar: true, sonido: true }, // la URL de la API es siempre relativa (/api/…)
     // Lo traído de la app anterior (ver js/nucleo/migracion.js): versión de los datos, de quién y claves ya migradas.
     migracion: { version: VERSION_MIGRACION, dueño: null, claves: [], sexoRevisar: false },

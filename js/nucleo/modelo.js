@@ -17,6 +17,7 @@
 //   }],
 //   estado: 'pendiente' | 'en_curso' | 'hecha', empezada, terminada,
 //   cierre: { esfuerzo 1-5, dolor: { zona: 0-10 }, comentario } | null,
+//   origen?: { tipo: 'mia', id }               // hecha a partir de una de «Mis sesiones» (S.misSesiones)
 //   iaFallo?: { motivo, peticion?, diaPlan 1-7|null, reintentable, huella }  (huella: huellaSesion al crearla)  // la hizo la app sin la IA (PR 12):
 //            motivo completa «La ha hecho la app porque…»; peticion = lo pedido en el check-in sin atender
 // }
@@ -58,6 +59,7 @@ export function crearSesion(d) {
     estado: 'pendiente', empezada: null, terminada: null, cierre: null,
     // Opcional: el tipo de día que cambia lo que se comprueba (día suave del reparto, día de dolor alto).
     ...(TIPOS_SESION.includes(d.tipo) ? { tipo: d.tipo } : {}),
+    ...origenSesion(d.origen),
   };
   const f = d.iaFallo ? iaFalloSesion(d.iaFallo) : undefined;
   // La huella de cómo quedó al crearla: si luego cambia (kilos, series, comentarios…), ya no se rehace.
@@ -88,6 +90,10 @@ export function iaFalloSesion(f) {
     ...(typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {}) };
 }
 export const TIPOS_SESION = ['suave', 'dolorAlto'];
+// Marca de origen (opcional): de qué sesión guardada sale. La usan crearSesion y el normalizador de copias.
+export function origenSesion(o) {
+  return o && typeof o === 'object' && o.tipo === 'mia' && typeof o.id === 'string' && /^[\w-]{1,80}$/.test(o.id) ? { origen: { tipo: 'mia', id: o.id } } : {};
+}
 
 // Semana ISO: '2026-W47'
 export function semanaISO(d = new Date()) {
