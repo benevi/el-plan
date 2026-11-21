@@ -75,3 +75,18 @@ test('C-ALAR-3: la lista corta de señales se ve sin desplegar nada', async () =
   assert.ok(corta && corta.closest('details') === null, 'la lista corta no debe ir plegada');
   assert.match(corta.textContent, /pecho/);
 });
+
+test('C-ALAR-1: el aviso de precaución no usa el estilo de la alarma del descanso y «La marqué por error» lo quita', async () => {
+  const b = conLesion('2026-01-01');
+  b.alarmas = [{ fecha: a.estado.hoyISO(), respuesta: 'si', frase: '' }];
+  await reiniciar(b);
+  await abrir();
+  const hoja = a.doc.querySelector('.hoja');
+  assert.match(hoja.textContent, /Hoy no toca entrenar/);
+  assert.ok(hoja.classList.contains('precaucion'));
+  assert.equal(a.doc.querySelector('.hoja.alarma, .tarjeta.alarma'), null, '.alarma es la pantalla de fin de descanso');
+  a.clic('[data-act="entrenador.deshacerAlarma"]');
+  await a.esperar(() => [...a.doc.querySelectorAll('.hoja button')].some(x => /No noto ninguna/.test(x.textContent)));
+  a.clic([...a.doc.querySelectorAll('.hoja button')].find(x => /No noto ninguna/.test(x.textContent)));
+  await a.esperar(() => !(a.estado.estado().alarmas || []).some(x => x.respuesta === 'si'));
+});

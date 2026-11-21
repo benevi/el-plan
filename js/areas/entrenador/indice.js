@@ -2,7 +2,7 @@
 // y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js (fachada de dia, plan, checkin e ia).
 
 import { acciones, ir } from '../../nucleo/router.js';
-import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
+import { estado, cambiar, escuchar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, es, mmss } from '../../nucleo/ui.js';
 import { enLinea } from '../../nucleo/api.js';
 import { diaSemana, sesionDeHoy, sesionTocada } from '../../nucleo/modelo.js';
@@ -90,7 +90,7 @@ function hojaPregunta(p) {
     <p class="tenue">Lo guardo en tu lesión. «No lo sé» la trata como reciente, que es lo más prudente.</p>`, { clase: 'checkin' });
 }
 function hojaAlarma() {
-  abrirHoja(`<h2>Hoy no toca entrenar</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="btn" data-act="entrenador.cerrarAlarma">Entendido</button>`, { clase: 'checkin alarma' });
+  abrirHoja(`<h2>Hoy no toca entrenar</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="btn" data-act="entrenador.cerrarAlarma">Entendido</button><button class="enlace centro" data-act="entrenador.deshacerAlarma">La marqué por error</button>`, { clase: 'checkin precaucion' });
 }
 
 // Dolor con que se rellena el check-in (C-DOLOR-0): el último de un check-in de hace ≤ 3 días; si no, el de
@@ -369,6 +369,14 @@ acciones({
   },
   'entrenador.ciDesde': el => { ci.desde = { ...(ci.desde || {}), [el.dataset.z]: el.dataset.v }; hojaCheckin(); },
   'entrenador.cerrarAlarma': () => { cerrarHoja(); ir('hoy'); },
+  // Casilla o respuesta de alarma marcada sin querer: se quita la de hoy, tras confirmarlo (C-ALAR-1).
+  'entrenador.deshacerAlarma': async () => {
+    if (!await confirmar('¿Seguro que hoy no notas ninguna de esas señales?', { si: 'No noto ninguna', no: 'Sí noto algo' })) return;
+    const hoy = hoyISO();
+    cambiar(S => { S.alarmas = (S.alarmas || []).filter(a => !(a.fecha === hoy && a.respuesta === 'si')); }, 'alarma marcada por error');
+    if (ci) { ci.alarma = false; ci.alarmaRespuesta = null; }
+    cerrarHoja(); ir('hoy');
+  },
   'entrenador.ciZona': el => { ci.dolorHoy[el.dataset.v] = 3; hojaCheckin(); },
   // Una zona añadida por error se quita del todo (las de una lesión activa se dejan a 0 con la barra).
   'entrenador.ciQuitarZona': el => { delete ci.dolorHoy[el.dataset.v]; hojaCheckin(); },
