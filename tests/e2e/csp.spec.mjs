@@ -1,6 +1,6 @@
 // PR 17: la app entera con la CSP y las cabeceras reales de vercel.json (las sirve tests/e2e/servidor.mjs).
-// Recorre todas las pantallas de Víctor y Virginia, una sesión con descanso y alarma, hojas y el editor de
-// «Mis sesiones», y comprueba que no hay ninguna violación de CSP (evento securitypolicyviolation ni consola).
+// Recorre todas las pantallas de Víctor y Virginia, una sesión con descanso, su final con el rodillo de cifras,
+// hojas, el editor de «Mis sesiones» y «Guardar copia», y comprueba que no hay ninguna violación de CSP (evento securitypolicyviolation ni consola).
 import { test, expect } from '@playwright/test';
 
 const HOY = new Date('2026-11-18T18:00:00+01:00');
@@ -18,7 +18,9 @@ async function preparar(page, context) {
   await page.clock.install({ time: HOY });
   const errores = [];
   page.on('pageerror', e => errores.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error' && !/503|Failed to load resource/.test(m.text())) errores.push('console: ' + m.text()); });
+  page.on('console', m => {
+    if ((m.type() === 'error' && !/503|Failed to load resource/.test(m.text())) || /Permissions-Policy|Content Security Policy/.test(m.text())) errores.push('console: ' + m.text());
+  });
   return errores;
 }
 const violaciones = page => page.evaluate(() => window.__csp);
@@ -88,6 +90,24 @@ for (const persona of ['victor', 'virginia']) {
     await page.click('[data-actual] [data-principal]');
     await expect(page.locator('#temporizador')).toBeVisible();
     await page.clock.runFor(5000);
+    // Toda la sesión: al marcar una serie, la barra de avance salta a su valor (sin crecer desde 0)
+    await page.click('[data-act="sesion.modo"][data-v="lista"]');
+    await page.locator('[data-actual] [data-principal]').first().click();
+    expect(await page.locator('.avance i').first().evaluate(el => [el.style.getPropertyValue('--v'), el.getAnimations().length])).toEqual([expect.stringMatching(/^0\.\d+$/), 0]);
+    // Terminar y la pantalla final (rodillo de cifras)
+    await page.click('.cab-sesion [data-act="sesion.terminar"]');
+    await page.locator('.hoja [data-act="sesion.cerrar"]').scrollIntoViewIfNeeded();
+    await page.click('.hoja [data-act="sesion.cerrar"]');
+    await expect(page.locator('.final')).toBeVisible();
+    await page.clock.runFor(3000);
+    expect(await page.locator('.final .rd').first().evaluate(el => el.style.getPropertyValue('--i'))).toBe('0');
+    await page.click('.final [data-fin-hoy]');
+    await expect(page.locator('.final')).toHaveCount(0);
+    // Guardar copia (descarga por blob:)
+    await page.goto('/#perfil');
+    await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+    const [descarga] = await Promise.all([page.waitForEvent('download'), page.locator('[data-act="perfil.exportar"]').first().click()]);
+    expect(descarga.suggestedFilename()).toMatch(/\.json$/);
     expect(await violaciones(page)).toEqual([]);
     expect(errores.filter(e => /Content Security Policy|Refused to/.test(e))).toEqual([]);
     expect(errores).toEqual([]);

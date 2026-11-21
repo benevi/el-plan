@@ -88,6 +88,9 @@ export function pintar() {
     console.error(e);
     main.innerHTML = `<div class="tarjeta"><h1 class="titulo">Algo ha fallado</h1><p>No se ha podido pintar esta pantalla. Prueba a volver a Hoy.</p><p class="tenue">${h(e.message)}</p></div>`;
   }
+  // Antes de cualquier lectura de estilos (scroll, foco, transición): si no, una barra con transición
+  // arrancaría desde 0 en cada repintado esperando al observador.
+  aplicarVariables(main);
   diaPintado = hoyISO();
   document.title = (def.titulo ? def.titulo + ' · ' : '') + 'Pipos Fitness';
   document.body.classList.toggle('sin-nav', !!def.sinNav);
