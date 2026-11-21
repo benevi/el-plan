@@ -362,3 +362,6 @@ main .filtros input:not([type=checkbox]):not([type=range]) { padding-left: 40px;
 @media (prefers-reduced-motion: reduce) {
   .racha b, .pasos-sesion button.actual, .temporizador.final b, .logo-grande { animation: none !important; }
 }
+
+.alarma-ci .señales-cortas { margin: 4px 0 0; padding-left: 18px; font-size: 14.5px; }
+.alarma-ci .señales-cortas li { margin: 4px 0; }

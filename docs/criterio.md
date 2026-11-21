@@ -107,7 +107,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 
 ### 2.4 Cómo se pregunta
 
-**C-ALAR-3 [Objetivo] [PR 8]** El check-in tiene **siempre visible** una casilla «Hoy noto algo de esto» con la lista corta de A1-A11 en lenguaje llano. Marcarla aplica C-ALAR-1.
+**C-ALAR-3 [Objetivo] [PR 8]** El check-in tiene **siempre visible** una casilla «Hoy noto alguna de estas señales» junto a la lista corta (lo más frecuente de A1-A11) a la vista y la lista completa desplegable, en lenguaje llano. (Texto cambiado a petición de Víctor el 21-11-2026: «Hoy noto algo de esto» con la lista plegada no se entendía.) Marcarla aplica C-ALAR-1.
 
 **C-ALAR-4 [Objetivo] [PR 8, PR 11]** **Palabras de alarma en textos libres** (comentarios de la última sesión, petición del check-in, notas nuevas). Si aparece una, **no se genera nada** (ni reglas ni IA) hasta que la persona conteste la casilla: «En tu comentario dices "[frase]". ¿Notas algo de esto hoy?». Si responde que no, sigue el flujo normal; si responde que sí, C-ALAR-1. No se propone una «sesión más suave» en su lugar.
 - Expresiones que disparan (expresión regular, sin tildes y en minúsculas): `(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho`, `me aprieta el pecho`, `mare[oóa]|desmay|vertigo`, `palpitacion`, `(me )?falta(ba)? el aire|me ahogaba`, `hormigue`, `se me (duerme|durmio|dormia)`, `no (puedo|podia|pude) apoyar`, `vision doble`, `sudor frio`, `nausea|vomit`, `fiebre`, `orina (muy )?oscura`, `mandibula`.

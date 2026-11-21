@@ -2,7 +2,7 @@
 // y lo que ve el entrenador de tu progreso. La lógica está en entrenador.js (fachada de dia, plan, checkin e ia).
 
 import { acciones, ir } from '../../nucleo/router.js';
-import { estado, cambiar, escuchar } from '../../nucleo/estado.js';
+import { estado, cambiar, escuchar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, es, mmss } from '../../nucleo/ui.js';
 import { enLinea } from '../../nucleo/api.js';
 import { diaSemana, sesionDeHoy, sesionTocada } from '../../nucleo/modelo.js';
@@ -13,7 +13,7 @@ import { analizarEjercicios, medidorNivel, tendencias } from '../../reglas/conte
 import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar,
-  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, T2, DESDE, misSesiones, miaDe,
+  previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, SEÑALES_CORTAS, T2, DESDE, misSesiones, miaDe,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -29,6 +29,7 @@ function hojaCheckin() {
   // Solo zonas del catálogo: su clave va dentro de un id y de un manejador oninput.
   const zonas = [...new Set([...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona), ...Object.keys(ci.dolorHoy)])].filter(z => Object.prototype.hasOwnProperty.call(ZONAS, z));
   const otras = Object.keys(ZONAS).filter(z => !zonas.includes(z));
+  const deLesion = S.perfil.lesiones.filter(l => l.activa).map(l => l.zona);
   // Antes de nada: alarma en un texto libre o lesión sin «desde» (C-ALAR-4, C-LES-6). No se genera nada.
   const pregunta = preguntaAntes(S, ci);
   if (pregunta) return hojaPregunta(pregunta);
@@ -47,11 +48,14 @@ function hojaCheckin() {
     <div class="campo col"><span>Dónde</span><div class="chips">${S.perfil.lugares.map(l => `<button class="chip ${ci.lugar === l ? 'on' : ''}" data-act="entrenador.ci" data-k="lugar" data-v="${h(l)}">${h(LUGARES[l])}</button>`).join('')}</div></div>
     <div class="campo col"><span>Tiempo</span><div class="chips">${[30, 45, 60, 75, 90].map(m => `<button class="chip ${ci.minutos === m ? 'on' : ''}" data-act="entrenador.ci" data-k="minutos" data-v="${m}">${m} min</button>`).join('')}</div></div>
     <div class="campo col"><span>Energía: <b>${ENERGIA[ci.energia]}</b></span><div class="segmentos">${[1, 2, 3, 4, 5].map(n => `<button class="${ci.energia === n ? 'on' : ''}" data-act="entrenador.ci" data-k="energia" data-v="${n}">${n}</button>`).join('')}</div></div>
-    ${zonas.map(z => `<label class="campo col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
-      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>`).join('')}
+    ${zonas.map(z => `<div class="campo col"><label class="col"><span>Dolor hoy · ${h(ZONAS[z].corta)}: <b id="ci-${h(z)}">${+ci.dolorHoy[z] || 0}</b>/10</span>
+      <input type="range" min="0" max="10" value="${+ci.dolorHoy[z] || 0}" data-cambio="entrenador.ciDolor" data-z="${h(z)}" oninput="document.getElementById('ci-${h(z)}').textContent=this.value"></label>
+      ${deLesion.includes(z) ? '' : `<button class="enlace" data-act="entrenador.ciQuitarZona" data-v="${h(z)}">Quitar ${h(minus(ZONAS[z].corta))}</button>`}</div>`).join('')}
     <div class="campo col"><span>¿Te duele algo más?</span><div class="chips">${otras.map(z => `<button class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
-    <div class="campo col alarma-ci"><label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto algo de esto</b></span></label>
-      <details class="plegable"><summary>Qué cuenta</summary><ul class="tenue">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details></div>
+    <div class="campo col alarma-ci"><span>Señales de alarma</span>
+      <ul class="tenue señales-cortas">${SEÑALES_CORTAS.map(t => `<li>${h(t)}</li>`).join('')}</ul>
+      <details class="plegable"><summary>Ver la lista completa</summary><ul class="tenue">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>
+      <label class="interruptor"><input type="checkbox" data-cambio="entrenador.ciAlarma" ${ci.alarma ? 'checked' : ''}><span><b>Hoy noto alguna de estas señales</b> · si la marcas, hoy no se entrena</span></label></div>
     ${mia ? '' : `<label class="campo col"><span>Algo que pedir <small>opcional</small></span><input id="ci-peticion" value="${h(ci.peticion)}" placeholder="Ej.: hoy solo tren superior, la prensa está ocupada…"></label>`}
     ${htmlPrevia(pv)}
     <button class="btn grande" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : `${ICONOS.play} ${mia ? `Preparar «${h(mia.nombre)}»` : 'Preparar mi sesión'}`}</button>`, { clase: 'checkin' });
@@ -86,7 +90,7 @@ function hojaPregunta(p) {
     <p class="tenue">Lo guardo en tu lesión. «No lo sé» la trata como reciente, que es lo más prudente.</p>`, { clase: 'checkin' });
 }
 function hojaAlarma() {
-  abrirHoja(`<h2>Hoy no toca entrenar</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="btn" data-act="entrenador.cerrarAlarma">Entendido</button>`, { clase: 'checkin alarma' });
+  abrirHoja(`<h2>Hoy no toca entrenar</h2>${T2.map(t => `<p>${h(t)}</p>`).join('')}<button class="btn" data-act="entrenador.cerrarAlarma">Entendido</button><button class="enlace centro" data-act="entrenador.deshacerAlarma">La marqué por error</button>`, { clase: 'checkin precaucion' });
 }
 
 // Dolor con que se rellena el check-in (C-DOLOR-0): el último de un check-in de hace ≤ 3 días; si no, el de
@@ -365,7 +369,17 @@ acciones({
   },
   'entrenador.ciDesde': el => { ci.desde = { ...(ci.desde || {}), [el.dataset.z]: el.dataset.v }; hojaCheckin(); },
   'entrenador.cerrarAlarma': () => { cerrarHoja(); ir('hoy'); },
+  // Casilla o respuesta de alarma marcada sin querer: se quita la de hoy, tras confirmarlo (C-ALAR-1).
+  'entrenador.deshacerAlarma': async () => {
+    if (!await confirmar('¿Seguro que hoy no notas ninguna de esas señales?', { si: 'No noto ninguna', no: 'Sí noto algo' })) return;
+    const hoy = hoyISO();
+    cambiar(S => { S.alarmas = (S.alarmas || []).filter(a => !(a.fecha === hoy && a.respuesta === 'si')); }, 'alarma marcada por error');
+    if (ci) { ci.alarma = false; ci.alarmaRespuesta = null; }
+    cerrarHoja(); ir('hoy');
+  },
   'entrenador.ciZona': el => { ci.dolorHoy[el.dataset.v] = 3; hojaCheckin(); },
+  // Una zona añadida por error se quita del todo (las de una lesión activa se dejan a 0 con la barra).
+  'entrenador.ciQuitarZona': el => { delete ci.dolorHoy[el.dataset.v]; hojaCheckin(); },
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
   'entrenador.ciMia': el => { elegirMia(estado(), el.dataset.v); hojaCheckin(); },
   'entrenador.ciOcupar': el => { ci.ocuparDia = el.checked; hojaCheckin(); },
