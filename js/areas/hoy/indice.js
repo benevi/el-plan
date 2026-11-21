@@ -112,7 +112,7 @@ function deHoy(S) {
     return {
       tarjeta: tarjeta(`${enMarcha ? 'En marcha' : 'Lista'}: ${fuente(s)}`, h(s.nombre),
         `<p class="datos">${s.foco ? h(s.foco) + ', ' : ''}${plural(s.ejercicios.length, 'ejercicio', 'ejercicios')}${LUGARES[s.lugar] ? `, ${h(minus(LUGARES[s.lugar]))}` : ''}, unos ${minutosDe(s)} min.</p>
-        ${hechas && total ? `<div class="avance" role="img" aria-label="${+hechas} de ${+total} series hechas"><i style="--v:${(hechas / total).toFixed(3)}"></i></div><p class="meta">${+hechas} de ${+total} series</p>` : ''}
+        ${hechas && total ? `<div class="avance" role="img" aria-label="${+hechas} de ${+total} series hechas"><i data-var="--v:${(hechas / total).toFixed(3)}"></i></div><p class="meta">${+hechas} de ${+total} series</p>` : ''}
         ${porque(s)}${notaFallo(s)}
         ${s.estado === 'pendiente' ? '<button type="button" class="boton boton--texto" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}`),
       accion: `<a class="boton boton--ancho" href="#sesion/${h(s.id)}">${enMarcha ? 'Seguir con la sesión' : 'Empezar'}</a>`,

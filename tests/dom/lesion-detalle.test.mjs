@@ -7,7 +7,7 @@ import { montar } from '../ayuda/dom.mjs';
 const a = await montar({ ls: { pipos4: estadoBase() }, hash: 'perfil' });
 after(() => a.cerrar());
 
-const visible = z => a.doc.querySelector(`[data-detalle="${z}"]`).style.display !== 'none';
+const visible = z => a.doc.querySelector(`[data-detalle="${z}"]`).hidden === false;
 
 test('nueva lesión: el detalle sale solo para la zona elegida y se guarda', async () => {
   a.clic('[data-act="perfil.grupo"][data-v="lesiones"]');
@@ -35,7 +35,7 @@ test('una zona sin detalles no guarda detalle, y al quitarlo se borra', async ()
   assert.equal(a.doc.querySelector('#l-detalle-tobillo_pie').value, 'aquiles', 'al editar se ve el guardado');
   const zona = a.doc.querySelector('#l-zona');
   zona.value = 'rodilla'; zona.dispatchEvent(new a.w.Event('change', { bubbles: true }));
-  assert.ok(![...a.doc.querySelectorAll('[data-detalle]')].some(c => c.style.display !== 'none'), 'rodilla no tiene detalle');
+  assert.ok(![...a.doc.querySelectorAll('[data-detalle]')].some(c => c.hidden === false), 'rodilla no tiene detalle');
   a.clic(`[data-act="perfil.guardarLesion"][data-id="${id}"]`);
   await a.esperar(() => a.estado.estado().perfil.lesiones[0].zona === 'rodilla');
   assert.equal('detalle' in a.estado.estado().perfil.lesiones[0], false);
@@ -49,11 +49,11 @@ test('con «dolor que baja por la pierna» o «por el brazo» sale el aviso de c
   zona.value = 'lumbar'; zona.dispatchEvent(new a.w.Event('change', { bubbles: true }));
   const a4 = a.doc.querySelector('[data-a4="lumbar"]');
   assert.match(a.doc.querySelector('[data-detalle="lumbar"]').textContent, /no baja por la pierna, elige «contractura»/);
-  assert.equal(a4.style.display, 'none');
+  assert.equal(a4.hidden, true);
   const sel = a.doc.querySelector('#l-detalle-lumbar');
   sel.value = 'hernia'; sel.dispatchEvent(new a.w.Event('change', { bubbles: true }));
-  assert.equal(a4.style.display, '');
+  assert.equal(a4.hidden, false);
   assert.equal(a4.textContent, 'Si es nuevo o va a más, no entrenes y consulta.');
   sel.value = 'contractura'; sel.dispatchEvent(new a.w.Event('change', { bubbles: true }));
-  assert.equal(a4.style.display, 'none');
+  assert.equal(a4.hidden, true);
 });

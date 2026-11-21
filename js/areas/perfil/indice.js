@@ -262,11 +262,11 @@ function esCopiaVieja(txt) { try { return esViejo(JSON.parse(txt)); } catch { re
 function detallesLesion(l) {
   return Object.entries(ZONAS).filter(([, z]) => z.detalles).map(([k, z]) => {
     const irradia = l.zona === k && l.detalle && (z.detalles.opciones[l.detalle] || {}).irradiado;
-    return `<div class="campo" data-detalle="${h(k)}" ${k === l.zona ? '' : 'style="display:none"'}>
+    return `<div class="campo" data-detalle="${h(k)}" ${k === l.zona ? '' : 'hidden'}>
       <label for="l-detalle-${h(k)}">Detalle <small>opcional; si no lo sabes, la app elige lo más prudente</small></label>
       <select id="l-detalle-${h(k)}" data-cambio="perfil.lesionDetalle"><option value="">No lo sé</option>${Object.entries(z.detalles.opciones).map(([o, d]) => `<option value="${h(o)}" data-irradia="${d.irradiado ? '1' : ''}" ${l.zona === k && l.detalle === o ? 'selected' : ''}>${h(d.nombre)}</option>`).join('')}</select>
       ${z.detalles.ayuda ? `<p class="ayuda">${h(z.detalles.ayuda)}</p>` : ''}
-      <p class="mensaje mensaje--error" data-a4="${h(k)}" role="alert" ${irradia ? '' : 'style="display:none"'}>${h(AVISO_IRRADIADO)}</p></div>`;
+      <p class="mensaje mensaje--error" data-a4="${h(k)}" role="alert" ${irradia ? '' : 'hidden'}>${h(AVISO_IRRADIADO)}</p></div>`;
   }).join('');
 }
 // Dolor que baja por el brazo o la pierna (A4 de docs/criterio.md).
@@ -311,9 +311,9 @@ acciones({
   'perfil.ajuste': el => cambiar(S => { S.ajustes[el.dataset.k] = el.checked; }, 'perfil-silencio'),
   'perfil.lesionDetalle': el => {
     const a4 = document.querySelector(`[data-a4="${el.id.replace('l-detalle-', '')}"]`);
-    if (a4) a4.style.display = el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia ? '' : 'none';
+    if (a4) a4.hidden = !(el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia);
   },
-  'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.style.display = c.dataset.detalle === el.value ? '' : 'none'; }),
+  'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.hidden = c.dataset.detalle !== el.value; }),
   'perfil.crearMia': () => ir('mia/nueva'),
   'perfil.editarMia': el => ir('mia/' + el.dataset.id),
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),

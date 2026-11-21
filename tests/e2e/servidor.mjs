@@ -18,6 +18,25 @@ const TIPOS = {
   '.woff2': 'font/woff2', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
 };
 
+// Las cabeceras de vercel.json (CSP, HSTS…) también aquí, para que las e2e prueben la app con la CSP real.
+// Cada raíz servida usa su propio vercel.json si lo tiene (el «main» de sw.spec lleva el de producción, sin CSP);
+// si no, el del repo.
+const reglasCache = new Map();
+function reglasDe(raiz) {
+  if (!reglasCache.has(raiz)) {
+    const propio = path.join(raiz, 'vercel.json');
+    const f = fs.existsSync(propio) ? propio : path.join(RAIZ, 'vercel.json');
+    reglasCache.set(raiz, JSON.parse(fs.readFileSync(f, 'utf8')).headers
+      .map(r => ({ re: new RegExp('^' + r.source.replace(/[.]/g, '\\.').replace(/\(\\\.\*\)/g, '(.*)') + '$'), headers: r.headers })));
+  }
+  return reglasCache.get(raiz);
+}
+export function cabecerasDe(ruta, raiz = RAIZ) {
+  const fuera = {};
+  for (const r of reglasDe(raiz)) if (r.re.test(ruta)) for (const c of r.headers) fuera[c.key.toLowerCase()] = c.value;
+  return fuera;
+}
+
 export function crearServidor({ raiz = RAIZ } = {}) {
   const control = { raiz, porRuta: {}, cortar: [], retrasar: {}, peticiones: [], api: null };
   const servidor = http.createServer((q, s) => {
@@ -45,6 +64,7 @@ export function crearServidor({ raiz = RAIZ } = {}) {
     }
     const cuerpo = fs.readFileSync(fp);
     const etag = '"' + crypto.createHash('md5').update(cuerpo).digest('hex') + '"';
+    for (const [k, v] of Object.entries(cabecerasDe(u.pathname, base))) if (k !== 'cache-control') s.setHeader(k, v);
     s.setHeader('etag', etag);
     s.setHeader('cache-control', u.pathname === '/sw.js' ? 'no-cache' : 'public, max-age=0, must-revalidate');
     s.setHeader('content-type', TIPOS[path.extname(fp)] || 'application/octet-stream');
