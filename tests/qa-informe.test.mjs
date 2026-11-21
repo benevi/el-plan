@@ -199,3 +199,86 @@ test('C-DOLOR-6: límite del dolor durante: +2 sobre el de antes y nunca por enc
   assert.deepEqual(ent.limiteDolor(S, 'rodilla', 2), { techo: 3, limite: 3 });
   assert.deepEqual(ent.limiteDolor(S, 'codo', 0), { techo: 3, limite: 2 }, 'dolor sin lesión: techo 3');
 });
+
+// ── Revisión del PR #38 y decisiones de Víctor del 21-11-2026 ──
+const { zona } = await import(modulo('js/nucleo/normalizar.js'));
+const contexto = await import(modulo('js/reglas/contexto.js'));
+
+test('D-A: una sesión parada por alarma va al historial de la IA con «parada» y sus ejercicios parados por dolor', () => {
+  const S = nuevoS();
+  const s = modelo.crearSesion({ nombre: 'x', lugar: 'gym', ejercicios: [{ id: 'press-pecho-maquina', rol: 'principal', series: 2, reps: '8-12' }, { id: 'jalon-pecho', rol: 'principal', series: 2, reps: '8-12' }] });
+  s.ejercicios[0].sets[0].hecha = true;
+  s.ejercicios[1].dolorDurante = { zona: 'hombro', dolor: 6, antes: 2, techo: 5 };
+  Object.assign(s, { estado: 'hecha', terminada: new Date().toISOString(), parada: 'alarma', cierre: { esfuerzo: null, dolor: {}, comentario: '' } });
+  est.cambiar(S2 => { S2.sesiones[s.id] = s; }, 'sesion');
+  const h = contexto.historialParaIA(est.estado(), ['press-pecho-maquina']).sesionesUltimos14dias[0];
+  assert.match(h.parada, /alarma/);
+  assert.match(h.dolorDurante[0], /Jalón.*hombro 6\/10.*parado/);
+  assert.ok(S);
+});
+
+test('E7/E9: cuenta como trabajo hecho una serie, una tarea marcada o un «dolor durante» (día de dolor alto sin ejercicios)', () => {
+  const base = () => modelo.crearSesion({ nombre: 'x', lugar: 'gym', calentamiento: [{ nombre: 'Bici suave', duracion: '5 min' }], ejercicios: [], vuelta: [{ nombre: 'Estirar', duracion: '5 min' }] });
+  const s = base();
+  assert.equal(modelo.trabajoHecho(s), false);
+  s.calentamiento[0].hecho = true;
+  assert.equal(modelo.trabajoHecho(s), true);
+  const d = modelo.crearSesion({ nombre: 'y', lugar: 'gym', ejercicios: [{ id: 'press-pecho-maquina', rol: 'principal', series: 2, reps: '8-12' }] });
+  d.ejercicios[0].dolorDurante = { zona: 'hombro', dolor: 6, antes: 2, techo: 5 };
+  assert.equal(modelo.trabajoHecho(d), true);
+  // «Termino la sesión aquí» no borra lo que tiene tareas o un «dolor durante».
+  for (const x of [s, d]) {
+    nuevoS();
+    est.cambiar(S2 => { S2.sesiones[x.id] = x; }, 'sesion');
+    ent.pararPorAlarma(x.id);
+    assert.equal(est.estado().sesiones[x.id].parada, 'alarma', x.nombre);
+  }
+  assert.ok(est.estado().sesiones[d.id].ejercicios[0].dolorDurante);
+});
+
+test('C-DOSIS-4: la nota «con precaución» se reescribe con el dolor de hoy y en la rehabilitación cambia el margen sin otra frase', () => {
+  const S = nuevoS({ objetivos: ['fuerza'], nivel: 2, lesiones: [{ id: 'l1', zona: 'hombro', dolor: 3, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true }] });
+  const vieja = 'Implica a tu hombro (3/10): carga moderada, bajada de 3 s y 3 de margen; si pasa de 5/10, salta al siguiente. Pecho y tríceps.';
+  const s = { nombre: 'x', explicacion: ['x'], calentamiento: [T('Bici'), T('Movilidad')], vuelta: [T('Estiramiento de pecho', '1 min'), T('Respirar', '1 min')],
+    ejercicios: [E('prensa-piernas'), E('press-pecho-maquina', 'principal', { reps: '10-12', nota: vieja }), E('remo-sentado-polea'), E('bici-estatica', 'cardio', { series: 1, reps: '15 min', descanso: 0 })] };
+  const ctx = { lugar: 'gym', minutos: 60, dolorHoy: { hombro: 1 }, origen: 'plan' };
+  let v = ent.validarSesion(S, s, ctx);
+  v = ent.validarSesion(S, v.sesion, ctx); // dos veces: no se acumula
+  const press = v.sesion.ejercicios.find(x => x.id === 'press-pecho-maquina');
+  assert.doesNotMatch(press.nota, /\(3\/10\)|5\/10|Implica/, press.nota);
+  assert.equal((press.nota.match(/Con precaución/g) || []).length, 1, press.nota);
+  assert.match(press.nota, /tu hombro \(1\/10\).*si pasa de 3\/10/);
+  assert.match(press.nota, /Pecho y tríceps/);
+  // Rehabilitación de fase 3 con r=1 (B0): su nota dice 3 repeticiones de margen, sin otra frase.
+  const notaRehab = 'Para tu hombro: fuerza progresiva, con 2 repeticiones de margen y el movimiento controlado. Mañana debe estar como hoy antes de empezar.';
+  const S0 = nuevoS({ objetivos: ['fuerza'], nivel: 2, lesiones: [{ id: 'l1', zona: 'hombro', dolor: 0, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true }] });
+  const r = ent.validarSesion(S0, { ...s, ejercicios: [E('prensa-piernas'), E('press-pecho-maquina', 'rehab', { reps: '10-12', nota: notaRehab }), E('remo-sentado-polea'), E('jalon-pecho'), E('bici-estatica', 'cardio', { series: 1, reps: '15 min', descanso: 0 })] }, { ...ctx, dolorHoy: {} });
+  const rh = r.sesion.ejercicios.find(x => x.id === 'press-pecho-maquina');
+  assert.equal(rh && rh.rol, 'rehab', JSON.stringify(r.sesion.ejercicios.map(x => x.id + ':' + x.rol)));
+  {
+    assert.match(rh.nota, /con 3 repeticiones de margen, bajada de 3 s/);
+    assert.doesNotMatch(rh.nota, /2 repeticiones de margen|Con precaución por/);
+  }
+});
+
+test('C-DOSIS-7: en la rehabilitación, si empieza por encima del techo, quedarse como empezó no para el ejercicio', () => {
+  const S = nuevoS({ lesiones: [{ id: 'l1', zona: 'rodilla', dolor: 4, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true }] });
+  assert.deepEqual(ent.limiteDolor(S, 'rodilla', 4, { rehab: true }), { techo: 3, limite: 4 });
+  assert.deepEqual(ent.limiteDolor(S, 'rodilla', 4), { techo: 3, limite: 3 }, 'fuera de la rehabilitación manda el techo');
+});
+
+test('E1: una frase que habla de un día rehecho y de otro que se mantiene conserva la parte del que se mantiene', () => {
+  const p = { resumen: 'Semana corta: el sábado haces tu primer cuerpo completo y el domingo un día suave en la piscina', criterios: '', progresion: '' };
+  const dias = [{ diaSemana: 6, nombre: 'Cuerpo completo A', lugar: 'gym' }, { diaSemana: 7, nombre: 'Cuerpo completo B', lugar: 'gym' }];
+  const t = ia.textosPlanIA(p, dias, [dias[1]]);
+  assert.match(t.resumen, /^Semana corta: el sábado haces tu primer cuerpo completo\. La app ha preparado el domingo \(Cuerpo completo B, gimnasio\)/, t.resumen);
+});
+
+test('normalizador: zona «__proto__» no vale y plan.noPuedo solo con enteros 1-7', () => {
+  assert.equal(zona('__proto__'), null);
+  assert.equal(zona('constructor'), null);
+  assert.equal(zona('cadera'), 'cadera_lateral');
+  const S = nuevoS();
+  const datos = { ...JSON.parse(JSON.stringify(S)), plan: { semana: modelo.semanaISO(), creado: new Date().toISOString(), fuente: 'reglas', resumen: '', criterios: '', progresion: '', dias: [], hechos: {}, noPuedo: ['x', 0, 8, 2.5, '3', 9, 9, 9, 9, 9, 9, 9, 6, 1] } };
+  assert.deepEqual(normalizarEstado(datos).estado.plan.noPuedo, [1, 6]);
+});

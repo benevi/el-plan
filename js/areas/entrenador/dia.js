@@ -472,7 +472,11 @@ export function techoDolor(S, z, { rehab = false } = {}) {
 export function limiteDolor(S, z, antes = 0, { rehab = false } = {}) {
   const l = (S.perfil.lesiones || []).find(x => x.activa && x.zona === z);
   const t = ZONAS[z] ? techoZona(z, { nueva: faseLesion(l) === 'nueva', detalle: l && l.detalle, rehab }) : { techo: 3, sube: 2 };
-  return { techo: t.techo, limite: Math.min(t.techo, (+antes || 0) + t.sube) };
+  let limite = Math.min(t.techo, (+antes || 0) + t.sube);
+  // Rehabilitación (C-DOSIS-7): «dolor ≤ 3 o igual al de antes»; si ya empieza por encima del techo o es
+  // irradiado (sin aumento), vale quedarse como empezó.
+  if (rehab && ((+antes || 0) > t.techo || t.sube === 0)) limite = Math.max(limite, +antes || 0);
+  return { techo: t.techo, limite };
 }
 // c: { i, d, an, carga, niveles, dolorHoy, sustituye: { n, por } }
 export function porQueEjercicio(S, e, c) {

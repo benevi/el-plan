@@ -274,6 +274,8 @@ function hojaReorganizar() {
 
 // ── Tarjeta del plan (la usa Hoy) ──
 const ETIQUETA = { hecho: 'Hecho', hoy: 'Hoy', pendiente: '', saltado: 'No hecho', noPuedo: 'Hoy no puedes' };
+// Un «Hoy no puedo» de un día que ya pasó es un día no entrenado.
+const etiquetaDia = d => (d.estado === 'noPuedo' && d.diaSemana < diaSemana() ? 'No entrenado' : ETIQUETA[d.estado]);
 export function tarjetaPlan(S) {
   const p = planDeLaSemana(S);
   if (!p) return '';
@@ -289,7 +291,7 @@ export function tarjetaPlan(S) {
     <ul class="lista">${dias.map(d => `<li class="${d.estado === 'saltado' || d.estado === 'hecho' ? 'apagada' : ''}">
       <button class="fila" data-act="entrenador.verDia" data-v="${+d.diaSemana}">
         <span class="grow"><b>${h(DIAS[d.diaSemana])} · ${h(d.nombre)}</b><span class="tenue">${h(LUGARES[d.lugar])} · ${+d.ejercicios.length} ejercicios · unos ${+tiempoSesion(d)} min</span></span>
-        ${ETIQUETA[d.estado] ? `<span class="etiqueta">${d.estado === 'hecho' ? ICONOS.check + ' ' : ''}${ETIQUETA[d.estado]}</span>` : ICONOS.sig}</button></li>`).join('')}</ul>
+        ${etiquetaDia(d) ? `<span class="etiqueta">${d.estado === 'hecho' ? ICONOS.check + ' ' : ''}${etiquetaDia(d)}</span>` : ICONOS.sig}</button></li>`).join('')}</ul>
     <details class="plegable"><summary>Por qué esta semana</summary>
       ${p.criterios ? `<p>${h(p.criterios)}</p>` : ''}${p.progresion ? `<p><b>Progresión:</b> ${h(p.progresion)}</p>` : ''}
     </details>

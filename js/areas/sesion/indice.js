@@ -5,7 +5,7 @@
 import { rutas, acciones, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num } from '../../nucleo/ui.js';
-import { crearEjercicio } from '../../nucleo/modelo.js';
+import { crearEjercicio, trabajoHecho } from '../../nucleo/modelo.js';
 import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
@@ -183,15 +183,13 @@ function conSesion(fn, motivo = 'sesion') {
   cambiar(S => { const s = S.sesiones[id]; if (s) fn(s, S); }, motivo);
 }
 
-// Series marcadas como hechas en toda la sesión.
-const seriesHechas = s => (s.ejercicios || []).reduce((a, x) => a + (x.sets || []).filter(z => z.hecha).length, 0);
 
 function hojaCierre() {
   const s = sesion(idActual());
   // Sin ninguna serie no hay sesión que guardar: no cuenta como entrenada ni para la constancia (E7).
-  if (s && !seriesHechas(s)) {
-    abrirHoja(`<h2>No has marcado ninguna serie</h2>
-      <p>Una sesión sin series no cuenta como entrenada. Si las has hecho, márcalas (el círculo de cada serie) y vuelve a «Terminar».</p>
+  if (s && !trabajoHecho(s)) {
+    abrirHoja(`<h2>No has marcado nada</h2>
+      <p>Una sesión sin ninguna serie ni tarea marcada no cuenta como entrenada. Si las has hecho, márcalas (el círculo de cada una) y vuelve a «Terminar».</p>
       <div class="fila-botones"><button class="btn sec" data-act="sesion.seguir">Volver a la sesión</button><button class="btn peligro" data-act="sesion.descartar">Descartar la sesión</button></div>`);
     return;
   }
@@ -355,7 +353,10 @@ acciones({
       const i = +el.dataset.e, viejo = s.ejercicios[i], n = ex(el.dataset.id);
       const nuevo = crearEjercicio({ id: n.id, rol: viejo.rol, series: viejo.series, reps: n.t === ex(viejo.id).t ? viejo.reps : n.d[1], descanso: viejo.descanso, nota: `En lugar de ${ex(viejo.id).n.toLowerCase()}.` });
       // Uno parado por dolor se queda (con su «dolor durante» apuntado) y el nuevo va detrás (C-DOLOR-6).
-      if (viejo.dolorDurante) s.ejercicios.splice(i + 1, 0, nuevo); else s.ejercicios[i] = nuevo;
+      // Si ya se había cambiado (el siguiente es su sustituto sin nada hecho), se cambia ese: no se van sumando.
+      const sustituto = s.ejercicios[i + 1];
+      const yaCambiado = viejo.dolorDurante && sustituto && sustituto.nota === `En lugar de ${ex(viejo.id).n.toLowerCase()}.` && !sustituto.sets.some(z => z.hecha);
+      if (yaCambiado) s.ejercicios[i + 1] = nuevo; else if (viejo.dolorDurante) s.ejercicios.splice(i + 1, 0, nuevo); else s.ejercicios[i] = nuevo;
     });
     cerrarHoja();
   },
@@ -377,7 +378,7 @@ acciones({
   'sesion.seguir': () => cerrarHoja(),
   'sesion.cerrar': () => {
     const s0 = sesion(idActual());
-    if (s0 && !seriesHechas(s0)) { cerrarHoja(); aviso('Sin ninguna serie marcada no se guarda: no cuenta como entrenada.', 'info'); return; }
+    if (s0 && !trabajoHecho(s0)) { cerrarHoja(); aviso('Sin nada marcado no se guarda: no cuenta como entrenada.', 'info'); return; }
     const esf = +($('#c-esf .on') || { dataset: { v: 3 } }).dataset.v;
     const dolor = {}; document.querySelectorAll('.hoja [data-zona]').forEach(r => { dolor[r.dataset.zona] = +r.value; });
     const comentario = $('#c-com').value.trim();

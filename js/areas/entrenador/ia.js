@@ -6,7 +6,7 @@
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamarEnVivo, enLinea, textoError } from '../../nucleo/api.js';
-import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada } from '../../nucleo/modelo.js';
+import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada, trabajoHecho } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
@@ -74,14 +74,14 @@ function apuntarAlarma(a) {
   }, 'alarma');
 }
 // «Algo va mal» con una señal de alarma durante la sesión (T3, C-ALAR-1): se para la sesión en curso. Lo hecho
-// hasta ahí se guarda (marcada `parada: 'alarma'`); sin ninguna serie, la sesión no queda. Hoy queda «sin
+// hasta ahí (series, tareas o un «dolor durante») se guarda, marcado `parada: 'alarma'`, y el día cuenta como
+// entrenado (excepción D-A de C-ALAR-1); sin nada hecho, la sesión no queda. Hoy queda «sin
 // entrenar por precaución» (T2) y no se llama a la IA.
 export function pararPorAlarma(idSesion) {
   const ahora = new Date().toISOString();
   cambiar(S => {
     const s = S.sesiones[idSesion]; if (!s || s.estado === 'hecha') return;
-    const series = (s.ejercicios || []).reduce((a, x) => a + (x.sets || []).filter(z => z.hecha).length, 0);
-    if (series) Object.assign(s, { estado: 'hecha', empezada: s.empezada || ahora, terminada: ahora, cierre: { esfuerzo: null, dolor: {}, comentario: '' }, parada: 'alarma' });
+    if (trabajoHecho(s)) Object.assign(s, { estado: 'hecha', empezada: s.empezada || ahora, terminada: ahora, cierre: { esfuerzo: null, dolor: {}, comentario: '' }, parada: 'alarma' });
     else {
       delete S.sesiones[idSesion];
       if (S.plan && S.plan.hechos) Object.keys(S.plan.hechos).forEach(d => { if (S.plan.hechos[d] === idSesion) delete S.plan.hechos[d]; });
@@ -331,10 +331,20 @@ const frases = t => String(t || '').split(/(?<=[.!?])\s+/).map(f => f.trim()).fi
 export function textosPlanIA(p, dias, rehechos = []) {
   const txt = { resumen: String(p.resumen || ''), criterios: String(p.criterios || ''), progresion: String(p.progresion || '') };
   if (!rehechos.length) return txt;
-  const nombres = rehechos.map(d => normalizarTexto(DIAS[d.diaSemana]));
-  const habla = f => { const t = normalizarTexto(f); return nombres.some(n => new RegExp(`(^|[^a-z])${n}([^a-z]|$)`).test(t)); };
-  const sin = t => frases(t).filter(f => !habla(f)).join(' ');
-  const quedan = sin(txt.resumen);
+  const nombre = d => normalizarTexto(DIAS[d.diaSemana]);
+  const rehechosN = rehechos.map(nombre), mantenidos = dias.filter(d => !rehechos.some(r => r.diaSemana === d.diaSemana)).map(nombre);
+  const nombra = (f, ns) => { const t = normalizarTexto(f); return ns.some(n => new RegExp(`(^|[^a-z])${n}([^a-z]|$)`).test(t)); };
+  const punto = f => (/[.!?]$/.test(f) ? f : f + '.');
+  // Una frase que habla de un día rehecho se quita; si también habla de un día que se mantiene, se quita solo
+  // la parte (separada por comas, «;» o «y») del día rehecho.
+  const limpiar = f => {
+    if (!nombra(f, rehechosN)) return f;
+    if (!nombra(f, mantenidos)) return '';
+    const partes = f.replace(/[.!?]$/, '').split(/\s*(?:,|;|\by\b)\s*/).filter(p => p && !nombra(p, rehechosN));
+    return partes.length ? punto(partes.join(', ')) : '';
+  };
+  const sin = t => frases(t).map(limpiar).filter(Boolean).join(' ');
+  const quedan = sin(txt.resumen) ? punto(sin(txt.resumen)) : '';
   const lista0 = `${dias.length} día${dias.length > 1 ? 's' : ''}: ${lista(dias.map(d => `${minus(DIAS[d.diaSemana])} (${d.nombre})`))}.`;
   const nota = `La app ha preparado ${lista(rehechos.map(d => `el ${minus(DIAS[d.diaSemana])} (${d.nombre}, ${minus(LUGARES[d.lugar] || d.lugar)})`))}: lo que proponía el entrenador IA para ${rehechos.length > 1 ? 'esos días' : 'ese día'} no cumplía las reglas de la app o no venía.`;
   return { resumen: [quedan || lista0, nota].join(' '), criterios: sin(txt.criterios), progresion: sin(txt.progresion) };

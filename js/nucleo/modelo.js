@@ -86,6 +86,11 @@ export function sesionTocada(s) {
   return (s.calentamiento || []).some(t => t.hecho) || (s.vuelta || []).some(t => t.hecho) ||
     (s.ejercicios || []).some(x => x.comentario || x.gusto || x.sets.length !== x.series || x.sets.some(z => z.hecha || (z.valor != null && z.valor !== '') || z.kg !== x.kg));
 }
+// ¿Hay algo hecho en la sesión? Series marcadas, tareas de calentamiento o vuelta a la calma marcadas (un día de
+// dolor alto puede no llevar ejercicios) o un ejercicio parado por dolor (C-DOLOR-6). Sin nada de esto, la
+// sesión no se guarda como hecha ni cuenta para la constancia (E7).
+export const trabajoHecho = s => !!s && ((s.ejercicios || []).some(x => x.dolorDurante || (x.sets || []).some(z => z.hecha))
+  || [...(s.calentamiento || []), ...(s.vuelta || [])].some(t => t.hecho));
 // Forma de la nota «La ha hecho la app porque…» (la usan crearSesion y el normalizador de copias).
 export function iaFalloSesion(f) {
   if (!f || typeof f !== 'object' || typeof f.motivo !== 'string' || !f.motivo.trim()) return undefined;

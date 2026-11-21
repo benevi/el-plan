@@ -99,7 +99,7 @@ test('E7: terminar sin ninguna serie no guarda la sesión como hecha (ni cuenta 
   await reiniciar(b);
   await a.ir('sesion/s1');
   a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => hoja());
-  assert.match(textoHoja(), /No has marcado ninguna serie/);
+  assert.match(textoHoja(), /No has marcado nada/);
   assert.ok(!a.doc.querySelector('[data-act="sesion.cerrar"]'), 'no se ofrece guardar');
   a.clic('[data-act="sesion.seguir"]'); await a.tic();
   assert.equal(a.estado.estado().sesiones.s1.estado, 'pendiente');
@@ -200,4 +200,46 @@ test('E13: «Hoy no puedo» el último día de la semana lo apunta y Hoy lo ense
   assert.doesNotMatch(t, /Hoy toca/i);
   assert.ok(a.doc.querySelector('[data-act="entrenador.hacerDia"][data-v="7"]'), 'Entrenar igualmente');
   assert.match(t, /Hoy no puedes/);
+});
+
+// ── Revisión del PR #38 ──
+test('E13: un «Hoy no puedo» de un día que ya pasó se lee «No entrenado»', async () => {
+  // Sigue en domingo (prueba anterior): el sábado se apuntó «Hoy no puedo».
+  const S = a.estado.estado();
+  a.estado.cambiar(S2 => { S2.plan.dias.unshift({ ...S2.plan.dias[0], diaSemana: 6 }); S2.plan.noPuedo = [6, 7]; }, 'plan');
+  await a.ir('perfil'); await a.ir('hoy');
+  const filas = [...a.doc.querySelectorAll('.plan-semana [data-act="entrenador.verDia"]')].map(b => b.textContent);
+  assert.match(filas.find(t => /Sábado/.test(t)), /No entrenado/);
+  assert.match(filas.find(t => /Domingo/.test(t)), /Hoy no puedes/);
+  assert.ok(S);
+});
+
+test('E7: un día de dolor alto sin ejercicios se puede terminar con las tareas marcadas', async () => {
+  reloj.restaurar(); reloj = fijarFecha('2026-11-21T10:00');
+  const s = sesionDemo('s1', { tipo: 'dolorAlto', ejercicios: [],
+    calentamiento: [{ id: null, nombre: 'Bici suave', detalle: '', duracion: '20 min', hecho: false }, { id: null, nombre: 'Movilidad', detalle: '', duracion: '5 min', hecho: false }],
+    vuelta: [{ id: null, nombre: 'Estirar', detalle: '', duracion: '5 min', hecho: false }] });
+  const b = estadoBase({ sesiones: { s1: s } }); b.ajustes.modoSesion = 'lista';
+  await reiniciar(b);
+  await a.ir('sesion/s1');
+  a.clic('[data-act="sesion.tarea"][data-k="calentamiento"][data-i="0"]'); await a.tic();
+  a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => a.doc.querySelector('[data-act="sesion.cerrar"]'));
+  a.clic('[data-act="sesion.cerrar"]'); await a.tic();
+  assert.equal(a.estado.estado().sesiones.s1.estado, 'hecha');
+});
+
+test('E9: «Cambiar por otro» dos veces en un ejercicio parado por dolor cambia el sustituto, no va sumando', async () => {
+  const s = sesionDemo();
+  s.ejercicios[0].dolorDurante = { zona: 'muñeca', dolor: 5, antes: 1, techo: 3 };
+  const b = estadoBase({ sesiones: { s1: s } }); b.ajustes.modoSesion = 'lista';
+  await reiniciar(b);
+  await a.ir('sesion/s1');
+  for (let k = 0; k < 2; k++) {
+    a.clic('[data-act="sesion.menu"][data-e="0"]'); await a.esperar(() => a.doc.querySelector('[data-act="sesion.cambiar"]'));
+    a.clic('[data-act="sesion.cambiar"]'); await a.esperar(() => a.doc.querySelector('[data-act="sesion.cambiarPor"]'));
+    a.clic('[data-act="sesion.cambiarPor"]'); await a.tic();
+  }
+  const ejs = a.estado.estado().sesiones.s1.ejercicios;
+  assert.equal(ejs.length, 3, ejs.map(x => x.id).join(', '));
+  assert.ok(ejs[0].dolorDurante, 'el parado se queda con su marca');
 });

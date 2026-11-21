@@ -72,7 +72,8 @@ export function zona(v) {
   const k = v.trim().toLowerCase().replace(/\s+/g, '_');
   if (Object.prototype.hasOwnProperty.call(ZONAS, k)) return k;
   const sin = k.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return ALIAS_ZONAS[k] || ALIAS_ZONAS[sin] || null;
+  const alias = x => (Object.prototype.hasOwnProperty.call(ALIAS_ZONAS, x) ? ALIAS_ZONAS[x] : null); // nada de «__proto__»
+  return alias(k) || alias(sin) || null;
 }
 // { zona: 0-10 } con solo zonas conocidas.
 function dolorPorZona(v) {
@@ -293,7 +294,7 @@ function plan(p, sesiones) {
     ...iaFalloPlan(p.iaFallo),
   };
   // Días en los que dijo «Hoy no puedo» sin otro día libre (opcional, E13).
-  if (Array.isArray(p.noPuedo)) { const np = [...new Set(lista(p.noPuedo, 7).map(d => numero(d, 1, 7, null, { entero: true })).filter(d => d != null))].sort((a, b) => a - b); if (np.length) out.noPuedo = np; }
+  if (Array.isArray(p.noPuedo)) { const np = [...new Set(p.noPuedo.slice(0, 50).filter(d => Number.isInteger(d) && d >= 1 && d <= 7))].sort((a, b) => a - b).slice(0, 7); if (np.length) out.noPuedo = np; }
   if (Array.isArray(p.cambios)) out.cambios = lista(p.cambios, 50).filter(esObjeto).map(c => ({ fecha: fechaISO(c.fecha), texto: texto(c.texto, 600) })).filter(c => c.fecha && c.texto);
   return out;
 }

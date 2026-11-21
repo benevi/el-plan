@@ -8,7 +8,7 @@ import { tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas, semanaDescarga, seriesDescarga, esCompuestoDe, lesionNueva } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
-import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis } from './dia.js';
+import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
 
 const GRANDES = ['pecho', 'espalda', 'cuadriceps', 'gluteo', 'isquios', 'hombro'];
 const PEQUEÑOS = ['biceps', 'triceps', 'gemelo', 'core'];
@@ -224,10 +224,35 @@ function recortarDia(d, m, tope) {
   }
 }
 
-// Series por ejercicio hasta las que puede llegar el relleno de volumen. Principiante: las 3 de la tabla de
-// C-DOSIS-2 (nunca 5 × 8-12 en su primera semana, E10, C-PRIN-7); intermedio y avanzado, 5 como hasta ahora
-// para llegar a la banda de C-VOL-1 (la nota de dosis dice las series reales, sincronizarDosis).
-const topeRelleno = nivel => (nivel === 1 ? 3 : 5);
+// Series por ejercicio hasta las que puede llegar el relleno de volumen (C-DOSIS-2 y C-VOL-1, decisión D-B de
+// Víctor del 21-11-2026): principiante 3, intermedio y avanzado 4. Si con eso no se llega a la banda, se añade
+// otro ejercicio del mismo músculo (añadirEjercicio) en vez de más series.
+export const topeRelleno = nivel => (nivel === 1 ? 3 : 4);
+// Otro principal del músculo m en un día de seco (D-B): de su nivel, sin riesgo en una zona activa, que quepa
+// en los minutos del día y sin pasar el máximo por sesión, el techo semanal ni crear un choque de C-REP-1.
+function añadirEjercicio(S, out, d, m, obj, vol) {
+  if (d.lugar === 'piscina' || d.tipo === 'suave') return false;
+  const ctx = contextoDia(S, { lugar: d.lugar, minutos: d.minutos, futuro: true });
+  const enSemana = new Set(out.flatMap(o => o.ejercicios.map(x => x.id)));
+  const cand = ctx.pool.filter(e => valePrincipal(S, e, ctx, m) && e.niv <= ctx.nivel && !d.ejercicios.some(x => x.id === e.id) && riesgoHoy(e, ctx.niveles, ctx.bandas) === 'ok')
+    .sort((a, b) => enSemana.has(a.id) - enSemana.has(b.id) || (b.s || []).length - (a.s || []).length || a.id.localeCompare(b.id));
+  const iPrin = d.ejercicios.filter(x => x.rol === 'principal').length;
+  for (const e of cand) {
+    const dz = dosis(S, e, Math.max(2, iPrin), d.lugar);
+    let series = Math.min(dz.series, topeRelleno(obj.nivel), Math.ceil(obj.musculos[m].min - (vol[m] || 0)));
+    series = Math.max(2, series);
+    if (e.m.some(mm => directas(d, mm) + series > obj.sesion)) continue;
+    if ([...e.m, ...(e.s || [])].some(mm => obj.musculos[mm] && (vol[mm] || 0) + series * (e.m.includes(mm) ? 1 : 0.5) > obj.musculos[mm].techo)) continue;
+    if (e.m.some(mm => GRANDES.includes(mm) && directas(d, mm) + series >= 4 && vecinos(out, d).some(o => directas(o, mm) >= 4))) continue;
+    const x = { id: e.id, rol: 'principal', ...dz, series };
+    if (tiempoSesionExacto(d) + tiempoEj(x) > (+d.minutos || 60) * 1.1) return false;
+    x.nota = porQueEjercicio(S, e, { i: iPrin, d: x, an: {}, carga: {}, niveles: ctx.niveles, dolorHoy: {} });
+    const pos = d.ejercicios.map(y => y.rol).lastIndexOf('principal') + 1;
+    d.ejercicios.splice(pos, 0, x);
+    return true;
+  }
+  return false;
+}
 // C-VOL-1 y C-VOL-2 · Rellena hasta el mínimo y recorta hasta el techo; nunca añade series a un ejercicio con
 // r en una zona activa, ni pasa el máximo por sesión, ni crea un choque de C-REP-1.
 function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
@@ -247,8 +272,11 @@ function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
           cand.push(x);
         }));
         const x = cand.sort((a, b) => a.series - b.series)[0];
-        if (!x) break;
-        x.series++; vol = volumenSemana(out);
+        if (x) { x.series++; vol = volumenSemana(out); continue; }
+        // Todos en su tope de series: otro ejercicio del mismo músculo en el día que menos lleva (D-B).
+        const dias0 = out.slice().sort((a, b) => directas(a, m) - directas(b, m) || a.diaSemana - b.diaSemana);
+        if (!dias0.some(d => añadirEjercicio(S, out, d, m, obj, vol))) break;
+        vol = volumenSemana(out);
       }
     });
   }

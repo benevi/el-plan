@@ -47,6 +47,22 @@ const LUGAR_TXT = { gym: 'el gimnasio', casa: 'casa', calle: 'la calle', piscina
 // Zonas en las que un ejercicio va «con precaución» hoy: r=1 en una zona en B0-B1 (C-DOSIS-4).
 const zonasPrecaucion = (e, ctx) => (riesgoHoy(e, ctx.niveles, ctx.bandas) === 'precaucion' ? Object.keys(ctx.bandas).filter(z => (e.r || {})[z] === 1 && ctx.bandas[z].banda <= 1) : []);
 const minPrecaucion = tipo => (tipo === 'aislamiento' ? 12 : 10);
+// La nota «con precaución» (C-DOSIS-4) se reescribe siempre con el dolor de hoy (la del plan puede llevar el de
+// la ficha): fuera la frase vieja (de las reglas o de una validación anterior) y la nueva delante. En la
+// rehabilitación no se añade otra frase: su nota (C-DOSIS-7) pasa a 3 repeticiones de margen y bajada de 3 s.
+const RE_PRECAUCION = [/Con precaución por [^:]+: bajada de 3 s y 3 repeticiones de margen; si pasa de \d+\/10, salta al siguiente\.\s*/g,
+  /Implica a [^:]+: carga moderada, bajada de 3 s y 3 de margen; si pasa de \d+\/10, salta al siguiente\.\s*/g];
+function notaPrecaucion(S, x, zp, ctx) {
+  let nota = String(x.nota || '');
+  if (x.rol === 'rehab') {
+    if (/3 repeticiones de margen, bajada de 3 s|Con precaución: bajada de 3 s/.test(nota)) return nota;
+    if (/\d repeticiones de margen/.test(nota)) return nota.replace(/\d repeticiones de margen/, '3 repeticiones de margen, bajada de 3 s').slice(0, 300);
+    return `${nota} Con precaución: bajada de 3 s y 3 repeticiones de margen.`.trim().slice(0, 300);
+  }
+  RE_PRECAUCION.forEach(re => { nota = nota.replace(re, ''); });
+  const techo = Math.min(...zp.map(z => Math.min(techoDolor(S, z), (ctx.bandas[z].dolor || 0) + 2)));
+  return `Con precaución por ${lista(zp.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}: bajada de 3 s y 3 repeticiones de margen; si pasa de ${techo}/10, salta al siguiente. ${nota}`.trim().slice(0, 300);
+}
 // Por qué un ejercicio no vale hoy (null si vale).
 function motivoNoVale(S, e, ctx) {
   if (!e.l.includes(ctx.lugar)) return `es de otro lugar (hoy entrenas en ${LUGAR_TXT[ctx.lugar] || ctx.lugar})`;
@@ -366,10 +382,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
           cambios.push(`${nombre(e)} a ${nuevo} repeticiones: implica ${zt} y, con precaución, no baja de ${min}`);
           x.reps = nuevo + (rp.resto || '');
         }
-        if (!/3 (repeticiones )?de margen/.test(x.nota || '')) {
-          const techo = Math.min(...zp.map(z => Math.min(techoDolor(S, z, { rehab: x.rol === 'rehab' }), (ctx.bandas[z].dolor || 0) + 2)));
-          x.nota = `Con precaución por ${lista(zp.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}: bajada de 3 s y 3 repeticiones de margen; si pasa de ${techo}/10, salta al siguiente. ${x.nota || ''}`.trim().slice(0, 300);
-        }
+        x.nota = notaPrecaucion(S, x, zp, ctx);
       }
       const desc = Math.round(+x.descanso);
       x.descanso = desc >= 0 && desc <= 300 ? desc : x.rol === 'principal' ? dosis(S, e, i, lugar).descanso : e.d[2];

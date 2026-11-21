@@ -113,6 +113,9 @@ export function historialParaIA(S, ids, ctx = {}) {
       fecha: s.fecha, nombre: s.nombre, lugar: s.lugar, esfuerzo: s.cierre && s.cierre.esfuerzo ? s.cierre.esfuerzo + '/5' : undefined,
       comentario: s.cierre && s.cierre.comentario ? recortarIA(s.cierre.comentario, LARGO_IA.comentario) : undefined,
       comentariosEjercicios: (s.ejercicios || []).filter(x => x.comentario).map(x => `${ex(x.id) ? ex(x.id).n : x.id}: ${recortarIA(x.comentario, LARGO_IA.comentario)}`),
+      // Parada con «Algo va mal» por una señal de alarma (C-ALAR-1, decisión D-A) y ejercicios parados por dolor (C-DOLOR-6).
+      parada: s.parada === 'alarma' ? 'señal de alarma: se paró la sesión' : undefined,
+      dolorDurante: (s.ejercicios || []).some(x => x.dolorDurante) ? (s.ejercicios || []).filter(x => x.dolorDurante).map(x => `${ex(x.id) ? ex(x.id).n : x.id}: ${x.dolorDurante.zona} ${+x.dolorDurante.dolor}/10 (empezó en ${+x.dolorDurante.antes}/10, tope ${+x.dolorDurante.techo}/10), parado`) : undefined,
     })),
     progreso: progreso.slice(0, 40),
     dolorReciente: dolorReciente(S),
