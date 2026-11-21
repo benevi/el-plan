@@ -176,7 +176,7 @@ Siguiendo la guía `dataviz`:
 - **Reglas de código** del apartado 5.
 
 <!-- comprobacion:inicio -->
-_Generado con `node prototipos/sistema/comprobar.mjs --escribir` el 2026-11-20. No editar a mano._
+_Generado con `node prototipos/sistema/comprobar.mjs --escribir` el 2026-11-21. No editar a mano._
 
 | Muestra | Víctor: mínimo | Virginia: mínimo | Pares | Cumple |
 |---|---|---|---|---|

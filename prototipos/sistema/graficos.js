@@ -48,8 +48,9 @@ export function linea({ titulo, cifra, cifraTexto, unidad, valores, etiquetas, c
   </div>`;
 }
 
-export function barras({ titulo, cifra, cifraTexto, unidad, valores, etiquetas, max = 10, cab = 'Semana' }) {
-  const W = 150, H = 96, ab = 18, n = valores.length, hueco = 2;
+export function barras({ titulo, cifra, cifraTexto, unidad, valores, etiquetas, max = 10, cab = 'Semana', ancho = 150 }) {
+  // Como en linea(): el viewBox sigue al ancho real para que el texto del eje mida 12 px de verdad.
+  const W = ancho, H = ancho > 200 ? 140 : 96, ab = 18, n = valores.length, hueco = 2;
   const bw = (W - (n - 1) * hueco) / n;
   const Y = v => (H - ab) * (1 - v / max);
   const id = `g${++uid}`;
