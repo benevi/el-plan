@@ -23,7 +23,7 @@ test('al volver a la app pasada la medianoche, Hoy se repinta con el día nuevo'
   assert.match(fecha(), /viernes, 20 de noviembre/);
 });
 
-test('pasada la medianoche, Hoy sigue enseñando la sesión sin cerrar', { todo: 'PR 14: sesión sin cerrar tras medianoche' }, async () => {
+test('pasada la medianoche, Hoy sigue enseñando la sesión sin cerrar', async () => {
   await a.ir('progreso'); await a.ir('hoy');
   assert.ok(a.doc.querySelector('a[href="#sesion/s1"]'), 'no hay enlace a la sesión en curso');
 });

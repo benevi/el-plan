@@ -282,7 +282,7 @@ for (const persona of ['victor', 'virginia']) {
     await page.goto('/#progreso');
     await mirar('progreso');
     const medidas = page.locator('[data-act="progreso.medida"]').first();
-    if (await medidas.count()) { await medidas.click(); await mirar('hoja-medidas'); await page.keyboard.press('Escape'); }
+    if (await medidas.count()) { await medidas.click(); await mirar('hoja-medidas'); await escape(page); }
     await page.goto('/#ejercicios');
     await mirar('ejercicios');
     await page.locator('[data-act="ejercicios.ficha"]').first().click();
