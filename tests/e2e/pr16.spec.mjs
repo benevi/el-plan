@@ -202,6 +202,8 @@ test('editor de Mis sesiones: crear una de abdominales y flexiones, editarla, re
   await expect(page).toHaveURL(/#mia\/nueva$/);
   await expect(page.locator('.mia-ej-nombre')).toHaveText(['Dead bug']);
   await page.click('[data-act="mia.volver"]');
+  await expect(page.locator('.hoja')).toContainText('¿Salir sin guardar los cambios de esta sesión?');
+  await page.click('.hoja [data-r="1"]');
   await expect(page).toHaveURL(/#perfil$/);
   await expect(page.locator('[data-act="perfil.grupo"][data-v="entreno"]')).toHaveAttribute('aria-current', 'true');
 
@@ -292,6 +294,9 @@ test('zonas táctiles de 44 px o más en Perfil, Ejercicios, Progreso y el edito
     expect(await pequeñas(), `editor a ${w} px`).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `sin desplazamiento lateral a ${w} px`).toBe(true);
     await page.click('[data-act="mia.volver"]');
+    expect(await pequeñas(), `confirmación a ${w} px`).toEqual([]);
+    await page.click('.hoja [data-r="1"]');
+    await expect(page).toHaveURL(/#perfil$/);
   }
   expect(errores).toEqual([]);
 });

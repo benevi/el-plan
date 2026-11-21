@@ -83,7 +83,7 @@ function hojaCheckin({ arriba = false } = {}) {
       ${chip(!mia, dia ? 'La de mi plan' : 'La que me prepares', 'data-act="entrenador.ciMia" data-v=""')}
       ${mias.map(m => chip(mia && mia.id === m.id, m.nombre, `data-act="entrenador.ciMia" data-v="${h(m.id)}"`)).join('')}</div>
       ${mia && dia ? `<div class="chips">${casilla('entrenador.ciOcupar', ci.ocuparDia, `Cuenta como el día «${h(dia.nombre)}» del plan`)}</div>` : ''}</div>` : ''}
-    <div class="grupo"><p class="grupo-et" id="ci-g-lugar">Dónde</p>${segmento('ci-g-lugar', S.perfil.lugares.map(l => [l, LUGARES[l]]), ci.lugar, v => `data-act="entrenador.ci" data-k="lugar" data-v="${h(v)}"`)}</div>
+    <div class="grupo"><p class="grupo-et" id="ci-g-lugar">Dónde</p>${segmento('ci-g-lugar', lugaresCi(S, mia).map(l => [l, LUGARES[l]]), ci.lugar, v => `data-act="entrenador.ci" data-k="lugar" data-v="${h(v)}"`)}</div>
     <div class="grupo"><p class="grupo-et" id="ci-g-min">Tiempo <small>minutos</small></p>${segmento('ci-g-min', opcionesMin(ci.minutos).map(m => [m, String(m)]), ci.minutos, v => `data-act="entrenador.ci" data-k="minutos" data-v="${+v}" aria-label="${+v} minutos"`)}</div>
     <div class="grupo"><p class="grupo-et" id="ci-g-energia">Energía: <b>${ENERGIA[ci.energia]}</b></p>${segmento('ci-g-energia', [1, 2, 3, 4, 5].map(n => [n, String(n)]), ci.energia, v => `data-act="entrenador.ci" data-k="energia" data-v="${+v}" aria-label="${+v}: ${ENERGIA[v]}"`)}</div>
     ${zonas.map(z => selectorDolor(z, !deLesion.includes(z))).join('')}
@@ -180,7 +180,10 @@ export function abrirCheckin(diaPlan = null, op = {}) {
   if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; }
   hojaCheckin({ arriba: true });
 }
-// Elegir (o dejar) una de «Mis sesiones» en el check-in: su lugar, si lo tienes, y su tiempo; sin petición ni IA.
+// Lugares del check-in: los del perfil y, con una de «Mis sesiones», también el suyo (PR 16).
+const lugaresCi = (S, mia) => (mia && LUGARES[mia.lugar] && !S.perfil.lugares.includes(mia.lugar) ? [...S.perfil.lugares, mia.lugar] : S.perfil.lugares);
+
+// Elegir (o dejar) una de «Mis sesiones» en el check-in: su lugar y su tiempo; sin petición ni IA.
 // Lo de antes (lugar, minutos, petición, IA) se aparta y vuelve al dejarla («La de mi plan»).
 function elegirMia(S, id) {
   const m = miaDe(S, id);
@@ -192,7 +195,7 @@ function elegirMia(S, id) {
   if (!ci.antesMia) ci.antesMia = { lugar: ci.lugar, minutos: ci.minutos, peticion: ci.peticion, forzarIA: ci.forzarIA };
   ci.mia = m.id;
   ci.peticion = ''; ci.forzarIA = false;
-  if (S.perfil.lugares.includes(m.lugar)) ci.lugar = m.lugar;
+  ci.lugar = m.lugar; // su lugar, aunque no esté entre los del perfil (C-MIA-1: tal cual); se puede cambiar
   if (m.minutos) ci.minutos = OPCIONES_MIN.find(x => x >= m.minutos) || 90;
 }
 

@@ -39,8 +39,8 @@ fieldset.salud-med legend { padding: 0; margin-bottom: var(--e-1); }
 .interruptor input { accent-color: var(--acento); }
 
 /* Segmento que ocupa el ancho y deja partir el texto (opciones largas) */
-.segmento--ancho { display: flex; flex-wrap: wrap; border-radius: var(--r-medio); }
-.segmento--ancho [role="radio"] { flex: 1 1 auto; line-height: 1.2; padding: var(--e-1) var(--e-2); font-size: var(--t-secundario); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .segmento--ancho { display: flex; flex-wrap: wrap; border-radius: var(--r-medio); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .segmento--ancho [role="radio"] { flex: 1 1 auto; line-height: 1.2; padding: var(--e-1) var(--e-2); font-size: var(--t-secundario); }
 
 /* Segmento en rejilla de dos (cuatro opciones que no caben en una fila: el lugar) */
 .segmento--rejilla { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--r-medio); }
@@ -73,8 +73,7 @@ fieldset.salud-med legend { padding: 0; margin-bottom: var(--e-1); }
 .insignia--error { color: var(--estado-error); box-shadow: inset 0 0 0 1px var(--estado-error); }
 
 /* Botones en fila; texto y peligro con su alto mínimo fuera de la sesión */
-.fila-botones { display: flex; flex-wrap: wrap; gap: var(--toque-separacion); margin-top: var(--e-4); }
-.boton--texto { min-height: var(--toque-min); }
+:is(.perfil-sec, .mia-sec, .hoja-pf) .fila-botones, .prog-sec .fila-botones { margin-top: var(--e-4); }
 .boton .icono { width: 20px; height: 20px; }
 
 /* Aviso dentro de la pantalla o de una hoja (no flota: sin sombra, con la raya de su color) */

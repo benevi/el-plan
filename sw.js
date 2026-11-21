@@ -9,18 +9,18 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-516754b280d3';
+const VERSION = 'pipos-app-a2e40658f6de';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-BLTvICh3NsU40NtB8XH36MBhw8+dGuoFGvp7Ds132VY=',
+  './': 'sha256-PCvl2wN4xI//10cfCN5OljOFJMOXWLi7UbSUzbHDOIg=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-/PRQnpPMx6ibZwR6sm8eqcgnTtgengfu6Q8iYHqngiA=',
   './css/hoy.css': 'sha256-PwBJArs42wCJpzEgWFdrd7nCLLzIVDYgScN9yzJ4/yM=',
   './css/legado.css': 'sha256-RzLFY+MMiNeUeWPtB0q+xrQxN96mSCiAHGk4SOXJS/w=',
   './css/marco.css': 'sha256-Y+9bAghnBzSPmNsyhRjFXl7t4/GluCD4RxuZJC+MI1Y=',
-  './css/perfil.css': 'sha256-Hz/5hq2zbK+SYnyDjzR3n5sdROmHCbSkeRKHcQ4ewMM=',
+  './css/perfil.css': 'sha256-H6CV+eKgPbraY6G6JDMr/oQCxgTxqjh0DtjxAvgeMgk=',
   './css/progreso.css': 'sha256-75RgtZQWBEvIJXxzCiDfI398Q4tRh2/I5y5mTlPsQN0=',
   './css/sesion.css': 'sha256-/mq1Yh+m88eIsfuWzYeIsi0yTqjGWsezorrfGpAJR/c=',
   './css/tokens.css': 'sha256-IS6xlCpgQu+R18m0qtXYBDDUhNou1isluEAd7ZsmNxc=',
@@ -32,24 +32,24 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-BLTvICh3NsU40NtB8XH36MBhw8+dGuoFGvp7Ds132VY=',
+  './index.html': 'sha256-PCvl2wN4xI//10cfCN5OljOFJMOXWLi7UbSUzbHDOIg=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
-  './js/areas/ejercicios/indice.js': 'sha256-E5cLBSHcSDH2whf5RH9RIuM844N/M+tvUeuNvlO+7DA=',
+  './js/areas/ejercicios/indice.js': 'sha256-ShKymjOA1X2xP6s1HYhFukQl93SMisalAgZCUYYABsI=',
   './js/areas/entrenador/alarma.js': 'sha256-8NnNTcENxRFRXVyWpBfBDSsguazYB2fYLS02C71xgSo=',
   './js/areas/entrenador/checkin.js': 'sha256-TZBdEobi33F/t78OoQOwHufnyXUbCq9OoFU9KZv8INI=',
   './js/areas/entrenador/dia.js': 'sha256-hiCTBmTL6BS5y5mhEmgwNzGpRIKQ66azWBvHYXXNxMA=',
   './js/areas/entrenador/dolor-alto.js': 'sha256-ZYpo0kn5QbAlIY9ayK1BCCIYJTepu+TOogMM9vEJyaI=',
   './js/areas/entrenador/entrenador.js': 'sha256-CVkPFkOxDpa1UCiVEy9zWNXJbsXCM5dptyaYV9Ry7W0=',
   './js/areas/entrenador/ia.js': 'sha256-fvr8n9FfZb7iabSfRwWRgBe7ymwUt/TANrz5ru6+tDs=',
-  './js/areas/entrenador/indice.js': 'sha256-B5Y4t9fpnWepSTMiHIVFxJUWhTPKL2ep+quW34HtJzs=',
-  './js/areas/entrenador/mias.js': 'sha256-rLA4P0F1tLZDL9tNxSUDXNExPD0be4dTfs+0kwitZ8I=',
+  './js/areas/entrenador/indice.js': 'sha256-Pfgv2bEzQGyHUx3y+ARNS1+0OTZzfLpDGUT9KSoneU8=',
+  './js/areas/entrenador/mias.js': 'sha256-WT6OovD/5Kr3pavzS+D52M2Zb0e8W5a3mNAFVkYGxUc=',
   './js/areas/entrenador/plan.js': 'sha256-EHRTIJT524GpemlN61UbxjGhaVmPwAU2FbFvxmnpTJE=',
   './js/areas/entrenador/salud.js': 'sha256-0xHTi5jPLFC+umJPnTQ2VR2HwfyKFf6fzgxl7GZ114g=',
   './js/areas/entrenador/validar.js': 'sha256-jrmsDqLqVueEyVyRv6PzG70NtInTgYzt0F/bhWxEpYg=',
   './js/areas/hoy/indice.js': 'sha256-fikKjX/kc7ypNXciHjTka3X1Le7ovVuKH83SnclqufM=',
   './js/areas/perfil/bienvenida.js': 'sha256-a12JuWIyQEL9s0iRtZ4dUTXyLDKHMvhLxy3HhRx2Yo8=',
-  './js/areas/perfil/controles.js': 'sha256-Q2Urq6uXuhr0rbmFYekftabciISHZ3pr6emsWGHIc18=',
-  './js/areas/perfil/editor.js': 'sha256-1zSjv4atVKEjeTwssIG79NQvIVZ0X3hv5eogdMl323E=',
+  './js/areas/perfil/controles.js': 'sha256-SEK696W9UBpjbhv22oOmXxT0tYsT30bgaJ8nJHqt/JM=',
+  './js/areas/perfil/editor.js': 'sha256-J7d5AHXOAM7hzy+XCVq4aMv3+3gZnBazd6WnJUpea2o=',
   './js/areas/perfil/grupo.js': 'sha256-aZDPUEqt80/gqYplOA5dxzPZgXJJK077aPGOVXr+ysU=',
   './js/areas/perfil/indice.js': 'sha256-TgqzSHW2rwuRXb3H7wkt3ruX5NO0pzBQFUy2iKoqPrU=',
   './js/areas/perfil/nube.js': 'sha256-zBG28cu0rJgjqKPHT+7sYxX420cNe92PeRAcc6lpYaE=',

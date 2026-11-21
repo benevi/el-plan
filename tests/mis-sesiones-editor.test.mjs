@@ -132,3 +132,33 @@ test('escala de repeticiones, tiempo y distancia: incluye el valor de la sesión
   assert.equal(escala('25 m').u, 'm');
   assert.equal(escala('10-20 min').u, 'min');
 });
+
+// ── Revisión del PR 16 ──
+test('una mía en un lugar que no está en el perfil se hace en su lugar, sin cambiar sus ejercicios (C-MIA-1)', async () => {
+  nuevoS({ nivel: 2, objetivos: ['salud'], lugares: ['gym', 'piscina'] });
+  const { mia } = ent.guardarEdicionMia(null, { nombre: 'Abdos en casa', lugar: 'casa', ejercicios: [ej('crunch'), ej('flexiones')] });
+  assert.equal(mia.lugar, 'casa');
+  const { sesion: s } = await ent.crearSesionHoy(ci({ mia: mia.id, lugar: 'casa' }));
+  assert.equal(s.lugar, 'casa');
+  for (const id of ['crunch', 'flexiones']) assert.ok(s.ejercicios.some(x => x.id === id), `${id} cambiado: ${s.ejercicios.map(x => x.id)}`);
+});
+
+test('minutos de una mía: los mismos que monta el check-in (calentamiento, cardio y vuelta), sin aviso de que dura más', async () => {
+  nuevoS({ nivel: 2, objetivos: ['salud'], lugares: ['casa'] });
+  const { mia } = ent.guardarEdicionMia(null, { nombre: 'Corta', lugar: 'casa', ejercicios: [ej('crunch'), ej('flexiones'), ej('plancha')] });
+  const solo = Math.round((await import(modulo('js/areas/entrenador/dia.js'))).tiempoSesion({ calentamiento: [], vuelta: [], ejercicios: mia.ejercicios }));
+  assert.ok(mia.minutos > solo, `${mia.minutos} min no cuenta el cardio (solo ejercicios: ${solo})`);
+  const minutos = [30, 45, 60, 75, 90].find(x => x >= mia.minutos); // lo que pone el check-in al elegirla
+  const { sesion: s } = await ent.crearSesionHoy(ci({ mia: mia.id, minutos }));
+  assert.ok(!s.explicacion.some(t => /más de los \d+ que marcas/.test(t)), s.explicacion.join(' | '));
+  const dia = await import(modulo('js/areas/entrenador/dia.js'));
+  assert.ok(Math.abs(dia.tiempoSesion(s) - mia.minutos) <= 5, `Perfil dice ${mia.minutos} min y la sesión dura ${dia.tiempoSesion(s)}`);
+});
+
+test('añadir desde la ficha usa el mismo puesto que el editor (sin contar el cardio)', () => {
+  nuevoS({ nivel: 2, objetivos: ['fuerza'], lugares: ['gym'] });
+  const { mia } = ent.guardarEdicionMia(null, { nombre: 'Pecho', lugar: 'gym', ejercicios: [ej('bici-estatica'), ej('press-pecho-maquina')] });
+  ent.añadirAMia(mia.id, 'press-banca-mancuernas');
+  const x = est.estado().misSesiones[0].ejercicios[2];
+  assert.deepEqual(x, ent.propuestaMia(est.estado(), 'press-banca-mancuernas', 1));
+});

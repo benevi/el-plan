@@ -40,7 +40,11 @@ export function selector({ id, et, valor, act, min = 0, max = 10, paso = 1, unid
   const ver = cifra ? cifra(v) : lista ? v : es(v, 1);
   const leer = texto ? texto(v) : `${lista ? v : es(v, 1)}${unidad ? ' ' + unidad : ''}`;
   const extra = Object.entries(datos).map(([k, x]) => ` data-${h(k)}="${h(x)}"`).join('');
-  return `<div class="selector${compacto ? ' selector--compacto' : ''}" data-selector data-al-cambiar="${h(act)}" data-min="${lo}" data-max="${hi}" data-incremento="${lista ? 1 : paso}" data-uni="${h(unidad)}"${lista ? ` data-ops="${h(JSON.stringify(lista))}"` : ''}${extra}>
+  // Lo que se ve y lo que lee el lector en cada posición, para ponerlo al día sin repintar (refrescar).
+  const pos = lista ? lista.map((_, i) => i) : (hi - lo) / paso <= 200 ? Array.from({ length: Math.floor((hi - lo) / paso) + 1 }, (_, i) => lo + i * paso) : null;
+  const val = p => (lista ? lista[p] : p);
+  const textos = pos && (texto || cifra) ? ` data-textos="${h(JSON.stringify(pos.map(p => (texto ? texto(val(p)) : `${lista ? val(p) : es(val(p), 1)}${unidad ? ' ' + unidad : ''}`))))}" data-cifras="${h(JSON.stringify(pos.map(p => (cifra ? cifra(val(p)) : lista ? val(p) : es(val(p), 1)))))}"` : '';
+  return `<div class="selector${compacto ? ' selector--compacto' : ''}" data-selector data-al-cambiar="${h(act)}" data-min="${lo}" data-max="${hi}" data-incremento="${lista ? 1 : paso}" data-uni="${h(unidad)}"${lista ? ` data-ops="${h(JSON.stringify(lista))}"` : ''}${textos}${extra}>
     <span class="selector-et${etOculta ? ' solo-lector' : ''}" id="${h(id)}-et">${h(et)}</span>
     <div class="selector-valor" role="spinbutton" tabindex="0" id="${h(id)}" aria-labelledby="${h(id)}-et" aria-valuemin="${lo}" aria-valuemax="${hi}" aria-valuenow="${n}" aria-valuetext="${h(leer)}"><b>${h(ver)}</b>${unidad && !lista ? `<span>${h(unidad)}</span>` : ''}</div>
     <div class="selector-pasos"><button type="button" data-act="control.paso" data-paso="-1" aria-label="Menos: ${h(et)}" aria-disabled="${n <= lo}">${ICONOS.menos}</button><button type="button" data-act="control.paso" data-paso="1" aria-label="Más: ${h(et)}" aria-disabled="${n >= hi}">${ICONOS.mas}</button></div>
@@ -72,9 +76,11 @@ function refrescar(sel) {
   const v = sel.querySelector('[role="spinbutton"]');
   const n = +v.getAttribute('aria-valuenow'), lo = +sel.dataset.min, hi = +sel.dataset.max;
   const x = valorSelector(sel);
-  const ver = sel.dataset.ops ? String(x) : es(x, 1);
+  const lista = k => { try { return JSON.parse(sel.dataset[k] || 'null'); } catch { return null; } };
+  const i = Math.round((n - lo) / (+sel.dataset.incremento || 1)), textos = lista('textos'), cifras = lista('cifras');
+  const ver = cifras && cifras[i] != null ? cifras[i] : sel.dataset.ops ? String(x) : es(x, 1);
   const b = v.querySelector('b'); if (b) b.textContent = ver;
-  v.setAttribute('aria-valuetext', `${ver}${sel.dataset.uni ? ' ' + sel.dataset.uni : ''}`);
+  v.setAttribute('aria-valuetext', textos && textos[i] != null ? textos[i] : `${ver}${sel.dataset.uni ? ' ' + sel.dataset.uni : ''}`);
   sel.querySelector('[data-paso="-1"]').setAttribute('aria-disabled', String(n <= lo));
   sel.querySelector('[data-paso="1"]').setAttribute('aria-disabled', String(n >= hi));
 }

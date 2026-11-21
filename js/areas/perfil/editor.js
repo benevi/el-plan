@@ -7,9 +7,11 @@
 // Al hacerla, como cualquier mía: calentamiento, cardio y estiramientos siempre, y solo cambia lo que choque
 // con el dolor, las lesiones, el lugar, el material o los rechazos de ese día (C-MIA-1, C-MIA-2).
 //
-// Lo que se está editando vive aquí (borrador) hasta guardarlo: si se sale por las pestañas y se vuelve, sigue.
+// Lo que se está editando vive aquí (borrador) hasta guardarlo. Al salir del editor se descarta: con «‹ Mis
+// sesiones» o las pestañas, si hay cambios, se pregunta antes; con el botón atrás, se avisa de que no se guardaron.
+// Si la guardada cambia por otro lado (añadir desde la ficha, cargar una copia), el borrador se rehace.
 
-import { rutas, acciones, pintar, ir } from '../../nucleo/router.js';
+import { rutas, acciones, pintar, ir, antesDeCadaRuta, rutaActual } from '../../nucleo/router.js';
 import { estado } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $ } from '../../nucleo/ui.js';
 import { ex, nivelesZona, riesgo } from '../../reglas/catalogo.js';
@@ -20,7 +22,7 @@ import { segmento, selector, alCambiarSelector, devolverFoco, valorSelector, ICO
 import { filtroVacio, filtrarEjercicios, filaFiltro, datosEjercicio, marcarEnFila } from '../ejercicios/buscador.js';
 import { ponerGrupo } from './grupo.js';
 
-let borrador = null; // { id (null si es nueva), nombre, lugar, ejercicios: [{ id, rol, series, reps, descanso }], error }
+let borrador = null; // { id (null si es nueva), nombre, lugar, ejercicios: [{ id, rol, series, reps, descanso }], error, huella, inicial }
 const buscador = filtroVacio();
 let anuncio = '';
 
@@ -28,17 +30,24 @@ const copia = x => JSON.parse(JSON.stringify(x));
 const lugarInicial = S => (S.perfil.lugares && S.perfil.lugares[0]) || 'gym';
 function empezarNueva(ejercicios = []) {
   const S = estado();
-  borrador = { id: null, nombre: '', lugar: lugarInicial(S), ejercicios, error: null };
+  borrador = { id: null, nombre: '', lugar: lugarInicial(S), ejercicios, error: null, huella: null };
+  borrador.inicial = contenido(borrador);
 }
+// Lo editable, para saber si hay cambios sin guardar.
+const contenido = b => JSON.stringify({ nombre: String(b.nombre || '').trim(), lugar: b.lugar, ejercicios: b.ejercicios });
+const huellaDe = m => (m ? JSON.stringify(m) : null);
+export const hayCambiosMia = () => !!borrador && contenido(borrador) !== borrador.inicial;
 function empezarEdicion(id) {
   const m = miaDe(estado(), id);
-  borrador = m ? { id: m.id, nombre: m.nombre, lugar: m.lugar, ejercicios: copia(ejerciciosMia(m)), error: null } : null;
+  borrador = m ? { id: m.id, nombre: m.nombre, lugar: m.lugar, ejercicios: copia(ejerciciosMia(m)), error: null, huella: huellaDe(m) } : null;
+  if (borrador) borrador.inicial = contenido(borrador);
 }
 // Desde la ficha de un ejercicio: una nueva con él (y el lugar donde se hace, si es uno de los tuyos).
 export function nuevaConEjercicio(idEj) {
   const S = estado(), e = ex(idEj);
   empezarNueva(e ? [propuestaMia(S, e.id, 0)] : []);
   if (e && !e.l.includes(borrador.lugar)) borrador.lugar = (S.perfil.lugares || []).find(l => e.l.includes(l)) || e.l[0] || borrador.lugar;
+  borrador.inicial = contenido({ ...borrador, ejercicios: [] }); // el ejercicio de la ficha ya es un cambio
 }
 
 // ── Repeticiones, tiempo o distancia: una lista de valores que se recorre con ± ──
@@ -77,13 +86,15 @@ function itemEjercicio(x, i, n, S, niveles) {
   const e = ex(x.id);
   const { valores, u } = escala(x.reps);
   const fuera = !e.l.includes(borrador.lugar);
+  // De nivel superior: se mantiene con una nota de técnica al hacerla (C-MIA-2)
+  const dificil = e.niv > (+S.perfil.nivel || 1);
   const rg = riesgo(e, niveles);
   const tope = topeSeriesMia(S, e);
   const base = `mia-${x.id}`;
   return `<li class="tarjeta mia-ej" data-ej="${h(x.id)}">
     <div class="mia-ej-cab"><span class="mia-num" aria-hidden="true">${i + 1}</span>
       <div><h3 class="mia-ej-nombre" id="${base}-n">${h(e.n)}</h3><p class="mia-ej-datos">${h(datosEjercicio(e))}</p>
-      ${fuera || rg !== 'ok' ? `<p class="insignias">${fuera ? `<span class="insignia insignia--aviso">No es de ${h((LUGARES[borrador.lugar] || '').toLowerCase())}</span>` : ''}${rg === 'evitar' ? '<span class="insignia insignia--error">Evitar por tu lesión</span>' : rg === 'precaucion' ? '<span class="insignia insignia--aviso">Con cuidado</span>' : ''}</p>` : ''}</div></div>
+      ${fuera || rg !== 'ok' || dificil ? `<p class="insignias">${dificil ? '<span class="insignia">Más difícil que tu nivel</span>' : ''}${fuera ? `<span class="insignia insignia--aviso">No es de ${h((LUGARES[borrador.lugar] || '').toLowerCase())}</span>` : ''}${rg === 'evitar' ? '<span class="insignia insignia--error">Evitar por tu lesión</span>' : rg === 'precaucion' ? '<span class="insignia insignia--aviso">Con cuidado</span>' : ''}</p>` : ''}</div></div>
     <div class="mia-ej-dosis" role="group" aria-labelledby="${base}-n">
       ${selector({ id: `${base}-series`, et: 'Series', valor: Math.min(x.series, tope), min: 1, max: tope, paso: 1, act: 'mia.dato', datos: { id: x.id, k: 'series' }, compacto: true, texto: v => `${v} ${v === 1 ? 'serie' : 'series'}` })}
       ${selector({ id: `${base}-reps`, et: NOMBRE_U[u][0], valor: x.reps, opciones: valores, act: 'mia.dato', datos: { id: x.id, k: 'reps' }, compacto: true, texto: v => textoReps(v, u) })}
@@ -100,7 +111,8 @@ function itemEjercicio(x, i, n, S, niveles) {
 function vista(params) {
   const S = estado();
   const idRuta = params && params[0] && params[0] !== 'nueva' ? params[0] : null;
-  if (!borrador || borrador.id !== idRuta) { if (idRuta) empezarEdicion(idRuta); else empezarNueva(); }
+  // Se rehace si es otra sesión o si la guardada cambió por otro lado desde que se abrió.
+  if (!borrador || borrador.id !== idRuta || (idRuta && borrador.huella !== huellaDe(miaDe(S, idRuta)))) { if (idRuta) empezarEdicion(idRuta); else empezarNueva(); }
   if (!borrador) {
     return `<h1 class="titulo-pantalla">Esa sesión ya no está</h1>
       <p class="texto-2">Puede que la borraras. Tus sesiones están en Perfil › Mi entreno.</p>
@@ -123,6 +135,7 @@ function vista(params) {
       </div>
       <div class="grupo"><p class="grupo-et" id="mia-lugar-et">Lugar</p>
         ${segmento('Lugar', 'mia.lugar', Object.entries(LUGARES), b.lugar, { rejilla: true, grupo: 'mia-lugar' })}
+        ${!(S.perfil.lugares || []).includes(b.lugar) ? `<p class="ayuda">${h(LUGARES[b.lugar] || '')} no está entre tus lugares del perfil: al hacerla, «Antes de empezar» te lo ofrecerá igual.${b.lugar === 'casa' ? ' El material de casa es el que marques en Perfil › Mi entreno.' : ''}</p>` : ''}
         ${fuera ? `<p class="ayuda">${fuera === 1 ? '1 ejercicio no es' : `${fuera} ejercicios no son`} de ${h((LUGARES[b.lugar] || '').toLowerCase())}: al hacerla, la app ${fuera === 1 ? 'lo cambiará' : 'los cambiará'} por otro del mismo músculo.</p>` : ''}
       </div>
     </section>
@@ -137,7 +150,7 @@ function vista(params) {
     ${err.campo === 'general' ? `<p class="mensaje mensaje--error" role="alert">${ICONOS.error}<span>${h(err.texto)}</span></p>` : ''}
     <div class="mia-guardar">
       <button type="button" class="boton boton--ancho" data-act="mia.guardar">${b.id ? 'Guardar cambios' : 'Guardar sesión'}</button>
-      ${b.id ? `<button type="button" class="boton boton--peligro boton--ancho" data-act="mia.borrar">Borrar «${h(b.nombre || '')}»</button>` : ''}
+      ${b.id ? `<button type="button" class="boton boton--peligro boton--ancho" data-act="mia.borrar">Borrar «${h((miaDe(S, b.id) || b).nombre)}»</button>` : ''}
     </div>`;
 }
 
@@ -201,7 +214,11 @@ alCambiarSelector({
 });
 
 acciones({
-  'mia.volver': () => { borrador = null; ponerGrupo('entreno'); ir('perfil'); },
+  'mia.volver': async () => {
+    leerNombre();
+    if (hayCambiosMia() && !await confirmar('¿Salir sin guardar los cambios de esta sesión?', { si: 'Salir sin guardar', no: 'Seguir editando', peligro: true })) return;
+    borrador = null; ponerGrupo('entreno'); ir('perfil');
+  },
   'mia.lugar': el => { leerNombre(); borrador.lugar = el.dataset.v; pintar(); },
   'mia.subir': el => { if (el.getAttribute('aria-disabled') !== 'true') { leerNombre(); mover(el.dataset.id, -1); } },
   'mia.bajar': el => { if (el.getAttribute('aria-disabled') !== 'true') { leerNombre(); mover(el.dataset.id, 1); } },
@@ -272,6 +289,27 @@ acciones({
 function probar() {
   const antes = borrador;
   try { vista(['nueva']); for (const m of (estado().misSesiones || [])) if (m && m.id) { borrador = null; vista([m.id]); } } finally { borrador = antes; }
+}
+
+// Al salir de las rutas del editor el borrador se descarta. Con las pestañas y cambios sin guardar, antes se
+// pregunta; con el botón atrás (no se puede parar), se avisa de que no se guardaron.
+let saliendo = false;
+antesDeCadaRuta(r => {
+  if (r.ruta !== 'mia' && borrador) {
+    if (hayCambiosMia() && !saliendo) aviso(`No se han guardado los cambios de «${borrador.nombre.trim() || 'la sesión nueva'}».`, 'info');
+    borrador = null; saliendo = false;
+  }
+  return null;
+});
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', async e => {
+    const a = e.target.closest && e.target.closest('#nav a[href^="#"]');
+    if (!a || rutaActual().ruta !== 'mia' || (leerNombre(), !hayCambiosMia())) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!await confirmar('¿Salir sin guardar los cambios de esta sesión?', { si: 'Salir sin guardar', no: 'Seguir editando', peligro: true })) return;
+    saliendo = true;
+    ir(a.getAttribute('href').slice(1));
+  }, true);
 }
 
 rutas({

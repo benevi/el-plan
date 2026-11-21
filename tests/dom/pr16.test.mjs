@@ -203,7 +203,9 @@ test('Ejercicios: filtros con aria-pressed sin perder el foco, búsqueda y «Añ
   a.clic('.hoja [data-act="ejercicios.aMiaNueva"]'); await a.esperar(() => a.w.location.hash === '#mia/nueva');
   await a.tic();
   assert.deepEqual($$('.mia-ej').map(x => x.dataset.ej), ['plancha']);
-  a.clic('[data-act="mia.volver"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  // El ejercicio de la ficha ya cuenta como un cambio: salir pregunta
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#perfil');
 });
 
 test('Progreso: vacío con sus dos acciones; con datos, vasos con el denominador del plan y «Ver como tabla»', async () => {
@@ -241,4 +243,99 @@ test('Progreso: vacío con sus dos acciones; con datos, vasos con el denominador
   assert.match(svg.closest('.grafico').querySelector('[aria-live]').textContent, /:/);
   assert.match(a.vista().textContent, /Fuerza/);
   assert.match(a.vista().textContent, /Cintura \/ altura/);
+});
+
+// ── Revisión del PR 16 ──
+const MIA_CASA = { id: 'mc', nombre: 'Abdos en casa', lugar: 'casa', minutos: 30, creada: '2026-11-01T10:00:00.000Z', ejercicios: [
+  { id: 'crunch', rol: 'principal', series: 3, reps: '15-20', descanso: 45 }, { id: 'flexiones', rol: 'principal', series: 3, reps: '8-15', descanso: 75 }] };
+const sinHojas = () => { for (const f of $$('.hoja-fondo')) f.parentNode.removeChild(f); };
+
+test('check-in de una mía en Casa con el perfil en gimnasio y piscina: ofrece y usa Casa, y no cambia las flexiones', async () => {
+  const b = estadoBase(); b.perfil.lugares = ['gym', 'piscina']; b.perfil.objetivos = ['salud']; b.perfil.nivel = 2; b.misSesiones = [MIA_CASA];
+  await reiniciar(b);
+  await a.ir('hoy');
+  const bt = a.doc.createElement('button'); bt.dataset.act = 'entrenador.prepararHoy'; a.vista().append(bt);
+  a.clic(bt); await a.esperar(() => $('.hoja.checkin'));
+  a.clic('[data-act="entrenador.ciMia"][data-v="mc"]'); await a.tic();
+  const casa = $('[data-act="entrenador.ci"][data-k="lugar"][data-v="casa"]');
+  assert.ok(casa, 'el check-in no ofrece Casa');
+  assert.equal(casa.getAttribute('aria-checked'), 'true');
+  a.clic('[data-act="entrenador.crearHoy"]');
+  await a.esperar(() => Object.values(a.estado.estado().sesiones).length > 0);
+  const s = Object.values(a.estado.estado().sesiones)[0];
+  assert.equal(s.lugar, 'casa');
+  assert.ok(s.ejercicios.some(x => x.id === 'flexiones'), s.ejercicios.map(x => x.id).join());
+  sinHojas();
+});
+
+test('borrador: se rehace si la guardada cambia por otro lado; se descarta al salir (con aviso si había cambios)', async () => {
+  const b = estadoBase(); b.perfil.lugares = ['casa']; b.misSesiones = [MIA_CASA];
+  await reiniciar(b);
+  await a.ir('mia/mc');
+  assert.deepEqual($$('.mia-ej').map(x => x.dataset.ej), ['crunch', 'flexiones']);
+  // Se añade por otro camino (la ficha): el editor lo enseña y al guardar no se pierde
+  const ent = await import('../../js/areas/entrenador/entrenador.js');
+  ent.añadirAMia('mc', 'plancha');
+  await a.tic();
+  assert.deepEqual($$('.mia-ej').map(x => x.dataset.ej), ['crunch', 'flexiones', 'plancha']);
+  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#perfil'); await a.tic();
+  assert.deepEqual(a.estado.estado().misSesiones[0].ejercicios.map(x => x.id), ['crunch', 'flexiones', 'plancha']);
+  // Una nueva a medias y se sale por la ruta (botón atrás): se descarta y se avisa
+  await a.ir('mia/nueva');
+  $('#mia-nombre').value = 'A medias'; $('#mia-nombre').dispatchEvent(new a.w.Event('input', { bubbles: true }));
+  await a.ir('progreso');
+  assert.match($('#aviso').textContent, /No se han guardado los cambios de «A medias»/);
+  await a.ir('mia/nueva');
+  assert.equal($('#mia-nombre').value, '', 'el borrador abandonado no vuelve');
+  // «‹ Mis sesiones» con cambios pregunta; «Seguir editando» se queda
+  $('#mia-nombre').value = 'Otra'; $('#mia-nombre').dispatchEvent(new a.w.Event('input', { bubbles: true }));
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => $('.hoja [data-r="0"]'));
+  assert.match($('.hoja').textContent, /¿Salir sin guardar los cambios de esta sesión\?/);
+  a.clic('.hoja [data-r="0"]'); await a.espera(60);
+  assert.equal(a.w.location.hash, '#mia/nueva');
+  assert.equal($('#mia-nombre').value, 'Otra');
+  // La pestaña Progreso con cambios también pregunta; «Salir sin guardar» se va
+  a.clic('#nav a[href="#progreso"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#progreso');
+  // Sin cambios, «‹ Mis sesiones» no pregunta
+  await a.ir('mia/nueva');
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+});
+
+test('editor: «Borrar» con el nombre guardado, insignia de nivel y el selector mantiene su texto sin repintar', async () => {
+  const b = estadoBase(); b.perfil.lugares = ['casa']; b.perfil.nivel = 1; b.misSesiones = [MIA_CASA];
+  await reiniciar(b);
+  await a.ir('mia/mc');
+  $('#mia-nombre').value = 'Nombre sin guardar'; $('#mia-nombre').dispatchEvent(new a.w.Event('input', { bubbles: true }));
+  a.clic('[data-act="mia.subir"][data-id="flexiones"]'); await a.tic(); // repinta
+  assert.equal($('[data-act="mia.borrar"]').textContent, 'Borrar «Abdos en casa»');
+  assert.match($('.mia-ej[data-ej="flexiones"]').textContent, /Más difícil que tu nivel/);
+  assert.doesNotMatch($('.mia-ej[data-ej="crunch"]').textContent, /Más difícil/);
+  // Selector de una hoja (no se repinta): tras +, el lector oye «4 de 10»
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#perfil'); await a.tic();
+  a.clic('[data-act="perfil.grupo"][data-v="lesiones"]'); await a.tic();
+  a.clic('[data-act="perfil.lesion"]'); await a.esperar(() => $('#l-dolor'));
+  a.clic($('#l-dolor').closest('[data-selector]').querySelector('[data-paso="1"]'));
+  assert.equal($('#l-dolor').getAttribute('aria-valuetext'), '4 de 10');
+  assert.equal($('#l-dolor b').textContent, '4');
+  sinHojas();
+});
+
+test('ficha abierta desde la sesión: no ofrece crear una sesión nueva (no saca de la sesión)', async () => {
+  const b = estadoBase(); b.misSesiones = [MIA_CASA];
+  b.sesiones = { s9: { id: 's9', fecha: '2026-11-18', creada: new Date().toISOString(), fuente: 'reglas', nombre: 'Demo', foco: '', lugar: 'gym', minutos: 50, explicacion: ['x'], checkin: null, calentamiento: [], vuelta: [], estado: 'pendiente', empezada: null, terminada: null, cierre: null,
+    ejercicios: [{ id: 'plancha', rol: 'principal', series: 1, reps: '30 s', descanso: 45, kg: null, nota: '', motivo: '', sets: [{ kg: null, valor: '', hecha: false }], gusto: null, comentario: '' }] } };
+  await reiniciar(b);
+  await a.ir('sesion/s9');
+  const fichas = await import('../../js/areas/ejercicios/indice.js');
+  fichas.abrirFicha('plancha'); await a.tic();
+  a.clic('.hoja [data-act="ejercicios.aMia"]'); await a.esperar(() => $('.hoja [data-act="ejercicios.aMiaOk"]'));
+  assert.equal($('.hoja [data-act="ejercicios.aMiaNueva"]'), null);
+  sinHojas();
+  // Sin ninguna guardada, desde la sesión ni siquiera sale el atajo
+  a.estado.cambiar(S => { S.misSesiones = []; }, 'misSesiones-silencio');
+  fichas.abrirFicha('plancha'); await a.tic();
+  assert.equal($('.hoja [data-act="ejercicios.aMia"]'), null);
+  sinHojas();
 });

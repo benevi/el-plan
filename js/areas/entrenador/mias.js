@@ -15,6 +15,7 @@ import { estado, cambiar, uid } from '../../nucleo/estado.js';
 import { ex } from '../../reglas/catalogo.js';
 import { LUGARES } from '../../datos/constantes.js';
 import { tiempoSesion, dosis } from './dia.js';
+import { ajustarAlCheckin } from './checkin.js'; // solo dentro de funciones (checkin.js también importa de aquí)
 
 export const MAX_MIAS = 30;
 export const LARGO_NOMBRE_MIA = 40;
@@ -128,6 +129,26 @@ function ejercicioEditado(S, x) {
   };
 }
 
+// Minutos de una mía tal como la monta el check-in (calentamiento, cardio, ejercicios y vuelta a la calma), con
+// las mismas opciones de tiempo que el check-in: así «unos N min» de Perfil y el aviso «dura más de lo que
+// marcas» del check-in cuentan lo mismo. Sin dolor ni energía especiales (los de ese día pueden cambiarlo).
+const OPCIONES_MIN = [30, 45, 60, 75, 90];
+export function minutosMia(S, mia) {
+  const estimado = tiempoSesion({ calentamiento: [], vuelta: [], ejercicios: mia.ejercicios || [] });
+  let min = OPCIONES_MIN.find(x => x >= estimado) || 90, dura = 0;
+  const S2 = { ...S, misSesiones: [mia] };
+  for (let k = 0; k < OPCIONES_MIN.length; k++) {
+    let r;
+    try { r = ajustarAlCheckin(S2, null, { lugar: mia.lugar, minutos: min, energia: 3, dolorHoy: {}, peticion: '', mia: mia.id }); } catch { break; }
+    if (!r || !r.datos || !r.datos.origen || r.datos.origen.tipo !== 'mia') break; // día suave por salud: no es la mía
+    dura = tiempoSesion(r.datos);
+    const sig = OPCIONES_MIN.find(x => x >= dura);
+    if (dura <= min * 1.1 || !sig || sig === min) break;
+    min = sig;
+  }
+  return Math.max(10, Math.min(240, Math.round(dura || estimado) || 10));
+}
+
 // Por qué no se puede guardar lo editado (null si se puede). `id`: la que se está cambiando (null si es nueva).
 export function motivoNoGuardarEdicion(S, datos, id = null) {
   const n = limpiarNombre(datos && datos.nombre);
@@ -149,8 +170,8 @@ export function guardarEdicionMia(id, datos) {
   if (error) return { error };
   const ejercicios = datos.ejercicios.map(x => ejercicioEditado(S, x)).filter(Boolean);
   const lugar = Object.keys(LUGARES).includes(datos.lugar) ? datos.lugar : 'gym';
-  const minutos = Math.max(10, Math.min(240, tiempoSesion({ calentamiento: [], vuelta: [], ejercicios }) || 10));
   const nombre = limpiarNombre(datos.nombre);
+  const minutos = minutosMia(S, { id: id || '__nueva__', nombre: nombre || 'x', lugar, ejercicios, ...(id && miaDe(S, id) && miaDe(S, id).tipo === 'suave' ? { tipo: 'suave' } : {}) });
   let mia;
   if (id) {
     cambiar(S2 => {
@@ -172,5 +193,7 @@ export function añadirAMia(id, idEjercicio) {
   if (!e) return { error: 'Ese ejercicio no está en el catálogo.' };
   if (m.ejercicios.some(x => x && x.id === e.id)) return { error: `«${e.n}» ya está en «${m.nombre}».` };
   if (ejerciciosMia(m).length >= MAX_EJERCICIOS_MIA) return { error: `«${m.nombre}» ya tiene ${MAX_EJERCICIOS_MIA} ejercicios.` };
-  return guardarEdicionMia(id, { nombre: m.nombre, lugar: m.lugar, ejercicios: [...ejerciciosMia(m), propuestaMia(S, e.id, ejerciciosMia(m).length)] });
+  // Mismo índice que el editor: el puesto entre los que no son cardio (la dosis de los dos primeros es otra).
+  const i = ejerciciosMia(m).filter(x => x.rol !== 'cardio').length;
+  return guardarEdicionMia(id, { nombre: m.nombre, lugar: m.lugar, ejercicios: [...ejerciciosMia(m), propuestaMia(S, e.id, i)] });
 }

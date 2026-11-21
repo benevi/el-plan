@@ -2,7 +2,7 @@
 // la ficha técnica de cada ejercicio (hoja inferior) y lo que opina la persona de él (me gusta / no me gusta /
 // no lo quiero), que el entrenador lee al elegir. Desde la ficha se puede añadir a una de «Mis sesiones».
 
-import { rutas, pestaña, acciones, pintar, ir } from '../../nucleo/router.js';
+import { rutas, pestaña, acciones, pintar, ir, rutaActual } from '../../nucleo/router.js';
 import { estado, cambiar } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, $, fechaCorta } from '../../nucleo/ui.js';
 import { ex, nivelesZona, riesgo, zonasRiesgo, ZONAS } from '../../reglas/catalogo.js';
@@ -47,7 +47,7 @@ export function abrirFicha(id) {
       ${ult.length ? `<h3>Tus últimas veces</h3><ul class="ultimas">${ult.map(r => `<li><span>${h(fechaCorta(String(r.fecha).slice(0, 10)))}</span> ${h(resumen(r))}</li>`).join('')}</ul>` : ''}
       <h3 id="ficha-gusto">¿Qué te parece?</h3>
       <div class="chips gustos-ficha" role="group" aria-labelledby="ficha-gusto">${ORDEN_GUSTO.map(k => chip('ejercicios.gustoFicha', k, g === k, GUSTOS[k].nombre, `data-id="${h(id)}"`)).join('')}</div>
-      <button type="button" class="boton boton--secundario boton--ancho ficha-mia" data-act="ejercicios.aMia" data-id="${h(id)}">${ICONOS.mas}<span>Añadir a una de mis sesiones</span></button>
+      ${rutaActual().ruta === 'sesion' && !misSesiones(S).length ? '' : `<button type="button" class="boton boton--secundario boton--ancho ficha-mia" data-act="ejercicios.aMia" data-id="${h(id)}">${ICONOS.mas}<span>Añadir a una de mis sesiones</span></button>`}
     </div>`, { clase: 'hoja-ficha hoja-pf' });
 }
 
@@ -55,6 +55,8 @@ export function abrirFicha(id) {
 function hojaAMia(id) {
   const e = ex(id); if (!e) return;
   const mias = misSesiones(estado());
+  // Desde la sesión en marcha no se sale de ella: solo se puede añadir a una guardada.
+  const enSesion = rutaActual().ruta === 'sesion';
   abrirHoja(`<h2>Añadir «${h(e.n)}»</h2>
     <p class="hoja-texto">Se añade al final con las series, repeticiones y descanso que te propone la app. Luego puedes cambiarlos en Perfil › Mi entreno › Mis sesiones.</p>
     ${mias.length ? `<ul class="lista lista-mias" aria-label="Mis sesiones">${mias.map(m => {
@@ -62,7 +64,7 @@ function hojaAMia(id) {
       return `<li><button type="button" class="fila" data-act="ejercicios.aMiaOk" data-id="${h(id)}" data-mia="${h(m.id)}"${ya ? ' aria-disabled="true"' : ''}>
         <span class="crece"><b>${h(m.nombre)}</b><span>${ya ? 'Ya lo tiene' : `${+m.ejercicios.length} ${m.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}, ${h((LUGARES[m.lugar] || '').toLowerCase())}`}</span></span>${ya ? ICONOS.check : ICONOS.mas}</button></li>`;
     }).join('')}</ul>` : '<p class="hoja-texto">Aún no tienes ninguna sesión guardada.</p>'}
-    ${mias.length < MAX_MIAS ? `<button type="button" class="boton${mias.length ? ' boton--secundario' : ''} boton--ancho" data-act="ejercicios.aMiaNueva" data-id="${h(id)}">Crear una sesión nueva con este ejercicio</button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS} sesiones guardadas: para crear otra, borra alguna.</p>`}`, { clase: 'hoja-pf' });
+    ${enSesion ? '<p class="ayuda">Para crear una sesión nueva con él, búscalo en Ejercicios cuando termines.</p>' : mias.length < MAX_MIAS ? `<button type="button" class="boton${mias.length ? ' boton--secundario' : ''} boton--ancho" data-act="ejercicios.aMiaNueva" data-id="${h(id)}">Crear una sesión nueva con este ejercicio</button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS} sesiones guardadas: para crear otra, borra alguna.</p>`}`, { clase: 'hoja-pf' });
 }
 
 function itemEjercicio(e, gustos, niveles) {
