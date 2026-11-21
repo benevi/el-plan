@@ -1,6 +1,11 @@
 {
+  "functions": {
+    "api/entrenador.js": { "maxDuration": 300, "supportsCancellation": true },
+    "api/copia.js": { "maxDuration": 30 }
+  },
   "headers": [
     { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
     { "source": "/(.*)", "headers": [
       { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
       { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },

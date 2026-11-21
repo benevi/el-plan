@@ -1,0 +1,10 @@
+tests
+.github
+docs
+eslint.config.js
+playwright.config.js
+LEEME.md
+CLAUDE.md
+test-results
+playwright-report
+scripts
