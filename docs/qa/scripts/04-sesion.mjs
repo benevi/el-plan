@@ -1,0 +1,22 @@
+// Recorrido 4: preparar la sesión y verla (uno a uno y toda la sesión).
+import { navegador, contexto, vigilar, foto, leer, botones, esperar, empezar } from './comun.mjs';
+const movil = process.argv[2] || 'm390', quien = process.argv[3] || 'victor', obj = (process.argv[4] || 'musculo').split(',');
+const b = await navegador();
+const ctx = await contexto(b, movil); const page = await ctx.newPage(); const err = vigilar(page);
+await empezar(page, quien, { objetivos: obj });
+await page.click('#nav a[href="#hoy"]');
+await page.click('[data-act="entrenador.plan"]');
+for (const d of [6, 7]) await page.click(`[data-act="entrenador.psDia"][data-v="${d}"]`);
+await page.click('[data-act="entrenador.crearPlan"][data-ia="0"]'); await esperar(500);
+await page.click('[data-act="entrenador.prepararHoy"]'); await esperar(400);
+await page.click('[data-act="entrenador.crearHoy"]'); await esperar(800);
+let L = await leer(page); console.log(L.hash, L.aviso, '\n', L.vista);
+await foto(page, `04-${quien}-${movil}-sesion-foco-inicio`, { completa: true });
+await page.click('[data-act="sesion.modo"][data-v="lista"]'); await esperar(300);
+L = await leer(page); console.log('LISTA:\n', L.vista);
+await foto(page, `04-${quien}-${movil}-sesion-lista`, { completa: true });
+const ses = await page.evaluate(() => { const S = JSON.parse(localStorage.pipos4); return Object.values(S.sesiones)[0]; });
+console.log(JSON.stringify(ses.ejercicios.map(x => [x.id, x.rol, x.series, x.reps, x.descanso, x.kg]), null, 0));
+console.log('calent', JSON.stringify(ses.calentamiento.map(t => t.nombre + ' ' + t.duracion)), 'vuelta', JSON.stringify(ses.vuelta.map(t => t.nombre + ' ' + t.duracion)));
+console.log('errores', err);
+await b.close();
