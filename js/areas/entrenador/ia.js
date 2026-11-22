@@ -11,7 +11,7 @@ import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizar
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus } from './dia.js';
+import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
@@ -23,7 +23,8 @@ import { miaDe, ejerciciosMia } from './mias.js';
 // Sin el nombre de la persona, lugares con sus ids, textos libres recortados y salud solo como etiquetas
 // (C-SALUD-0). Las zonas van con su banda, techo y fase ya calculados (los mismos que usa el validador).
 function peticionBase(S, lugares, dolorHoy = {}, { plan = false } = {}) {
-  const catalogo = catalogoParaIA(S, lugares, dolorHoy);
+  // El catálogo con la misma regla que el validador (COD-1): lugar, material, rechazos, dolor de hoy y salud.
+  const catalogo = catalogoParaIA(S, lugares, dolorHoy, { permitidoEn: l => permitidoEn(S, l, dolorHoy, { futuro: plan }) });
   const ids = catalogo.map(e => e.id);
   return {
     perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy, bandasHoy(S, dolorHoy, { plan }), new Set(ids)), catalogo,
@@ -91,10 +92,39 @@ export function pararPorAlarma(idSesion) {
 }
 export const sinEntrenarHoy = S => (S.alarmas || []).some(a => a.fecha === hoyISO() && a.respuesta === 'si');
 
+// ── Textos de la IA (IA-4, C-PRIN-1, C-PRIN-7) ──
+// Lo que la IA escribe y ve la persona (notas, explicación, cambios, detalles de tareas y textos del plan) se
+// comprueba frase a frase: fuera las que diagnostican o hablan de curar, las de «al fallo», aguantar la
+// respiración, ignorar o seguir con dolor, y (en notas y explicación) las que piden más kilos de los que deja
+// la app. Si no queda nada, la nota la escribe la app con sus datos.
+const PROHIBIDO = /\b(diagnostic\w*|tratamiento\w*|curar\w*|curacion|cura|curan|curara)\b|(?<!(sin llegar|no llegues|nunca llegues|sin ir|nada) )\bal fallo\b|hasta el fallo|(?<!(sin|no|nunca) )aguant\w* (la )?respiracion|\bignora\w*|aunque (te )?(duela|moleste)|sin importar el dolor|pese al dolor/;
+const frasesDe = t => String(t || '').split(/(?<=[.!?])\s+/).map(f => f.trim()).filter(Boolean);
+const kgDe = f => [...normalizarTexto(f).matchAll(/(\d+(?:[.,]\d+)?)\s*kg\b/g)].map(m => +m[1].replace(',', '.'));
+const kgOk = (f, maxKg) => kgDe(f).every(k => k <= maxKg);
+export const fraseIAOk = (f, maxKg = Infinity) => !PROHIBIDO.test(normalizarTexto(f)) && kgOk(f, maxKg);
+export const limpiarTextoIA = (t, maxKg) => frasesDe(t).filter(f => fraseIAOk(f, maxKg)).join(' ');
+// Solo los campos que entiende la app (IA-7): ni fecha, ni tipo, ni origen, ni nada más.
+const tareaIA = t => (t && typeof t === 'object' ? { id: t.id, nombre: t.nombre, detalle: limpiarTextoIA(t.detalle), duracion: t.duracion } : null);
+const ejIA = x => (x && typeof x === 'object' ? { id: x.id, rol: x.rol, series: x.series, reps: x.reps, descanso: x.descanso, kg: x.kg, nota: limpiarTextoIA(x.nota) } : null);
+const listaIA = (l, f) => (Array.isArray(l) ? l.map(f).filter(Boolean) : []);
+const textosIA = l => (Array.isArray(l) ? l : l ? [l] : []).map(String).map(t => limpiarTextoIA(t)).filter(Boolean);
+export function sesionDeIA(s) {
+  s = s && typeof s === 'object' ? s : {};
+  return { nombre: String(s.nombre || '').slice(0, 60), foco: String(s.foco || '').slice(0, 80), explicacion: textosIA(s.explicacion), cambios: textosIA(s.cambios),
+    calentamiento: listaIA(s.calentamiento, tareaIA), vueltaCalma: listaIA(s.vueltaCalma || s.vuelta, tareaIA), ejercicios: listaIA(s.ejercicios, ejIA) };
+}
+// La IA dice que es el último recurso de tiempo y trae un cardio: la decisión la toma el validador (IA-1).
+const ultimoRecursoIA = (s, lugar) => (s.explicacion || []).some(esUltimoRecurso) && (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id) && ex(x.id).l.includes(lugar));
+
 // Barandillas sobre lo que propone la IA (sesión o día de plan): el validador único y notas con datos.
 function completarIA(S, d, { lugar, minutos, dolorHoy = {}, energia = 3, k = 0, futuro = false }) {
   const v = validarSesion(S, d, { lugar, minutos, dolorHoy, energia, futuro, origen: 'ia', k });
   const s = v.sesion;
+  // Ni la nota ni la explicación piden más kilos de los que deja la app (IA-4). Lo demás ya se limpió al llegar
+  // (sesionDeIA): aquí hay también textos de la app, que no se tocan.
+  s.ejercicios.forEach(x => { if (x.nota) x.nota = frasesDe(x.nota).filter(f => kgOk(f, +x.kg || 0)).join(' '); });
+  const maxKg = Math.max(0, ...s.ejercicios.map(x => +x.kg || 0));
+  s.explicacion = (s.explicacion || []).filter(t => kgOk(t, maxKg));
   // Cada ejercicio con su porqué concreto: si la IA deja una nota vacía o genérica, la escribe la app con sus datos.
   const an = analizarEjercicios(S), carga = futuro ? {} : cargaMuscular(S), niveles = nivelesZona(S.perfil, dolorHoy);
   const zonas = Object.keys(nivelesZona(S.perfil, dolorHoy)).filter(z => ZONAS[z]);
@@ -107,7 +137,7 @@ function completarIA(S, d, { lugar, minutos, dolorHoy = {}, energia = 3, k = 0, 
     const rehabZ = s.ejercicios.filter(x => x.rol === 'rehab').map(x => ({ zona: zonas.find(z => (ZONAS[z].rehab || []).includes(x.id)) || zonas[0] })).filter(x => x.zona);
     s.explicacion = [resumenDia(S, { plantilla: { nombre: s.nombre || 'Sesión' }, elegidos: s.ejercicios.filter(x => x.rol === 'principal').map(x => ex(x.id)).filter(Boolean), rehab: rehabZ, cardio: s.ejercicios.find(x => x.rol === 'cardio'), an: {} })];
   }
-  return { sesion: s, cambios: v.cambios, valida: v.valida };
+  return { sesion: s, cambios: v.cambios, valida: v.valida, notasSalud: v.notasSalud || [] };
 }
 const notaGenerica = t => !t || String(t).trim().length < 30 || /^(con cuidado|cuidado|técnica limpia|cambiado|sin dolor|controlad)/i.test(String(t).trim()) && !/\d/.test(t);
 const principalesValidos = (lista0, lugar) => (lista0 || []).filter(x => x && x.rol !== 'rehab' && x.rol !== 'cardio' && ex(x.id) && ex(x.id).l.includes(lugar)).length;
@@ -175,21 +205,27 @@ export async function crearSesionHoy(ci, op = {}) {
         planDeHoy: dia ? { nombre: dia.nombre, foco: dia.foco, tipo: dia.tipo || null, lugar: dia.lugar, ejercicios: dia.ejercicios.map(x => ({ id: x.id, rol: x.rol, series: x.series, reps: x.reps })) } : null,
         ajusteReglas: local.cambios,
       }, { signal: op.signal, alProgreso: op.alProgreso });
-      const s = (r && r.sesion) || {};
+      const s = sesionDeIA(r && r.sesion);
       // Día suave del plan (C-REP-2): sin fuerza; basta con su cardio. Si la IA pone fuerza, es un día normal.
       const suave = !!dia && dia.tipo === 'suave' && !(s.ejercicios || []).some(x => x && x.rol === 'principal');
-      const util = suave ? (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id)) : principalesValidos(s.ejercicios, ci.lugar) > 0;
+      // Sin principales también vale el último recurso de C-TIEMPO-3 con su cardio: lo comprueba el validador (IA-1).
+      const util = suave ? (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id)) : principalesValidos(s.ejercicios, ci.lugar) > 0 || ultimoRecursoIA(s, ci.lugar);
       if (!util) { aviso = 'La IA no propuso ejercicios válidos: sesión ajustada por la app.'; fallo = 'la IA no propuso ejercicios válidos'; }
       else {
-        const d = completarIA(S, { ...s, vuelta: s.vueltaCalma || s.vuelta, ejercicios: (s.ejercicios || []).filter(x => x && ex(x.id)), ...(suave ? { tipo: 'suave' } : {}) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
+        const d = completarIA(S, { nombre: s.nombre, foco: s.foco, explicacion: s.explicacion, calentamiento: s.calentamiento, vuelta: s.vueltaCalma, ejercicios: s.ejercicios.filter(x => ex(x.id)), ...(suave ? { tipo: 'suave' } : {}) }, { lugar: ci.lugar, minutos, dolorHoy: ci.dolorHoy || {}, energia: +ci.energia || 3 });
         if (suave && d.sesion.ejercicios.some(x => x.rol === 'principal')) { aviso = 'La IA no propuso un día suave válido: sesión ajustada por la app.'; fallo = 'la IA no propuso un día suave válido'; }
         else if (!d.valida) { aviso = 'La sesión de la IA no cumplía las reglas de seguridad: sesión ajustada por la app.'; fallo = 'la sesión de la IA no cumplía las reglas de seguridad'; }
         else {
           const ex0 = d.sesion.explicacion || [];
+          const salud = d.notasSalud.filter(n => ex0.includes(n));
+          const resto = ex0.slice(1).filter(t => !esUltimoRecurso(t) && !salud.includes(t));
           datos = {
             ...d.sesion, fuente: 'ia', lugar: ci.lugar, minutos, checkin: local.datos.checkin,
-            // El último recurso de tiempo va arriba: explica por qué hay menos de 3 principales (C-TIEMPO-2).
-            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...(s.cambios || []).map(c => 'Por tu check-in: ' + c), ...d.cambios.map(c => 'Ajustado por la app: ' + c), ...ex0.slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
+            // Primero lo que no se puede perder (IA-3): el resumen, el último recurso de tiempo (por qué hay menos de
+            // 3 principales, C-TIEMPO-2), las notas de salud (C-SALUD-0) y lo que ha cambiado la app (C-IA-3). Lo
+            // que sobre de 8 sale de lo de la IA: sus cambios y el resto de su explicación.
+            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...salud, ...d.cambios.map(c => 'Ajustado por la app: ' + c),
+              ...s.cambios.map(c => 'De tu entrenador: ' + c), ...resto].slice(0, 8),
           };
         }
       }
@@ -286,22 +322,23 @@ function normalizarPlan(S, p, lugares, dias, minutos, maxSuaves = 0) {
     const ds = Math.max(1, Math.min(7, +d.diaSemana || 1));
     if (!dias.includes(ds) || vistos.has(ds)) return null;
     // Lugar del día: el que dice la IA si es de la persona; si sus ejercicios son de otro lugar, el de la mayoría.
-    const ejsIA = (d.ejercicios || []).filter(x => x && ex(x.id));
+    const dIA = sesionDeIA(d);
+    const ejsIA = dIA.ejercicios.filter(x => ex(x.id));
     const cuenta = l => ejsIA.filter(x => ex(x.id).l.includes(l)).length;
     let lugar = lugares.includes(d.lugar) ? d.lugar : lugares[0];
     const mejor = lugares.slice().sort((a, b) => cuenta(b) - cuenta(a))[0];
     if (cuenta(lugar) < 3 && cuenta(mejor) > cuenta(lugar)) lugar = mejor;
     const min = minutosSesion(minutos); // los minutos que pidió la persona para la semana, no los de la IA
-    const explicacion = (Array.isArray(d.explicacion) ? d.explicacion : [d.explicacion]).filter(Boolean).map(String);
+    const explicacion = dIA.explicacion;
     // Día suave del reparto (C-REP-2): sin fuerza, con su cardio; lo marca el primer punto de la explicación.
     // Solo tantos como pone el reparto de la app; los demás los rehace la app.
     const suave = /^Día suave/i.test(explicacion[0] || '') && !ejsIA.some(x => x.rol === 'principal') && ejsIA.some(x => x.rol === 'cardio');
     if (suave && suaves >= maxSuaves) return null;
     // Día sin ejercicios válidos para su lugar: lo hace la app (no se acepta un día vacío).
-    if (!suave && principalesValidos(ejsIA, lugar) === 0) return null;
+    if (!suave && principalesValidos(ejsIA, lugar) === 0 && !ultimoRecursoIA({ explicacion, ejercicios: ejsIA }, lugar)) return null; // IA-1
     const c = completarIA(S, {
-      nombre: String(d.nombre || '').slice(0, 60), foco: String(d.foco || '').slice(0, 80), explicacion,
-      calentamiento: d.calentamiento || [], vuelta: d.vueltaCalma || d.vuelta || [], ejercicios: ejsIA, ...(suave ? { tipo: 'suave' } : {}),
+      nombre: dIA.nombre, foco: dIA.foco, explicacion,
+      calentamiento: dIA.calentamiento, vuelta: dIA.vueltaCalma, ejercicios: ejsIA, ...(suave ? { tipo: 'suave' } : {}),
     }, { lugar, minutos: min, k: i, futuro: true });
     if (!c.valida || !c.sesion.ejercicios.length) return null;
     // Se decide sobre la sesión ya validada: un «día suave» con fuerza (p. ej. con roles cambiados) no vale.
@@ -329,7 +366,8 @@ function normalizarPlan(S, p, lugares, dias, minutos, maxSuaves = 0) {
 // ha puesto la app en su lugar.
 const frases = t => String(t || '').split(/(?<=[.!?])\s+/).map(f => f.trim()).filter(Boolean);
 export function textosPlanIA(p, dias, rehechos = []) {
-  const txt = { resumen: String(p.resumen || ''), criterios: String(p.criterios || ''), progresion: String(p.progresion || '') };
+  // Sin frases que diagnostiquen, curen o pidan seguir con dolor (IA-4).
+  const txt = { resumen: limpiarTextoIA(p.resumen), criterios: limpiarTextoIA(p.criterios), progresion: limpiarTextoIA(p.progresion) };
   if (!rehechos.length) return txt;
   const nombre = d => normalizarTexto(DIAS[d.diaSemana]);
   const rehechosN = rehechos.map(nombre), mantenidos = dias.filter(d => !rehechos.some(r => r.diaSemana === d.diaSemana)).map(nombre);

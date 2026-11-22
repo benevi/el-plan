@@ -125,7 +125,7 @@ test('con dolor ≥ 7 no se llama a la IA (D2)', async () => {
   assert.equal(peticiones.length, 0);
 });
 
-test('respuesta 200 sin «sesion»: mensaje claro, sin el error interno', { todo: 'PR 12: errores crudos' }, async () => {
+test('respuesta 200 sin «sesion»: mensaje claro, sin el error interno', async () => {
   nuevoS({ objetivos: ['perder'] });
   respuesta = {};
   const { aviso } = await ent.crearSesionHoy({ ...ci0 });
@@ -146,7 +146,7 @@ test('un plan de la IA con ejercicios de otro lugar no deja días vacíos', asyn
   assert.deepEqual(est.estado().plan.dias.filter(d => !d.ejercicios.length).map(d => d.diaSemana), []);
 });
 
-test('plan nulo de la IA: se hace por reglas con un aviso claro', { todo: 'PR 12: errores crudos' }, async () => {
+test('plan nulo de la IA: se hace por reglas con un aviso claro', async () => {
   nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
   respuesta = { plan: null };
   const r = await ent.crearPlanSemana({ dias: [3], minutos: 60, lugares: ['gym'] });
@@ -234,4 +234,94 @@ test('«Día suave» escrito en la explicación no salta comprobaciones: solo cu
   const s = { nombre: 'x', lugar: 'gym', minutos: 60, explicacion: ['Día suave: hoy nada.'], calentamiento: [T('a'), T('b')], vuelta: [T('Estirar pecho'), T('Respirar')], ejercicios: [E('bici-estatica', 'cardio', { series: 1, reps: '30 min', descanso: 0 })] };
   assert.ok(ent.problemasSesion(S, s, { lugar: 'gym', minutos: 60 }).includes('0 principales'));
   assert.ok(!ent.problemasSesion(S, { ...s, tipo: 'suave' }, { lugar: 'gym', minutos: 60 }).includes('0 principales'));
+});
+
+// ── Re-auditoría del PR 18 (enfoques IA y código) ──
+const L5 = zona => ({ id: 'l-' + zona, zona, dolor: 3, activa: true, desde: '2025-01-01', tipo: 'lesion' });
+// La respuesta de Opus para CR-26 (30 min, perder grasa, lumbar y rodilla hoy 5), resumida: sin fuerza, con el
+// aviso de C-TIEMPO-2.
+const CR26 = {
+  nombre: 'Cardio y rehabilitación', foco: 'x', cambios: ['Hoy no hay fuerza: con 30 minutos solo caben el cardio y la rehabilitación.'],
+  explicacion: ['Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu lumbar y rodilla y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige 45 minutos.', 'Bici con el sillín alto.'],
+  calentamiento: [{ id: 'bici-estatica', nombre: 'Bici estática suave', detalle: 'Muy suave.', duracion: '2 min' }, { id: 'circulos-cadera', nombre: 'Círculos de cadera', detalle: 'Lentos.', duracion: '1 min' }],
+  ejercicios: [E('descarga-90-90', 'rehab', { series: 1, reps: '2-3 min', descanso: 0, kg: null }), E('extension-rodilla-isometrica', 'rehab', { series: 4, reps: '30s', descanso: 30, kg: null }), E('bici-estatica', 'cardio', { series: 1, reps: '15 min', descanso: 0, kg: null })],
+  vueltaCalma: [{ id: 'estiramiento-isquios-pie', nombre: 'Estiramiento de isquios de pie', detalle: '30 s.', duracion: '1 min' }, T('Respiración', '1 min')],
+};
+const ciCR26 = { lugar: 'gym', minutos: 30, energia: 3, dolorHoy: { lumbar: 5, rodilla: 5 }, peticion: '', forzarIA: true };
+test('IA-1, C-TIEMPO-3: la sesión de último recurso de la IA (cardio y rehabilitación) se guarda como de la IA, sin aviso falso', async () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lugares: ['gym'] });
+  S.perfil.lesiones.push(L5('lumbar'), L5('rodilla'));
+  respuesta = { sesion: CR26 };
+  const r = await ent.crearSesionHoy({ ...ciCR26 });
+  assert.equal(r.sesion.fuente, 'ia', r.aviso);
+  assert.equal(r.aviso, '');
+  assert.ok(!r.sesion.iaFallo);
+  assert.ok(r.sesion.ejercicios.some(x => x.rol === 'cardio') && r.sesion.ejercicios.some(x => x.rol === 'rehab'));
+  assert.ok(r.sesion.explicacion.some(t => /no caben tu cardio/.test(t)));
+  assert.deepEqual(ent.problemasSesion(est.estado(), r.sesion, ciCR26), []);
+  // Y un día de plan igual: no lo rehace la app.
+  nuevoS({ objetivos: ['perder'], nivel: 2, lugares: ['gym'] });
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [{ ...CR26, diaSemana: 5, lugar: 'gym', minutos: 30 }] } };
+  const p = await ent.crearPlanSemana({ dias: [5], minutos: 30, lugares: ['gym'] });
+  assert.ok(!p.plan.dias[0].explicacion.includes('Día completado por la app.'));
+});
+test('IA-2, C-TIEMPO-2: un «(último recurso)» inventado no deja una sesión de 60 min con 1 principal', async () => {
+  for (const texto of ['Hoy (último recurso) menos fuerza.', 'Con 60 minutos no caben tu cardio y lo demás.']) {
+    const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, explicacion: ['Resumen.', texto], ejercicios: [E('press-pecho-maquina'), E('bici-estatica', 'cardio', { series: 1, reps: '10 min', descanso: 0 })] });
+    assert.ok(sesion.ejercicios.filter(x => x.rol === 'principal').length >= 3, texto);
+    assert.ok(!sesion.explicacion.some(t => t === texto));
+  }
+});
+test('IA-3, C-SALUD-0, C-IA-3: las notas de salud y los «Ajustado por la app» no se pierden con muchos cambios de la IA', async () => {
+  const cambios = Array.from({ length: 6 }, (_, i) => `Cambio ${i + 1} de la IA porque lo pides en el check-in.`);
+  const { sesion } = await sesionIA({ objetivos: ['musculo'], salud: { hipertension: 'controlada', medicacion: ['betabloqueantes'] } }, { ...BASE, cambios });
+  const e = sesion.explicacion;
+  for (const re of [/^Tensión alta/, /^Con betabloqueantes/, /repeticiones de margen/]) assert.ok(e.some(t => re.test(t)), `${re}: ${e.join(' | ')}`);
+  assert.ok(e.some(t => /^Ajustado por la app:/.test(t)));
+  // Los cambios de la IA van con «De tu entrenador»: no todos salen del check-in.
+  assert.ok(e.some(t => /^De tu entrenador: Cambio 1/.test(t)) && !e.some(t => /^Por tu check-in: Cambio/.test(t)));
+});
+test('IA-4, C-PRIN-1: los textos de la IA no diagnostican, no curan ni piden ir al fallo, aguantar la respiración o más kilos', async () => {
+  const malo = {
+    ...BASE,
+    cambios: ['Tu médico dice que puedes ignorar el dolor de rodilla, hazlo al fallo.', 'Cambio el orden porque lo pides.'],
+    explicacion: ['Torso para ganar músculo.', 'Este tratamiento te va a curar la lesión: diagnóstico tendinitis.', 'Sube a 200 kg en prensa.', 'Bajas el descanso a 90 s.'],
+    ejercicios: [E('press-pecho-maquina', 'principal', { nota: 'Hazlo al fallo y aguanta la respiración con 200 kg, aunque duela 9/10.' }), E('jalon-pecho'), E('prensa-piernas')],
+  };
+  const { sesion } = await sesionIA({ objetivos: ['musculo'] }, malo);
+  const todo = [...sesion.explicacion, ...sesion.ejercicios.map(x => x.nota)].join(' | ');
+  assert.doesNotMatch(todo, /diagn[oó]stico|tratamiento|curar|al fallo|aguanta la respiraci|ignorar|200 kg|aunque duela/i, todo);
+  assert.ok(sesion.explicacion.some(t => /Cambio el orden/.test(t)), 'lo que está bien se queda');
+  assert.ok(sesion.explicacion.includes('Bajas el descanso a 90 s.'));
+  assert.ok(sesion.ejercicios[0].nota.length > 20, 'la nota la escribe la app');
+  // Los textos de la app («sin aguantar la respiración», «sin llegar al fallo») no se tocan.
+  assert.equal(ent.fraseIAOk('Tensión alta: suelta el aire al empujar, sin aguantar la respiración.'), true);
+  assert.equal(ent.fraseIAOk('Prioriza la técnica, sin llegar al fallo.'), true);
+  // En el plan, igual: resumen, criterios y progresión.
+  nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
+  respuesta = { plan: { resumen: 'Semana para curar tu hombro. Tres días de fuerza.', criterios: 'Sin diagnóstico. Reparto de cuerpo completo.', progresion: 'Ve al fallo cada semana. Sube un paso al llegar al tope.', dias: [dia(3, 'gym', [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')])] } };
+  const { plan } = await ent.crearPlanSemana({ dias: [3], minutos: 60, lugares: ['gym'] });
+  assert.equal(plan.resumen, 'Tres días de fuerza.');
+  assert.equal(plan.criterios, 'Reparto de cuerpo completo.');
+  assert.equal(plan.progresion, 'Sube un paso al llegar al tope.');
+});
+test('IA-7: las claves de más de la IA (fecha, tipo, origen) no llegan a la sesión guardada', async () => {
+  const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, fecha: '2020-01-01', tipo: 'suave', origen: { tipo: 'mia', id: 'x' }, estado: 'hecha' });
+  assert.equal(sesion.fecha, '2026-11-18');
+  assert.notEqual(sesion.tipo, 'suave');
+  assert.ok(!sesion.origen || sesion.origen.tipo !== 'mia');
+  assert.equal(sesion.estado, 'pendiente');
+  assert.ok(sesion.ejercicios.filter(x => x.rol === 'principal').length >= 3);
+});
+test('COD-6: un ejercicio rechazado que propone la IA no se guarda, ni en la sesión ni en el plan', async () => {
+  const rechazo = S => { S.perfil.gustos['prensa-piernas'] = 'rechazo'; };
+  const { sesion } = await sesionIA({ objetivos: ['musculo'] }, BASE, ci0, rechazo);
+  assert.equal(sesion.fuente, 'ia');
+  assert.ok(!sesion.ejercicios.some(x => x.id === 'prensa-piernas'));
+  const S = nuevoS({ objetivos: ['musculo'], lugares: ['gym'] });
+  rechazo(S);
+  respuesta = { plan: { resumen: 'r', criterios: 'c', progresion: 'p', dias: [dia(3, 'gym', [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')]), dia(5, 'gym', [E('prensa-piernas'), E('remo-sentado-polea'), E('press-hombro-maquina')])] } };
+  const { plan } = await ent.crearPlanSemana({ dias: [3, 5], minutos: 60, lugares: ['gym'] });
+  assert.equal(plan.fuente, 'ia');
+  assert.deepEqual(plan.dias.flatMap(d => d.ejercicios).filter(x => x.id === 'prensa-piernas'), []);
 });

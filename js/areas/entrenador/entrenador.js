@@ -26,6 +26,6 @@ export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS
 export { restriccionesSalud, etiquetasSalud, CAMPOS_SALUD, MEDICACION, AVISO_VISTO_BUENO } from './salud.js';
 export { ajustesPorTendencia, diasPorDefecto, planReglas, planDeLaSemana, estadoDias, planDeHoy, diaElegido, siguientePendiente, reorganizar, noPuedoHoy } from './plan.js';
 export { ajustarAlCheckin, motivoIA, previaCheckin } from './checkin.js';
-export { crearSesionHoy, crearPlanSemana, preguntaAntes, sinEntrenarHoy, pararPorAlarma, DESDE } from './ia.js';
+export { crearSesionHoy, crearPlanSemana, preguntaAntes, sinEntrenarHoy, pararPorAlarma, DESDE, fraseIAOk } from './ia.js';
 export { misSesiones, miaDe, guardarMia, renombrarMia, borrarMia, motivoNoGuardar, MAX_MIAS, LARGO_NOMBRE_MIA,
   ejerciciosMia, propuestaMia, topeSeriesMia, guardarEdicionMia, motivoNoGuardarEdicion, añadirAMia, MAX_EJERCICIOS_MIA, DESCANSO_MAX_MIA } from './mias.js';
