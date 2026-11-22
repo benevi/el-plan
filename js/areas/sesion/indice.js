@@ -13,7 +13,7 @@ import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '
 import { LUGARES, MUSCULOS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
-import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia } from '../entrenador/entrenador.js';
+import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, T3b, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
 
 // «Cambiar por otro»: el dolor de hoy con el «dolor durante» del ejercicio (C-DOLOR-6) y las alternativas que
@@ -412,10 +412,12 @@ function hojaAlgoVaMal() {
   const antes = +(((s.checkin || {}).dolor || {})[avm.zona] || 0);
   const { techo } = limiteDolor(S, avm.zona, antes, { rehab: !!x && x.rol === 'rehab' });
   if (avm.dolor == null) avm.dolor = antes;
+  // Sin lesiones activas, T3b (pendiente de aprobar por Víctor, § 2.5): no habla de «tu lesión» (U6).
+  const conLesion = S.perfil.lesiones.some(l => l.activa);
   abrirHoja(`<h2>Algo va mal</h2>
-    <p class="hoja-texto">${h(T3(techo))}</p>
+    <p class="hoja-texto">${h(conLesion ? T3(techo) : T3b(techo))}</p>
     <button type="button" class="boton boton--peligro boton--ancho" data-act="sesion.pararAlarma">Termino la sesión aquí</button>
-    ${x ? `<h3 class="hoja-sub">Si es solo el dolor de tu lesión</h3>
+    ${x ? `<h3 class="hoja-sub">${conLesion ? 'Si es solo el dolor de tu lesión' : 'Si te duele una zona al hacer un ejercicio'}</h3>
     <div class="campo"><label for="avm-ej">Ejercicio</label><select id="avm-ej" data-cambio="sesion.avmCampo" data-k="e">${vivos.map(v => `<option value="${+v.i}" ${v.i === avm.e ? 'selected' : ''}>${h(ex(v.x.id).n)}</option>`).join('')}</select></div>
     <div class="campo"><label for="avm-zona">Dónde</label><select id="avm-zona" data-cambio="sesion.avmCampo" data-k="zona">${zonas.map(z => `<option value="${h(z)}" ${z === avm.zona ? 'selected' : ''}>${h(ZONAS[z].corta)}</option>`).join('')}</select></div>
     <div class="grupo">${selector({ id: 'avm-dolor', et: `Dolor ahora (empezaste en ${antes} de 10)`, valor: Math.max(0, Math.min(10, +avm.dolor)), min: 0, max: 10, paso: 1, unidad: 'de 10', nombre: 'de 10' })}</div>

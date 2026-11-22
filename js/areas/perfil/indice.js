@@ -12,7 +12,7 @@ import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { medidorNivel } from '../../reglas/contexto.js';
 import { tarjetaAnalisis } from '../entrenador/indice.js';
 import { misSesiones, MAX_MIAS } from '../entrenador/entrenador.js';
-import { versionApp } from '../../nucleo/version.js';
+import { versionApp, modoSinConexion, alCambiarModo, reintentarSinConexion } from '../../nucleo/version.js';
 import { grupoCopias, avisoNube, siVisible } from './nube.js';
 import { grupoSalud } from './salud.js';
 import { chip, segmento, selector, alCambiarSelector, devolverFoco, cuenta } from './controles.js';
@@ -162,8 +162,18 @@ function grupoAjustes(S) {
     <p class="ayuda">Las copias automáticas están en Perfil › Copias.</p>`)}
   ${tarjeta('Este móvil', `<p>Móvil de ${h(nombre(S.dueño))}.</p>
     <button type="button" class="boton boton--texto" data-act="perfil.cambiarDueño">Cambiar de quién es</button>
-    <p class="meta version-app">Versión de la app: <span class="cifra" data-version-app>${h(versionApp() || '—')}</span></p>`)}`;
+    <p class="meta version-app">Versión de la app: <span class="cifra" data-version-app>${h(versionApp() || '—')}</span></p>
+    ${lineaSinConexion()}`)}`;
 }
+// Modo sin conexión (D5): solo se dice si hay service worker; si no llegó a instalarse, con «Reintentar».
+const MODOS = { listo: 'listo', instalando: 'instalándose…', 'no-instalado': 'no instalado' };
+function lineaSinConexion() {
+  const m = modoSinConexion();
+  if (!m) return '';
+  return `<p class="meta" data-modo-sin-conexion="${h(m)}">Modo sin conexión: ${h(MODOS[m])}</p>
+    ${m === 'no-instalado' ? '<p class="ayuda">La app funciona, pero sin conexión podría no abrir con esta versión.</p><button type="button" class="boton boton--secundario" data-act="perfil.reintentarSinConexion">Reintentar</button>' : ''}`;
+}
+alCambiarModo(() => { if (/^#perfil/.test(location.hash) && grupoPerfil() === 'ajustes') pintar(); });
 
 // Uso del almacenamiento y última copia exportada (los datos solo viven en este móvil).
 const tamaño = b => b < 1024 ? b + ' B' : b < 1024 * 1024 ? es(b / 1024, 0) + ' KB' : es(b / 1024 / 1024, 1) + ' MB';
@@ -304,6 +314,7 @@ acciones({
   'perfil.grupo': el => { ponerGrupo(el.dataset.v); pintar(); window.scrollTo(0, 0); const b = $(`[data-act="perfil.grupo"][data-v="${el.dataset.v}"]`); if (b && el.closest('.grupos-perfil')) b.focus({ preventScroll: true }); },
   // Desde otras pantallas (p. ej. la nota «el código de acceso no es correcto»): Perfil › Ajustes.
   'perfil.irAjustes': () => { ponerGrupo('ajustes'); cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
+  'perfil.irLesiones': () => { ponerGrupo('lesiones'); cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
   'perfil.acompañado': el => cambiar(S => { S.perfil.acompañado = el.checked; }, 'perfil-silencio'),
   'perfil.nadar25': el => cambiar(S => { if (el.checked) S.perfil.nadar25 = true; else delete S.perfil.nadar25; }, 'perfil'),
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
@@ -322,6 +333,9 @@ acciones({
   'perfil.dato': el => cambiar(S => { const k = el.dataset.k; S.perfil.datos[k] = k === 'altura' ? num(el.value) : k === 'nacimiento' ? String(el.value || '').slice(0, 4) : el.value; }, 'perfil-silencio'),
   'perfil.notas': el => cambiar(S => { S.perfil.notas = el.value.trim(); }, 'perfil-silencio'),
   'perfil.codigo': el => { cambiar(S => { S.ajustes.codigo = el.value.trim(); }, 'perfil-silencio'); aviso('Código guardado'); },
+  'perfil.reintentarSinConexion': async () => {
+    if (!await reintentarSinConexion()) aviso('No se ha podido: comprueba la conexión y vuelve a intentarlo', 'info');
+  },
   'perfil.ajuste': el => cambiar(S => { S.ajustes[el.dataset.k] = el.checked; }, 'perfil-silencio'),
   'perfil.lesionDetalle': el => {
     const a4 = document.querySelector(`[data-a4="${el.id.replace('l-detalle-', '')}"]`);

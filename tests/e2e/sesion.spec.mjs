@@ -280,7 +280,17 @@ for (const [w, alto] of [[360, 640], [320, 568]]) for (const persona of PERSONAS
     await page.evaluate(() => window.scrollTo(0, 0));
     const r03 = await page.evaluate(() => Math.round(innerHeight - document.querySelector('[data-actual]').getBoundingClientRect().bottom));
     console.log(`T9 ${w}×${alto} ${persona}: margen de la serie actual sobre el borde ${r03} px`);
-    if (w === 360) expect(r03, 'margen de la serie actual sobre el borde (R03)').toBeGreaterThanOrEqual(0);
+    // COD-5: también a 320 × 568 (aceptación del PR 15: T9 en 360 × 640 y en 320 × 568), con su botón «Serie hecha».
+    expect(r03, 'margen de la serie actual sobre el borde (R03)').toBeGreaterThanOrEqual(0);
+    // Y en cada ejercicio (con kilos, por tiempo y cardio): la serie actual entera, con su botón, sin desplazarse.
+    for (const n of [2, 3, 4]) {
+      await irPaso(page, n);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const m = await page.evaluate(() => Math.round(innerHeight - document.querySelector('[data-actual]').getBoundingClientRect().bottom));
+      expect(m, `paso ${n}: margen de la serie actual sobre el borde (R03)`).toBeGreaterThanOrEqual(0);
+    }
+    await irPaso(page, 1);
+    await page.evaluate(() => window.scrollTo(0, 0));
     const sufijo = `-${persona}-${w}`;
     await mirar(page, 'sesion-serie-actual' + sufijo);
     await page.click('[data-actual] [data-principal]');

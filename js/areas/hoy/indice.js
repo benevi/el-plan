@@ -13,7 +13,7 @@ import { h, ICONOS, fechaLarga, confirmar, aviso, hayHojaAbierta, $ } from '../.
 import { sesionDeHoy, diaSemana, trabajoHecho } from '../../nucleo/modelo.js';
 import { enLinea } from '../../nucleo/api.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
-import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo, minutosDe, plural } from '../entrenador/indice.js';
+import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo, minutosDe, plural, focoTexto } from '../entrenador/indice.js';
 import { siguientePendiente, sinEntrenarHoy, T2, misSesiones } from '../entrenador/entrenador.js';
 import { info as cronometro, parar as pararCronometro } from '../sesion/temporizador.js';
 import * as progreso from '../progreso/indice.js';
@@ -89,6 +89,10 @@ function avisoSinCerrar(S) {
 
 const avisoRed = () => enLinea() ? '' : `<div class="aviso sin-red" role="status">${ICONOS.sinred}<div class="aviso-texto"><b>Sin conexión</b>
   <p>Tu sesión de hoy funciona entera. Lo que necesita al entrenador IA espera a que vuelva la red.</p></div><span></span></div>`;
+// Lesiones traídas de la app anterior con el dolor estimado (U5, revisión del PR #47): que se revise antes de entrenar.
+const avisoLesionesTraidas = S => S.perfil.lesiones.some(l => l.activa && l.dolorRevisar)
+  ? `<div class="aviso aviso--aviso revisar-lesiones" role="note">${ICONOS.alerta}<div class="aviso-texto"><b>Revisa el dolor de tus lesiones traídas</b>
+  <p>Viene estimado de la app anterior.</p><div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.irLesiones">Revisarlas</button></div></div><span></span></div>` : '';
 
 // ── La tarjeta de hoy: { tarjeta, accion } (accion = la principal, en la barra de abajo) ──
 const tarjeta = (etiqueta, titulo, cuerpo, clase = '') => `<section class="tarjeta destacada hoy-tarjeta ${clase}" aria-labelledby="t-hoy-${clase || 'dia'}">
@@ -111,7 +115,7 @@ function deHoy(S) {
     const total = series(s), hechas = seriesHechas(s), enMarcha = s.estado === 'en_curso';
     return {
       tarjeta: tarjeta(`${enMarcha ? 'En marcha' : 'Lista'}: ${fuente(s)}`, h(s.nombre),
-        `<p class="datos">${s.foco ? h(s.foco) + ', ' : ''}${plural(s.ejercicios.length, 'ejercicio', 'ejercicios')}${LUGARES[s.lugar] ? `, ${h(minus(LUGARES[s.lugar]))}` : ''}, unos ${minutosDe(s)} min.</p>
+        `<p class="datos">${s.foco ? h(focoTexto(s.foco)) + ', ' : ''}${plural(s.ejercicios.length, 'ejercicio', 'ejercicios')}${LUGARES[s.lugar] ? `, ${h(minus(LUGARES[s.lugar]))}` : ''}, unos ${minutosDe(s)} min.</p>
         ${hechas && total ? `<div class="avance" role="img" aria-label="${+hechas} de ${+total} series hechas"><i data-var="--v:${(hechas / total).toFixed(3)}"></i></div><p class="meta">${+hechas} de ${+total} series</p>` : ''}
         ${porque(s)}${notaFallo(s)}
         ${s.estado === 'pendiente' ? '<button type="button" class="boton boton--texto" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}`),
@@ -128,7 +132,7 @@ function deHoy(S) {
   const dia = planDeHoy(S);
   if (dia) {
     return {
-      tarjeta: tarjeta('Hoy toca', h(dia.nombre), `<p class="datos">${h(LUGARES[dia.lugar] || '')}, ${plural(dia.ejercicios.length, 'ejercicio', 'ejercicios')}, unos ${minutosDe(dia)} min.${dia.foco ? ' ' + h(dia.foco) + '.' : ''}</p>${porque(dia)}`),
+      tarjeta: tarjeta('Hoy toca', h(dia.nombre), `<p class="datos">${h(LUGARES[dia.lugar] || '')}, ${plural(dia.ejercicios.length, 'ejercicio', 'ejercicios')}, unos ${minutosDe(dia)} min.${dia.foco ? ' ' + h(focoTexto(dia.foco)) + '.' : ''}</p>${porque(dia)}`),
       accion: '<button type="button" class="boton boton--ancho" data-act="entrenador.prepararHoy">Empezar</button><p class="nota-accion">Antes te pregunto cómo estás y lo ajusto.</p>',
     };
   }
@@ -176,7 +180,7 @@ function vista() {
   return `
   <header class="saludo"><p>${h(fechaLarga(hoyISO()))}</p><h1>Hola, ${h(p ? p.nombre : '')}</h1></header>
   ${plan && !sinPerfil ? tiraSemana(S) : ''}
-  ${avisoSinCerrar(S)}${avisoRed()}
+  ${avisoSinCerrar(S)}${avisoRed()}${avisoLesionesTraidas(S)}
   <div class="hoy-cuerpo">${cuerpo}</div>
   ${recordatorioCopia()}
   ${accion ? `<div class="accion-hoy">${accion}</div>` : ''}`;

@@ -156,6 +156,23 @@ button.serie-estado:active { background: var(--sup-control); }
 body.sin-nav .temporizador.descanso--fija { bottom: 0; padding-bottom: calc(var(--e-3) + env(safe-area-inset-bottom)); }
 .temporizador.descanso .boton { min-width: 52px; padding: 0 var(--e-3); }
 .temporizador .descanso-txt { min-width: 0; }
+/* Con texto ×2 (zoom de Android: 180 px de ancho) los botones no caben al lado del reloj: pasan a una segunda fila
+   y, si tampoco caben ahí, a otra (U3). Con el ancho normal todo va en una fila, como en el diseño aprobado. */
+.temporizador .descanso-fila { flex-wrap: wrap; row-gap: var(--e-2); }
+.temporizador .descanso-txt { flex: 1 1 auto; min-width: min(5.5em, 100%); }
+.descanso-botones { display: flex; flex-wrap: wrap; gap: var(--e-2); margin-left: auto; justify-content: flex-end; }
+/* Muy estrecho (texto ×2 en un móvil de 360: 180 px CSS): la barra lo más baja posible para que se vea la serie y
+   la hoja. Cifra que se ajusta al ancho (nunca menos de 28 px, R06) y, bajo el reloj, los tres botones en una
+   sola fila de 48 px cada uno (revisión del PR #47). */
+@media (max-width: 239px) {
+  .temporizador.descanso { padding-left: var(--e-3); padding-right: var(--e-3); padding-top: var(--e-2); }
+  .temporizador.descanso--fija, body.con-hoja .temporizador.descanso--fija { padding-bottom: calc(var(--e-2) + env(safe-area-inset-bottom)); }
+  .temporizador .descanso-fila { row-gap: var(--e-1); }
+  .temporizador .descanso-et { margin-bottom: 0; }
+  .temporizador .descanso-reloj { font-size: clamp(28px, 16vw, var(--t-cifra-m)); }
+  .descanso-botones { flex: 1 1 100%; gap: var(--e-1); margin-left: 0; }
+  .temporizador.descanso .descanso-botones .boton { flex: 1 1 0; min-width: var(--toque-sesion); padding: 0; }
+}
 .temporizador .descanso-et { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .descanso-sonido { display: flex; width: 100%; max-width: 520px; margin: var(--e-2) auto 0; justify-content: center; }
 .descanso-sonido .icono { width: 18px; height: 18px; }
@@ -164,6 +181,13 @@ body.con-temporizador { padding-bottom: calc(var(--nav-alto) + env(safe-area-ins
 body.sin-nav.con-temporizador { padding-bottom: calc(var(--alto-descanso, 112px) + var(--e-4)); }
 body.con-temporizador #aviso { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--alto-descanso, 104px) + var(--e-2)); }
 body.sin-nav.con-temporizador #aviso { bottom: calc(var(--alto-descanso, 104px) + var(--e-2)); }
+/* Con una hoja abierta (U1), la barra y su alarma siguen a la vista: van por encima de la hoja, pegadas abajo, y
+   la hoja les deja su alto (se lee la ficha entre series sin perder la cuenta ni la alarma). */
+body.con-hoja .temporizador.descanso--fija { bottom: 0; padding-bottom: calc(var(--e-3) + env(safe-area-inset-bottom)); }
+body.con-hoja.con-temporizador .hoja-velo { padding-bottom: var(--alto-descanso, 112px); }
+body.con-hoja.con-temporizador .hoja { max-height: min(88dvh, 100%); padding-bottom: var(--e-5); }
+body.con-hoja.con-temporizador .hoja.checkin-pantalla { height: 100%; }
+body.con-hoja.con-temporizador .ci-accion { padding-bottom: var(--e-3); }
 
 /* Alarma de fin: la barra toma el color de la persona con texto oscuro (≥ 7:1 en todos los fotogramas, R08).
    Todo lo de dentro usa el color de la barra (currentColor) para que el parpadeo lento lo siga. */
@@ -185,6 +209,10 @@ body.sin-nav.con-temporizador #aviso { bottom: calc(var(--alto-descanso, 104px) 
 
 /* ---------- Contador a pantalla completa (ejercicio por tiempo y cardio) ---------- */
 .temporizador.contador--pantalla { z-index: var(--z-pantalla); padding-top: calc(env(safe-area-inset-top) + var(--e-6)); outline: none; }
+/* Con texto ×2 (180 × 320 px CSS o menos) no cabe todo: el contador se desplaza por dentro y la cifra baja hasta
+   64 px (R06), así «Pausar», «Hecho» y «Cambiar de lado» siempre se alcanzan (U3). Con el alto normal, igual que antes. */
+.temporizador.contador--pantalla { overflow-y: auto; overscroll-behavior: contain; }
+.temporizador.contador--pantalla .contador-reloj { font-size: clamp(64px, 20dvh, var(--t-cifra-xl)); }
 .temporizador.contador { justify-content: space-between; }
 .contador-cab { width: 100%; padding: 0 var(--e-12); }
 .contador-nombre:focus { outline: none; }
@@ -253,4 +281,27 @@ body.con-final { overflow: hidden; }
   .sesion-ej .ultima { margin-top: var(--e-1); }
   .serie--actual { padding-top: var(--e-2); }
 }
+/* 320 × 568 y menos (COD-5): la serie actual y su «Serie hecha» siguen cabiendo sin desplazarse. Cifras de 40 px
+   (≥ 28, R06), menos aire entre bloques y la línea del lugar en una sola línea; todo lo que se pulsa sigue ≥ 48 px. */
+@media (max-height: 600px) {
+  .cab-sesion { min-height: 52px; padding-top: 0; }
+  .cab-sesion p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vista-sesion > .avance { margin-top: var(--e-1); }
+  .modo-sesion { margin-top: var(--e-2); }
+  .pasos-sesion { margin-top: var(--e-1); padding-bottom: var(--e-1); }
+  .vista-sesion > .tarjeta { padding-top: var(--e-2); }
+  .ejercicio-cab h2 { font-size: 18px; line-height: 1.2; }
+  .sesion-ej .series { margin-top: var(--e-2); }
+  .serie--actual { margin-top: 0; padding-bottom: var(--e-3); }
+  .serie-cuenta { margin-bottom: 0; }
+  .serie--actual .selectores { margin: 0 0 var(--e-2); }
+  .serie--actual .boton { margin-top: 0; }
+  .serie--actual .selector-valor b { font-size: 40px; }
+  .serie-tiempo { margin-bottom: var(--e-2); }
+  .serie-tiempo b { font-size: var(--t-cifra-m); }
+  .serie-manual { margin-top: var(--e-3); }
+}
 .contador-sonido { align-self: center; }
+.contador-pregunta { display: flex; flex-direction: column; gap: var(--e-3); width: 100%; }
+.contador-pregunta p { outline: none; }
+.contador-pregunta .contador-acciones { flex-wrap: wrap; }

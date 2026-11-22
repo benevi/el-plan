@@ -135,8 +135,8 @@
   --z-saliente: 22;          /* pantalla que se va durante el cambio */
   --z-accion: 25;
   --z-pestanas: 30;
-  --z-descanso: 50;
   --z-hoja: 70;
+  --z-descanso: 75;          /* barra del descanso y su alarma: por encima de cualquier hoja (U1) */
   --z-pantalla: 80;          /* contador a pantalla completa */
   --z-aviso: 85;
   --z-alarma: 90;

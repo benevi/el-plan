@@ -558,11 +558,6 @@ export async function cambiarFrase(persona, frase) {
   const sal = nuevaSal();
   return guardarClave(persona, { clave: await derivarClave(frase, sal), sal, iteraciones: ITERACIONES });
 }
-export async function desactivar(persona) {
-  await almacenClave.borrar(persona);
-  if (claveActual && claveActual.persona === persona) claveActual = null;
-  avisarNube();
-}
 // Tras «Empezar de cero» en el rescate: no se vuelve a usar la clave hasta que la persona lo confirme.
 export function pausarNube() { ponerNube({ pausada: true }); }
 export function reanudarNube() { ponerNube({ pausada: false }); }

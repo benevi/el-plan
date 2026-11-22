@@ -2,6 +2,8 @@
 // Las áreas pintan HTML con plantillas y usan data-act="area.accion" para los botones (ver router.js).
 // El aspecto sale del sistema de diseño (css/tokens.css y css/componentes.css): aquí solo hay estructura.
 
+// «1 ejercicio», «5 ejercicios», «6 de 13 series» (concordancia en toda la app, D7)
+export const plural = (n, uno, varios, de = null) => de == null ? `${+n} ${+n === 1 ? uno : varios}` : `${+n} de ${+de} ${+de === 1 ? uno : varios}`;
 export const h = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const $ = (sel, raiz = document) => raiz.querySelector(sel);
 export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
@@ -203,6 +205,24 @@ export function reusarEntradaDeHoja(destino) {
   window.dispatchEvent(new Ev('hashchange', { oldURL: antes, newURL: location.href }));
   return 'cambio';
 }
+// Entrada del historial de otra capa a pantalla completa (el contador de un ejercicio por tiempo, U4): el botón
+// atrás la cierra en vez de cambiar la pantalla de debajo. La capa escucha popstate (sin su clave = atrás) y, al
+// cerrarse por su cuenta, quita su entrada sin que se note.
+export function ponerEntradaCapa(clave) {
+  const hi = historial();
+  if (!hi) return;
+  trasHistorial(() => {
+    if (hi.state && hi.state[clave]) return;
+    const st = { ...(hi.state || {}), [clave]: true }; delete st[ESTADO];
+    try { hi.pushState(st, ''); } catch { /* sin historial */ }
+  });
+}
+export function quitarEntradaCapa(clave) {
+  const hi = historial();
+  trasHistorial(() => { if (hi && hi.state && hi.state[clave]) irAtrasSinVer(hi); });
+}
+export const hayEntradaCapa = clave => { const hi = historial(); return !!(hi && hi.state && hi.state[clave]); };
+
 if (typeof window !== 'undefined') {
   // Recargar con una hoja abierta deja su entrada del historial sin hoja: se quita al cargar.
   try { const hi = historial(); if (hi && esNuestra(hi.state)) irAtrasSinVer(hi); } catch { /* sin historial */ }
@@ -368,17 +388,36 @@ export function cerrarHoja({ historial: tocarHistorial = true } = {}) {
 
 if (typeof document !== 'undefined') {
   // Escape cierra; Tab no sale de la hoja.
+  // La barra del descanso (y su alarma) va por encima de la hoja (U1): entra en la vuelta del Tab, detrás de la
+  // hoja, y si el foco está en la alarma, Escape es para ella (temporizador.js), no para la hoja.
+  const ENFOCABLES = 'button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]';
   document.addEventListener('keydown', e => {
     if (!hayHojaAbierta()) return;
-    if (e.key === 'Escape') { e.preventDefault(); if (hoja.op.fija) atras(); else cerrarHoja(); return; }
+    const act = document.activeElement;
+    const barra = document.querySelector('#temporizador.descanso');
+    const enBarra = !!(barra && act && barra.contains(act));
+    if (e.key === 'Escape') {
+      if (enBarra && barra.matches('.alarma')) return;
+      e.preventDefault(); if (hoja.op.fija) atras(); else cerrarHoja(); return;
+    }
     if (e.key !== 'Tab') return;
-    const enfocables = $$('button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]', hoja.fondo)
-      .filter(x => x.getClientRects().length);
+    const visibles = raiz => $$(ENFOCABLES, raiz).filter(x => x.getClientRects().length);
+    const enfocables = visibles(hoja.fondo);
     if (!enfocables.length) return;
+    const deBarra = barra ? visibles(barra) : [];
     const a = enfocables[0], z = enfocables[enfocables.length - 1];
-    const dentro = hoja.fondo.contains(document.activeElement);
-    if (e.shiftKey && (document.activeElement === a || !dentro)) { e.preventDefault(); z.focus(); }
-    else if (!e.shiftKey && (document.activeElement === z || !dentro)) { e.preventDefault(); a.focus(); }
+    if (enBarra && deBarra.length) {
+      // En la barra: de su último control a la hoja; hacia atrás, de su primero (o de la propia alarma) a la hoja.
+      if (!e.shiftKey && act === deBarra[deBarra.length - 1]) { e.preventDefault(); a.focus(); }
+      else if (e.shiftKey && (act === deBarra[0] || !deBarra.includes(act))) { e.preventDefault(); z.focus(); }
+      return;
+    }
+    const tras = deBarra[0] || a, antes = deBarra[deBarra.length - 1] || z;
+    const dentro = hoja.fondo.contains(act);
+    // El título de la hoja (con el foco al abrirla) va antes del primer control: hacia atrás, también da la vuelta.
+    const antesDelPrimero = dentro && !enfocables.includes(act) && !!(act.compareDocumentPosition(a) & 4);
+    if (e.shiftKey && (act === a || !dentro || antesDelPrimero)) { e.preventDefault(); antes.focus(); }
+    else if (!e.shiftKey && (act === z || !dentro)) { e.preventDefault(); tras.focus(); }
   });
   // Un enlace a otra pantalla desde dentro de una hoja: primero se quita la hoja (y su entrada) y luego se va.
   document.addEventListener('click', e => {
