@@ -2,7 +2,7 @@
 // Cada área se registra sola al importarse (rutas, acciones y pestaña). Para añadir un área nueva,
 // crea js/areas/<area>/indice.js e impórtala aquí.
 
-import { cargar, estado, escuchar, escucharGuardado, revisarEspejo, usarPruebaDePintado, ponerAlDiaMigracion } from './nucleo/estado.js';
+import { cargar, estado, escuchar, escucharGuardado, revisarEspejo, revisarApartado, usarPruebaDePintado, ponerAlDiaMigracion } from './nucleo/estado.js';
 import { arrancar, pintar, probarPantallas } from './nucleo/router.js';
 import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
@@ -52,10 +52,13 @@ escucharGuardado(ev => {
     quitarAvisoFijo(); aviso('Ya se guarda de nuevo');
   } else if (ev.tipo === 'externo') {
     if (ev.perdido) aviso('Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo guardar ni apartar y se ha perdido.', 'error');
-    else aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado.' : 'Se han cargado los cambios guardados en otra ventana', 'info');
+    else aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado (puedes recuperarlo en Perfil › Ajustes).' : 'Se han cargado los cambios guardados en otra ventana', 'info');
+    if (ev.apartado) pintar();
   }
 });
 arrancar();
+// Lo apartado (Perfil › Ajustes) se lee del espejo sin esperar: si hay algo, se repinta.
+revisarApartado().then(a => { if (a) pintar(); }, () => {});
 if (migrado && migrado.sesiones) aviso(`He traído ${migrado.sesiones} sesiones nuevas de la app anterior`, 'info');
 // Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).
 document.documentElement.setAttribute('data-arrancado', '');

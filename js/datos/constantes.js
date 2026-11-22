@@ -39,6 +39,10 @@ export const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 export const DIAS_CORTOS = ['', 'L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 // Lo que opina cada uno de un ejercicio. El entrenador nunca propone los rechazados.
+// Largo máximo de los textos libres que escribe la persona (D4): el mismo en el campo (maxlength) y en el
+// normalizador de las copias, para que restaurar nunca recorte en silencio lo que la app dejó escribir.
+export const LARGO_TEXTO = { notaLesion: 1000, comentarioEjercicio: 1000, comentarioCierre: 2000, notasPerfil: 2000 };
+
 export const GUSTOS = {
   rechazo: { nombre: 'No lo quiero', icono: '⛔' },
   nogusta: { nombre: 'No me gusta', icono: '👎' },
