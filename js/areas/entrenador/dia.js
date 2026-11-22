@@ -5,7 +5,7 @@
 
 import { analizarEjercicios, preferencia } from '../../reglas/contexto.js';
 import { cargaMuscular, rango, sesionesHechas } from '../../reglas/progresion.js';
-import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRehab, riesgoDetalle, techoDolor as techoZona } from '../../reglas/catalogo.js';
+import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRehab, riesgoDetalle, techoDolor as techoZona, bandasZonas, nivelesDe, riesgoHoy, faseLesion, alternativas, detalleDe } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS, OBJETIVOS } from '../../datos/constantes.js';
 import { semanaISO } from '../../nucleo/modelo.js';
 import { restriccionesSalud } from './salud.js';
@@ -41,13 +41,18 @@ const ESTIRA = {
   gluteo: ['estiramiento-gluteo-rodilla-pecho', 'estiramiento-figura-4'], gemelo: ['estiramiento-gemelo-pared'], core: ['gato-camello'],
   natacion: ['estiramiento-hombro-cruzado'], cardio: ['estiramiento-gemelo-pared'],
 };
-// Estiramientos sin id para completar la vuelta en cualquier lugar (de pie, sin riesgo por zona).
+// Estiramientos sin id para completar la vuelta en cualquier lugar (de pie), con su riesgo por zona como en el
+// catálogo (S2, C-EST-2): con esa zona en B2 o más no salen. El validador los comprueba por el nombre.
 const ESTIRA_LIBRE = {
-  piscina: [['Estiramiento de hombros en el borde', 'Agarrado al borde, deja caer el pecho hacia el agua, 30 s.'], ['Estiramiento de gemelos en el borde', 'Puntas contra la pared de la piscina y talón abajo, 30 s por pierna.'], ['Estiramiento de espalda en el borde', 'Agarrado al borde con los brazos estirados, lleva la cadera atrás, 30 s.']],
-  otro: [['Estiramiento de pecho de pie', 'Mano en una pared a la altura del hombro; gira el cuerpo al lado contrario, 30 s por lado.'], ['Estiramiento de gemelos de pie', 'Manos en la pared, una pierna atrás con el talón apoyado, 30 s por pierna.'], ['Estiramiento de espalda de pie', 'Manos juntas al frente, redondea la espalda y empuja las manos lejos, 30 s.']],
+  piscina: [['Estiramiento de hombros en el borde', 'Agarrado al borde, deja caer el pecho hacia el agua, 30 s.', { hombro: 1, dorsal: 1 }], ['Estiramiento de gemelos en el borde', 'Puntas contra la pared de la piscina y talón abajo, 30 s por pierna.', { tobillo_pie: 1 }], ['Estiramiento de espalda en el borde', 'Agarrado al borde con los brazos estirados, lleva la cadera atrás, 30 s.', { hombro: 1, dorsal: 1, lumbar: 1 }]],
+  otro: [['Estiramiento de pecho de pie', 'Mano en una pared a la altura del hombro; gira el cuerpo al lado contrario, 30 s por lado.', { hombro: 1 }], ['Estiramiento de gemelos de pie', 'Manos en la pared, una pierna atrás con el talón apoyado, 30 s por pierna.', { tobillo_pie: 1 }], ['Estiramiento de espalda de pie', 'Manos juntas al frente, redondea la espalda y empuja las manos lejos, 30 s.', { lumbar: 1, dorsal: 1 }]],
 };
+// Último recurso si ningún estiramiento vale hoy (siempre hay uno en la vuelta, C-PRIN-4).
+export const ESTIRA_SUAVE = ['Estiramiento suave de lo que no te duele', 'Lento, 30 s por lado, sin tocar la zona que duele.'];
+const RIESGO_LIBRE = Object.fromEntries([...ESTIRA_LIBRE.piscina, ...ESTIRA_LIBRE.otro].map(([n, , r]) => [n, r]));
+export const libresDe = lugar => ESTIRA_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'];
 // En la calle, nada tumbado ni de rodillas (C-EST-4).
-const TUMBADO = ['postura-nino', 'estiramiento-isquios-tumbado', 'estiramiento-figura-4', 'gato-camello', 'estiramiento-gluteo-rodilla-pecho', 'estiramiento-flexor-cadera', 'rotacion-toracica-cuadrupedia'];
+const TUMBADO = ['postura-nino', 'estiramiento-isquios-tumbado', 'estiramiento-figura-4', 'gato-camello', 'estiramiento-gluteo-rodilla-pecho', 'estiramiento-flexor-cadera', 'rotacion-toracica-cuadrupedia', 'dead-bug']; // dead-bug: la activación lumbar
 // Ejercicios de referencia por músculo, de más a menos preferido (si son seguros y caben en el lugar y el nivel).
 const BASE = {
   pecho: ['press-pecho-maquina', 'press-banca-mancuernas', 'press-inclinado-mancuernas', 'press-inclinado-maquina', 'press-banca-barra', 'flexiones', 'flexiones-inclinadas', 'flexiones-rodillas'],
@@ -143,41 +148,9 @@ export function dosis(S, e, i, _lugar) {
   return { series: d[0], reps: reps + uni, descanso: Math.max(d[2], pausaMinima(tipo, rango(reps).lo)) };
 }
 
-// ── Bandas de dolor por zona (C-DOLOR-0, C-DOLOR-1, C-LES-1, C-LES-2) ──
-// Devuelve { zona: { dolor, banda 0-3, nueva, sinLesion, ficha, lesion } } para cada zona activa: lesión
-// activa del perfil o zona con dolor ≥ 1 hoy. La sesión del día usa el dolor de hoy; si hoy no se dice, el
-// de ficha con tope 6 (igual que el plan semanal y las lesiones con el dolor por revisar): B3 solo sale del
-// dolor de hoy ≥ 7.
-const SEMANA = 7 * 864e5;
-export function faseLesion(l) {
-  if (!l || l.tipo === 'puntual') return 'nueva';
-  if (l.tipo === 'recurrente') return 'cronica';
-  const desde = l.desde ? new Date(l.desde) : null;
-  if (!desde || Number.isNaN(+desde)) return 'nueva'; // sin `desde`: lo prudente (C-LES-6)
-  const sem = (Date.now() - desde) / SEMANA;
-  return sem < 6 ? 'nueva' : sem <= 12 ? 'subaguda' : 'cronica';
-}
-const bandaDe = d => (d >= 7 ? 3 : d >= 4 ? 2 : d >= 1 ? 1 : 0);
-export function bandasHoy(S, dolorHoy = {}, { plan = false } = {}) {
-  const out = {};
-  (S.perfil.lesiones || []).filter(l => l.activa).forEach(l => {
-    const hoy = !plan && dolorHoy[l.zona] != null && dolorHoy[l.zona] !== '' ? +dolorHoy[l.zona] : null;
-    const dolor = hoy != null ? hoy : Math.min(6, +l.dolor || 0);
-    if (out[l.zona] && out[l.zona].dolor >= dolor) return;
-    out[l.zona] = { dolor, banda: bandaDe(dolor), nueva: faseLesion(l) === 'nueva', sinLesion: false, ficha: +l.dolor || 0, lesion: l };
-  });
-  if (!plan) {
-    Object.entries(dolorHoy || {}).forEach(([z, v]) => {
-      const d = +v; if (!(d >= 1) || out[z]) return;
-      out[z] = { dolor: d, banda: bandaDe(d), nueva: true, sinLesion: true, ficha: null, lesion: null };
-    });
-  }
-  // Lesión nueva (o dolor sin lesión registrada): de 2 a 6 se trata como B2 (C-LES-2, C-LES-3).
-  Object.values(out).forEach(b => { if (b.nueva && b.banda === 1 && b.dolor >= 2) b.banda = 2; });
-  return out;
-}
-// Niveles para riesgo(): B0 se vigila como B1 (fuera r=2), B1 → 1, B2 → 2, B3 → 3.
-export const nivelesDe = bandas => Object.fromEntries(Object.entries(bandas).map(([z, b]) => [z, Math.max(1, b.banda)]));
+// ── Bandas de dolor por zona (C-DOLOR-0, C-DOLOR-1, C-LES-1, C-LES-2): la regla está en reglas/catalogo.js ──
+export { faseLesion, nivelesDe, riesgoHoy };
+export const bandasHoy = (S, dolorHoy = {}, op = {}) => bandasZonas(S.perfil, dolorHoy, op);
 export const maxDolorHoy = dolorHoy => Math.max(0, ...Object.values(dolorHoy || {}).map(Number).filter(Number.isFinite));
 
 // ── Contexto del día: lo que necesitan montarDia y el validador ──
@@ -196,18 +169,6 @@ export function contextoDia(S, op = {}) {
     energia: +op.energia || 3, futuro: !!op.futuro, edad: edadDe(S), an: analizarEjercicios(S),
   };
 }
-// Riesgo de hoy ('ok' · 'precaucion' · 'evitar') con el detalle de cada lesión (C-ZONA-SUB, riesgoDetalle del
-// PR 9; sin detalle, el de por defecto, que es el más prudente).
-export function riesgoHoy(e, niveles, bandas = {}) {
-  let peor = 'ok';
-  for (const [z, n] of Object.entries(niveles)) {
-    const r = riesgoDetalle(e, z, ((bandas[z] || {}).lesion || {}).detalle);
-    if (!r || !n) continue;
-    if (r === 2 || (r === 1 && n >= 2)) return 'evitar';
-    peor = 'precaucion';
-  }
-  return peor;
-}
 // Lo que cualquier ejercicio o tarea con id debe cumplir hoy (C-EST-4, C-DOLOR-1, C-SALUD-0).
 export function permitidoBase(S, e, { lugar, niveles, salud, bandas }) {
   if (!e || !e.l.includes(lugar) || !hayMaterial(e, lugar, S.perfil)) return false;
@@ -216,6 +177,16 @@ export function permitidoBase(S, e, { lugar, niveles, salud, bandas }) {
   if (salud && salud.excluir.has(e.id)) return false;
   return true;
 }
+
+// «Cambiar por otro» (COD-1): las alternativas de un ejercicio con la misma regla que el validador
+// (permitidoBase con las bandas de hoy, el lugar, el material, los rechazos y los datos de salud).
+// op: { lugar, dolorHoy, excluir, nivel }.
+export function alternativasHoy(S, e, op = {}) {
+  const ctx = contextoDia(S, { lugar: op.lugar, dolorHoy: op.dolorHoy || {} });
+  return alternativas(e, ctx.lugar, S.perfil, { excluir: op.excluir || [], nivel: op.nivel == null ? null : op.nivel, permitido: x => permitidoBase(S, x, ctx) });
+}
+// Lo que vale de un ejercicio en un lugar con el dolor de hoy (para el catálogo que se manda a la IA).
+export const permitidoEn = (S, lugar, dolorHoy = {}, { futuro = false } = {}) => { const ctx = contextoDia(S, { lugar, dolorHoy, futuro }); return e => permitidoBase(S, e, ctx); };
 
 // ── Cardio (D3, C-CARDIO-1 a 6, decisiones 4-7): la única regla de cuándo va y cuánto ──
 // Toda sesión lleva cardio. Devuelve { objetivo, minutos (mínimo), max, rpe, intervalos, obligatorio: true }.
@@ -248,6 +219,11 @@ export const CARDIO_LUGAR = {
   piscina: ['nado-continuo', 'aquajogging', 'caminar-agua'],
 };
 const ENCADENADO = ['marcha-estatica', 'step-bajo', 'jumping-jacks-sin-salto', 'boxeo-sombra', 'comba', 'cardio-sentado'];
+// Quien no sabe nadar 2 × 25 m seguidos (C-PISC-2): por tiempo, con tabla y donde haga pie, sea cual sea su nivel
+// de fuerza (el nivel no es de natación; lo prudente, C-PRIN-2): sin nado continuo, crol, espalda ni largos sin
+// tabla. Las patadas con tabla sí (es la técnica de su fila de C-PISC-2).
+const CON_TABLA = ['patada-crol-tabla', 'patada-espalda-tabla'];
+export const noSabeNadar = (S, e) => !!e && !S.perfil.nadar25 && (e.id === 'nado-continuo' || (e.m[0] === 'natacion' && e.t === 'distancia' && !CON_TABLA.includes(e.id)));
 export const esCardioValido = (e, lugar) => !!e && (lugar === 'piscina' ? CARDIO_LUGAR.piscina.includes(e.id) : e.m[0] === 'cardio' && e.t === 'tiempo' && (CARDIO_LUGAR[lugar] || []).includes(e.id));
 // Opciones de cardio permitidas hoy, de más a menos preferida (las de la ficha de la zona primero, PR 9).
 // sinRiesgo: ninguna etiqueta r en una zona activa (día de dolor alto, calentamiento).
@@ -258,7 +234,7 @@ export function opcionesCardio(S, ctx, { sinRiesgo = false } = {}) {
     const e = ex(id);
     if (!e || !permitidoBase(S, e, ctx) || e.niv > ctx.nivel) return false;
     if (sinRiesgo && Object.keys(ctx.bandas).some(z => (e.r || {})[z])) return false;
-    if (id === 'nado-continuo' && ctx.nivel === 1 && !S.perfil.nadar25) return false; // C-PISC-2: no sabe nadar 2 × 25 m
+    if (noSabeNadar(S, ex(id))) return false; // C-PISC-2: no sabe nadar 2 × 25 m, sea cual sea su nivel (S3)
     if (ctx.salud.sinImpacto && ['comba', 'carrera-suave', 'jumping-jacks-sin-salto'].includes(id)) return false;
     return true;
   };
@@ -288,6 +264,7 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
     partes.push(`En bloque continuo: 1-3 min de cada uno sin parar${otros.length ? ` (alterna con ${lista(otros)})` : ''} hasta sumar los minutos`);
   }
   if (ctx.lugar === 'piscina') partes.push('Seguido; si paras en el borde, menos de 20 s y sin parar el reloj');
+  if (ctx.lugar === 'piscina' && !S.perfil.nadar25) partes.push('Siempre donde hagas pie, con el agua por el pecho'); // C-PISC-2, S3
   const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(Boolean);
   if (cond) partes.push(cond);
   if (S.perfil.lugares.includes('piscina') && ctx.lugar === 'gym') partes.push('Si os apetece, hacedlo en la piscina: nado suave o aquajogging');
@@ -301,30 +278,33 @@ export const faseDeBanda = b => (b.banda === 0 ? 3 : b.banda === 1 && !b.nueva ?
 // Fases en las que un ejercicio sirve de rehabilitación para una zona (campo `rehab` del catálogo, PR 9:
 // número, lista de fases o { fase, detalle }). Sin detalle en la lesión, el de por defecto de la zona.
 export const fasesRehab = (e, z, detalle) => fasesDe(e, z, detalle);
-const detalleDe = (ctx, z) => ((ctx.bandas[z] || {}).lesion || {}).detalle;
+const detalleDe0 = (ctx, z) => ((ctx.bandas[z] || {}).lesion || {}).detalle;
 // Ejercicio solo de rehabilitación (fases 1-2, dosis propia): no cuenta como principal (los de fuerza sí).
 export const soloRehab = e => !!e.rehab && tipoEj(e) === 'propia' && !['core', 'cardio'].includes(e.m[0]);
 export function rehabValida(S, e, z, ctx) {
   const b = ctx.bandas[z]; if (!e || !b || b.banda >= 3) return false;
   if (!permitidoBase(S, e, ctx)) return false;
-  const fases = fasesRehab(e, z, detalleDe(ctx, z));
+  const fases = fasesRehab(e, z, detalleDe0(ctx, z));
   const conCampo = fases.length > 0;
   if (!conCampo && !((ZONAS[z] || {}).rehab || []).includes(e.id)) return false;
-  const r = riesgoDetalle(e, z, detalleDe(ctx, z));
+  // La fase la decide la banda de HOY (C-DOLOR-1, C-DOSIS-7): con 4-6 solo fase 1, aunque el plan o la IA
+  // traigan la de la ficha (S1).
+  if (conCampo && !fases.some(f => f <= faseDeBanda(b))) return false;
+  const r = riesgoDetalle(e, z, detalleDe0(ctx, z));
   if (r === 2) return false;
   if (r === 1 && !(b.banda === 0 && fases.includes(3))) return false;
   return true;
 }
 export function candidatosRehab(S, z, ctx) {
   const b = ctx.bandas[z]; if (!b) return [];
-  const fase = faseDeBanda(b), det = detalleDe(ctx, z);
+  const fase = faseDeBanda(b), det = detalleDe0(ctx, z);
   const mejor = e => Math.max(...fasesRehab(e, z, det).filter(f => f <= fase));
   const conCampo = ctx.pool.filter(e => fasesRehab(e, z, det).some(f => f <= fase));
   const ids = conCampo.length ? conCampo.sort((a, c) => mejor(c) - mejor(a) || a.id.localeCompare(c.id)).map(e => e.id) : ((ZONAS[z] || {}).rehab || []);
   return ids.map(ex).filter(e => rehabValida(S, e, z, ctx));
 }
 export function ejercicioRehab(S, e, z, ctx) {
-  const b = ctx.bandas[z], det = detalleDe(ctx, z), max = faseDeBanda(b);
+  const b = ctx.bandas[z], det = detalleDe0(ctx, z), max = faseDeBanda(b);
   const fs = fasesRehab(e, z, det).filter(f => f <= max);
   const fase = fs.length ? Math.max(...fs) : max;
   const d = dosisRehab(e, fase); // C-DOSIS-7
@@ -369,7 +349,30 @@ export function minutosVuelta(S, ctx) {
 // Reparte `total` minutos enteros entre n partes (al menos 1 cada una si se puede).
 export const repartir = (total, n) => Array.from({ length: n }, (_, i) => Math.floor(total / n) + (i < total % n ? 1 : 0));
 const tareaDe = (e, detalle, min) => ({ id: e.id, nombre: e.n, detalle, duracion: `${min} min` });
-export const tareaOk = (S, id, ctx) => { const e = ex(id); return !!e && permitidoBase(S, e, ctx) && !(ctx.lugar === 'calle' && TUMBADO.includes(id)); };
+// Tareas de la ficha de una zona (calentar o estirar) con su uso (C-EST-2), las del detalle de la lesión (o el
+// de por defecto). Uso: «normal» solo en B0-B1, «alivio» en cualquier banda, «activacion» en B0-B2.
+export function tareasFicha(z, tipo, detalle) {
+  const Z = ZONAS[z]; if (!Z || !Z.tareas) return [];
+  const det = detalleDe(z, detalle);
+  return (Z.tareas[tipo] || []).filter(t => !t.detalle || t.detalle.includes(det)).map(t => ({ ...t, nombre: t.texto || (ex(t.id) ? ex(t.id).n : t.id) }));
+}
+export const usoOk = (uso, banda) => (uso === 'normal' ? banda <= 1 : uso === 'activacion' ? banda <= 2 : true);
+// ¿La ficha de alguna zona activa no deja hoy esta tarea (por id o por nombre)? (S2, C-EST-2, C-DOLOR-4)
+const fichaLaQuita = (ctx, t) => Object.entries(ctx.bandas || {}).some(([z, b]) => ['calentar', 'estirar'].some(tipo =>
+  tareasFicha(z, tipo, (b.lesion || {}).detalle).some(f => (t.id ? f.id === t.id : !!f.texto && f.texto === t.nombre) && !usoOk(f.uso, b.banda))));
+export const tareaOk = (S, id, ctx) => { const e = ex(id); return !!e && permitidoBase(S, e, ctx) && !(ctx.lugar === 'calle' && TUMBADO.includes(id)) && !fichaLaQuita(ctx, { id }); };
+// Una tarea sin id (S2, S6): si su nombre es el de un ejercicio, se comprueba como él; si es un estiramiento
+// libre de la app, con su riesgo; si es un texto de la ficha de una zona, con su uso.
+export function tareaSinIdOk(S, t, ctx) {
+  const e = porNombre(t.nombre);
+  if (e) return tareaOk(S, e.id, ctx);
+  const r = RIESGO_LIBRE[t.nombre];
+  if (r && riesgoHoy({ id: '', r }, ctx.niveles, ctx.bandas) === 'evitar') return false;
+  return !fichaLaQuita(ctx, t);
+}
+// El ejercicio del catálogo que corresponde a un nombre de tarea (las tareas sin id de la IA o de la ficha).
+export const porNombre = n => { const k = normalizar(n).trim(); return k ? EJERCICIOS.find(e => normalizar(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizar(e.n).length >= 8 && k.includes(normalizar(e.n))) : null) : null; };
+const normalizar = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const conKgAntes = (S, id) => sesionesHechas(S).some(s => (s.ejercicios || []).some(y => y.id === id && (y.sets || []).some(z => z.hecha && +z.kg > 0)));
 // elegidos: ejercicios principales (del catálogo). total: minutos (si no, los de C-CAL-1).
 export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
@@ -399,9 +402,13 @@ export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
   if (x > 0) {
     // Activación de una zona en B0-B2 (texto de su ficha) y aproximación del primer compuesto con carga.
     let queda = x;
-    const z = zonasRehab(ctx).find(z => ZONAS[z]);
-    const act = z && (ZONAS[z].calentar || []).map(t => (typeof t === 'string' ? t : t.nombre)).find(t => t && !/bici|cinta|el[ií]ptic|cardio|caminar|marcha/i.test(t));
-    if (act) { out.push({ nombre: act, detalle: `Activación para tu ${nombreZona(z)}, sin dolor.`, duracion: '1 min' }); queda -= 1; }
+    // La tarea «activacion» de su ficha, con su id para que el validador la compruebe (C-CAL-2, C-EST-4, S6).
+    let act = null, z = null;
+    for (const zz of zonasRehab(ctx).filter(zz => ZONAS[zz])) {
+      act = tareasFicha(zz, 'calentar', detalleDe0(ctx, zz)).find(t => t.uso === 'activacion' && usoOk(t.uso, ctx.bandas[zz].banda) && (t.id ? tareaOk(S, t.id, ctx) : tareaSinIdOk(S, t, ctx)));
+      if (act) { z = zz; break; }
+    }
+    if (act) { out.push({ ...(act.id ? { id: act.id } : {}), nombre: act.nombre, detalle: `Activación para tu ${nombreZona(z)}, sin dolor.`, duracion: '1 min' }); queda -= 1; }
     const primero = elegidos.find(e => tipoEj(e) === 'compuesto');
     if (primero && queda > 0) {
       const conKg = conKgAntes(S, primero.id);
@@ -422,19 +429,21 @@ export function vueltaDe(S, ctx, elegidos = [], { total } = {}) {
   // Estiramiento de la ficha de la zona: solo si alivia (C-EST-2). Sin la marca de la ficha (PR 9), solo en B0-B1.
   if (T >= 5) {
     Object.entries(ctx.bandas).filter(([z]) => ZONAS[z]).forEach(([z, b]) => {
-      const t = (ZONAS[z].estirar || []).map(x => (typeof x === 'string' ? { nombre: x } : x)).find(x => (x.alivio ? b.banda <= 3 : b.banda <= 1) && (!x.id || tareaOk(S, x.id, ctx)));
-      if (t && est.length < 1) est.push({ ...(t.id && ex(t.id) ? { id: t.id } : {}), nombre: t.nombre || ex(t.id).n, detalle: `Para tu ${nombreZona(z)}: 30 s por lado. Si al estirar el dolor sube o notas hormigueo, sáltalo.`, duracion: '1 min' });
+      // Solo los de su ficha con el uso que permite su banda de hoy, con su id (C-EST-2, S2, S6).
+      const t = tareasFicha(z, 'estirar', (b.lesion || {}).detalle).find(x => usoOk(x.uso, b.banda) && (x.id ? tareaOk(S, x.id, ctx) : tareaSinIdOk(S, x, ctx)));
+      if (t && est.length < 1) est.push({ ...(t.id ? { id: t.id } : {}), nombre: t.nombre, detalle: `Para tu ${nombreZona(z)}: 30 s por lado. Si al estirar el dolor sube o notas hormigueo, sáltalo.`, duracion: '1 min' });
     });
   }
   // Estiramientos de lo trabajado (C-EST-1) y, si faltan, de pie y sin riesgo para el lugar.
   const trabajados = [...new Set(elegidos.flatMap(e => [e.m[0], ...(e.s || []).slice(0, 1)]))];
   [...trabajados, 'gemelo', 'hombro', 'pecho', 'isquios', 'cuadriceps'].flatMap(m => ESTIRA[m] || []).filter((id, i, a) => a.indexOf(id) === i && tareaOk(S, id, ctx))
     .forEach(id => { if (est.length < nEst) est.push(tareaDe(ex(id), '30 s por lado, tensión suave (3-4 de 10), sin rebotes.', 1)); });
-  const libres = ESTIRA_LIBRE[ctx.lugar === 'piscina' ? 'piscina' : 'otro'];
+  const libres = libresDe(ctx.lugar).filter(([n]) => tareaSinIdOk(S, { nombre: n }, ctx));
   for (let i = 0; est.length < nEst && i < libres.length; i++) est.push({ nombre: libres[i][0], detalle: libres[i][1], duracion: '1 min' });
+  if (!est.length) est.push({ nombre: ESTIRA_SUAVE[0], detalle: ESTIRA_SUAVE[1], duracion: '1 min' });
   if (est.length < nEst) est[est.length - 1].duracion = `${1 + nEst - est.length} min`;
   out.push(...est);
-  out.push({ nombre: 'Respiración', detalle: ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.', duracion: `${resp} min` });
+  out.push({ nombre: 'Respiración', detalle: ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : ctx.salud.sinTumbado ? 'Sentado, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.', duracion: `${resp} min` });
   return out;
 }
 
@@ -524,7 +533,9 @@ export function valePrincipal(S, e, ctx, m = e.m[0]) {
   if (e.m[0] !== m || soloRehab(e)) return false;
   if (ctx.lugar === 'piscina') {
     if (e.m[0] === 'movilidad' || CARDIO_LUGAR.piscina.includes(e.id) || NO_PRINCIPAL_AGUA.includes(e.id)) return false;
-    // Principiante que no sabe nadar 2 × 25 m: nada de largos de nivel 2 (C-PISC-2, C-DOSIS-10).
+    // Quien no sabe nadar 2 × 25 m: nada de largos sin tabla, con cualquier nivel (C-PISC-2, S3); y nada de nivel
+    // superior salvo crol y espalda para quien sí sabe (C-DOSIS-10).
+    if (noSabeNadar(S, e)) return false;
     if (e.niv > ctx.nivel && !(S.perfil.nadar25 && ['crol', 'espalda'].includes(e.id))) return false;
     return true;
   }
@@ -541,7 +552,11 @@ export function elegirPrincipales(S, ctx, op) {
     const c = ctx.pool.filter(e => valePrincipal(S, e, ctx, m) && !elegidos.includes(e) && !excluir.includes(e.id)
       && Object.keys(ctx.bandas).every(z => !(e.r || {})[z] || conRiesgo(z) < 2)); // C-DOSIS-4: como mucho 2 con r por zona
     const nivelOk = c.filter(e => e.niv <= ctx.nivel || ctx.lugar === 'piscina'); // C-DOSIS-10
-    return nivelOk.length ? nivelOk : c.filter(e => e.niv === Math.min(...c.map(x => x.niv)));
+    if (nivelOk.length) return nivelOk;
+    // Uno de nivel superior solo si no hay NINGUNO de su nivel para ese músculo aquí (C-DOSIS-10, D-B): si ya
+    // se ha elegido el de su nivel, el hueco se queda vacío (S19).
+    if (ctx.pool.some(e => e.niv <= ctx.nivel && valePrincipal(S, e, ctx, m))) return [];
+    return c.filter(e => e.niv === Math.min(...c.map(x => x.niv)));
   };
   const maximo = op.maximo || 9;
   for (let i = 0; i < huecos.length * 2 && elegidos.length < maximo; i++) {
@@ -613,7 +628,7 @@ export function montarDia(S, op) {
   if (evitados.length) explicacion.push(`Dejo fuera o al final ${lista(evitados.slice(0, 3))}: no te gusta o te ha molestado.`);
   const estancados = elegidos.length ? Object.values(an).filter(a => a.estado === 'estancado' && !elegidos.some(e => e.id === a.id)) : [];
   if (estancados.length) explicacion.push(`Cambio ${lista(estancados.slice(0, 2).map(a => ex(a.id).n.toLowerCase()))} por variantes: llevabas 4 sesiones sin mejorar.`);
-  explicacion.unshift(resumenDia(S, { plantilla, lugar, elegidos, rehab, cardio, an, carga, extraCardio: op.extraCardio || 0 }));
+  explicacion.unshift(resumenDia(S, { plantilla, lugar, elegidos, rehab, cardio, an, carga, extraCardio: op.extraCardio || 0, dolorHoy: ctx.dolorHoy }));
   const dia = { fuente: 'reglas', lugar, minutos, nombre: plantilla.nombre, foco: [...new Set(elegidos.map(e => MUSCULOS[e.m[0]]))].slice(0, 4).join(', '), tipo, explicacion, calentamiento, ejercicios, vuelta };
   // Validador único también al montar los días (C-PRIN-3).
   const v = validarSesion(S, dia, { lugar, minutos, dolorHoy: ctx.dolorHoy, energia: ctx.energia, futuro: ctx.futuro, origen: 'reglas', k, tipo });
@@ -625,7 +640,7 @@ export function montarDia(S, op) {
 export function resumenDia(S, c) {
   const musc = [...new Set(c.elegidos.map(e => minus(MUSCULOS[e.m[0]])))].slice(0, 3);
   const partes = [`${c.plantilla.nombre}${musc.length ? ` (${lista(musc)})` : ''} porque buscas ${objsTxt(S)}`];
-  if (c.rehab.length) partes.push(`ejercicios para ${lista([...new Set(c.rehab.map(r => zonaTxt(S, r.zona)))])}`);
+  if (c.rehab.length) partes.push(`ejercicios para ${lista([...new Set(c.rehab.map(r => zonaTxt(S, r.zona, c.dolorHoy)))])}`); // el dolor de hoy (IA-5)
   if (c.cardio) partes.push(`${c.cardio.reps} de cardio${c.extraCardio ? ' (más que antes: tu peso no baja)' : ''}`);
   const cambiados = Object.values(c.an).filter(a => motivoFuera(a) && ex(a.id) && !c.elegidos.some(e => e.id === a.id)).map(a => minus(ex(a.id).n));
   let t = partes.length > 1 ? `${partes[0]}, con ${lista(partes.slice(1))}` : partes[0];

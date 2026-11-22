@@ -19,7 +19,7 @@
 // - salud.js    datos de salud del perfil (D4) y sus restricciones.
 // - mias.js     «Mis sesiones»: guardar una sesión para repetirla (el check-in la ajusta a hoy, sin IA).
 
-export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab, limiteDolor } from './dia.js';
+export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab, limiteDolor, alternativasHoy } from './dia.js';
 export { validarSesion, problemasSesion, normalizarReps } from './validar.js';
 export { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
 export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS, T1, T2, T3, T6, T8 } from './alarma.js';

@@ -8,12 +8,12 @@ import { rutas, acciones, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, num, es, mmss, movimientoReducido } from '../../nucleo/ui.js';
 import { crearEjercicio, trabajoHecho } from '../../nucleo/modelo.js';
-import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
+import { ex, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
-import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias } from '../entrenador/entrenador.js';
+import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias, alternativasHoy } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio' };
@@ -665,7 +665,7 @@ acciones({
     const esMia = !!(s.origen && s.origen.tipo === 'mia');
     const dd = x.dolorDurante;
     const dolorHoy = { ...((s.checkin && s.checkin.dolor) || {}), ...(dd ? { [dd.zona]: Math.max(+dd.dolor, +(((s.checkin || {}).dolor || {})[dd.zona] || 0)) } : {}) };
-    const alts = alternativas(e, s.lugar, S.perfil, { excluir: s.ejercicios.map(y => y.id), dolorHoy, nivel: x.rol === 'principal' && !esMia ? Math.max(1, Math.min(3, +S.perfil.nivel || 1)) : null }).slice(0, 8);
+    const alts = alternativasHoy(S, e, { lugar: s.lugar, excluir: s.ejercicios.map(y => y.id), dolorHoy, nivel: x.rol === 'principal' && !esMia ? Math.max(1, Math.min(3, +S.perfil.nivel || 1)) : null }).slice(0, 8);
     const hechas = dd ? 0 : x.sets.filter(z => z.hecha).length;
     const pl = hechas > 1;
     abrirHoja(`<h2>Cambiar ${h(minus(e.n))}</h2>

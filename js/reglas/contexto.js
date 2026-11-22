@@ -2,7 +2,7 @@
 // historial resumido, recuperación muscular y comentarios recientes. La IA decide; las reglas filtran antes
 // (nada peligroso llega al catálogo) y corrigen después (kilos acotados, ver progresion.acotarKg).
 
-import { ex, disponibles, nivelesZona, zonasRiesgo, ZONAS, rehabPorFase, techoDolor } from './catalogo.js';
+import { ex, disponibles, zonasRiesgo, ZONAS, rehabPorFase, techoDolor, bandasZonas, nivelesDe } from './catalogo.js';
 import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
 import { es } from '../nucleo/ui.js';
 import { semanaISO } from '../nucleo/modelo.js';
@@ -79,13 +79,14 @@ export function lesionesParaIA(S, dolorHoy = {}, bandas = null, idsCatalogo = nu
 // { id, m: [principales, ...secundarios marcados con «~»], l: ids de los lugares donde se puede hacer, niv, t,
 //   tipo (compuesto · aislamiento · corporal · propia, C-DOSIS-1), prec?: ids de las zonas activas en las que
 //   tiene riesgo (dosis «con precaución», C-DOSIS-4), gusto? }
-export function catalogoParaIA(S, lugares, dolorHoy = {}) {
-  const niveles = nivelesZona(S.perfil, dolorHoy);
+// permitidoEn (opcional): l => (e => bool), la regla del validador para ese lugar (COD-1: una sola regla).
+export function catalogoParaIA(S, lugares, dolorHoy = {}, { permitidoEn } = {}) {
+  const bandas = bandasZonas(S.perfil, dolorHoy), niveles = nivelesDe(bandas);
   const vistos = new Map();
-  lugares.forEach(l => disponibles(S.perfil, l, { dolorHoy }).forEach(e => {
+  lugares.forEach(l => disponibles(S.perfil, l, { dolorHoy, permitido: permitidoEn ? permitidoEn(l) : undefined }).forEach(e => {
     const x = vistos.get(e.id) || { id: e.id, m: [...e.m, ...(e.s || []).map(m => '~' + m)], l: [], niv: e.niv, t: e.t, tipo: e.tipo };
     x.l.push(l);
-    const z = zonasRiesgo(e, niveles); if (z.length) x.prec = z.join(',');
+    const z = zonasRiesgo(e, niveles, bandas); if (z.length) x.prec = z.join(',');
     const g = S.perfil.gustos[e.id]; if (g) x.gusto = g === 'gusta' ? 'le gusta' : 'no le gusta';
     vistos.set(e.id, x);
   }));

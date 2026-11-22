@@ -22,17 +22,15 @@
 //     cada tarea con id válida para el lugar y el dolor (C-EST-4).
 //  8. Tiempo ≤ pedido + 10 % con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
 
-import { ex, hayMaterial } from '../../reglas/catalogo.js';
+import { ex, hayMaterial, puntosTipo } from '../../reglas/catalogo.js';
 import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga } from '../../reglas/progresion.js';
 import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
-  rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
-  calentamientoDe, vueltaDe, tiempoSesionExacto, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
-  sincronizarDosis, techoDolor,
+  rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, faseDeBanda, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
+  calentamientoDe, vueltaDe, tiempoSesionExacto, tareaSinIdOk, porNombre, tiempoEj, notaCardio, tiempoEjercicios, minutosTareas, minutosCalentamiento, minutosVuelta, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
+  sincronizarDosis, techoDolor, noSabeNadar,
 } from './dia.js';
 import { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
-import { normalizarTexto } from './alarma.js';
-import { EJERCICIOS } from '../../reglas/catalogo.js';
 
 const copia = x => JSON.parse(JSON.stringify(x));
 const nombre = e => minus(e.n);
@@ -40,6 +38,8 @@ const ROLES = ['principal', 'rehab', 'cardio'];
 export const ULTIMO_RECURSO = 'último recurso';
 // Nota de técnica de un principal de nivel superior que se mantiene en una de «Mis sesiones» (C-MIA-2).
 export const NOTA_NIVEL = 'Es de un nivel más alto que el tuyo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
+// Nota de un principal de nivel superior porque no hay otro de su nivel para ese músculo (C-DOSIS-10).
+export const NOTA_SIN_NIVEL = 'Aquí no hay otro de tu nivel para este músculo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
 // La explicación lleva el último recurso (y así el validador acepta menos de 3 principales, C-TIEMPO-2).
 export const esUltimoRecurso = t => /\(último recurso\)|no caben tu cardio/.test(String(t));
 const LUGAR_TXT = { gym: 'el gimnasio', casa: 'casa', calle: 'la calle', piscina: 'la piscina' };
@@ -73,8 +73,11 @@ function motivoNoVale(S, e, ctx) {
     return `carga tu ${nombreZona(z)}${ctx.bandas[z] ? `, que hoy está a ${ctx.bandas[z].dolor}/10` : ''}`;
   }
   if (ctx.salud.excluir.has(e.id)) return 'no va con tus datos de salud';
+  if (ctx.lugar === 'piscina' && noSabeNadar(S, e)) return 'aún no nadas 2 × 25 m seguidos: hoy, donde hagas pie y con tabla'; // C-PISC-2, S3
   return null;
 }
+// ¿Hay algún principal de su nivel para ese músculo hoy (aunque ya esté en la sesión)?
+const hayDeSuNivel = (S, ctx, m, salvo) => ctx.pool.some(a => a.id !== salvo && a.m[0] === m && a.niv <= ctx.nivel && valePrincipal(S, a, ctx));
 // Alternativa del mismo músculo que sí vale hoy como principal (de su nivel si la hay).
 function alternativa(S, ctx, e, excluir, actuales = []) {
   const mat = new Set(e.mat);
@@ -84,8 +87,10 @@ function alternativa(S, ctx, e, excluir, actuales = []) {
   // Como mucho un principal por músculo: solo alternativas de un músculo que aún no esté (N1).
   const libres = c.filter(a => !repetidos(a.m[0]));
   const nivelOk = libres.filter(a => a.niv <= ctx.nivel);
+  // Uno de nivel superior solo si no hay ninguno de su nivel para ese músculo (C-DOSIS-10, S19).
+  if (!nivelOk.length && hayDeSuNivel(S, ctx, e.m[0], e.id)) return null;
   return (nivelOk.length ? nivelOk : libres)
-    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) - Math.abs(a.niv - e.niv) + (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) }))
+    .map(a => ({ a, p: (a.m[0] === e.m[0] ? 10 : 0) + a.mat.filter(m => mat.has(m)).length * 3 + (a.t === e.t ? 2 : 0) + puntosTipo(a, e) - Math.abs(a.niv - e.niv) + (riesgoHoy(a, ctx.niveles, ctx.bandas) === 'ok' ? 3 : 0) + ((S.perfil.gustos || {})[a.id] === 'gusta' ? 3 : 0) - ((S.perfil.gustos || {})[a.id] === 'nogusta' ? 4 : 0) }))
     .sort((x, y) => y.p - x.p || x.a.id.localeCompare(y.a.id)).map(x => x.a)[0] || null;
 }
 
@@ -165,14 +170,23 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   const cal = sesion.calentamiento || [], vue = sesion.vuelta || [];
   if (cal.length < 2 || cal.some(t => !t.nombre)) out.push('calentamiento incompleto');
   if (vue.length < 2 || !vue.some(esEstiramiento)) out.push('vuelta sin estiramientos');
-  [...cal, ...vue].forEach(t => { if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); });
+  [...cal, ...vue].forEach(t => {
+    if (t.id && ex(t.id)) { if (!tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); }
+    else if (t.nombre && !tareaSinIdOk(S, t, ctx)) out.push(`tarea «${t.nombre}» no vale hoy`); // S2, S6: también las sin id
+  });
   if (!alto && !suave) {
     // Una de «Mis sesiones» se respeta tal cual: ni mínimo de principales ni tope de tiempo (C-MIA-1).
     const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || sesion.tipo === 'suave' || !!ctxIn.mia; // el día suave lo marca su tipo, no un texto
     const prin = ejs.filter(x => x.rol === 'principal').length;
     if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) out.push(`${prin} principales`);
+    // Una zona en B2 siempre lleva rehabilitación; una en B0-B1, solo si cabe con el calentamiento y la vuelta
+    // enteros: el paso 4 de C-TIEMPO-2 la quita antes de acortarlos (paso 5), así que no es un fallo (S5).
+    const tEntero = tiempoEjercicios(ejs) + Math.max(minutosTareas(sesion.calentamiento) ?? 8, minutosCalentamiento(S, ctx)) + Math.max(minutosTareas(sesion.vuelta) ?? 5, minutosVuelta(S, ctx));
     zonasRehab(ctx).forEach(z => {
-      if (candidatosRehab(S, z, ctx).length && !ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) out.push(`sin rehabilitación de ${z}`);
+      const c = candidatosRehab(S, z, ctx);
+      if (!c.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
+      const cabe = tEntero + tiempoEj(ejercicioRehab(S, c[0], z, ctx)) <= ctx.minutos * 1.1;
+      if (ctx.bandas[z].banda >= 2 || cabe) out.push(`sin rehabilitación de ${z}`);
     });
     if (tiempoSesionExacto(sesion) > ctx.minutos * 1.1 + 0.5 && !ultimo) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
   }
@@ -193,6 +207,9 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   let s = copia(sesion);
   s.lugar = lugar; s.minutos = minutos;
   s.explicacion = Array.isArray(s.explicacion) ? s.explicacion : s.explicacion ? [String(s.explicacion)] : [];
+  // De la IA no se fía el texto del último recurso (IA-2, C-TIEMPO-2): menos de 3 principales solo si el ajuste de
+  // tiempo de la app (paso 8) confirma que no caben; si hace falta, el paso 8 vuelve a escribir el aviso.
+  if (ctxIn.origen === 'ia') s.explicacion = s.explicacion.filter(t => !esUltimoRecurso(t));
 
   // 1. Día de dolor alto (C-DOLOR-4) o «solo suave» por datos de salud (C-SALUD-0): plantilla fija, sin IA.
   const alto = !ctx.futuro && maxDolorHoy(dolorHoy) >= 7;
@@ -202,8 +219,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       s = { ...base, fuente: s.fuente && s.fuente !== 'ia' ? s.fuente : 'reglas' };
       cambios.push(alto ? 'con dolor de 7 o más hoy, la sesión es la del día de dolor alto' : 'por tus datos de salud, hoy solo cardio suave y movilidad');
     }
-    notasSalud(s, ctx);
-    return { sesion: s, cambios, valida: problemasSesion(S, s, { ...ctxIn, lugar, minutos, dolorHoy }).length === 0, ultimoRecurso: false };
+    const notas = notasSalud(s, ctx);
+    return { sesion: s, cambios, valida: problemasSesion(S, s, { ...ctxIn, lugar, minutos, dolorHoy }).length === 0, ultimoRecurso: false, notasSalud: notas };
   }
 
   const conKg = idsConKg(S);
@@ -227,7 +244,11 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Rehabilitación: de una zona activa y sin riesgo en ella (C-DOSIS-1, C-ZONA-0).
     if (x.rol === 'rehab') {
       const z = Object.keys(ctx.bandas).find(z => rehabValida(S, e, z, ctx));
+      // Rehabilitación de una zona activa pero de una fase que hoy no toca (C-DOLOR-1, C-DOSIS-7): fuera; el
+      // paso 3 pone la de su fase.
+      const deOtraFase = !z && Object.entries(ctx.bandas).find(([zz, b]) => b.banda <= 2 && fasesRehab(e, zz, ((b.lesion || {}).detalle)).length);
       if (z) x.zona = z;
+      else if (deOtraFase) { cambios.push(`quito ${nombre(e)} de la rehabilitación: con tu ${nombreZona(deOtraFase[0])} a ${deOtraFase[1].dolor}/10 hoy toca la fase ${faseDeBanda(deOtraFase[1])}`); quitados.add(e.id); continue; }
       else if (valePrincipal(S, e, ctx) && !motivoNoVale(S, e, ctx)) { x.rol = 'principal'; cambios.push(`${nombre(e)} no es rehabilitación de ninguna zona activa hoy: va como principal`); }
       else { cambios.push(`quito ${nombre(e)} de la rehabilitación: ${motivoNoVale(S, e, ctx) || 'no es para tus zonas activas de hoy'}`); continue; }
     }
@@ -252,6 +273,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       } else if (e.niv > ctx.nivel && !(lugar === 'piscina' && S.perfil.nadar25 && ['crol', 'espalda'].includes(e.id))) {
         const alt = alternativa(S, ctx, e, [...vistos, ...propuestos], ejs);
         if (alt && alt.niv <= ctx.nivel) { cambios.push(`cambio ${nombre(e)} por ${nombre(alt)}: es de un nivel más alto que el tuyo`); Object.assign(x, { id: alt.id, ...dosis(S, alt, nPrin(), lugar) }); delete x.kg; e = alt; }
+        // El de su nivel ya está en la sesión: este sobra (C-DOSIS-10, S19).
+        else if (hayDeSuNivel(S, ctx, e.m[0], e.id) && lugar !== 'piscina') { cambios.push(`quito ${nombre(e)}: es de un nivel más alto que el tuyo`); continue; }
+        // Sin otro de su nivel para ese músculo aquí, se queda y la nota lo explica (C-DOSIS-10, S13).
+        else if (!String(x.nota || '').includes(NOTA_SIN_NIVEL)) x.nota = `${NOTA_SIN_NIVEL} ${x.nota || ''}`.trim().slice(0, 300);
       }
     }
     if (vistos.has(e.id)) continue;
@@ -293,8 +318,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     else cardio.reps = `${min} min`;
     cardio.series = 1; cardio.descanso = 0;
     // Sin intervalos permitidos o con un esfuerzo máximo por salud, la nota es la de la regla (C-CARDIO-4, B4).
-    const ref = cardioDelDia(S, ctx, 0);
-    if (ref && (!cardio.nota || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2)) cardio.nota = ref.nota.replace(/^\d+ min/, cardio.reps);
+    // La nota es la del cardio que va (S17), no la del primero de la lista.
+    if (!cardio.nota || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
   }
 
   // 5. Principales: ≥ 3 (como mucho 3 con energía 1 y 4 con energía 2, C-ENERGIA-1); 2 con riesgo por zona.
@@ -403,7 +428,6 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   const tareaValida = t => t && typeof t === 'object' && (t.nombre == null || typeof t.nombre === 'string') && (t.nombre || (t.id && ex(t.id)));
   // Tareas sin id (la IA las manda así): se busca su ejercicio por el nombre; si no casa y hay zonas activas,
   // la tarea de la IA no se puede comprobar y se cambia por las de las reglas (C-EST-4, B3).
-  const porNombre = n => { const k = normalizarTexto(n).trim(); return k ? EJERCICIOS.find(e => normalizarTexto(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizarTexto(e.n).length >= 8 && k.includes(normalizarTexto(e.n))) : null) : null; };
   const conZonas = Object.keys(ctx.bandas).length > 0;
   const deIA = ctxIn.origen === 'ia';
   let descartadas = 0;
@@ -414,16 +438,13 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (conZonas) { descartadas++; return null; }
     return { ...t, id: undefined };
   }).filter(Boolean).filter(t => {
-    if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) { cambios.push(`quito ${nombre(ex(t.id))} ${donde}: ${motivoNoVale(S, ex(t.id), ctx) || 'no se hace en este lugar'}`); return false; }
+    if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) { cambios.push(`quito ${nombre(ex(t.id))} ${donde}: ${motivoNoVale(S, ex(t.id), ctx) || 'hoy no va con tu dolor o no se hace en este lugar'}`); return false; }
+    if (!(t.id && ex(t.id)) && t.nombre && !tareaSinIdOk(S, t, ctx)) { cambios.push(`quito «${String(t.nombre).slice(0, 40)}» ${donde}: hoy no va con tu dolor`); return false; }
     return true;
   }).map(t => ({ ...t, nombre: t.nombre || ex(t.id).n }));
   s.calentamiento = limpiar(s.calentamiento, 'del calentamiento');
   if (s.calentamiento.length < 2) { s.calentamiento = calentamientoDe(S, ctx, principales()); cambios.push('añado el calentamiento, que siempre va'); }
-  // Un ejercicio de equilibrio con apoyo en cada sesión con 60 años o más o por salud (C-EDAD-1, C-SALUD-0).
-  const eq = 'equilibrio-una-pierna';
-  if ((ctx.salud.equilibrio || (ctx.edad != null && ctx.edad >= 60)) && ex(eq) && tareaOk(S, eq, ctx) && !s.calentamiento.some(t => t.id === eq) && !ejs.some(x => x.id === eq)) {
-    s.calentamiento.push({ id: eq, nombre: ex(eq).n, detalle: '30 s por pierna con la mano cerca de una pared o una barra.', duracion: '1 min' });
-  }
+  ponerEquilibrio(S, s, ctx, ejs);
   // Sin historial no hay porcentajes: series de prueba (C-CAL-2).
   s.calentamiento.forEach(t => {
     if (/%/.test(t.detalle || '') && !principales().some(e => conKg.has(e.id))) { t.nombre = 'Series de prueba'; t.detalle = '1 × 10 muy ligera y 1 × 5 algo más pesada del primer ejercicio, para elegir el peso de hoy.'; }
@@ -437,21 +458,45 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   if (s.vuelta.length < 2) s.vuelta.push({ nombre: 'Respiración', detalle: '6 respiraciones lentas soltando el aire en 6 segundos.', duracion: '1 min' });
   if (descartadas) cambios.push(`cambio ${descartadas} tarea${descartadas > 1 ? 's' : ''} de calentamiento o vuelta que no puedo comprobar con tu lesión por las de la app`);
   s.ejercicios = ejs;
-  notasSalud(s, ctx);
+  let notas = notasSalud(s, ctx);
 
   // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
   const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
-  if (ultimo) s.explicacion.splice(1, 0, ultimo);
+  if (ultimo) {
+    // La explicación dice lo que de verdad queda (IA-5): sin fuerza, fuera los puntos de principales y de dosis
+    // y un primer punto nuevo con el dolor de hoy; con 2 en superserie, el número que queda.
+    const n = s.ejercicios.filter(x => x.rol === 'principal').length;
+    if (!n) {
+      const zs = zonasRehab(ctx).filter(z => s.ejercicios.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx)));
+      const c = s.ejercicios.find(x => x.rol === 'cardio');
+      s.explicacion = [`Hoy cardio${c ? ` (${c.reps})` : ''}${zs.length ? ` y ejercicios para ${lista(zs.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}` : ''}: con ${ctx.minutos} minutos no cabe también la fuerza.`,
+        ...s.explicacion.slice(1).filter(t => !/ejercicios principales|el primer básico va a|^Dosis para/.test(String(t)))];
+    } else s.explicacion = s.explicacion.map(t => String(t).replace(/\b\d+ ejercicios principales/, `${n} ejercicios principales`));
+    s.explicacion.splice(1, 0, ultimo);
+  }
   sincronizarDosis(s);
+  // El margen depende de que queden principales (el último recurso sin fuerza los quita).
+  if (!s.ejercicios.some(x => x.rol === 'principal')) { const fuera = notas.filter(n => /de margen en cada serie/.test(n)); s.explicacion = s.explicacion.filter(t => !fuera.includes(t)); notas = notas.filter(n => !fuera.includes(n)); }
   const valida = problemasSesion(S, s, { ...ctxIn, lugar, minutos, dolorHoy }).length === 0;
-  return { sesion: s, cambios, valida, ultimoRecurso: !!ultimo };
+  return { sesion: s, cambios, valida, ultimoRecurso: !!ultimo, notasSalud: notas };
+}
+
+// Un ejercicio de equilibrio con apoyo en cada sesión con 60 años o más o por salud (C-EDAD-1, C-SALUD-0).
+// También después de rehacer el calentamiento para cuadrar el tiempo (S4).
+const EQ = 'equilibrio-una-pierna';
+function ponerEquilibrio(S, s, ctx, ejs = s.ejercicios || []) {
+  if (!(ctx.salud.equilibrio || (ctx.edad != null && ctx.edad >= 60)) || !ex(EQ) || !tareaOk(S, EQ, ctx)) return;
+  if (s.calentamiento.some(t => t.id === EQ) || ejs.some(x => x.id === EQ)) return;
+  s.calentamiento.push({ id: EQ, nombre: ex(EQ).n, detalle: '30 s por pierna con la mano cerca de una pared o una barra.', duracion: '1 min' });
 }
 
 // Datos de salud en la explicación (C-SALUD-0) y margen mínimo (C-SALUD-1, C-EDAD-1, C-RIR-1).
+// Devuelve las notas, para que quien monte la explicación las ponga delante de lo que se pueda recortar (IA-3).
 function notasSalud(s, ctx) {
   const margen = Math.max(ctx.salud.margenMin || 0, ctx.edad != null && ctx.edad >= 60 ? 2 : 0);
   const notas = [...ctx.salud.notas, ...(margen && (s.ejercicios || []).some(x => x.rol === 'principal') ? [`Deja al menos ${margen} repeticiones de margen en cada serie.`] : [])];
   s.explicacion = [...(s.explicacion || []).slice(0, 1), ...notas.filter(n => !(s.explicacion || []).includes(n)), ...(s.explicacion || []).slice(1)];
+  return notas;
 }
 
 // Orden para cuadrar el tiempo (C-TIEMPO-2). Devuelve el texto del último recurso si se ha usado.
@@ -477,11 +522,15 @@ function ajustarTiempo(S, s, ctx, cambios) {
   // 4. Rehabilitación: de 2 por zona a 1; luego fuera la de las zonas en B0-B1 (nunca la última de una zona en B2).
   const deZona = z => s.ejercicios.filter(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx));
   const zonas = zonasRehab(ctx);
-  zonas.forEach(z => { while (T() > limite && deZona(z).length > 1) { const x = deZona(z).pop(); s.ejercicios.splice(s.ejercicios.indexOf(x), 1); } });
-  zonas.slice().reverse().forEach(z => { if (T() > limite && ctx.bandas[z].banda <= 1) deZona(z).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1)); });
+  // Nunca la última de una zona en B2, aunque el ejercicio sirva también para otra zona (p. ej. la prensión, de codo
+  // y de muñeca).
+  const ultimaDeB2 = x => zonas.some(z2 => ctx.bandas[z2].banda >= 2 && rehabValida(S, ex(x.id), z2, ctx) && deZona(z2).length <= 1);
+  zonas.forEach(z => { while (T() > limite && deZona(z).length > 1) { const x = deZona(z).filter(y => !ultimaDeB2(y)).pop(); if (!x) break; s.ejercicios.splice(s.ejercicios.indexOf(x), 1); } });
+  zonas.slice().reverse().forEach(z => { if (T() > limite && ctx.bandas[z].banda <= 1) deZona(z).filter(x => !ultimaDeB2(x)).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1)); });
   // 5. Calentamiento a 4 min y vuelta a 3.
   if (T() > limite) {
     s.calentamiento = calentamientoDe(S, ctx, prin().map(x => ex(x.id)), { total: 4 });
+    ponerEquilibrio(S, s, ctx);
     s.vuelta = vueltaDe(S, ctx, prin().map(x => ex(x.id)), { total: 3 });
     cambios.push('calentamiento de 4 minutos y vuelta a la calma de 3');
   }
