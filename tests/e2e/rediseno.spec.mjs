@@ -161,6 +161,10 @@ test('solo con el teclado: pestañas, foco al h1, hoja con foco al título, Tab 
   await expect(page.locator('#nav a')).toHaveCount(4);
   await expect(page.locator('html')).toHaveAttribute('data-persona', 'virginia');
   await sembrar(page, 'virginia');
+  // Tras elegir persona se va a Hoy (U5), que se repinta con lo sembrado: se espera a que quede quieta para que
+  // el Tab no caiga en un control que se está sustituyendo.
+  await expect(page).toHaveURL(/#hoy$/);
+  await page.waitForFunction(() => !document.getAnimations().some(a => a.playState === 'running') && !document.querySelector('.saliente'));
 
   // Tab hasta la pestaña Progreso (sin ratón) y Enter
   let llegó = false;
