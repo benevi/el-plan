@@ -7,7 +7,7 @@ import { montar } from '../ayuda/dom.mjs';
 const a = await montar({ ls: { elplan2: viejoDemo() } });
 after(() => a.cerrar());
 
-test('arranca en la bienvenida y al elegir a Víctor trae su sesión', async () => {
+test('arranca en la bienvenida y al elegir a Víctor trae su sesión (con concordancia, D7) y va a Hoy (U5)', async () => {
   await a.esperar(() => a.doc.querySelector('[data-act="bienvenida.elegir"]'));
   assert.equal(a.doc.title, 'Bienvenida · Pipos Fitness');
   a.clic('[data-act="bienvenida.elegir"][data-v="victor"]');
@@ -15,7 +15,8 @@ test('arranca en la bienvenida y al elegir a Víctor trae su sesión', async () 
   const S = a.estado.estado();
   assert.equal(S.dueño, 'victor');
   assert.equal(Object.keys(S.sesiones).length, 1);
-  assert.match(a.doc.querySelector('#aviso').textContent, /He traído 1 sesiones/);
+  assert.match(a.doc.querySelector('#aviso').textContent, /He traído 1 sesión de la app anterior/);
+  await a.esperar(() => a.w.location.hash === '#hoy', { que: 'ir a Hoy' });
 });
 
 test('el perfil migrado de Víctor muestra «Hombre»', async () => {

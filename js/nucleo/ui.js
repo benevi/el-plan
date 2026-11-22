@@ -2,6 +2,8 @@
 // Las áreas pintan HTML con plantillas y usan data-act="area.accion" para los botones (ver router.js).
 // El aspecto sale del sistema de diseño (css/tokens.css y css/componentes.css): aquí solo hay estructura.
 
+// «1 ejercicio», «5 ejercicios», «6 de 13 series» (concordancia en toda la app, D7)
+export const plural = (n, uno, varios, de = null) => de == null ? `${+n} ${+n === 1 ? uno : varios}` : `${+n} de ${+de} ${+de === 1 ? uno : varios}`;
 export const h = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const $ = (sel, raiz = document) => raiz.querySelector(sel);
 export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];

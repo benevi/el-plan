@@ -4,7 +4,7 @@
 
 import { cargar, estado, escuchar, escucharGuardado, revisarEspejo, usarPruebaDePintado, ponerAlDiaMigracion } from './nucleo/estado.js';
 import { arrancar, pintar, probarPantallas } from './nucleo/router.js';
-import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo } from './nucleo/ui.js';
+import { cerrarHoja, aviso, avisoFijo, quitarAvisoFijo, plural } from './nucleo/ui.js';
 import { PERSONAS } from './datos/constantes.js';
 import { iniciarVersiones } from './nucleo/version.js';
 import { iniciarCopias } from './nucleo/copia.js';
@@ -56,7 +56,7 @@ escucharGuardado(ev => {
   }
 });
 arrancar();
-if (migrado && migrado.sesiones) aviso(`He traído ${migrado.sesiones} sesiones nuevas de la app anterior`, 'info');
+if (migrado && migrado.sesiones) aviso(`He traído ${plural(migrado.sesiones, 'sesión nueva', 'sesiones nuevas')} de la app anterior`, 'info');
 // Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).
 document.documentElement.setAttribute('data-arrancado', '');
 try { performance.mark('pipos:arrancado'); } catch { /* sin marcas */ }
