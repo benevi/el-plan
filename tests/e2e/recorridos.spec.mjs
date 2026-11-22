@@ -373,7 +373,10 @@ for (const persona of ['victor', 'virginia']) {
       await page.click(`[data-act="bienvenida.elegir"][data-v="${persona}"]`);
       const deEllos = Object.values(viejo.workouts).filter(w => w.user === yo);
       await expect(page.locator('#aviso')).toContainText(`He traído ${deEllos.length} sesiones de la app anterior`);
-      // Sin objetivos todavía: lleva a Perfil, con el aviso del dolor estimado de lo migrado.
+      // Siempre a Hoy (U5): sin objetivos todavía, su tarjeta lleva a Perfil, con el aviso del dolor estimado de lo migrado.
+      await expect(page).toHaveURL(/#hoy$/);
+      await expect(page.locator('#vista')).toContainText('Cuéntale a tu entrenador quién eres');
+      await page.click('#vista a[href="#perfil"]:has-text("Completar mi perfil")');
       await expect(page).toHaveURL(/#perfil$/);
       await expect(page.locator('#nav a')).toHaveCount(4);
       await expect(page.locator('html')).toHaveAttribute('data-persona', persona);
@@ -741,8 +744,10 @@ for (const persona of ['victor', 'virginia']) {
       await p2.evaluate(() => navigator.serviceWorker.ready);
       await p2.waitForFunction(() => navigator.serviceWorker.controller !== null);
       await p2.click(`[data-act="bienvenida.elegir"][data-v="${persona}"]`);
-      await expect(p2).toHaveURL(/#perfil$/);
+      await expect(p2).toHaveURL(/#hoy$/); // siempre a Hoy (U5)
       expect(Object.keys((await datos(p2)).sesiones)).toEqual([]); // móvil limpio: nada que migrar
+      await p2.click('#nav a[href="#perfil"]');
+      await expect(p2).toHaveURL(/#perfil$/);
       await p2.click('[data-act="perfil.grupo"][data-v="ajustes"]');
       const [elegir] = await Promise.all([p2.waitForEvent('filechooser'), p2.click('#vista [data-act="perfil.importar"]')]);
       await elegir.setFiles(copia);
