@@ -4,7 +4,7 @@
 
 import { rutas, acciones, pestaña, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
-  infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, infoApartado, recuperarApartado, descartarApartado, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
+  infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, infoApartado, recuperarApartado, descartarApartado, avisoSustituyeApartado, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
@@ -355,7 +355,7 @@ acciones({
       const vieja = esCopiaVieja(txt);
       const pregunta = vieja
         ? `Es una copia de la app anterior: traeré lo de ${nombre(estado().dueño)} que aún no esté en este móvil. ¿Seguir?`
-        : 'Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello). ¿Seguir?';
+        : `Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello).${avisoSustituyeApartado()} ¿Seguir?`;
       if (!await confirmar(pregunta, { si: 'Cargar copia' })) return;
       await cargarCopia(txt);
     };

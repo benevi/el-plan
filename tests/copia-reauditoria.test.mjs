@@ -191,3 +191,15 @@ test('D8: cargar una copia v4 no pierde lo apartado de la otra persona (migracio
   assert.equal(S.sesiones['v-h0'].cierre.comentario, 'EDIT', 'los cambios sobre lo migrado vuelven');
   assert.equal(S.sesiones['v-h1'], undefined, 'lo borrado no resucita');
 });
+
+test('revisión #46: antes de una carga que sustituiría lo apartado se avisa', () => {
+  const de2 = copiaCon(2), de5 = copiaCon(5), de3 = copiaCon(3);
+  movilCon(9);
+  assert.equal(est.avisoSustituyeApartado(), '');
+  est.importar(de2);
+  assert.equal(est.avisoSustituyeApartado(), '', 'aún no hay nada apartado');
+  est.importar(de5);
+  assert.match(est.avisoSustituyeApartado(), /2 sesiones\) se sustituirán/);
+  est.importar(de3);
+  assert.equal(est.infoApartado().sesiones, 5);
+});

@@ -317,6 +317,7 @@ export async function recuperarApartado() {
   if (!r) { apartado = null; throw new ErrorCopia('Ya no hay nada apartado.'); }
   const res = importar(r.reg.txt, { interno: true, otraPersona: true });
   // Lo recuperado deja de estar apartado, salvo que lo de ahora haya ocupado ese mismo sitio (intercambio).
+  if (apartando) { try { await apartando; } catch { /* nada */ } apartando = null; } // que el espejo acabe de escribir
   if (res.apartado !== r.donde) await borrarApartado(r.donde);
   await revisarApartado();
   return res;
@@ -330,12 +331,22 @@ async function apartarConflicto(txt) {
   console.error('No se pudieron apartar los cambios de esta pestaña');
   return false;
 }
+let apartando = null;
+// ¿Cargar ahora otra copia sustituiría lo apartado? (hay «datos de antes» vigentes y algo apartado). La interfaz
+// lo avisa antes de confirmar.
+export const cargarSustituyeApartado = () => !!(infoAntesDeImportar() && apartado);
+export function avisoSustituyeApartado() {
+  const a = cargarSustituyeApartado() && apartado;
+  if (!a) return '';
+  const f = a.fecha ? new Date(a.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} sesiones) se sustituirán por lo de ahora.`;
+}
 // Al cargar una copia, lo de ahora se aparta ya (en pipos4-conflicto, sin esperar) o, si no cabe, en el espejo.
 // Devuelve dónde: 'local' o 'espejo'.
 function apartarYa(txt) {
   const reg = { txt, fecha: new Date().toISOString() };
   if (ponerApartadoLocal(reg)) { apartado = infoApartadoDe(reg, 'local'); return 'local'; }
-  apartarConflicto(txt);
+  apartando = apartarConflicto(txt); // si localStorage no da, al espejo (asíncrono): recuperarApartado lo espera
   return 'espejo';
 }
 

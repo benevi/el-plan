@@ -138,6 +138,12 @@ export async function llamarEnVivo(nombre, cuerpo, { signal, alProgreso = () => 
 // ── Texto para la persona ──
 // Frase que completa «… porque {texto}». Nunca el mensaje crudo de una excepción: solo textos fijos (y, para
 // los fallos de la IA, el mensaje fijo que manda el servidor).
+// El cupo diario de la IA (api/_freno.js) vuelve al empezar el día UTC: esa hora, en la de España.
+export function horaVuelveIA(ahora = new Date()) {
+  const t = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate() + 1));
+  return t.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+}
+export const esTopeIA = motivo => /tope diario de llamadas a la IA/.test(String(motivo || ''));
 export function textoError(e) {
   if (!(e instanceof ErrorApi)) return 'algo falló al leer la respuesta de la IA';
   switch (e.tipo) {
@@ -145,7 +151,7 @@ export function textoError(e) {
     case 'codigo': return 'el código de acceso no es correcto';
     case 'ritmo':
       // Los dos frenos del servidor (S1, api/_freno.js) dicen por qué.
-      if (/tope diario/.test(e.message)) return 'se ha llegado al tope diario de llamadas a la IA (mañana vuelve a estar)';
+      if (/tope diario/.test(e.message)) return `se ha llegado al tope diario de llamadas a la IA (vuelve a estar a las ${horaVuelveIA()})`;
       if (/código incorrecto/.test(e.message)) return 'demasiados intentos con un código incorrecto (prueba dentro de un rato)';
       return 'se han hecho demasiadas peticiones seguidas (prueba en un minuto)';
     case 'sobrecarga': return 'la IA está saturada ahora mismo (prueba en unos minutos)';

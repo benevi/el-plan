@@ -131,7 +131,8 @@ test('D1: un 429 (tope diario) también se reintenta; un 401 no (no se arregla s
   C.reiniciarCopia(); configurar();
   await C.cargarClave();
   C.configurarCopia({ fetch: async () => new Response('{"error":"código"}', { status: 401, headers: { 'content-type': 'application/json' } }) });
-  assert.equal(await C.copiarAhora('sesion'), 'error');
+  assert.equal(await C.copiarAhora('sesion'), 'espera', 'tras el 429, lo automático espera su turno (M4)');
+  assert.equal(await C.copiarAhora('manual'), 'error', '«Copiar ahora» sí lo intenta');
   assert.equal(vivos().length, 0, 'con el código malo no se insiste');
   const n = C.estadoNube();
   assert.deepEqual([n.fallida, n.reintenta, n.avisar], [true, false, true]);
@@ -166,4 +167,97 @@ test('D7: gustos, «Mis sesiones» y alarmas disparan copia (con la espera de 1 
   est.cambiar(S => { S.plan = null; }, 'plan');
   await pasar(120e3);
   assert.equal(enBlob(), n);
+});
+
+// ── Revisión del PR #46 ──
+const json = (status, cuerpo, cab = {}) => new Response(JSON.stringify(cuerpo), { status, headers: { 'content-type': 'application/json', ...cab } });
+const primerPlano = async () => { doc.hidden = true; doc.dispatchEvent(new Event('visibilitychange')); doc.hidden = false; doc.dispatchEvent(new Event('visibilitychange')); await esperarSubida(); };
+
+test('G1: con 401 no se vuelve a subir al volver a primer plano, al abrir ni al volver la red; al cambiar el código, sí', async () => {
+  await C.activar('victor', FRASE);
+  await C.iniciarCopias();
+  const base = f; let peticiones = 0;
+  C.configurarCopia({ fetch: async (u, i) => { peticiones++; return json(401, { error: 'código de acceso incorrecto' }); } });
+  hora(); sesion(); await esperarSubida();
+  assert.equal(peticiones, 1);
+  for (let i = 0; i < 12; i++) { reloj += 30e3; await primerPlano(); }
+  C._alVolverRed(); await esperarSubida();
+  C.reiniciarCopia(); configurar(); C.configurarCopia({ fetch: async () => { peticiones++; return json(401, { error: 'x' }); } });
+  assert.equal(await C.iniciarCopias(), 'bloqueada');
+  await pasarTodo();
+  assert.equal(peticiones, 1, 'una sola petición con el código malo');
+  assert.equal(C.estadoNube().fallida, true);
+  // Cambia el código en Ajustes: se vuelve a intentar al momento.
+  C.configurarCopia({ fetch: base });
+  est.cambiar(S => { S.ajustes.codigo = 'secreto2'; }, 'perfil-silencio');
+  process.env.APP_CODE = 'secreto2';
+  await esperarSubida();
+  assert.equal(enBlob(), 2);
+  assert.equal(C.estadoNube().fallida, false);
+  process.env.APP_CODE = 'secreto';
+});
+async function pasarTodo() { for (let i = 0; i < 5; i++) { const t = vivos()[0]; if (!t) return; reloj += t.ms; t.vivo = false; t.fn(); await esperarSubida(); } }
+
+test('M4: el 429 del tope diario no se reintenta hasta el día UTC siguiente (ni al volver a primer plano)', async () => {
+  await C.activar('victor', FRASE);
+  await C.iniciarCopias();
+  let peticiones = 0;
+  C.configurarCopia({ fetch: async () => { peticiones++; return json(429, { error: 'ya se han hecho muchas copias hoy; la siguiente, mañana' }); } });
+  hora(); sesion(); await esperarSubida(); // 2026-11-20T20:40Z
+  const t = vivos()[0];
+  assert.ok(reloj + t.ms >= Date.parse('2026-11-21T00:00:00Z') && reloj + t.ms <= Date.parse('2026-11-21T00:05:00Z'), new Date(reloj + t.ms).toISOString());
+  for (let i = 0; i < 6; i++) { reloj += 30 * 60e3; await primerPlano(); }
+  C.reiniciarCopia(); configurar(); C.configurarCopia({ fetch: async () => { peticiones++; return json(429, { error: 'x' }); } });
+  assert.equal(await C.iniciarCopias(), 'espera');
+  assert.equal(peticiones, 1);
+});
+
+test('M4: se respeta Retry-After y volver a primer plano no reinicia la espera creciente', async () => {
+  await C.activar('victor', FRASE);
+  await C.iniciarCopias();
+  let peticiones = 0;
+  C.configurarCopia({ fetch: async () => { peticiones++; return json(429, { error: 'demasiadas copias seguidas' }, { 'retry-after': '600' }); } });
+  hora(); sesion(); await esperarSubida();
+  assert.equal(vivos()[0].ms, 600e3);
+  for (let i = 0; i < 5; i++) { reloj += 60e3; await primerPlano(); }
+  assert.equal(peticiones, 1, 'antes de los 10 minutos, nada');
+  C.configurarCopia({ fetch: f });
+  reloj += 6 * 60e3; await primerPlano();
+  assert.equal(enBlob(), 2, 'pasada la espera, al volver a primer plano sí');
+});
+
+test('M3: activar con el código malo o sin red da error en vez de crear una sal nueva; con 503 sigue', async () => {
+  C.configurarCopia({ fetch: async () => json(401, { error: 'x' }) });
+  await assert.rejects(C.activar('victor', FRASE), e => e.codigo === 'codigo');
+  assert.equal(claves.regs.size, 0);
+  red = false;
+  await assert.rejects(C.activar('victor', FRASE), e => e.codigo === 'sin-red');
+  red = true;
+  C.configurarCopia({ fetch: async () => json(503, { error: 'x', activada: false }) });
+  assert.ok((await C.activar('victor', FRASE)).reg);
+});
+
+test('M3: tras activar, un 403 de etiqueta hace probar la lista con la frase y adoptar la sal que abre', async () => {
+  // Copias en la nube con FRASE (sal A), hechas desde otro móvil.
+  await C.activar('victor', FRASE); sesion(); await C.copiarAhora('manual');
+  const salA = C.b64u(claves.regs.get('victor').sal);
+  // Móvil nuevo: la lista no se pudo ver (503 un momento) y se creó la sal B.
+  claves.regs.clear(); C.reiniciarCopia(); configurar(); ls.clear();
+  const base = f; let listas = 0;
+  C.configurarCopia({ fetch: async (u, i) => (JSON.parse(i.body.length < 400 && typeof i.body === 'string' ? i.body : '{}').accion === 'listar' && listas++ === 0 ? json(503, { error: 'x' }) : base(u, i)) });
+  await C.activar('victor', FRASE);
+  assert.notEqual(C.b64u(claves.regs.get('victor').sal), salA);
+  reloj += 60e3; // la primera copia, enseguida
+  const r = await C.copiarAhora('activar');
+  assert.equal(r, 'ok', JSON.stringify(C.estadoNube()));
+  assert.equal(C.b64u(claves.regs.get('victor').sal), salA, 'adopta la clave registrada');
+});
+
+test('revisión #46: la etiqueta anterior se manda aunque pipos4-nube no diga de quién es', async () => {
+  await C.activar('victor', FRASE); sesion(); await C.copiarAhora('manual');
+  await C.cambiarFrase('victor', 'la frase nueva de este año');
+  const n = JSON.parse(ls.getItem('pipos4-nube')); delete n.persona; ls.setItem('pipos4-nube', JSON.stringify(n));
+  C.reiniciarCopia(); configurar(); await C.cargarClave('victor');
+  hora();
+  assert.equal(await C.copiarAhora('manual'), 'ok');
 });

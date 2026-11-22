@@ -4,7 +4,7 @@
 // Restaurar pasa SIEMPRE por importar() (que aparta antes lo actual en pipos4-antes-de-importar).
 
 import { acciones, pintar, rutaActual } from '../../nucleo/router.js';
-import { estado, cambiar, importar, ErrorCopia } from '../../nucleo/estado.js';
+import { estado, cambiar, importar, ErrorCopia, avisoSustituyeApartado } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, fechaCorta } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
 import { estadoNube, escucharNube, activar, cambiarFrase, copiarAhora, listar, abrirCopia, probarCopias, cargarClave, marcarBase,
@@ -163,7 +163,7 @@ async function restaurarDe(persona, c, { frase = null, clave = null, codigo, byt
     ? `Copia de ${nombre(m.persona)} del ${cuando(m.creada || c.fecha)}: ${+m.sesiones} sesiones${m.ultima ? `, la última del ${fechaCorta(m.ultima)}` : ''}.`
     : `Copia del ${cuando(c.fecha)} (de la primera versión, sin datos por dentro).`;
   const avisos = abierta.avisos.length ? ` Ojo: ${abierta.avisos.join(' ')}` : '';
-  if (!await confirmar(`${dentro}${avisos} Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello). ¿Restaurar?`, { si: 'Restaurar', peligro: !!abierta.avisos.length })) return false;
+  if (!await confirmar(`${dentro}${avisos} Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello).${avisoSustituyeApartado()} ¿Restaurar?`, { si: 'Restaurar', peligro: !!abierta.avisos.length })) return false;
   if (!await cargar(abierta.texto)) return false;
   // Si el móvil no tenía código, se queda el que se ha escrito para recuperar.
   if (codigo && !(estado().ajustes && estado().ajustes.codigo)) cambiar(S => { S.ajustes.codigo = codigo; }, 'perfil-silencio');

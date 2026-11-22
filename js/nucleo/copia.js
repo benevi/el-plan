@@ -393,8 +393,11 @@ async function pedir({ json, binario, cabeceras = {}, codigo }) {
   if (r.status === 503) throw new ErrorNube('Las copias en la nube aún no están activadas en el servidor.', 'inactiva', { status: 503 });
   if (r.status === 401) throw new ErrorNube('El código de acceso no es correcto (Perfil → Ajustes).', 'codigo', { status: 401 });
   if (r.status === 500) throw new ErrorNube('El servidor no está configurado.', 'servidor', { status: 500 });
-  if (r.status === 403 && datos && datos.etiqueta) throw new ErrorNube('La nube no reconoce la clave de este móvil para tus copias (quizá cambiaste la frase en otro móvil): actívalas otra vez con tu frase actual en Perfil › Copias.', 'etiqueta', { status: 403 });
-  throw new ErrorNube('La nube no responde: ' + msg + '.', 'servidor', { status: r.status });
+  if (r.status === 403 && datos && datos.etiqueta) throw new ErrorNube('La nube no reconoce la clave de este móvil para tus copias (quizá cambiaste la frase en otro móvil): actívalas otra vez con tu frase actual en Perfil › Copias. Si no la recuerdas o sigue igual, pide a Víctor que restablezca tu registro de copias (LEEME, «Quién sube»).', 'etiqueta', { status: 403 });
+  // Retry-After (segundos) del servidor: hasta entonces no se insiste (M4).
+  let espera = null;
+  try { const ra = r.headers && r.headers.get && r.headers.get('retry-after'); if (ra && /^\d+$/.test(ra)) espera = +ra * 1000; } catch { espera = null; }
+  throw new ErrorNube('La nube no responde: ' + msg + '.', 'servidor', { status: r.status, espera, mañana: r.status === 429 && /mañana/.test(msg) });
 }
 export async function listar(persona, opciones = {}) {
   const r = await pedir({ json: { accion: 'listar', persona }, ...opciones });
@@ -466,11 +469,33 @@ export async function probarCopias(persona, copias, { frase = null, reg = null, 
 // Compatibilidad (S3): una frase que ya no pasa calidadFrase pero abre copias que ya están en la nube se acepta
 // para seguir con ellas (rechazarla no protege nada: esas copias ya están hechas con ella); se devuelve
 // `floja: true` para recomendar cambiarla. Una frase floja nueva se rechaza siempre.
+let fraseReciente = null; // { persona, frase, hasta }: solo en memoria y unos minutos tras activar (M3)
+// Ante un 403 de etiqueta justo tras activar: con la frase de la activación, busca una copia que abra con otra sal
+// (la clave registrada) y la adopta. Devuelve true si cambió de clave.
+async function adoptarSalQueAbre(persona) {
+  const f = fraseReciente;
+  fraseReciente = null; // una sola vez
+  if (!f || f.persona !== persona || dep.ahora() > f.hasta) return false;
+  try {
+    const lista = await listar(persona);
+    const p = await probarCopias(persona, lista, { frase: f.frase });
+    const u = p.copias.find(c => c.abre && !(claveActual && c.sal === b64u(claveActual.sal)));
+    if (!u) return false;
+    await guardarClave(persona, p.claves.get(u.sal));
+    return true;
+  } catch { return false; }
+}
 export async function activar(persona, frase, { aunqueNoCoincida = false } = {}) {
   const q = calidadFrase(frase);
   if (!q.ok && !q.porBits) throw new ErrorNube(q.motivo, 'corta');
+  // M3: solo se sigue sin mirar la nube si las copias aún no están activadas en el servidor (503). Con el código
+  // malo, sin red o con la nube ocupada, se para: crear una sal nueva sin ver lo que hay acabaría en un 403.
   let lista;
-  try { lista = await listar(persona); } catch { lista = []; } // sin red o sin nube: se activa igual
+  try { lista = await listar(persona); } catch (e) {
+    if (!(e instanceof ErrorNube && e.codigo === 'inactiva')) throw e;
+    lista = [];
+  }
+  fraseReciente = { persona, frase, hasta: dep.ahora() + 10 * 60e3 };
   if (!q.ok) {
     let p;
     try { p = lista.length ? await probarCopias(persona, lista, { frase }) : null; } catch { p = null; }
@@ -504,13 +529,15 @@ async function guardarClave(persona, { clave, sal, iteraciones }) {
   // Si ya había una pendiente de usar (dos cambios antes de subir), se queda la primera: es la registrada.
   const ya = nube();
   const previa = claveActual && claveActual.persona === persona && !mismaSal(claveActual.sal, reg.sal)
-    && !(ya.persona === persona && typeof ya.etiquetaPrevia === 'string') ? claveActual : null;
+    && !((!ya.persona || ya.persona === persona) && typeof ya.etiquetaPrevia === 'string') ? claveActual : null;
   let etiquetaPrevia = null;
   if (previa) { try { etiquetaPrevia = await etiquetaDe(previa.clave, persona); } catch { etiquetaPrevia = null; } }
   const ok = await almacenClave.escribir(reg);
   if (!ok) throw new ErrorNube('Este móvil no deja guardar la clave de las copias (IndexedDB no disponible, p. ej. en modo privado).', 'sin-idb');
   if (estado() && estado().dueño === persona) claveActual = reg;
-  ponerNube({ error: null, ...(etiquetaPrevia ? { etiquetaPrevia } : {}) });
+  // Clave nueva: lo que estaba bloqueado por un error sin reintento (p. ej. «no reconoce la clave») se vuelve a probar.
+  const sinReintento = ya.pendiente && ya.pendiente.motivo === 'sin-reintento';
+  ponerNube({ error: null, ...(etiquetaPrevia ? { etiquetaPrevia } : {}), ...(sinReintento ? { pendiente: null } : {}) });
   return reg;
 }
 // La base: lo último subido o restaurado. Con siMayor, solo sube (nunca baja) lo que ya hubiera.
@@ -582,18 +609,46 @@ let intentos = 0;         // fallos seguidos (para la espera creciente)
 // Tras un fallo que puede arreglarse solo: queda pendiente (también tras cerrar la app) y se programa un
 // reintento con espera creciente. No depende del evento «online», que no llega si el navegador nunca se
 // creyó sin red (cobertura que se cae un momento, fetch cortado al pasar a segundo plano).
-function quedaPendiente(motivo, cambios = {}) {
-  const n = nube();
-  ponerNube({ ...cambios, pendiente: { desde: (n.pendiente && n.pendiente.desde) || new Date(dep.ahora()).toISOString(), motivo } });
-  if (tReintento) return;
-  const espera = REINTENTOS[Math.min(intentos, REINTENTOS.length - 1)];
-  intentos++;
-  tReintento = dep.setTimeout(() => { tReintento = null; copiarAhora('reintento'); }, espera);
+// pendiente = { desde, motivo, ultimo (ms del último intento), espera (ms hasta el siguiente), n (fallos
+// seguidos), hasta (ms: antes no se intenta nada automático; p. ej. el tope diario, M4) }. Se guarda en
+// pipos4-nube, así que la espera creciente sigue tras cerrar y abrir la app.
+function quedaPendiente(motivo, cambios = {}, { minimo = 0 } = {}) {
+  const n = nube(), ahora = dep.ahora();
+  const previo = n.pendiente || {};
+  const fallos = Number.isInteger(previo.n) ? previo.n : intentos;
+  const espera = Math.max(REINTENTOS[Math.min(fallos, REINTENTOS.length - 1)], minimo);
+  intentos = fallos + 1;
+  ponerNube({ ...cambios, pendiente: { desde: previo.desde || new Date(ahora).toISOString(), motivo, ultimo: ahora, espera, n: fallos + 1, ...(minimo ? { hasta: ahora + minimo } : {}) } });
+  programarReintento(espera, { cambiar: true });
+}
+function programarReintento(ms, { cambiar = false } = {}) {
+  if (tReintento && !cambiar) return;
+  dep.clearTimeout(tReintento);
+  tReintento = dep.setTimeout(() => { tReintento = null; copiarAhora('reintento'); }, Math.max(0, ms));
   if (tReintento && typeof tReintento.unref === 'function') tReintento.unref(); // en Node (pruebas): no retiene el proceso
 }
 function sinPendiente() {
   dep.clearTimeout(tReintento); tReintento = null; intentos = 0;
 }
+// ¿Se puede intentar ya una subida automática? (G1, M4). Lo pide la persona («Copiar ahora», «Subir de todos
+// modos», activar, cambiar la frase): siempre. Si no:
+// - con un error que no se arregla solo (código malo, la nube no reconoce la clave): nunca; se limpia al
+//   cambiar el código en Ajustes o al guardar otra clave;
+// - antes de `hasta` (tope diario o Retry-After): no;
+// - tras un error, antes de que pase su espera (sin reiniciarla al volver a primer plano o al abrir): no, salvo
+//   el propio reintento programado. Si no hay temporizador (app recién abierta), se programa el que falta.
+const PIDE_LA_PERSONA = new Set(['manual', 'forzada', 'activar', 'frase', 'reanudar', 'codigo']);
+function esperaPendiente(motivo) {
+  const p = nube().pendiente;
+  if (!p || PIDE_LA_PERSONA.has(motivo)) return 0;
+  const ahora = dep.ahora();
+  if (p.motivo === 'sin-reintento') return Infinity;
+  if (+p.hasta > ahora) return +p.hasta - ahora;
+  if (p.motivo === 'error' && motivo !== 'reintento' && +p.ultimo && +p.espera && ahora - p.ultimo < p.espera) return p.espera - (ahora - p.ultimo);
+  return 0;
+}
+// Siguiente día UTC (cuando el servidor reinicia el tope diario de subidas).
+const mañanaUTC = t => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) + 60e3; };
 // Errores que no se arreglan reintentando (código malo, petición rechazada): se avisa y no se insiste.
 const reintentable = e => e.codigo === 'sin-red' || (e.codigo === 'servidor' && (e.status >= 500 || e.status === 429 || e.status === 408));
 
@@ -610,20 +665,31 @@ async function subirYa(motivo, { forzar = false } = {}) {
     if (!n.retenida || n.retenida.sesiones !== m.sesiones) ponerNube({ retenida: { sesiones: m.sesiones, ultima: m.ultima, base: n.sesiones || 0, baseUltima: n.ultimaSesion || '' } });
     return 'retenida';
   }
+  const falta = esperaPendiente(motivo);
+  if (falta === Infinity) return 'bloqueada';
+  if (falta > 0) { programarReintento(falta); return 'espera'; }
   if (!dep.enLinea()) { faltaRed = true; quedaPendiente('sin-red'); return 'sin-red'; }
   const creada = new Date(dep.ahora()).toISOString();
   const bytes = await cifrar(empaquetar({ persona, creada, ...m }, exportar()), reg);
   if (bytes.length > LIMITE_SUBIDA) { ponerNube({ error: 'Tus datos ocupan demasiado para la nube: guarda una copia en un archivo.' }); return 'grande'; }
   const meta = await cifrarNombre(m, reg.clave, persona);
   const cab = { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': b64u(reg.sal), 'x-copia-meta': meta, 'x-copia-etiqueta': await etiquetaDe(reg.clave, persona) };
-  if (typeof n.etiquetaPrevia === 'string' && n.persona === persona) cab['x-copia-etiqueta-anterior'] = n.etiquetaPrevia;
+  if (typeof n.etiquetaPrevia === 'string' && (!n.persona || n.persona === persona)) cab['x-copia-etiqueta-anterior'] = n.etiquetaPrevia;
   try {
     await pedir({ binario: bytes, cabeceras: cab });
   } catch (e) {
     if (e.codigo === 'sin-red') { faltaRed = true; quedaPendiente('sin-red'); return 'sin-red'; }
     if (e.codigo === 'inactiva') { ponerNube({ inactiva: true, error: e.message }); return 'inactiva'; }
-    if (reintentable(e)) { quedaPendiente('error', { error: e.message }); return 'error'; }
+    // M3: la nube no reconoce la clave recién activada: si con la frase de la activación alguna copia abre con
+    // otra sal, se adopta esa clave (la registrada) y se vuelve a intentar una vez.
+    if (e.codigo === 'etiqueta' && await adoptarSalQueAbre(persona)) return subirYa(motivo, { forzar });
+    if (reintentable(e)) {
+      const minimo = e.mañana ? mañanaUTC(dep.ahora()) - dep.ahora() : e.espera || 0;
+      quedaPendiente('error', { error: e.message }, { minimo });
+      return 'error';
+    }
     ponerNube({ error: e.message, pendiente: { desde: new Date(dep.ahora()).toISOString(), motivo: 'sin-reintento' } }); // p. ej. 401
+    sinPendiente();
     return 'error';
   }
   faltaRed = false;
@@ -660,8 +726,17 @@ let iniciado = false;
 let dejarDeEscuchar = null;
 // D7: también gustos (me gusta / no me gusta / no lo quiero), «Mis sesiones» y alarmas.
 const CAMBIOS = /^(perfil|medidas|gusto|misSesiones|alarma)(-silencio)?$/;
+let codigoVisto = null;
 function alCambiar(motivo) {
   const S = estado();
+  // G1: al cambiar el código en Ajustes, lo que estaba parado por un código malo se vuelve a intentar.
+  const codigo = (S && S.ajustes && S.ajustes.codigo) || '';
+  if (codigoVisto !== null && codigo !== codigoVisto) {
+    codigoVisto = codigo;
+    const p = nube().pendiente;
+    if (p && p.motivo === 'sin-reintento') { ponerNube({ pendiente: null, error: null }); copiarAhora('codigo'); }
+  }
+  codigoVisto = codigo;
   const n = hechas(S).length;
   const antes = sesionesVistas;
   sesionesVistas = n;
@@ -674,8 +749,9 @@ function alCambiar(motivo) {
 }
 // Al volver la red (evento «online») o la app a primer plano: si quedó algo pendiente, se sube ya.
 function alVolverRed() {
-  if (!faltaRed && !nube().pendiente) return;
-  sinPendiente();
+  const p = nube().pendiente;
+  if (!faltaRed && !p) return;
+  if (p && (p.motivo === 'sin-reintento' || esperaPendiente('red') > 0)) return; // G1, M4: no se insiste
   copiarAhora('red');
 }
 function alVolverVisible() { if (typeof document === 'undefined' || !document.hidden) alVolverRed(); }
@@ -699,6 +775,7 @@ export function iniciarCopias() {
   if (iniciado) return revisarApertura();
   iniciado = true;
   sesionesVistas = hechas(estado()).length;
+  codigoVisto = (estado() && estado().ajustes && estado().ajustes.codigo) || '';
   dejarDeEscuchar = escuchar(alCambiar);
   if (typeof window !== 'undefined') window.addEventListener('online', alVolverRed);
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', alVolverVisible);
@@ -712,7 +789,7 @@ export function reiniciarCopia() {
   iniciado = false;
   sinPendiente();
   dep.clearTimeout(tCambios); tCambios = null; subiendo = null; otraVez = false; forzarOtraVez = false; faltaRed = false; esperandoCerrojo = false;
-  claveActual = null; claveCargada = false; memoria = null;
+  claveActual = null; claveCargada = false; memoria = null; fraseReciente = null; codigoVisto = null;
   sesionesVistas = hechas(estado()).length;
 }
 export const _alVolverRed = alVolverRed;
