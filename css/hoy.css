@@ -113,6 +113,10 @@ body.con-hoja:has(.accion-hoy) #aviso, body.con-hoja.con-temporizador:has(.accio
 .hoja-botones { display: grid; gap: var(--e-2); margin-top: var(--e-5); }
 .hoja-botones .boton-motivo { margin: 0; }
 .hoja .chips.dias { margin-top: var(--e-4); }
+/* Días L-D de «Tu semana» y «Reorganizar» (U2): cada uno ≥ 44 × 44 px. Caben los 7 en una fila desde 372 px de
+   ancho; en móviles más estrechos (360, 320) van en dos filas de 4 y 3. */
+.hoja .chips.dias { display: grid; grid-template-columns: repeat(7, minmax(var(--toque-min), 1fr)); gap: var(--e-1); }
+@media (max-width: 371px) { .hoja .chips.dias { grid-template-columns: repeat(4, 1fr); gap: var(--toque-separacion); } }
 .chips.dias .chip .icono { width: 14px; height: 14px; }
 .chip:disabled { color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--borde-fino); cursor: not-allowed; }
 .dia-plan .lista-dia { margin: 0; padding-left: var(--e-5); }
