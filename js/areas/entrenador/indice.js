@@ -228,7 +228,6 @@ async function crearConAlarma() {
 // momento. La respuesta solo lleva a la sesión si la persona sigue en la misma pantalla que al empezar.
 // Los pasos se marcan según avanza: conectando → pensando → escribiendo (con el número de ejercicios o días).
 let enCurso = null;
-export const esperandoIA = () => !!enCurso;
 const PASOS = {
   sesion: ['Conectando con tu entrenador…', 'Pensando tu sesión con tus datos…', 'Escribiendo tu sesión…'],
   plan: ['Conectando con tu entrenador…', 'Pensando tu semana con tus datos…', 'Escribiendo tu semana…'],
@@ -408,15 +407,6 @@ export function tarjetaAnalisis(S) {
     </ul></section>`;
 }
 
-// Medidor de nivel (lo pinta Perfil).
-export function bloqueMedidor(S) {
-  const m = medidorNivel(S);
-  return `<div class="medidor">
-    ${m.criterios.length ? `<p class="tenue">Para subir a ${h(minus(NIVELES[m.nivel + 1]))}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : '○'} ${h(c.que)} <span class="tenue">· ${h(c.valor)}</span></li>`).join('')}</ul>` : '<p class="tenue">Nivel máximo.</p>'}
-    ${m.sugerido !== m.nivel && !S.perfil.nivelAuto ? `<p class="nota">${h(m.motivo)} <button class="enlace" data-act="entrenador.aplicarNivel">Pasar a ${h(minus(NIVELES[m.sugerido]))}</button></p>` : ''}
-    ${(S.perfil.nivelCambios || []).slice(-2).map(c => `<p class="tenue">${h(c.fecha.slice(0, 10))}: ${h(NIVELES[c.de])} → ${h(NIVELES[c.a])}. ${h(c.motivo)}</p>`).join('')}
-  </div>`;
-}
 function aplicarNivel(auto) {
   const S = estado(), m = medidorNivel(S);
   if (m.sugerido === m.nivel) return;
@@ -557,4 +547,3 @@ acciones({
 
 // Texto corto de un ejercicio para listas (lo usan Hoy y Progreso).
 export const nombreEj = id => (ex(id) ? ex(id).n : id);
-export const musculoEj = id => (ex(id) ? MUSCULOS[ex(id).m[0]] : '');
