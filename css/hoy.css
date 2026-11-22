@@ -171,13 +171,15 @@ body.con-hoja:has(.accion-hoy) #aviso, body.con-hoja.con-temporizador:has(.accio
 .selector--dolor .selector-nota { justify-self: start; min-height: var(--toque-sesion); padding: 0; margin-top: var(--e-1); }
 
 /* Vista previa en vivo */
-.previa { margin-top: var(--e-6); padding: var(--e-4); border-radius: var(--r-medio); background: var(--sup-panel); border: 1px solid var(--borde-control); }
+/* Solo la vista previa del check-in (en su hoja): el contador del temporizador también lleva la clase «previa» en
+   sus 5 s para colocarse, y estas reglas lo bajaban 24 px y le cambiaban los textos. */
+.hoja .previa { margin-top: var(--e-6); padding: var(--e-4); border-radius: var(--r-medio); background: var(--sup-panel); border: 1px solid var(--borde-control); }
 .hoja .previa h3 { margin: 0; font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); }
-.previa ul { margin: var(--e-2) 0 0; padding-left: var(--e-5); }
-.previa li + li { margin-top: var(--e-1); }
-.previa p { margin: var(--e-2) 0 0; font-size: var(--t-secundario); color: var(--texto-2); }
-.previa .porque { margin-top: var(--e-2); }
-.previa .chips { margin-top: var(--e-3); }
+.hoja .previa ul { margin: var(--e-2) 0 0; padding-left: var(--e-5); }
+.hoja .previa li + li { margin-top: var(--e-1); }
+.hoja .previa p { margin: var(--e-2) 0 0; font-size: var(--t-secundario); color: var(--texto-2); }
+.hoja .previa .porque { margin-top: var(--e-2); }
+.hoja .previa .chips { margin-top: var(--e-3); }
 
 /* ---------- Espera de la IA: pasos marcados, tiempo y «Cancelar» ---------- */
 .espera-pasos { list-style: none; margin: var(--e-2) 0 0; padding: 0; display: grid; gap: var(--e-3); }

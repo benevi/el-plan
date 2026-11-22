@@ -9,21 +9,21 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-07a02160cdda';
+const VERSION = 'pipos-app-54815e1cb83e';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-QNaLa53inhTyU2kcmFdYJRCuQYGdXwK2T3neFqjL5Vc=',
+  './': 'sha256-VdJU/fr4D6E+/SFCdehnGKIareQJeP3O8VpDpDCnTrU=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-/PRQnpPMx6ibZwR6sm8eqcgnTtgengfu6Q8iYHqngiA=',
-  './css/hoy.css': 'sha256-7NZAb0N/eXOBIDWHY5cJQSLJaonToNWTr5ztmXfzuvQ=',
+  './css/hoy.css': 'sha256-qhZOuknICTYRHPe3I2/RIEs6TzRPViqV1yid2DPW2P4=',
   './css/legado.css': 'sha256-RzLFY+MMiNeUeWPtB0q+xrQxN96mSCiAHGk4SOXJS/w=',
   './css/marco.css': 'sha256-Y+9bAghnBzSPmNsyhRjFXl7t4/GluCD4RxuZJC+MI1Y=',
   './css/perfil.css': 'sha256-H6CV+eKgPbraY6G6JDMr/oQCxgTxqjh0DtjxAvgeMgk=',
   './css/progreso.css': 'sha256-75RgtZQWBEvIJXxzCiDfI398Q4tRh2/I5y5mTlPsQN0=',
-  './css/sesion.css': 'sha256-8vdh+Q16m9Zebr8JbB4SXDVhvg8VN7YTWdjd8UJkZLY=',
-  './css/tokens.css': 'sha256-IS6xlCpgQu+R18m0qtXYBDDUhNou1isluEAd7ZsmNxc=',
+  './css/sesion.css': 'sha256-jzk4DTPhIIbDtLx/Q4Zmdidwy6pIJpogozbvi+FWXEc=',
+  './css/tokens.css': 'sha256-mTco9f+4cJLn9PoZufMv0pkPrp5PVr7MSacT0ANylc0=',
   './fonts/instrument-sans.woff2': 'sha256-rk9YUt7Enho5JjLjCQhuZacfSGX9yMdsX2u2zxJx4AU=',
   './icons/icon-180.png': 'sha256-HL2I8vR+SqWC6lipjg6LtjomGLg7MFrjTv7eaCfJIrg=',
   './icons/icon-192.png': 'sha256-Be3AEg9cCiHRyF7d1KkWSPm2bX6RaxNejm+G6RmOrQg=',
@@ -32,7 +32,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-QNaLa53inhTyU2kcmFdYJRCuQYGdXwK2T3neFqjL5Vc=',
+  './index.html': 'sha256-VdJU/fr4D6E+/SFCdehnGKIareQJeP3O8VpDpDCnTrU=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
   './js/areas/ejercicios/indice.js': 'sha256-ShKymjOA1X2xP6s1HYhFukQl93SMisalAgZCUYYABsI=',
   './js/areas/entrenador/alarma.js': 'sha256-8NnNTcENxRFRXVyWpBfBDSsguazYB2fYLS02C71xgSo=',
@@ -58,7 +58,8 @@ const HUELLAS = {
   './js/areas/progreso/graficos.js': 'sha256-VgvMJutMXvZX/U3PrVHZmIwmuAEGQoyT7Y5J+Czyy9g=',
   './js/areas/progreso/indice.js': 'sha256-iCOq3MLVHFgoXWIJWAeMiuQ54lB4rUSTzRAUWi269OY=',
   './js/areas/sesion/indice.js': 'sha256-qCuspQ4NJFA0ELY+oAUl0WIbnfme2AQiGlI6mF2WmVg=',
-  './js/areas/sesion/temporizador.js': 'sha256-az1e7fIsBU5nBBguR4V1VeHATChXNk1NUoLdtAnds+U=',
+  './js/areas/sesion/pitidos.js': 'sha256-HLh6MF4/cReIeb7GaxomTJhYcbMh1ZJwK30Wll/h22s=',
+  './js/areas/sesion/temporizador.js': 'sha256-U1j1FF/Q+bdVcUDmn6Mn1xa+v9WpQARupSjX21w7m0s=',
   './js/arranque.js': 'sha256-ON75atFH/l3yd1yeqf+KTataCTsNGzSrzVqHHNNsl7A=',
   './js/aspecto/movimiento.js': 'sha256-1hBZ7vMNHZpytod7rnPGR5s+ZCGC6D/ebHcQzChHz2Q=',
   './js/aspecto/vida.js': 'sha256-sdljBtKdHRg3T/2wRrW3RL0pt6/rziyIxmcHigkFPfU=',
@@ -76,7 +77,7 @@ const HUELLAS = {
   './js/nucleo/normalizar.js': 'sha256-F7mAtg/MY2YKhRbrtJO+uh5YL+1/XTUyIcQbCxXWvgg=',
   './js/nucleo/rescate.js': 'sha256-nkpOCeQb3GnT6xCB6tNjiXhruP4zeimkSE+h0l5KL2g=',
   './js/nucleo/router.js': 'sha256-HIAHGsItFE1Gm/IETqmMWZ7HjBRdXzOf3iQfE9kq1Ag=',
-  './js/nucleo/ui.js': 'sha256-Kih9bnKYTm1k81HVa5SGjygVI+Q5NlAeHNjbAphKGwY=',
+  './js/nucleo/ui.js': 'sha256-DMnY30Iy+xY3W0yTq3X2+L+4Q6Mp5pyYHhxREqvmNdU=',
   './js/nucleo/version.js': 'sha256-/F3bhqZEQ2dGPs+qYrdQEawe6YM2+5h+/ypcXWxHHiY=',
   './js/reglas/catalogo.js': 'sha256-/iWZIq9XCIUwSRj7vvUoU8swW0K9xZs9RNlHc5oadds=',
   './js/reglas/contexto.js': 'sha256-hSJ2h5r06HIY2BWNC+lZEHoM/8fwCGIj/qSedGzvbQk=',
@@ -129,6 +130,7 @@ const APP = [
   './js/areas/progreso/graficos.js',
   './js/areas/progreso/indice.js',
   './js/areas/sesion/indice.js',
+  './js/areas/sesion/pitidos.js',
   './js/areas/sesion/temporizador.js',
   './js/arranque.js',
   './js/aspecto/movimiento.js',
