@@ -83,6 +83,7 @@ Mientras no exista el almacén, `/api/copia` responde 503 («las copias en la nu
   - Nada de atributos `style` en las plantillas: una variable de CSS que depende de los datos va en `data-var="--v:0.5"` (solo `--nombre` con valor numérico; `router.js` la pone por CSSOM al entrar en la página) y para ocultar se usa `hidden`.
   - `tests/csp.test.mjs` lo comprueba en el código, y el servidor de las e2e (`tests/e2e/servidor.mjs`) manda las cabeceras de `vercel.json`, así que cualquier violación hace fallar las pruebas (`tests/e2e/csp.spec.mjs` recorre la app entera buscándolas).
   - En las vistas previas, la barra de comentarios que inyecta Vercel queda bloqueada por la CSP (sale un aviso en la consola); en producción no existe.
+- `package.json` y `package-lock.json` no se sirven: `vercel.json` los redirige a `/` (las redirecciones van antes que los archivos estáticos). No van en `.vercelignore` a propósito: lo que este ignora no llega al build, y Vercel necesita `package.json` para instalar las dependencias de las funciones de `api/`. Para comprobarlo en una vista previa: `curl -sI <url>/package.json` tiene que dar 307 hacia `/`, y `/api/copia` seguir respondiendo (401 sin código).
 - PR contra la rama `pipos-v2`, nunca contra `main`.
 
 ## Modo sin conexión y versiones
