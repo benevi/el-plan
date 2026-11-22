@@ -13,6 +13,7 @@
 
 import { estado, cambiar, uid } from '../../nucleo/estado.js';
 import { ex } from '../../reglas/catalogo.js';
+import { topeSeries } from '../../reglas/progresion.js';
 import { LUGARES } from '../../datos/constantes.js';
 import { tiempoSesion, dosis } from './dia.js';
 import { ajustarAlCheckin } from './checkin.js'; // solo dentro de funciones (checkin.js también importa de aquí)
@@ -102,7 +103,7 @@ const nivelDe = S => Math.max(1, Math.min(3, +(S && S.perfil && S.perfil.nivel) 
 // Tope de series de un ejercicio para esta persona.
 export function topeSeriesMia(S, e) {
   if (e && e.t === 'distancia') return 10;
-  return nivelDe(S) === 1 ? 3 : 4;
+  return topeSeries(nivelDe(S));
 }
 // El cardio va con su rol (cuenta como el cardio del día); lo demás, como principal. La rehabilitación la pone
 // la app al hacerla, según las zonas activas de ese día (C-DOLOR-3).

@@ -8,7 +8,7 @@ import { enLinea } from '../../nucleo/api.js';
 import { es } from '../../nucleo/ui.js';
 import { diaSemana } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
-import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga } from '../../reglas/progresion.js';
+import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
 import { nivelesZona, ex } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
@@ -136,7 +136,7 @@ export function ajustarAlCheckin(S, dia, ci) {
     cambios.push(`Energía ${energia === 1 ? 'muy baja' : 'baja'}: una serie menos${antes > tope ? `, ${antes - tope} ejercicio${antes - tope > 1 ? 's' : ''} menos` : ''}, cardio suave y sin subir peso.`);
   } else if (energia === 5) {
     const p = ej.find(x => x.rol === 'principal' && ex(x.id).t === 'reps');
-    if (p && p.series < 5) { p.series++; cambios.push(`Energía a tope: una serie más de ${ex(p.id).n.toLowerCase()}.`); }
+    if (p && p.series < topeSeries(S.perfil.nivel)) { p.series++; cambios.push(`Energía a tope: una serie más de ${ex(p.id).n.toLowerCase()}.`); } // D-B (S14)
   }
 
   // Tiempo disponible: si sobra mucho, más principales (si falta, lo cuadra el validador con C-TIEMPO-2).

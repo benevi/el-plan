@@ -61,6 +61,17 @@ const ALARMA = [
   /(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho/, /me aprieta el pecho/, /mare(o|a|e)|desmay|vertigo/, /palpitacion/,
   /(me )?falta(ba)? el aire|me ahogaba/, /hormigue/, /se me (duerme|durmio|dormia)/, /no (puedo|podia|pude) apoyar/, /vision doble/,
   /sudor frio/, /nausea|vomit/, /fiebre/, /orina (muy )?oscura/, /mandibula/,
+  // Re-auditoría (S8): las señales A1, A2, A4, A6 y A11 dichas con otras palabras habituales. Solo frases que
+  // describen el síntoma, no el esfuerzo: «me falta aire nadando fuerte» o «me ahogo en las cuestas» no
+  // disparan; «falta de aire» sí, con algo que la haga rara («fuera de lo normal», «mucha», «noté»).
+  /(note|tengo|tenia|tuve|senti|mucha|bastante) falta de aire|falta de aire (fuera de lo normal|desproporcionad|rara|extrana|sin motivo|en reposo|que no (cede|se pasa))/,
+  /me costaba (mucho )?respirar|no (podia|puedo|pude) respirar/,
+  /(duele|dolia|dolio|doler) (el|en el) pecho|pecho oprimido|presion en el pecho/,
+  /perd(i|io|ia) (la )?fuerza|me quede sin fuerza|sin fuerza en (el|la) (brazo|pierna|mano)/,
+  /(pierna|brazo|mano|pie|cara) dormid[ao]|adormecid|adormecimiento/,
+  /ve(ia|o) doble/, /taquicardia|corazon .{0,15}(a mil|desbocado|a toda velocidad)/,
+  /\bgripe\b|gastroenteritis/, /(gemelo|pantorrilla).{0,20}(hinchad|calient|roj[oa])/,
+  /dolor de cabeza .{0,15}(muy fuerte|fortisimo|subito|de golpe|repentino)|cabeza .{0,15}(muchisimo|de golpe)/,
 ];
 // Nombres de ejercicios y del músculo que no son alarma.
 const NO_ALARMA = /press de pecho|pecho en maquina|aperturas de pecho|estiramiento de pecho/g;
