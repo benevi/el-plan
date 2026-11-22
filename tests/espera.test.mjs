@@ -112,6 +112,9 @@ test('errores: 401, 429, 504, 529 (en la respuesta o a mitad del stream), sin re
 test('textoError: frases fijas, nunca el mensaje crudo', () => {
   assert.equal(textoError(new ErrorApi('x', { status: 401 })), 'el código de acceso no es correcto');
   assert.equal(textoError(new ErrorApi('x', { status: 429 })), 'se han hecho demasiadas peticiones seguidas (prueba en un minuto)');
+  // S1: los frenos del servidor dicen por qué (con sus mensajes fijos de api/_comun.js y api/entrenador.js).
+  assert.match(textoError(new ErrorApi('se ha llegado al tope diario de llamadas a la IA; hoy la app hace las sesiones con sus reglas', { status: 429 })), /tope diario/);
+  assert.match(textoError(new ErrorApi('demasiados intentos con un código incorrecto; prueba dentro de un rato', { status: 429 })), /código incorrecto/);
   assert.equal(textoError(new ErrorApi('x', { status: 504 })), 'la IA ha dejado de responder');
   assert.equal(textoError(new ErrorApi('x', { status: 529 })), 'la IA está saturada ahora mismo (prueba en unos minutos)');
   assert.equal(textoError(new ErrorApi('x', { sinRed: true })), 'no hay conexión con el servidor');

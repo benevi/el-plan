@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { Respuesta, peticion } from './_simulado.mjs';
 import { BlobSimulado } from './_blob-simulado.mjs';
+import { fijarFecha } from '../ayuda/comun.mjs';
 import handler, { ponerAlmacen, reiniciarRitmo, sobrantes, nombreCopia, nombreCopiaV1, leerNombre, LIMITE_COPIA, SUBIDAS_DIA } from '../../api/copia.js';
 
 let registros, errores, logAntes, errorAntes, blob;
@@ -151,7 +152,10 @@ test('el servidor solo ve bytes cifrados: lo guardado es exactamente lo que lleg
   assert.doesNotMatch(registros.join('\n'), /victor|virginia/);
 });
 
-test('listar: solo las de esa persona, de más nueva a más vieja; las v2 con sal y meta, las v1 con sus datos', async () => {
+test('listar: solo las de esa persona, de más nueva a más vieja; las v2 con sal y meta, las v1 con sus datos', async t => {
+  // COD-10: fecha fija; con el reloj real, a partir de 2028-11 la retención de 2 años borraría la v1 de 2026-11-01.
+  const reloj = fijarFecha('2026-11-21T10:00');
+  t.after(() => reloj.restaurar());
   const v1 = nombreCopiaV1('victor', new Date('2026-11-01T10:00:00Z'), 3, '2026-10-31');
   blob.blobs.set(v1, { pathname: v1, bytes: cifrado(), uploadedAt: new Date() });
   const bytes = cifrado();
@@ -314,4 +318,66 @@ test('en una vista previa (o sin VERCEL_ENV) las copias y los contadores van baj
     if (entorno) process.env.VERCEL_ENV = entorno; else delete process.env.VERCEL_ENV;
     assert.deepEqual((await json({ accion: 'listar', persona: 'victor' })).cuerpo.copias.map(c => c.nombre), [r.cuerpo.copia.nombre]);
   }
+});
+
+// ── S2: quién sube (etiqueta derivada de la clave de cada persona) ──
+const ETQ = randomBytes(32).toString('base64url'), OTRA = randomBytes(32).toString('base64url');
+const conEtiqueta = (etiqueta, extra = {}) => ({ extra: { 'x-copia-etiqueta': etiqueta, ...extra } });
+test('S2: la primera subida con etiqueta la registra; luego, sin ella o con otra, 403 y no cuenta ni borra nada', async t => {
+  const reloj = fijarFecha('2026-11-01T08:00:00Z'); t.after(() => reloj.restaurar());
+  // 20 días de copias reales de Víctor.
+  for (let d = 0; d < 20; d++) { reiniciarRitmo(); assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200); reloj.avanzar(864e5); }
+  const reales = copiasEn().length;
+  assert.ok(blob.blobs.has('etiquetas/victor.json'), 'registro aparte (la retención no lo toca)');
+  assert.doesNotMatch(blob.blobs.get('etiquetas/victor.json').bytes.toString(), new RegExp(ETQ), 'solo se guarda su huella');
+  // Alguien con el código intenta agotar el tope y llenar de basura: sin etiqueta o con otra.
+  reiniciarRitmo();
+  for (let i = 0; i < 9; i++) { // (el freno por instancia, 20 cada 10 min, cuenta también estos intentos)
+    const sin = await subir(cifrado());
+    assert.equal(sin.codigo, 403);
+    assert.match(sin.cuerpo.error, /actualiza la app/);
+    assert.equal((await subir(cifrado(), conEtiqueta(OTRA))).codigo, 403);
+  }
+  assert.equal(copiasEn().length, reales, 'ni una copia de más ni de menos');
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'Víctor sigue subiendo');
+  // Virginia tiene su propio registro.
+  assert.equal((await subir(cifrado(), { persona: 'virginia', ...conEtiqueta(OTRA) })).codigo, 200);
+  assert.equal((await subir(cifrado(), { persona: 'virginia', ...conEtiqueta(ETQ) })).codigo, 403);
+});
+
+test('S2: copias de antes y app de antes: sin registro, una subida sin etiqueta se acepta como siempre', async () => {
+  assert.equal((await subir(cifrado())).codigo, 200);
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'la app nueva registra su etiqueta');
+  assert.equal((await subir(cifrado())).codigo, 403, 'desde entonces, la de antes tiene que actualizarse');
+});
+
+test('S2: otra frase (otra clave) entra si trae la etiqueta anterior registrada; si no, 403', async () => {
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200);
+  const nueva = randomBytes(32).toString('base64url');
+  assert.equal((await subir(cifrado(), conEtiqueta(nueva))).codigo, 403);
+  assert.equal((await subir(cifrado(), conEtiqueta(nueva, { 'x-copia-etiqueta-anterior': OTRA }))).codigo, 403);
+  assert.equal((await subir(cifrado(), conEtiqueta(nueva, { 'x-copia-etiqueta-anterior': ETQ }))).codigo, 200);
+  assert.equal((await subir(cifrado(), conEtiqueta(nueva))).codigo, 200, 'ya registrada');
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'la anterior sigue valiendo (restaurar con la frase vieja)');
+  assert.equal((await subir(cifrado(), conEtiqueta('corta'))).codigo, 400);
+});
+
+test('revisión #46: las subidas rechazadas por la etiqueta no gastan el freno de 20 cada 10 min de la persona', async () => {
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200);
+  for (let i = 0; i < 40; i++) assert.equal((await subir(cifrado(), i % 2 ? conEtiqueta(OTRA) : {})).codigo, 403);
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'Víctor sube justo después del ataque');
+});
+
+test('revisión #46: los 429 llevan Retry-After (10 min el freno; hasta el día UTC siguiente el tope diario)', async t => {
+  const reloj = fijarFecha('2026-11-21T22:00:00Z'); t.after(() => reloj.restaurar());
+  for (let i = 0; i < SUBIDAS_DIA; i++) { if (i % 15 === 0) reiniciarRitmo(); assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200); }
+  reiniciarRitmo();
+  const r = await subir(cifrado(), conEtiqueta(ETQ));
+  assert.equal(r.codigo, 429);
+  assert.ok(Math.abs(+r.cabeceras['retry-after'] - 2 * 3600) <= 5, r.cabeceras['retry-after']);
+  reiniciarRitmo();
+  for (let i = 0; i < 60; i++) await json({ accion: 'listar', persona: 'victor' });
+  const l = await json({ accion: 'listar', persona: 'victor' });
+  assert.equal(l.codigo, 429);
+  assert.equal(l.cabeceras['retry-after'], '600');
 });

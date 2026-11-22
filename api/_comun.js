@@ -4,6 +4,7 @@
 // almacén Blob conectado al proyecto (BLOB_READ_WRITE_TOKEN, o BLOB_STORE_ID con OIDC).
 import { createHash, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
+import { frenoCodigo } from './_freno.js';
 
 export { Anthropic };
 export const MODELO = 'claude-opus-5-5';
@@ -40,13 +41,23 @@ function codigoDe(req) {
 }
 
 // Puerta común a todas las funciones: método POST, APP_CODE configurado y código correcto (en tiempo constante).
-// Devuelve true si se puede seguir; si no, ya ha respondido (405, 500 o 401). Siempre deja `no-store`.
-export function puerta(req, res) {
+// Resuelve true si se puede seguir; si no, ya ha respondido (405, 500, 429 o 401). Siempre deja `no-store`.
+// S1: tras 10 códigos malos distintos en 10 minutos desde una IP, esa IP recibe 429 durante 15 minutos, también con el
+// código bueno (ver api/_freno.js: en memoria y, si está conectado, en el almacén Blob).
+export const BLOQUEADA = 'demasiados intentos con un código incorrecto; prueba dentro de un rato';
+export async function puerta(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Usa POST' }); return false; }
   const codigo = process.env.APP_CODE;
   if (!codigo) { console.error('servidor: falta APP_CODE'); res.status(500).json({ error: 'el servidor no está configurado' }); return false; }
-  if (!codigoValido(codigoDe(req), codigo)) { res.status(401).json({ error: 'código de acceso incorrecto' }); return false; }
+  const dado = codigoDe(req);
+  const valido = codigoValido(dado, codigo);
+  const f = await frenoCodigo(req, valido, dado);
+  if (f.bloqueada) { res.setHeader('Retry-After', '900'); res.status(429).json({ error: BLOQUEADA }); return false; }
+  if (!valido) {
+    if (f.recienBloqueada) console.error('servidor: IP bloqueada por códigos incorrectos');
+    res.status(401).json({ error: 'código de acceso incorrecto' }); return false;
+  }
   return true;
 }
 export const tipoDe = req => String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
@@ -70,9 +81,9 @@ export function leerJSON(req, res, limite = LIMITE_CUERPO) {
   return cuerpo;
 }
 
-// Comprueba método, código, tipo y tamaño (para el entrenador). Devuelve el cuerpo ya parseado (objeto) o null si ya ha respondido.
-export function comprobar(req, res) {
-  if (!puerta(req, res)) return null;
+// Comprueba método, código, tipo y tamaño (para el entrenador). Resuelve el cuerpo ya parseado (objeto) o null si ya ha respondido.
+export async function comprobar(req, res) {
+  if (!await puerta(req, res)) return null;
   if (tipoDe(req) !== 'application/json') { res.status(415).json({ error: 'la petición tiene que ser JSON' }); return null; }
   if (!largoAdmitido(req, res, LIMITE_CUERPO)) return null;
   if (!process.env.ANTHROPIC_API_KEY) { console.error('servidor: falta ANTHROPIC_API_KEY'); res.status(500).json({ error: 'el servidor no está configurado' }); return null; }

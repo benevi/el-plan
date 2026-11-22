@@ -15,7 +15,7 @@
 // por arriba. Al volver a la app con otro día, Hoy se repinta.
 
 import { $, h, ICONOS, cerrarHoja, hayHojaAbierta, trasHistorial, reusarEntradaDeHoja } from './ui.js';
-import { hoyISO } from './estado.js';
+import { hoyISO, guardarPendiente } from './estado.js';
 import { cambioDePantalla } from '../aspecto/movimiento.js';
 
 const RUTAS = {};
@@ -63,7 +63,25 @@ function orden(ruta) {
   return p ? p.orden + (p.ruta === ruta ? 0 : 5) : 100;
 }
 
+// ── Campos de texto a medio escribir (D3) ──
+// Un campo con data-cambio guarda en «change», que solo llega al perder el foco. Si se sale antes (atrás,
+// segundo plano, recargar) el texto no llegaría al estado: antes de repintar, al pasar a segundo plano y al
+// salir de la página, se entrega el «change» pendiente del campo que tiene el foco (solo si su valor cambió).
+let enfocado = null, valorAlEnfocar = null, entregado = null;
+const esTexto = el => !!el && el.dataset && el.dataset.cambio && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'file', 'button'].includes(el.type)));
+function alEnfocar(e) { if (esTexto(e.target)) { enfocado = e.target; valorAlEnfocar = e.target.value; entregado = null; } }
+export function entregarCampoPendiente() {
+  const el = enfocado;
+  if (!el || !el.isConnected || el.value === valorAlEnfocar) return false;
+  valorAlEnfocar = el.value; // una sola vez por valor
+  entregado = { el, valor: el.value }; // el «change» del navegador al perder el foco, con este mismo valor, sobra
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+}
+function alSalir() { if (entregarCampoPendiente()) guardarPendiente(); }
+
 export function pintar() {
+  entregarCampoPendiente();
   let r = { ruta: 'hoy', params: [] };
   let def = RUTAS.hoy;
   try {
@@ -132,6 +150,9 @@ function alVolver() {
 }
 
 export function arrancar() {
+  document.addEventListener('focusin', alEnfocar);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) alSalir(); });
+  window.addEventListener('pagehide', alSalir);
   window.addEventListener('hashchange', pintar);
   document.addEventListener('visibilitychange', alVolver);
   window.addEventListener('pageshow', alVolver);
@@ -146,6 +167,7 @@ export function arrancar() {
   document.addEventListener('change', e => {
     const el = e.target.closest('[data-cambio]');
     if (!el) return;
+    if (e.isTrusted && entregado && entregado.el === el && entregado.valor === el.value) { entregado = null; return; }
     const fn = ACCIONES[el.dataset.cambio];
     if (fn) { try { fn(el, e); } catch (err) { console.error(err); } }
   });

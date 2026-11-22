@@ -8,6 +8,18 @@
       "maxDuration": 30
     }
   },
+  "redirects": [
+    {
+      "source": "/package.json",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/package-lock.json",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",

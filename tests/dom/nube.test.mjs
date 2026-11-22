@@ -25,8 +25,8 @@ test('activar pide la frase dos veces con la advertencia; si no coinciden, no ac
   const hoja = a.doc.querySelector('.hoja');
   assert.ok(hoja.querySelector('#n-f1') && hoja.querySelector('#n-f2'));
   assert.match(hoja.textContent, /gestor de contraseñas/);
-  hoja.querySelector('#n-f1').value = 'una frase bastante larga';
-  hoja.querySelector('#n-f2').value = 'otra frase bastante larga';
+  hoja.querySelector('#n-f1').value = 'caballo grapa batería correcta';
+  hoja.querySelector('#n-f2').value = 'caballo grapa batería correcto';
   a.clic('[data-act="nube.confirmarActivar"]'); await a.tic();
   assert.match(a.doc.querySelector('#aviso').textContent, /no coinciden/);
   // Una sola palabra (o repeticiones) se rechaza aunque sea larga.
@@ -34,6 +34,12 @@ test('activar pide la frase dos veces con la advertencia; si no coinciden, no ac
   a.clic('[data-act="nube.confirmarActivar"]'); await a.tic();
   assert.match(a.doc.querySelector('#aviso').textContent, /sola palabra/);
   assert.equal(llamadas, 0);
+  // S3: una frase con vuestros nombres o un año no vale aunque sea larga (solo se mira si ya abre copias en la
+  // nube, por si es la de antes; aquí no hay red).
+  hoja.querySelector('#n-f1').value = hoja.querySelector('#n-f2').value = 'victor virginia 2026';
+  a.clic('[data-act="nube.confirmarActivar"]');
+  await a.esperar(() => /fácil de adivinar/.test(a.doc.querySelector('#aviso').textContent));
+  assert.equal(a.doc.querySelector('[data-act="nube.frase"]'), null, 'no se ha activado');
   a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
 });
 

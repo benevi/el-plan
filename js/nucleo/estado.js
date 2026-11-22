@@ -110,6 +110,8 @@ let cargadoVacio = false;  // al cargar no había nada en pipos4
 let regEspejo = null;      // registro válido del espejo que se ofrece en el rescate
 let revEspejo = 0;         // revisión más alta conocida del espejo (leída al arrancar o enviada después)
 let textoDisco = null;     // el texto de pipos4 tal como lo leímos o escribimos por última vez
+let espejoPendiente = false; // la lectura del espejo pasó del tope y aún no ha llegado (D6)
+let espejoSaltado = false;   // mientras tanto no se escribió el espejo (para hacerlo al llegar)
 const oyentesGuardado = new Set();
 
 function leerCrudo() { try { return almacen().getItem(CLAVE); } catch { return null; } }
@@ -157,7 +159,7 @@ function preparar(x) {
 
 export function cargar() {
   clearTimeout(temporizadorGuardar); // un guardado pendiente del estado anterior no debe escribir sobre el nuevo
-  sucio = false; rescate = null; regEspejo = null; revEspejo = 0; cargadoVacio = false;
+  sucio = false; rescate = null; regEspejo = null; revEspejo = 0; cargadoVacio = false; espejoPendiente = false; espejoSaltado = false;
   const crudo = leerCrudo();
   textoDisco = crudo;
   rev = leerRev();
@@ -179,19 +181,43 @@ export function cargar() {
 // Mira el espejo de IndexedDB (al arrancar, antes de pintar). Si pipos4 está roto o vacío, o si el espejo
 // tiene una revisión más nueva que pipos4 (porque localStorage falló al escribir), deja la app en rescate
 // ofreciendo el espejo. Devuelve el rescate (o null).
+// Si la lectura pasa del tope, se sigue sin ella, pero (D6) mientras no llegue no se escribe el espejo (podría
+// pisar su único registro con un estado vacío) y, si llega con datos y pipos4 estaba vacío, se ofrece el
+// rescate entonces (avisar('rescate')).
+const TARDE = Symbol('tarde');
+const espejoValido = reg => {
+  let x;
+  try { x = reg && typeof reg.txt === 'string' ? JSON.parse(reg.txt) : null; } catch { x = null; }
+  return esObjeto(x) && x.version === VERSION && esObjeto(x.perfil) && x.dueño ? x : null;
+};
+function espejoTardio(reg) {
+  if (!espejoPendiente) return;
+  espejoPendiente = false;
+  const x = espejoValido(reg);
+  const cargaActual = S;
+  if (x && cargadoVacio && !rescate && (hechas(x).length > hechas(cargaActual).length || !cargaActual.dueño)) {
+    rescate = { motivo: 'vacio', copia: null, espejo: { fecha: reg.fecha || null, dueño: x.dueño, sesiones: hechas(x).length, rev: +reg.rev || 0 } };
+    regEspejo = reg;
+    clearTimeout(temporizadorGuardar);
+    avisar('rescate');
+    return;
+  }
+  // Nada que rescatar: lo que no se escribió en el espejo mientras tanto, ahora, por encima de su revisión.
+  if (espejoSaltado && !rescate) { espejoSaltado = false; guardarYa(); }
+}
 export async function revisarEspejo({ max = 1500 } = {}) {
   let reg, t = null;
   const lectura = Promise.resolve().then(() => espejo.leer());
   // Aunque la lectura llegue tarde (después del tope), su revisión cuenta para escribir siempre por encima.
-  lectura.then(r => { if (r) revEspejo = Math.max(revEspejo, +r.rev || 0); }, () => {});
+  lectura.then(r => { if (r) revEspejo = Math.max(revEspejo, +r.rev || 0); espejoTardio(r); }, () => { espejoTardio(null); });
   try {
-    reg = await Promise.race([lectura, new Promise(r => { t = setTimeout(() => r(null), max); })]);
+    reg = await Promise.race([lectura, new Promise(r => { t = setTimeout(() => r(TARDE), max); })]);
   } catch { reg = null; }
   clearTimeout(t);
+  if (reg === TARDE) { espejoPendiente = true; return rescate; }
   if (reg) revEspejo = Math.max(revEspejo, +reg.rev || 0);
-  let x;
-  try { x = reg && typeof reg.txt === 'string' ? JSON.parse(reg.txt) : null; } catch { x = null; }
-  if (!esObjeto(x) || x.version !== VERSION || !esObjeto(x.perfil) || !x.dueño) return rescate;
+  const x = espejoValido(reg);
+  if (!x) return rescate;
   const info = { fecha: reg.fecha || null, dueño: x.dueño, sesiones: hechas(x).length, rev: +reg.rev || 0 };
   if (rescate) { rescate.espejo = info; regEspejo = reg; }
   // Si el espejo tiene el mismo texto que pipos4 no hay nada que rescatar (aunque no se escribiera pipos4-rev).
@@ -220,6 +246,7 @@ function escribir(revMin = rev, { estricto = false } = {}) {
   const txt = JSON.stringify(S);
   const reg = { txt, rev: nueva, fecha: new Date().toISOString() };
   const alEspejo = () => {
+    if (espejoPendiente) { espejoSaltado = true; return; } // aún no se sabe qué tiene el espejo (D6)
     revEspejo = Math.max(revEspejo, nueva);
     try { Promise.resolve(espejo.escribir(reg)).catch(() => {}); } catch { /* nada */ }
   };
@@ -241,12 +268,86 @@ function escribir(revMin = rev, { estricto = false } = {}) {
   return true;
 }
 
+// ── Lo apartado (D5) ──
+// Un solo hueco con lo último apartado: los cambios de esta pestaña que otra se adelantó a guardar, pipos4 al
+// recuperar un espejo más nuevo, o lo de ahora al cargar otra copia cuando ya hay «datos de antes» (D2).
+// Vive en el espejo (registro 'conflicto') o en pipos4-conflicto ({ fecha, txt }; antes, el texto a secas);
+// vale el más nuevo. Perfil › Ajustes lo enseña con «Recuperarlo» (por importar(), reversible) y «Descartar».
+let apartado = null; // { fecha, dueño, sesiones, donde: 'espejo'|'local' } o null; se lee con revisarApartado()
+function infoApartadoDe(reg, donde) {
+  let x;
+  try { x = reg && typeof reg.txt === 'string' ? JSON.parse(reg.txt) : null; } catch { x = null; }
+  if (!esObjeto(x)) return null;
+  return { fecha: typeof reg.fecha === 'string' ? reg.fecha : null, dueño: x.dueño || null, sesiones: hechas(x).length, donde };
+}
+function leerApartadoLocal() {
+  let crudo; try { crudo = almacen().getItem(CLAVE_CONFLICTO); } catch { crudo = null; }
+  if (!crudo) return null;
+  let x; try { x = JSON.parse(crudo); } catch { return null; }
+  return esObjeto(x) && typeof x.txt === 'string' ? { txt: x.txt, fecha: x.fecha } : { txt: crudo, fecha: null };
+}
+function ponerApartadoLocal(reg) {
+  try { almacen().setItem(CLAVE_CONFLICTO, JSON.stringify(reg)); return true; } catch (e) { console.error('No se pudo apartar en el móvil', e); return false; }
+}
+// El registro apartado más nuevo: { reg, donde } o null.
+async function leerApartado() {
+  let idb = null;
+  try { if (typeof espejo.leerApartado === 'function') idb = await espejo.leerApartado(); } catch { idb = null; }
+  const loc = leerApartadoLocal();
+  const ok = r => !!(r && typeof r.txt === 'string' && infoApartadoDe(r));
+  const a = ok(idb) ? { reg: idb, donde: 'espejo' } : null, b = ok(loc) ? { reg: loc, donde: 'local' } : null;
+  if (a && b) return String(a.reg.fecha || '') >= String(b.reg.fecha || '') ? a : b;
+  return a || b;
+}
+export async function revisarApartado() {
+  const r = await leerApartado();
+  apartado = r ? infoApartadoDe(r.reg, r.donde) : null;
+  return apartado;
+}
+export const infoApartado = () => apartado;
+async function borrarApartado(donde) {
+  if (!donde || donde === 'local') { try { almacen().removeItem(CLAVE_CONFLICTO); } catch { /* nada */ } }
+  if (!donde || donde === 'espejo') { try { if (typeof espejo.borrarApartado === 'function') await espejo.borrarApartado(); } catch { /* nada */ } }
+}
+export async function descartarApartado() { await borrarApartado(); apartado = null; }
+// «Recuperarlo»: carga lo apartado con importar() (validado y reversible: lo de ahora queda en «datos de antes»
+// o, si esos ya existen, pasa a ser lo apartado).
+export async function recuperarApartado() {
+  const r = await leerApartado();
+  if (!r) { apartado = null; throw new ErrorCopia('Ya no hay nada apartado.'); }
+  const res = importar(r.reg.txt, { interno: true, otraPersona: true });
+  // Lo recuperado deja de estar apartado, salvo que lo de ahora haya ocupado ese mismo sitio (intercambio).
+  if (apartando) { try { await apartando; } catch { /* nada */ } apartando = null; } // que el espejo acabe de escribir
+  if (res.apartado !== r.donde) await borrarApartado(r.donde);
+  await revisarApartado();
+  return res;
+}
 // Aparta los cambios de esta pestaña que no se pudieron guardar: en el espejo (IndexedDB, donde suele haber
 // sitio cuando localStorage está lleno) o, si no, en pipos4-conflicto. Devuelve si se pudo.
 async function apartarConflicto(txt) {
   const reg = { txt, fecha: new Date().toISOString() };
-  try { if (typeof espejo.apartar === 'function' && await espejo.apartar(reg)) return true; } catch { /* sigue */ }
-  try { almacen().setItem(CLAVE_CONFLICTO, txt); return true; } catch (e) { console.error('No se pudieron apartar los cambios de esta pestaña', e); return false; }
+  try { if (typeof espejo.apartar === 'function' && await espejo.apartar(reg)) { apartado = infoApartadoDe(reg, 'espejo'); return true; } } catch { /* sigue */ }
+  if (ponerApartadoLocal(reg)) { apartado = infoApartadoDe(reg, 'local'); return true; }
+  console.error('No se pudieron apartar los cambios de esta pestaña');
+  return false;
+}
+let apartando = null;
+// ¿Cargar ahora otra copia sustituiría lo apartado? (hay «datos de antes» vigentes y algo apartado). La interfaz
+// lo avisa antes de confirmar.
+export const cargarSustituyeApartado = () => !!(infoAntesDeImportar() && apartado);
+export function avisoSustituyeApartado() {
+  const a = cargarSustituyeApartado() && apartado;
+  if (!a) return '';
+  const f = a.fecha ? new Date(a.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} sesiones) se sustituirán por lo de ahora.`;
+}
+// Al cargar una copia, lo de ahora se aparta ya (en pipos4-conflicto, sin esperar) o, si no cabe, en el espejo.
+// Devuelve dónde: 'local' o 'espejo'.
+function apartarYa(txt) {
+  const reg = { txt, fecha: new Date().toISOString() };
+  if (ponerApartadoLocal(reg)) { apartado = infoApartadoDe(reg, 'local'); return 'local'; }
+  apartando = apartarConflicto(txt); // si localStorage no da, al espejo (asíncrono): recuperarApartado lo espera
+  return 'espejo';
 }
 
 // Carga lo que otra pestaña guardó en pipos4. Si aquí había cambios sin guardar, se apartan (apartarConflicto).
@@ -393,7 +494,7 @@ function probarPintado(candidato) {
   } finally { S = antes; probando = false; }
 }
 
-export function importar(txt, { otraPersona = false, interno = false } = {}) {
+export function importar(txt, { otraPersona = false, interno = false, deshacer = false } = {}) {
   const x = leerCopia(txt);
   let candidato, avisos, info = { tipo: 'copia' };
   if (esViejo(x)) {
@@ -414,6 +515,9 @@ export function importar(txt, { otraPersona = false, interno = false } = {}) {
         'otra-persona', { dueño: candidato.dueño, actual: S.dueño });
     }
     candidato.ajustes.codigo = interno ? texto(esObjeto(x.ajustes) ? x.ajustes.codigo : '', 200) : (S.ajustes && S.ajustes.codigo) || '';
+    // D8: lo apartado de la otra persona en la migración es propio del móvil (no viaja en las copias): se queda,
+    // como en el camino de la app anterior.
+    if (esObjeto(S.migracion) && esObjeto(S.migracion.porDueño) && esObjeto(candidato.migracion)) candidato.migracion.porDueño = JSON.parse(JSON.stringify(S.migracion.porDueño));
   }
   clearTimeout(temporizadorGuardar);
   // Si otra pestaña acaba de guardar, se carga lo suyo y no se pisa: que la persona lo vuelva a intentar.
@@ -430,7 +534,14 @@ export function importar(txt, { otraPersona = false, interno = false } = {}) {
   if (rescate && regEspejo) { try { deAntes = JSON.parse(regEspejo.txt); } catch { deAntes = null; } }
   if (!deAntes && S.dueño) deAntes = S;
   const antesGuardado = (() => { try { return almacen().getItem(CLAVE_ANTES); } catch { return null; } })();
-  if (deAntes) {
+  // D2: si ya hay «datos de antes» (de una copia cargada hace menos de 7 días), no se pisan: siguen siendo lo
+  // que había antes de empezar a cargar copias. Lo de ahora va entonces a lo apartado (Perfil › Ajustes).
+  // Al deshacer sí se cambian (lo de ahora pasa a ser «los de antes»).
+  const conservarAntes = !deshacer && !!infoAntesDeImportar();
+  let alApartado = false;
+  if (deAntes && conservarAntes) {
+    alApartado = apartarYa(JSON.stringify(deAntes));
+  } else if (deAntes) {
     try { almacen().setItem(CLAVE_ANTES, JSON.stringify({ fecha: new Date().toISOString(), estado: deAntes })); } catch (e) {
       console.error('No se pudo apartar el estado actual antes de importar', e);
       throw new ErrorCopia('No queda espacio en el móvil para apartar antes tus datos actuales, así que no he cargado la copia. Guarda una copia de lo actual y libera espacio.', 'sin-espacio');
@@ -443,13 +554,13 @@ export function importar(txt, { otraPersona = false, interno = false } = {}) {
   rescate = null; regEspejo = null; dueñoSoltado = false;
   // La copia interna (rescate o deshacer) entra aunque localStorage esté lleno: el espejo la guarda y se avisa.
   if (!escribir(Math.max(leerRev(), revEspejo), { estricto: !interno })) {
-    if (interno) { avisar('importar'); return { ...info, avisos }; }
+    if (interno) { avisar('importar'); return { ...info, avisos, apartado: alApartado }; }
     ({ S, rescate, regEspejo, dueñoSoltado } = previo);
     try { if (antesGuardado == null) almacen().removeItem(CLAVE_ANTES); else almacen().setItem(CLAVE_ANTES, antesGuardado); } catch { /* nada */ }
     throw new ErrorCopia('No he cargado la copia: no cabe en el almacenamiento del móvil. Tus datos siguen como estaban. Libera espacio (o descarta los datos de antes de la última copia) y vuelve a intentarlo.', 'sin-espacio');
   }
   avisar('importar');
-  return { ...info, avisos };
+  return { ...info, avisos, apartado: alApartado };
 }
 
 // Lo que había antes de la última copia cargada: { fecha, dueño } o null. Pasados 7 días se borra sola.
@@ -468,7 +579,7 @@ export function deshacerImportar() {
   let c;
   try { c = JSON.parse(almacen().getItem(CLAVE_ANTES) || 'null'); } catch { c = null; }
   if (!c || !esObjeto(c.estado)) throw new ErrorCopia('No hay datos de antes de cargar una copia.');
-  return importar(JSON.stringify(c.estado), { otraPersona: true, interno: true });
+  return importar(JSON.stringify(c.estado), { otraPersona: true, interno: true, deshacer: true });
 }
 
 // Fecha de la última copia exportada (en una clave aparte) y recordatorio cada 10 sesiones terminadas.
