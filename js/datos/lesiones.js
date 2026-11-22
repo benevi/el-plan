@@ -220,7 +220,8 @@ const DATOS = {
         { "id": "retraccion-escapular-isometrica", "uso": "activacion" },
         { "id": "apertura-libro", "uso": "alivio" },
         { "id": "gato-camello", "uso": "alivio" },
-        { "id": "circulos-brazos", "uso": "normal" }
+        { "id": "circulos-brazos", "uso": "normal" },
+        { "id": "dislocaciones-banda", "uso": "normal" }
       ],
       "estirar": [
         { "id": "estiramiento-espalda-alta", "uso": "alivio" },
@@ -314,7 +315,8 @@ const DATOS = {
     "tareas": {
       "calentar": [
         { "id": "retraccion-cervical", "uso": "alivio" },
-        { "texto": "Giros de cuello lentos, sin forzar el final", "uso": "normal" }
+        { "texto": "Giros de cuello lentos, sin forzar el final", "uso": "normal" },
+        { "id": "dislocaciones-banda", "uso": "normal" }
       ],
       "estirar": [
         { "texto": "Inclinación lateral de cuello (oreja hacia el hombro), suave", "uso": "normal" },
