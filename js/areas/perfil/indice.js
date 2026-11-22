@@ -7,7 +7,7 @@ import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada,
   infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
-import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS } from '../../datos/constantes.js';
+import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { medidorNivel } from '../../reglas/contexto.js';
 import { tarjetaAnalisis } from '../entrenador/indice.js';
@@ -144,7 +144,7 @@ function grupoDatos(S) {
       <div class="campo"><label for="d-nac">Año de nacimiento</label><input id="d-nac" type="number" inputmode="numeric" min="1930" max="2015" placeholder="1985" data-cambio="perfil.dato" data-k="nacimiento" value="${h(año)}"></div>
     </div>
     <p class="ayuda">El sexo y la altura sirven para el índice cintura/altura y el % de grasa; la edad, para la dosis a partir de los 60.</p>`)}
-  ${tarjeta('Para tu entrenador', `<div class="campo"><label for="d-notas">Lo que quieras que tenga en cuenta</label><textarea id="d-notas" rows="3" data-cambio="perfil.notas" placeholder="horarios, metas concretas, cosas que no te gustan…">${h(p.notas)}</textarea>
+  ${tarjeta('Para tu entrenador', `<div class="campo"><label for="d-notas">Lo que quieras que tenga en cuenta</label><textarea id="d-notas" rows="3" maxlength="${+LARGO_TEXTO.notasPerfil}" data-cambio="perfil.notas" placeholder="horarios, metas concretas, cosas que no te gustan…">${h(p.notas)}</textarea>
     <p class="ayuda">Lo lee el entrenador IA como información, no como órdenes.</p></div>`)}`;
 }
 
@@ -282,7 +282,7 @@ function hojaLesion(l) {
     <div class="grupo">${selector({ id: 'l-dolor', et: 'Dolor habitual', valor: Math.max(0, Math.min(10, +l.dolor || 0)), min: 0, max: 10, paso: 1, unidad: 'de 10', act: 'perfil.lesionDolor', texto: v => `${v} de 10` })}</div>
     <div class="grupo"><p class="grupo-et" id="l-tipo-et">Qué es</p><div class="chips" id="l-tipo" role="group" aria-labelledby="l-tipo-et" data-elige-uno>${Object.entries(TIPOS_LESION).map(([k, n]) => `<button type="button" class="chip ${tipo === k ? 'on' : ''}" data-v="${k}" aria-pressed="${tipo === k}">${ICONOS.check}<span>${h(n)}</span></button>`).join('')}</div></div>
     <div class="campo"><label for="l-desde">Desde</label><input type="date" id="l-desde" value="${h(l.desde || '')}"></div>
-    <div class="campo"><label for="l-nota">Nota <small>qué movimientos duelen, diagnóstico…</small></label><textarea id="l-nota" rows="2">${h(l.nota)}</textarea></div>
+    <div class="campo"><label for="l-nota">Nota <small>qué movimientos duelen, diagnóstico…</small></label><textarea id="l-nota" rows="2" maxlength="${+LARGO_TEXTO.notaLesion}">${h(l.nota)}</textarea></div>
     ${nueva ? '' : `<label class="interruptor"><input type="checkbox" id="l-activa" ${l.activa ? 'checked' : ''}><span>Sigue activa</span></label>`}
     <div class="fila-botones">${nueva ? '' : `<button type="button" class="boton boton--peligro" data-act="perfil.borrarLesion" data-id="${h(l.id)}">Borrar lesión</button>`}<button type="button" class="boton" data-act="perfil.guardarLesion" data-id="${h(l.id || '')}">Guardar lesión</button></div>`, { clase: 'hoja-pf' });
   $('#l-zona').dataset.noFoco = '1';

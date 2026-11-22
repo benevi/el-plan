@@ -11,7 +11,7 @@
 // normalizarEstado(x) → { estado, avisos: [texto] }. Lanza ErrorCopia si no es una copia de la versión 4.
 
 import { ZONAS } from '../datos/lesiones.js';
-import { PERSONAS, LUGARES, OBJETIVOS, MATERIAL_CASA, GUSTOS } from '../datos/constantes.js';
+import { PERSONAS, LUGARES, OBJETIVOS, MATERIAL_CASA, GUSTOS, LARGO_TEXTO } from '../datos/constantes.js';
 import { EJERCICIOS } from '../datos/ejercicios.js';
 
 export const VERSION_DATOS = 4;
@@ -92,6 +92,14 @@ const FUENTES = ['ia', 'reglas', 'plan', 'anterior'];
 const MOMENTOS = ['antes', 'despues', 'dia', 'perfil'];
 const TIPOS_LESION = ['lesion', 'recurrente', 'puntual']; // como TIPOS_LESION en areas/perfil/indice.js
 const USO_IA = ['auto', 'siempre', 'ahorro'];
+// Textos libres de la persona (notas, comentarios): se recortan al límite de la interfaz (LARGO_TEXTO) y se
+// cuenta cuántos, para avisar (D4): nunca un recorte en silencio.
+let recortados = 0;
+function libre(v, max) {
+  const t = texto(v, Infinity);
+  if (t.length > max) recortados++;
+  return t.slice(0, max);
+}
 const MEDIDAS = ['peso', 'cintura', 'cadera', 'cuello', 'pecho', 'brazo', 'muslo', 'grasa'];
 
 // ── Perfil ──
@@ -104,7 +112,7 @@ function lesion(l, avisos, vistos) {
   vistos.add(i);
   const out = {
     id: i, zona: z, dolor: numero(l.dolor, 0, 10, 3, { entero: true }), desde: fechaDia(l.desde) || '',
-    nota: texto(l.nota, 300), activa: bool(l.activa, true),
+    nota: libre(l.nota, LARGO_TEXTO.notaLesion), activa: bool(l.activa, true),
   };
   const tipo = enLista(l.tipo, TIPOS_LESION); if (tipo) out.tipo = tipo;
   // Detalle opcional (esguince, fascitis…): solo si es una opción de esa zona; si no, se usa el de por defecto.
@@ -145,7 +153,7 @@ function perfil(p, avisos) {
       altura: numero(datos.altura, 50, 250, null),
       nacimiento: /^\d{4}$/.test(año) && +año >= 1900 && +año <= 2100 ? año : '',
     },
-    notas: texto(p.notas, 2000),
+    notas: libre(p.notas, LARGO_TEXTO.notasPerfil),
   };
   const uso = enLista(p.usoIA, USO_IA); if (uso) out.usoIA = uso;
   if (typeof p.acompañado === 'boolean') out.acompañado = p.acompañado;
@@ -195,7 +203,7 @@ function ejercicioSesion(x) {
     series: numero(x.series, 0, 30, sets.length, { entero: true }), reps: texto(x.reps, 24),
     descanso: numero(x.descanso, 0, 900, 60, { entero: true }), kg: numero(x.kg, 0, 500, null),
     nota: texto(x.nota, 400), motivo: texto(x.motivo, 400), sets,
-    gusto: enLista(x.gusto, Object.keys(GUSTOS), null), comentario: texto(x.comentario, 400),
+    gusto: enLista(x.gusto, Object.keys(GUSTOS), null), comentario: libre(x.comentario, LARGO_TEXTO.comentarioEjercicio),
   };
   const nombre = texto(x.nombre, 120); if (nombre) out.nombre = nombre;
   if (x.superserie === true) out.superserie = true;
@@ -238,7 +246,7 @@ function sesion(s, clave) {
     ejercicios: lista(s.ejercicios, 60).map(ejercicioSesion).filter(Boolean),
     vuelta: lista(s.vuelta, 40).map(t => tarea(t, true)).filter(Boolean),
     estado: enLista(s.estado, ESTADOS, 'pendiente'), empezada: fechaISO(s.empezada), terminada,
-    cierre: cierre ? { esfuerzo: numero(cierre.esfuerzo, 1, 5, null, { entero: true }), dolor: dolorPorZona(cierre.dolor), comentario: texto(cierre.comentario, 1000) } : null,
+    cierre: cierre ? { esfuerzo: numero(cierre.esfuerzo, 1, 5, null, { entero: true }), dolor: dolorPorZona(cierre.dolor), comentario: libre(cierre.comentario, LARGO_TEXTO.comentarioCierre) } : null,
     ...(['suave', 'dolorAlto'].includes(s.tipo) ? { tipo: s.tipo } : {}), // los de TIPOS_SESION (modelo.js)
     ...(s.parada === 'alarma' ? { parada: 'alarma' } : {}), // parada con «Algo va mal» (C-ALAR-1, E9)
     ...iaFalloSesion(s.iaFallo),
@@ -367,6 +375,7 @@ export function normalizarEstado(x) {
   if (!esObjeto(x.perfil)) throw new ErrorCopia('No es una copia de Pipos Fitness: le falta el perfil.');
   if (!Object.prototype.hasOwnProperty.call(PERSONAS, x.dueño)) throw new ErrorCopia('No es una copia de Pipos Fitness completa: no dice de quién es (Víctor o Virginia).');
   const avisos = [];
+  recortados = 0;
   const sesiones = {};
   let descartadas = 0;
   if (esObjeto(x.sesiones)) {
@@ -400,5 +409,6 @@ export function normalizarEstado(x) {
   const mias = validas.slice(0, MAX_MIAS);
   if (validas.length > MAX_MIAS) avisos.push(`Solo se traen ${MAX_MIAS} de tus sesiones guardadas`);
   if (mias.length) estado.misSesiones = mias;
+  if (recortados) avisos.push(recortados === 1 ? 'Una nota o comentario era más largo de lo que guarda la app y se ha recortado' : `${recortados} notas o comentarios eran más largos de lo que guarda la app y se han recortado`);
   return { estado, avisos };
 }

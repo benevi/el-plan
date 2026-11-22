@@ -10,7 +10,7 @@ import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, num, es, mms
 import { crearEjercicio, trabajoHecho } from '../../nucleo/modelo.js';
 import { ex, alternativas, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '../../reglas/progresion.js';
-import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
+import { LUGARES, MUSCULOS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
 import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias } from '../entrenador/entrenador.js';
@@ -358,7 +358,7 @@ function hojaCierre() {
       <div class="segmento segmento--ancho" role="radiogroup" aria-labelledby="c-esf-et" id="c-esf">${Object.entries(ESFUERZO).map(([v, t]) => `<button type="button" role="radio" data-v="${v}" aria-checked="${v === '3'}" tabindex="${v === '3' ? 0 : -1}" aria-label="${v}: ${t}">${v}</button>`).join('')}</div>
       <p class="ayuda" id="c-esf-txt">${ESFUERZO[3]}</p></div>
     ${zonas.map(z => `<div class="grupo">${selector({ id: `c-dolor-${z}`, et: `Dolor ahora en ${minus(ZONAS[z].corta)}`, valor: Math.max(0, Math.min(10, ultimoDolor(S, s, z))), min: 0, max: 10, paso: 1, unidad: 'de 10', nombre: 'de 10', entrada: `data-zona="${h(z)}"` })}</div>`).join('')}
-    <div class="campo"><label for="c-com">Para tu entrenador <small>molestias, qué cambiarías…</small></label><textarea id="c-com" rows="3"></textarea></div>
+    <div class="campo"><label for="c-com">Para tu entrenador <small>molestias, qué cambiarías…</small></label><textarea id="c-com" rows="3" maxlength="${+LARGO_TEXTO.comentarioCierre}"></textarea></div>
     <button type="button" class="boton boton--ancho" data-act="sesion.cerrar">Guardar sesión</button>`, { clase: 'hoja-sesion' });
 }
 // Esfuerzo: grupo de radio (flechas, Inicio y Fin) que se actualiza en su sitio (R15).
@@ -420,7 +420,7 @@ function menuEjercicio(i) {
       <li><button type="button" data-act="sesion.algoVaMal" data-e="${i}">${ICONOS.alerta}Me duele al hacerlo</button></li>`}` : ''}
     </ul>
     <p class="grupo-et">¿Qué te parece?</p>${botonesGusto(x.id, 'sesion.gusto')}
-    <div class="campo"><label for="m-com">Comentario para tu entrenador</label><textarea id="m-com" rows="2" placeholder="me molesta la muñeca, la máquina estaba ocupada…">${h(x.comentario)}</textarea></div>
+    <div class="campo"><label for="m-com">Comentario para tu entrenador</label><textarea id="m-com" rows="2" maxlength="${+LARGO_TEXTO.comentarioEjercicio}" placeholder="me molesta la muñeca, la máquina estaba ocupada…">${h(x.comentario)}</textarea></div>
     <button type="button" class="boton boton--secundario boton--ancho" data-act="sesion.comentar" data-e="${i}">Guardar comentario</button>`, { clase: 'hoja-sesion' });
   // Sin foco automático en el comentario (abrirHoja pone el foco en el título): sacaba el teclado (E4).
 }
