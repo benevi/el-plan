@@ -224,6 +224,9 @@ async function hacerSesion(page, id, { esfuerzo = 4, comentario = '' } = {}) {
       if (lados) { await page.click('[data-actual] [data-act="sesion.serie"]'); await page.clock.runFor(1100); continue; } // apuntar sin contador
       const t = await page.evaluate(([i]) => import('/js/nucleo/estado.js').then(e => e.estado().sesiones[location.hash.split('/')[1]].ejercicios[i]), [i]);
       await page.evaluate(() => { window.__vibra = []; });
+      // Reloj parado desde que arranca el contador hasta «Hecho»: con la máquina cargada, el tiempo real que pasa
+      // entre pasos se sumaba a lo que mide (46 s en vez de 45, revisión del PR #47). Solo avanza con runFor.
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
       await page.click('[data-actual] [data-act="sesion.cuenta"]');
       await expect(page.locator('#temporizador.contador')).toBeVisible();
       const fases = await page.evaluate(() => JSON.parse(localStorage.getItem('pipos-temporizador')).fases);
@@ -234,6 +237,7 @@ async function hacerSesion(page, id, { esfuerzo = 4, comentario = '' } = {}) {
       await expect(page.locator('#temporizador.contador.superado')).toBeVisible();
       expect(await page.evaluate(() => window.__vibra)).toContainEqual([300, 120, 300]);
       await page.click('#temporizador [data-t="fin"]');
+      await page.clock.resume();
       const v = (await sesionDe(page, id)).ejercicios[i].sets[0].valor;
       const esperado = trabajo.hi / (/min/.test(t.reps) ? 60 : 1);
       expect(+v, `${x.id}: lo apuntado por el contador`).toBeCloseTo(esperado, 0);
