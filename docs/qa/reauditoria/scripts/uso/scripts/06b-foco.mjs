@@ -1,0 +1,10 @@
+import { abrir, foto, BASE } from './h.mjs';
+import { sembrar } from './sembrar.mjs';
+const { browser, page } = await abrir({ w: 390, hgt: 844, reducir: true, escala: 2 });
+const id = await sembrar(page, 'victor', { modo: 'foco' });
+await page.goto(BASE + '/#sesion/' + id); await page.waitForSelector('.vista-sesion');
+await page.click('[data-act="sesion.ir"][data-v="1"]'); await page.clock.runFor(200);
+await page.focus('[data-act="sesion.ir"][data-v="0"]'); await page.keyboard.press('Tab');
+console.log(await page.evaluate(() => { const a = document.activeElement, cs = getComputedStyle(a); return [a.getAttribute('aria-label'), a.matches(':focus-visible'), cs.outlineStyle, cs.outlineWidth, cs.outlineColor, cs.outlineOffset, getComputedStyle(document.body).backgroundColor]; }));
+await page.locator('.pasos-sesion').screenshot({ path: '/tmp/claude-0/-home-user-el-plan/1a092d6b-4887-5556-b1cc-1429962da25e/scratchpad/reauditoria/uso/capturas/06-foco-paso-actual.png' });
+await browser.close();

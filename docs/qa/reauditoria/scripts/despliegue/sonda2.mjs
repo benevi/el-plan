@@ -1,0 +1,12 @@
+import { chromium, devices } from 'playwright';
+import { crearServidor, RAIZ } from '/home/user/wt/auditoria/tests/e2e/servidor.mjs';
+const srv = crearServidor({ raiz: RAIZ }); await srv.escuchar(8931);
+srv.control.api = (q, s) => { s.writeHead(503, { 'content-type': 'application/json' }); s.end('{"error":"sin IA"}'); };
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ ...devices['Pixel 7'], baseURL: 'http://127.0.0.1:8931' });
+await ctx.clock.install({ time: new Date('2026-11-16T09:00:00+01:00') }); const page = await ctx.newPage();
+const acts = async () => console.log(await page.locator('[data-act]:visible').evaluateAll(xs => xs.map(x => x.dataset.act + (x.dataset.v ? '=' + x.dataset.v : '') + ' :: ' + x.textContent.trim().slice(0, 30))));
+await page.goto('/'); await page.click('[data-act="bienvenida.elegir"][data-v="victor"]'); await page.waitForSelector('#nav a');
+await page.click('[data-act="perfil.objetivo"]:has-text("Ganar fuerza")'); await page.click('#nav a[href="#hoy"]');
+await page.click(`[data-act="entrenador.plan"]`); await page.waitForTimeout(300); for (const d of [1,3,5]) { const c = page.locator(`[data-act="entrenador.psDia"][data-v="${d}"]`); if (await c.getAttribute('aria-pressed') !== 'true') await c.click(); } await page.click(`[data-act="entrenador.crearPlan"][data-ia="0"]`); await page.waitForTimeout(3000); console.log(await page.locator("#vista").innerText()); await acts(); await page.locator(`.accion-hoy [data-act="entrenador.prepararHoy"]`).click(); await page.waitForTimeout(500); await acts();
+await b.close(); await srv.cerrar();
