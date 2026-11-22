@@ -77,14 +77,60 @@ export function deB64u(txt) {
 }
 
 // ── Frases ──
-// Propuesta: PALABRAS_FRASE palabras al azar de la lista de 2048 (índices de 11 bits, sin sesgo).
+// Propuesta: PALABRAS_FRASE palabras distintas al azar de la lista de 2048 (índices de 11 bits, sin sesgo):
+// 6 × 11 = 66 bits (sin repetir, un poco menos: ~65,9). Siempre pasa calidadFrase.
 export function generarFrase(n = PALABRAS_FRASE) {
-  const r = globalThis.crypto.getRandomValues(new Uint16Array(n));
-  return [...r].map(x => PALABRAS[x & 2047]).join(' ');
+  const elegidas = new Set();
+  while (elegidas.size < n) {
+    for (const x of globalThis.crypto.getRandomValues(new Uint16Array(n))) { if (elegidas.size < n) elegidas.add(PALABRAS[x & 2047]); }
+  }
+  return [...elegidas].join(' ');
 }
-// Rechaza frases cortas o de baja entropía. Devuelve { ok, motivo }.
+// Entropía mínima (S3): la copia que cualquiera con el código puede bajar se ataca fuera de línea con un
+// diccionario, así que no vale cualquier frase de 12 caracteres. 44 bits = 4 palabras de la lista; con PBKDF2 de
+// 600 000 iteraciones, unos 2^63 pasos para probarlas todas.
+export const BITS_MIN = 44;
+const LISTA = new Set(PALABRAS);
+// Lo primero que probaría alguien que os conoce: nombres, la app, años… No suman nada.
+const OBVIAS = new Set(['victor', 'víctor', 'virginia', 'vir', 'vic', 'pipo', 'pipos', 'fitness', 'pipofitness', 'pipos-fitness', 'elplan', 'pareja', 'novio', 'novia',
+  'gimnasio', 'gym', 'contraseña', 'contrasena', 'password', 'clave', 'frase', 'secreto', 'qwerty', 'asdf', 'hola', 'amor', 'quiero', 'teamo', 'tequiero']);
+const sinTildes = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const esObvia = t => OBVIAS.has(t) || OBVIAS.has(sinTildes(t));
+// Estimación prudente (por lo bajo) de los bits de una frase, al estilo de zxcvbn pero mucho más simple:
+// cada palabra de la lista propia vale 11 bits; otra palabra, como mucho 12 (está en cualquier diccionario);
+// las de 1 a 3 letras, 3; los años, 4; las cifras, 3,3 cada una (casi nada si son seguidas o repetidas); cada
+// símbolo, 4. Una cadena sin palabras (p. ej. «x7#Kq9!mZ2@pL») cuenta como aleatoria. Lo repetido cuenta una vez.
+export function bitsFrase(frase) {
+  if (typeof frase !== 'string') return 0;
+  const tokens = [...new Set(frase.normalize('NFC').trim().toLowerCase().split(/\s+/).filter(Boolean))];
+  let bits = 0;
+  for (const t of tokens) {
+    if (LISTA.has(t)) { bits += 11; continue; }
+    if (esObvia(t)) continue;
+    let partes = 0, palabraLarga = false;
+    for (const [trozo] of t.matchAll(/\p{L}+|\p{N}+|[^\p{L}\p{N}]+/gu)) {
+      if (/^\p{L}/u.test(trozo)) {
+        if (trozo.length >= 4) palabraLarga = true;
+        partes += esObvia(trozo) ? 0 : LISTA.has(trozo) ? 11 : trozo.length <= 3 ? 3 : trozo.length <= 8 ? 12 : 12 + (trozo.length - 8) * 2;
+      } else if (/^\p{N}/u.test(trozo)) {
+        const seguidas = '0123456789012'.includes(trozo) || '9876543210987'.includes(trozo) || /^(\d)\1*$/.test(trozo);
+        partes += /^(19|20)\d\d$/.test(trozo) ? 4 : seguidas ? 2 : trozo.length * 3.3;
+      } else partes += 4 * trozo.length;
+    }
+    // Sin ninguna palabra dentro: cadena al azar (mayúsculas en la frase original, minúsculas, cifras, símbolos).
+    if (!palabraLarga) {
+      const orig = frase.normalize('NFC').split(/\s+/).find(x => x.toLowerCase() === t) || t;
+      const clases = [/\p{Lu}/u, /\p{Ll}/u, /\p{N}/u, /[^\p{L}\p{N}]/u].filter(r => r.test(orig)).length;
+      const juego = [0, 26, 52, 62, 94][clases];
+      if (clases >= 3) partes = Math.max(partes, orig.length * Math.log2(juego) * 0.6);
+    }
+    bits += partes;
+  }
+  return Math.round(bits * 10) / 10;
+}
+// Rechaza frases cortas o de baja entropía. Devuelve { ok, motivo, bits }.
 export function calidadFrase(frase) {
-  const mal = motivo => ({ ok: false, motivo });
+  const mal = motivo => ({ ok: false, motivo, bits: bitsFrase(frase) });
   if (typeof frase !== 'string' || frase.trim().length < FRASE_MIN) return mal(`La frase tiene que tener al menos ${FRASE_MIN} caracteres.`);
   const t = frase.normalize('NFC').trim().toLowerCase();
   const junto = t.replace(/\s+/g, '');
@@ -93,7 +139,10 @@ export function calidadFrase(frase) {
   if (pal.length === 1 && /^\p{L}+$/u.test(pal[0])) return mal('Una sola palabra es fácil de adivinar: usa varias (mejor la que te propongo).');
   if (new Set(pal).size < pal.length) return mal('La frase repite palabras: usa palabras distintas.');
   if (/^(0123|1234|abcd|qwer|asdf|contrase|password)/u.test(junto)) return mal('Esa frase es demasiado común.');
-  return { ok: true, motivo: '' };
+  const bits = bitsFrase(frase);
+  // porBits: solo falla la entropía (pasaba las reglas de antes de S3); ver activar().
+  if (bits < BITS_MIN) return { ok: false, bits, porBits: true, motivo: 'Esa frase es fácil de adivinar para quien os conozca: usa la que te propongo, o al menos 4 palabras sin relación entre sí (sin vuestros nombres, «pipos», años ni frases hechas).' };
+  return { ok: true, motivo: '', bits };
 }
 
 // ── Compresión ──
@@ -403,11 +452,23 @@ export async function probarCopias(persona, copias, { frase = null, reg = null, 
 // frase, se sigue con la sal de la más nueva que abre (misma clave) y su contenido pasa a ser la base (no se
 // sube solo nada con menos). Si hay copias y ninguna abre, lanza ErrorNube('otra-frase') salvo con
 // { aunqueNoCoincida: true }. Devuelve { reg, copias: nº en la nube, abren, ultimaQueAbre }.
+// Compatibilidad (S3): una frase que ya no pasa calidadFrase pero abre copias que ya están en la nube se acepta
+// para seguir con ellas (rechazarla no protege nada: esas copias ya están hechas con ella); se devuelve
+// `floja: true` para recomendar cambiarla. Una frase floja nueva se rechaza siempre.
 export async function activar(persona, frase, { aunqueNoCoincida = false } = {}) {
   const q = calidadFrase(frase);
-  if (!q.ok) throw new ErrorNube(q.motivo, 'corta');
+  if (!q.ok && !q.porBits) throw new ErrorNube(q.motivo, 'corta');
   let lista;
   try { lista = await listar(persona); } catch { lista = []; } // sin red o sin nube: se activa igual
+  if (!q.ok) {
+    let p;
+    try { p = lista.length ? await probarCopias(persona, lista, { frase }) : null; } catch { p = null; }
+    const u = p && p.copias.find(c => c.abre);
+    if (!u) throw new ErrorNube(q.motivo, 'corta');
+    const reg = await guardarClave(persona, p.claves.get(u.sal));
+    ponerBase(persona, { sesiones: u.sesiones || 0, ultima: u.ultima || '' }, { siMayor: true });
+    return { reg, copias: lista.length, abren: p.copias.filter(c => c.abre).length, ultimaQueAbre: u, floja: true };
+  }
   if (lista.length) {
     let p;
     try { p = await probarCopias(persona, lista, { frase }); } catch { p = null; }

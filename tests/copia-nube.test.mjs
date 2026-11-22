@@ -122,18 +122,51 @@ test('metadatos del nombre: cifrados, atados a la persona y que no abren con otr
 
 test('frases: la propuesta son 6 palabras distintas de la lista; se rechazan las de baja entropía', () => {
   const vistas = new Set();
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 2000; i++) {
     const f = C.generarFrase();
     const p = f.split(' ');
     assert.equal(p.length, 6);
-    assert.ok(C.calidadFrase(f).ok || new Set(p).size < 6, f); // (una palabra repetida es posible por azar)
+    assert.equal(new Set(p).size, 6, f);
+    assert.ok(C.calidadFrase(f).ok, f); // S3: las que propone la app valen siempre
     vistas.add(f);
   }
-  assert.equal(vistas.size, 50);
+  assert.equal(vistas.size, 2000);
   for (const mala of ['corta', 'aaaaaaaaaaaaaaaa', 'abcabcabcabcabc', 'electroencefalografista', 'hola hola hola hola', '123456789012', 'contraseña1234', 'qwertyuiopasdf']) {
     assert.equal(C.calidadFrase(mala).ok, false, mala);
   }
   for (const buena of ['caballo grapa batería correcta', 'Mi perro Tobi come 3 manzanas', 'x7#Kq9!mZ2@pL']) assert.equal(C.calidadFrase(buena).ok, true, buena);
+});
+
+test('S3: frases triviales para quien os conoce (nombres, la app, años, frases hechas) no valen: entropía mínima', () => {
+  for (const mala of ['victor virginia', 'Víctor y Virginia', 'pipos fitness', 'te quiero mucho', 'barcelona 1985', 'virginia2026!', 'contraseña123', 'vicvir1990abc', 'mi perro toby', 'una frase bastante larga']) {
+    const q = C.calidadFrase(mala);
+    assert.equal(q.ok, false, mala);
+    assert.ok(q.bits < C.BITS_MIN, mala);
+  }
+  // 4 palabras de la lista son 44 bits: el mínimo.
+  assert.equal(C.BITS_MIN, 44);
+  assert.equal(C.bitsFrase('caballo perro mucho plan'), 44);
+  assert.equal(C.calidadFrase('caballo perro mucho plan').ok, true);
+  assert.equal(C.calidadFrase('caballo perro mucho').ok, false);
+});
+
+test('S3: una frase floja de antes que ya abre copias en la nube se sigue aceptando al activar (con aviso); una nueva, no', async () => {
+  // Copias hechas antes de S3 con una frase que ahora no pasa (pasaba las reglas de entonces).
+  const vieja = 'barcelona playa 1985';
+  assert.equal(C.calidadFrase(vieja).porBits, true);
+  await assert.rejects(C.activar('victor', vieja), e => e.codigo === 'corta', 'sin copias que abra, se rechaza');
+  const s0 = C.nuevaSal();
+  const k = { clave: await C.derivarClave(vieja, s0), sal: s0, iteraciones: C.ITERACIONES };
+  await C.activar('victor', FRASE); claves.regs.set('victor', { persona: 'victor', ...k, creada: new Date().toISOString() }); await C.cargarClave('victor');
+  sesion(); assert.equal(await C.copiarAhora(), 'ok');
+  // Móvil nuevo: activar con la frase floja de siempre abre esas copias y sigue con ellas.
+  claves.regs.clear(); await C.cargarClave('victor');
+  const r = await C.activar('victor', vieja);
+  assert.equal(r.floja, true);
+  assert.equal(r.abren, 1);
+  assert.deepEqual([...claves.regs.get('victor').sal], [...s0]);
+  // Cambiar a una frase floja, nunca.
+  await assert.rejects(C.cambiarFrase('victor', vieja), e => e.codigo === 'corta');
 });
 
 // ── Con la función y el Blob simulado ──

@@ -8,7 +8,7 @@ import { estado, cambiar, importar, ErrorCopia } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, fechaCorta } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
 import { estadoNube, escucharNube, activar, cambiarFrase, copiarAhora, listar, abrirCopia, probarCopias, cargarClave, marcarBase,
-  reanudarNube, generarFrase, calidadFrase, metadatos, ErrorNube, FRASE_MIN, AVISO_DIAS } from '../../nucleo/copia.js';
+  reanudarNube, generarFrase, calidadFrase, metadatos, ErrorNube, AVISO_DIAS } from '../../nucleo/copia.js';
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : 'otra persona');
 const ADVERTENCIA = 'Sin la frase, las copias de la nube no se pueden abrir; guárdala en un gestor de contraseñas.';
@@ -82,15 +82,17 @@ const camposFrase = () => {
   <div class="frase-propuesta"><p>Te propongo esta frase (6 palabras al azar: muy difícil de adivinar):</p>
     <p class="frase-generada"><b id="n-gen">${h(propuesta)}</b></p>
     <div class="fila-botones"><button type="button" class="btn sec" data-act="nube.generar">Generar otra</button><button type="button" class="btn sec" data-act="nube.usarGenerada">Usar esta</button></div></div>
-  <label class="campo col"><span>Frase de recuperación <small>al menos ${FRASE_MIN} caracteres; mejor varias palabras sin relación</small></span>
+  <label class="campo col"><span>Frase de recuperación <small>mejor la propuesta; si no, al menos 4 palabras sin relación (sin vuestros nombres ni años)</small></span>
     <input type="password" id="n-f1" autocomplete="new-password" autocapitalize="off" spellcheck="false"></label>
   <label class="campo col"><span>Repite la frase</span><input type="password" id="n-f2" autocomplete="new-password" autocapitalize="off" spellcheck="false"></label>
   <p class="nota aviso-nota"><b>${h(ADVERTENCIA)}</b> No se guarda ni en el móvil ni en el servidor.</p>`;
 };
-function leerFrases() {
+// { flojaVale }: al activar, una frase floja se deja pasar a activar(), que solo la acepta si ya abre copias
+// de la nube (frases anteriores a S3); para una frase nueva, nunca.
+function leerFrases({ flojaVale = false } = {}) {
   const a = $('#n-f1').value, b = $('#n-f2').value;
   const q = calidadFrase(a);
-  if (!q.ok) { aviso(q.motivo, 'error'); return null; }
+  if (!q.ok && !(flojaVale && q.porBits)) { aviso(q.motivo, 'error'); return null; }
   if (a !== b) { aviso('Las dos frases no coinciden', 'error'); return null; }
   return a;
 }
@@ -198,7 +200,7 @@ acciones({
     aviso('Apúntala ahora en tu gestor de contraseñas', 'info');
   },
   'nube.confirmarActivar': el => conEspera(el, async () => {
-    const frase = leerFrases(); if (!frase) return;
+    const frase = leerFrases({ flojaVale: true }); if (!frase) return;
     const persona = estado().dueño;
     let r;
     try { r = await activar(persona, frase); } catch (e) {
@@ -216,7 +218,8 @@ acciones({
       }
       return;
     }
-    aviso('Copias en la nube activadas. Hago la primera ahora.');
+    if (r.floja) aviso('Copias activadas con tu frase de siempre, pero es fácil de adivinar: cámbiala en «Cambiar la frase» (las copias nuevas irán con la nueva).', 'info');
+    else aviso('Copias en la nube activadas. Hago la primera ahora.');
     copiarAhora('activar');
   }),
   'nube.frase': () => {
