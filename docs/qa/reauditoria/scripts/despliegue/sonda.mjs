@@ -1,0 +1,10 @@
+import { chromium, devices } from 'playwright';
+import { crearServidor, RAIZ } from '/home/user/wt/auditoria/tests/e2e/servidor.mjs';
+const srv = crearServidor({ raiz: RAIZ }); await srv.escuchar(8931);
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ ...devices['Pixel 7'], baseURL: 'http://127.0.0.1:8931' });
+const page = await ctx.newPage();
+await page.goto('/'); await page.click('[data-act="bienvenida.elegir"][data-v="victor"]'); await page.waitForSelector('#nav a');
+await page.click("[data-act=\"perfil.objetivo\"]:has-text(\"Ganar fuerza\")"); await page.click("#nav a[href=\"#hoy\"]"); await page.waitForTimeout(400); console.log(await page.locator("#vista").innerText());
+console.log(await page.locator('#vista [data-act], #vista a').evaluateAll(xs => xs.map(x => (x.dataset.act || x.getAttribute('href')) + ' :: ' + x.textContent.trim().slice(0, 40))));
+await b.close(); await srv.cerrar();

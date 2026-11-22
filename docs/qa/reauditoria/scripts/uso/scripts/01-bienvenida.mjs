@@ -1,0 +1,13 @@
+import { abrir, foto, pequenos, contraste, desborde, botones, texto, estado, BASE } from './h.mjs';
+const W = +process.argv[2] || 360, H = +process.argv[3] || 640, P = process.argv[4] || 'victor';
+const { browser, page } = await abrir({ w: W, hgt: H });
+await page.goto(BASE + '/');
+await page.waitForSelector('#vista h1');
+const log = async n => { console.log('\n=== ' + n); console.log(await texto(page)); console.log('BOTONES', await botones(page)); console.log('PEQ', await pequenos(page)); console.log('CONTR', await contraste(page)); console.log('DESB', await desborde(page)); await foto(page, `01-${P}-${W}-${n}`); };
+await log('inicio');
+await page.click(`[data-act="bienvenida.elegir"][data-v="${P}"]`);
+await page.waitForTimeout(300);
+await log('tras-elegir');
+console.log('HASH', await page.evaluate(() => location.hash));
+console.log('ERR', page.errores);
+await browser.close();

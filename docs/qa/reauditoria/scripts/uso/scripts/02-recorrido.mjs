@@ -1,0 +1,40 @@
+// Recorrido de primera vez: bienvenida → perfil → Hoy → semana → check-in → sesión
+import { abrir, foto, pequenos, contraste, desborde, botones, texto, estado, BASE } from './h.mjs';
+const W = +process.argv[2] || 360, H = +process.argv[3] || 640, P = process.argv[4] || 'victor';
+const { browser, page } = await abrir({ w: W, hgt: H });
+const tag = `02-${P}-${W}`;
+const log = async (n, sel = '#vista', lim = 44) => {
+  console.log('\n=== ' + n + ' hash=' + await page.evaluate(() => location.hash) + ' foco=' + await page.evaluate(() => { const a = document.activeElement; return a ? a.tagName + '#' + a.id + ' ' + (a.getAttribute('aria-label') || a.textContent || '').trim().slice(0, 30) : ''; }));
+  console.log((await texto(page, sel) || '').slice(0, 1500));
+  console.log('BOTONES', JSON.stringify(await botones(page, sel)));
+  console.log('PEQ', await pequenos(page, lim)); console.log('CONTR', await contraste(page)); console.log('DESB', await desborde(page));
+  await foto(page, `${tag}-${n}`);
+};
+await page.goto(BASE + '/');
+await page.click(`[data-act="bienvenida.elegir"][data-v="${P}"]`);
+await page.click('[data-act="perfil.objetivo"]:has-text("Ganar músculo")');
+await page.waitForTimeout(200);
+await log('perfil-objetivo');
+await page.click('#nav a[href="#hoy"]');
+await page.waitForTimeout(200);
+await log('hoy-sinplan');
+await page.click('[data-act="entrenador.plan"]');
+await page.waitForTimeout(300);
+await log('hoja-semana', '.hoja');
+await page.click('[data-act="entrenador.crearPlan"]:has-text("con la app")');
+await page.waitForTimeout(600);
+await log('hoy-conplan');
+await foto(page, `${tag}-hoy-conplan-entera`, true);
+await page.click('.accion-hoy [data-act="entrenador.prepararHoy"]');
+await page.waitForTimeout(400);
+await log('checkin', '.hoja');
+await foto(page, `${tag}-checkin-entera`, true);
+console.log('scrollTop/alto', await page.evaluate(() => { const h = document.querySelector('.hoja.checkin'); return [h.scrollTop, h.scrollHeight, h.clientHeight]; }));
+// ¿se ve el botón Preparar sin desplazar?
+console.log('boton preparar', await page.evaluate(() => { const b = document.querySelector('[data-act="entrenador.crearHoy"]').getBoundingClientRect(); return [b.top, b.bottom, innerHeight]; }));
+await page.click('[data-act="entrenador.crearHoy"]');
+await page.waitForTimeout(800);
+await log('sesion', '#vista', 48);
+await foto(page, `${tag}-sesion-entera`, true);
+console.log('ERR', page.errores);
+await browser.close();
