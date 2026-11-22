@@ -13,7 +13,7 @@
 
 /* ---------- Bloques de Hoy ---------- */
 .semana-hoy { margin: 0 0 var(--e-bloque); }
-.sin-cerrar, .sin-red { margin: 0 0 var(--e-6); }
+.sin-cerrar, .sin-red, .revisar-lesiones { margin: 0 0 var(--e-6); }
 .hoy-cuerpo { display: grid; gap: var(--e-bloque); }
 .hoy-cuerpo > .tarjeta { margin: 0; }
 .hoy-cuerpo + * { margin-top: var(--e-bloque); }

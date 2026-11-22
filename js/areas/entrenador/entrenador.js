@@ -22,7 +22,7 @@
 export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab, limiteDolor } from './dia.js';
 export { validarSesion, problemasSesion, normalizarReps } from './validar.js';
 export { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
-export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS, T1, T2, T3, T6, T8 } from './alarma.js';
+export { fraseAlarma, alarmaPendiente, avisosConsulta, SEÑALES, SEÑALES_CORTAS, T1, T2, T3, T3b, T6, T8 } from './alarma.js';
 export { restriccionesSalud, etiquetasSalud, CAMPOS_SALUD, MEDICACION, AVISO_VISTO_BUENO } from './salud.js';
 export { ajustesPorTendencia, diasPorDefecto, planReglas, planDeLaSemana, estadoDias, planDeHoy, diaElegido, siguientePendiente, reorganizar, noPuedoHoy } from './plan.js';
 export { ajustarAlCheckin, motivoIA, previaCheckin } from './checkin.js';

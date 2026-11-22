@@ -304,6 +304,7 @@ acciones({
   'perfil.grupo': el => { ponerGrupo(el.dataset.v); pintar(); window.scrollTo(0, 0); const b = $(`[data-act="perfil.grupo"][data-v="${el.dataset.v}"]`); if (b && el.closest('.grupos-perfil')) b.focus({ preventScroll: true }); },
   // Desde otras pantallas (p. ej. la nota «el código de acceso no es correcto»): Perfil › Ajustes.
   'perfil.irAjustes': () => { ponerGrupo('ajustes'); cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
+  'perfil.irLesiones': () => { ponerGrupo('lesiones'); cerrarHoja(); ir('perfil'); window.scrollTo(0, 0); },
   'perfil.acompañado': el => cambiar(S => { S.perfil.acompañado = el.checked; }, 'perfil-silencio'),
   'perfil.nadar25': el => cambiar(S => { if (el.checked) S.perfil.nadar25 = true; else delete S.perfil.nadar25; }, 'perfil'),
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),

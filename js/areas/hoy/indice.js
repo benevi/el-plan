@@ -89,6 +89,10 @@ function avisoSinCerrar(S) {
 
 const avisoRed = () => enLinea() ? '' : `<div class="aviso sin-red" role="status">${ICONOS.sinred}<div class="aviso-texto"><b>Sin conexión</b>
   <p>Tu sesión de hoy funciona entera. Lo que necesita al entrenador IA espera a que vuelva la red.</p></div><span></span></div>`;
+// Lesiones traídas de la app anterior con el dolor estimado (U5, revisión del PR #47): que se revise antes de entrenar.
+const avisoLesionesTraidas = S => S.perfil.lesiones.some(l => l.activa && l.dolorRevisar)
+  ? `<div class="aviso aviso--aviso revisar-lesiones" role="note">${ICONOS.alerta}<div class="aviso-texto"><b>Revisa el dolor de tus lesiones traídas</b>
+  <p>Viene estimado de la app anterior.</p><div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.irLesiones">Revisarlas</button></div></div><span></span></div>` : '';
 
 // ── La tarjeta de hoy: { tarjeta, accion } (accion = la principal, en la barra de abajo) ──
 const tarjeta = (etiqueta, titulo, cuerpo, clase = '') => `<section class="tarjeta destacada hoy-tarjeta ${clase}" aria-labelledby="t-hoy-${clase || 'dia'}">
@@ -176,7 +180,7 @@ function vista() {
   return `
   <header class="saludo"><p>${h(fechaLarga(hoyISO()))}</p><h1>Hola, ${h(p ? p.nombre : '')}</h1></header>
   ${plan && !sinPerfil ? tiraSemana(S) : ''}
-  ${avisoSinCerrar(S)}${avisoRed()}
+  ${avisoSinCerrar(S)}${avisoRed()}${avisoLesionesTraidas(S)}
   <div class="hoy-cuerpo">${cuerpo}</div>
   ${recordatorioCopia()}
   ${accion ? `<div class="accion-hoy">${accion}</div>` : ''}`;
