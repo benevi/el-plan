@@ -26,6 +26,9 @@ export const AVISO_VISTO_BUENO = 'Consulta con tu médico antes de seguir; cuand
 
 const ABDOMINALES_FLEXION = ['crunch', 'crunch-maquina', 'elevacion-piernas', 'rueda-abdominal', 'mountain-climbers'];
 const BOCA_ABAJO = ['superman', 'curl-femoral-tumbado', 'ytw-tumbado'];
+// Boca arriba más de 2 min seguidos (C-SALUD-0, embarazo desde la semana 16, S10): la postura de descarga (2-3 min)
+// y el dead bug (3 series con 30 s de descanso sin levantarse). La respiración de la vuelta pasa a sentado.
+const BOCA_ARRIBA_LARGO = ['descarga-90-90', 'dead-bug'];
 const IMPACTO = ['comba', 'carrera-suave', 'jumping-jacks-sin-salto'];
 const CAIDA = ['comba', 'boxeo-sombra'];
 const COLUMNA = ['crunch', 'crunch-maquina', 'rueda-abdominal', 'elevacion-piernas', 'lenador-polea', 'estiramiento-gluteo-rodilla-pecho'];
@@ -37,11 +40,11 @@ const sinTildes = t => String(t || '').toLowerCase().normalize('NFD').replace(/[
 
 export const tieneSalud = s => !!s && Object.entries(s).some(([k, v]) => k !== 'vistoBueno' && (Array.isArray(v) ? v.length : !!v));
 
-// Restricciones del día. { excluir: Set(ids), soloSuave: motivo|null (sin fuerza: caminar suave y movilidad),
+// Restricciones del día. { excluir: Set(ids), sinTumbado (respiración sentado), soloSuave: motivo|null (sin fuerza: caminar suave y movilidad),
 //   sinIntervalos, sinImpacto, rpeMax, calentamientoExtra, calentamientoMin, vueltaMin, equilibrio, notas: [texto] }
 export function restriccionesSalud(S) {
   const p = S.perfil || {}, s = p.salud || {}, vb = s.vistoBueno || {};
-  const r = { excluir: new Set(), soloSuave: null, sinIntervalos: false, sinImpacto: false, rpeMax: null, calentamientoExtra: 0, calentamientoMin: 0, vueltaMin: 0, equilibrio: false, margenMin: 0, isoMax: null, descansoMin: 0, notas: [] };
+  const r = { excluir: new Set(), sinTumbado: false, soloSuave: null, sinIntervalos: false, sinImpacto: false, rpeMax: null, calentamientoExtra: 0, calentamientoMin: 0, vueltaMin: 0, equilibrio: false, margenMin: 0, isoMax: null, descansoMin: 0, notas: [] };
   const fuera = ids => ids.forEach(id => r.excluir.add(id));
   const rpe = n => { r.rpeMax = r.rpeMax ? Math.min(r.rpeMax, n) : n; };
   const suave = m => { r.soloSuave = r.soloSuave || m; };
@@ -61,7 +64,7 @@ export function restriccionesSalud(S) {
   if (+s.embarazo > 0) {
     if (!vb.embarazo) suave('Embarazo sin el visto bueno de tu matrona o ginecóloga: caminar suave, movilidad y fuerza muy ligera.');
     rpe(6); r.sinIntervalos = true; fuera(ABDOMINALES_FLEXION); fuera(['comba', 'carrera-suave', 'boxeo-sombra']);
-    if (+s.embarazo >= 16) fuera(BOCA_ABAJO);
+    if (+s.embarazo >= 16) { fuera(BOCA_ABAJO); fuera(BOCA_ARRIBA_LARGO); r.sinTumbado = true; }
     r.notas.push('Embarazo: que puedas hablar mientras entrenas, sin aguantar la respiración y nada boca arriba más de 2 minutos seguidos. Para y consulta si notas sangrado, pérdida de líquido, contracciones, mareo, dolor de cabeza o dolor en la pantorrilla.');
   }
   if (+s.posparto > 0) {

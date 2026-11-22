@@ -6,7 +6,7 @@
 // «solo suave» de los datos de salud (C-SALUD-0) con otra primera línea.
 
 import { ex, ZONAS } from '../../reglas/catalogo.js';
-import { contextoDia, opcionesCardio, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab } from './dia.js';
+import { contextoDia, opcionesCardio, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab, tareasFicha, tareaOk, tareaSinIdOk, libresDe, ESTIRA_SUAVE } from './dia.js';
 import { T6 } from './alarma.js';
 
 // Minutos → [bloque de cardio suave, de ellos el tramo inicial más suave, movilidad, estiramientos y respiración].
@@ -17,10 +17,6 @@ export function tablaDolorAlto(minutos) {
   const [c, w, mv, est] = TABLA[fila];
   return { cardio: c + (m - fila), suave: w, movilidad: mv, estiramientos: est, total: m };
 }
-const ESTIRA_LIBRE = {
-  piscina: ['Estiramiento de hombros en el borde', 'Estiramiento de gemelos en el borde', 'Estiramiento de espalda en el borde'],
-  otro: ['Estiramiento de gemelos de pie', 'Estiramiento de espalda de pie', 'Estiramiento de pecho de pie'],
-};
 const MOV_LIBRE = { piscina: 'Movilidad suave en el agua', otro: 'Movilidad articular suave' };
 // Nada con r en una zona activa ni que sea rehabilitación de una zona con dolor alto (C-DOLOR-4.3).
 let altas = [];
@@ -62,11 +58,22 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
     explicacion.push('Hoy ningún cardio de este lugar respeta tu dolor: el bloque de cardio pasa a movilidad suave y respiración.');
   }
 
-  // Movilidad sin dolor: libre en las zonas sin dolor; nada con r en las zonas activas (C-DOLOR-4).
+  // Movilidad sin dolor: libre en las zonas sin dolor; nada con r en las zonas activas y, de la zona dolorida,
+  // como mucho 2 tareas que su ficha marque como «alivio» (C-DOLOR-4, C-EST-2, S2). Lo «normal» de una ficha
+  // solo en B0-B1 (tareaOk).
   const vuelta = [];
   const movMin = t.movilidad + Math.max(0, movExtra);
-  const mov = ctx.pool.filter(e => e.m[0] === 'movilidad' && !esEstiraId(e.id) && sinRiesgoEn(e, zonas) && permitidoBase(S, e, ctx)
-    && !(lugar === 'calle' && ['gato-camello', 'rotacion-toracica-cuadrupedia'].includes(e.id)));
+  const altasF = altas.filter(z => ZONAS[z]);
+  const deFichaAlta = id => altasF.some(z => ['calentar', 'estirar'].some(tipo => tareasFicha(z, tipo, ((ctx.bandas[z] || {}).lesion || {}).detalle).some(f => f.id === id)));
+  const vale = e => sinRiesgoEn(e, zonas) && permitidoBase(S, e, ctx) && tareaOk(S, e.id, ctx);
+  // Las «alivio» de la ficha de cada zona con dolor alto (no cuentan como rehabilitación: C-DOLOR-4 las pide).
+  const alivioDe = tipo => altasF.flatMap(z => tareasFicha(z, tipo, ((ctx.bandas[z] || {}).lesion || {}).detalle)
+    .filter(f => f.uso === 'alivio' && f.id && ex(f.id) && permitidoBase(S, ex(f.id), ctx) && tareaOk(S, f.id, ctx)).map(f => ({ z, e: ex(f.id) })));
+  const cupo = Object.fromEntries(altasF.map(z => [z, 2]));
+  const tomar = l => l.filter(({ z }) => cupo[z]-- > 0).map(({ e }) => e);
+  const movAlivio = tomar(alivioDe('calentar').filter(({ e }) => e.m[0] === 'movilidad' && !esEstiraId(e.id)));
+  const mov = [...new Set([...movAlivio, ...ctx.pool.filter(e => e.m[0] === 'movilidad' && !esEstiraId(e.id) && vale(e) && !deFichaAlta(e.id)
+    && !(lugar === 'calle' && ['gato-camello', 'rotacion-toracica-cuadrupedia'].includes(e.id)))])];
   const nMov = Math.max(1, Math.min(movMin >= 10 ? 5 : 3, Math.max(1, mov.length)));
   repartir(movMin, nMov).forEach((m, i) => {
     const e = mov[i];
@@ -74,18 +81,22 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
   });
   // Estiramientos de las zonas sin dolor y respiración (más los «alivio» de la ficha, PR 9).
   const resp = t.estiramientos >= 12 ? 4 : t.estiramientos >= 8 ? 3 : 2;
-  const est = ctx.pool.filter(e => esEstiraId(e.id) && sinRiesgoEn(e, zonas) && !(lugar === 'calle' && ['postura-nino', 'estiramiento-isquios-tumbado', 'estiramiento-figura-4', 'estiramiento-gluteo-rodilla-pecho', 'estiramiento-flexor-cadera'].includes(e.id)));
-  const alivio = zonas.filter(z => ZONAS[z]).flatMap(z => (ZONAS[z].estirar || []).filter(x => x && typeof x === 'object' && x.alivio && x.id && ex(x.id) && permitidoBase(S, ex(x.id), ctx)).map(x => ex(x.id)));
+  const est = ctx.pool.filter(e => esEstiraId(e.id) && vale(e) && !deFichaAlta(e.id) && !(lugar === 'calle' && ['postura-nino', 'estiramiento-isquios-tumbado', 'estiramiento-figura-4', 'estiramiento-gluteo-rodilla-pecho', 'estiramiento-flexor-cadera'].includes(e.id)));
+  const alivio = tomar(alivioDe('estirar').filter(({ e }) => !mov.includes(e)));
   const estiramientos = [...new Set([...alivio, ...est])];
   const nEst = Math.max(1, Math.min(5, Math.round((t.estiramientos - resp) / 2)));
   const durEst = repartir(t.estiramientos - resp, nEst);
+  const libres = libresDe(lugar).filter(([n]) => tareaSinIdOk(S, { nombre: n }, ctx));
+  // Sin repetir: si no hay estiramientos para todos los huecos, el último que hay dura más.
+  const opcionesEst = [...estiramientos.map(e => ({ id: e.id, nombre: e.n, detalle: '30 s por lado, tensión suave; si sube el dolor o notas hormigueo, sáltalo.' })),
+    ...(libres.length ? libres : [ESTIRA_SUAVE]).map(([n]) => ({ nombre: n, detalle: '30 s por lado, tensión suave; si sube el dolor, sáltalo.' }))];
   durEst.forEach((m, i) => {
-    const e = estiramientos[i];
-    const libre = ESTIRA_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'][i % 3];
-    vuelta.push(e ? { id: e.id, nombre: e.n, detalle: '30 s por lado, tensión suave; si sube el dolor o notas hormigueo, sáltalo.', duracion: `${m} min` } : { nombre: libre, detalle: '30 s por lado, tensión suave; si sube el dolor, sáltalo.', duracion: `${m} min` });
+    if (i < opcionesEst.length) vuelta.push({ ...opcionesEst[i], duracion: `${m} min` });
+    else { const u = vuelta[vuelta.length - 1]; u.duracion = `${parseInt(u.duracion, 10) + m} min`; }
   });
+
   vuelta.push({ nombre: 'Respiración', detalle: 'Cómodo, soltando el aire en 6 segundos. Nota cómo baja la tensión.', duracion: `${resp} min` });
-  if (lugar === 'piscina' && ex('flotacion') && permitidoBase(S, ex('flotacion'), ctx)) vuelta[vuelta.length - 1] = { id: 'flotacion', nombre: ex('flotacion').n, detalle: 'Boca arriba, soltando el aire despacio.', duracion: `${resp} min` };
+  if (lugar === 'piscina' && !ctx.salud.sinTumbado && ex('flotacion') && permitidoBase(S, ex('flotacion'), ctx)) vuelta[vuelta.length - 1] = { id: 'flotacion', nombre: ex('flotacion').n, detalle: 'Boca arriba, soltando el aire despacio.', duracion: `${resp} min` };
 
   explicacion.push(`Movilidad sin dolor y estiramientos de lo que no duele; el dolor durante no debe pasar de ${Math.min(...zonas.filter(z => ZONAS[z]).map(z => techoDolor(S, z)), 3)}/10.`);
   if (mayores60) explicacion.push('Con 60 años o más, el tramo suave del principio dura 2 minutos más.');

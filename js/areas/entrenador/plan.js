@@ -5,7 +5,7 @@ import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { es } from '../../nucleo/ui.js';
 import { semanaISO, diaSemana } from '../../nucleo/modelo.js';
 import { tendencias } from '../../reglas/contexto.js';
-import { sesionesHechas, semanaDescarga, seriesDescarga, esCompuestoDe, lesionNueva } from '../../reglas/progresion.js';
+import { sesionesHechas, semanaDescarga, seriesDescarga, lesionNueva, topeSeries } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
 import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
@@ -212,7 +212,9 @@ function generar(S, dias, tipos, { minutos, seco, t }) {
   });
 }
 
-const minSeries = e => (esCompuestoDe(e) ? 2 : 1);
+// Ningún principal por debajo de 2 series al recortar (C-DOSIS-2, C-DOSIS-3, C-TIEMPO-2: «mínimo 2», S9): si así no
+// se respeta el techo, fuera el ejercicio entero.
+const minSeries = () => 2;
 // Quita series del músculo m en el día d hasta dejar menos de `tope` directas (C-REP-1).
 function recortarDia(d, m, tope) {
   const conM = () => d.ejercicios.filter(x => x.rol === 'principal' && ex(x.id) && ex(x.id).m.includes(m));
@@ -227,7 +229,7 @@ function recortarDia(d, m, tope) {
 // Series por ejercicio hasta las que puede llegar el relleno de volumen (C-DOSIS-2 y C-VOL-1, decisión D-B de
 // Víctor del 21-11-2026): principiante 3, intermedio y avanzado 4. Si con eso no se llega a la banda, se añade
 // otro ejercicio del mismo músculo (añadirEjercicio) en vez de más series.
-export const topeRelleno = nivel => (nivel === 1 ? 3 : 4);
+export const topeRelleno = nivel => topeSeries(nivel);
 // Otro principal del músculo m en un día de seco (D-B): de su nivel, sin riesgo en una zona activa, que quepa
 // en los minutos del día y sin pasar el máximo por sesión, el techo semanal ni crear un choque de C-REP-1.
 function añadirEjercicio(S, out, d, m, obj, vol) {

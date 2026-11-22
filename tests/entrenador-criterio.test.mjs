@@ -284,7 +284,9 @@ test('C-SERIES-1, C-DOSIS-3, C-PAUSA-1: el validador acota series, sube aislamie
     E('press-pecho-maquina', 'principal', { series: 12, reps: '4-6', descanso: 30 }), E('jalon-pecho'), E('elevaciones-laterales', 'principal', { reps: '6-8', descanso: 20 }), E('curl-mancuernas', 'principal', { reps: '5', descanso: 30 })] };
   const v = ent.validarSesion(S, d, { lugar: 'gym', minutos: 90 });
   const x = id => v.sesion.ejercicios.find(y => y.id === id);
-  assert.equal(x('press-pecho-maquina').series, 6);
+  // C-SERIES-1 corta en 6, y el tope de D-B (3 principiante, 4 el resto) también vale para lo que proponga la IA.
+  assert.equal(x('press-pecho-maquina').series, 3);
+  assert.equal(ent.validarSesion(nuevoS({ objetivos: ['fuerza'], nivel: 3 }), d, { lugar: 'gym', minutos: 90 }).sesion.ejercicios.find(y => y.id === 'press-pecho-maquina').series, 4);
   assert.ok(x('press-pecho-maquina').descanso >= 120);
   assert.equal(x('elevaciones-laterales').reps, '12-15');
   assert.ok(x('elevaciones-laterales').descanso >= 45);

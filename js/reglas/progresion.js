@@ -14,6 +14,11 @@ import { semanaISO } from '../nucleo/modelo.js';
 const DIA = 864e5;
 
 // «8-12», «12 c/pierna», «30-45s», «10-20 min», «25 m» → { lo, hi, u, resto }
+// Tope de series por ejercicio en el plan y en las reglas (C-DOSIS-2, decisión D-B de Víctor del 21-11-2026):
+// 3 para el principiante y 4 para intermedio y avanzado. Lo usan la progresión, la energía 5, el relleno de
+// volumen del plan y «Mis sesiones».
+export const topeSeries = nivel => ((+nivel || 1) <= 1 ? 3 : 4);
+
 export function rango(txt) {
   const m = String(txt || '').match(/^\s*(\d+(?:[.,]\d+)?)\s*(?:-\s*(\d+(?:[.,]\d+)?))?\s*(min|s|m)?\b\s*(.*)$/i);
   if (!m) return null;
@@ -543,7 +548,7 @@ function sugerirBase(S, id, base, ctx) {
   }
   // Banda: la siguiente al llegar al tope.
   if (e.mat.includes('banda') && !e.mat.includes('peso corporal')) { out.tipo = 'sube'; out.motivo = `Llegaste a ${es(r.hi)} en todas: hoy pasa a la banda siguiente y vuelve a ${es(r.lo)}.`; return out; }
-  // Repeticiones: +1-2 por serie; con el tope dos sesiones seguidas, +1 serie (hasta 4); por encima del techo
+  // Repeticiones: +1-2 por serie; con el tope dos sesiones seguidas, +1 serie (hasta 3 o 4, D-B); por encima del techo
   // de C-DOSIS-5 dos sesiones seguidas, variante.
   const valsPrev = prev ? prev.sets.map(vals) : [];
   const prevTope = valsPrev.length > 0 && valsPrev.every(v => v != null && v >= r.hi);
@@ -555,7 +560,7 @@ function sugerirBase(S, id, base, ctx) {
     else out.motivo = `Más de ${techo} repeticiones dos sesiones seguidas: mantén y hazlo más lento (3 s al bajar).`;
     return out;
   }
-  if (prevTope && hechas < 4 && ctx.tiempo !== 'rapido') {
+  if (prevTope && hechas < topeSeries(nivel) && ctx.tiempo !== 'rapido') { // D-B (S14)
     out.series = hechas + 1; out.tipo = 'series'; out.reps = desde(r.lo, Math.max(r.hi, min));
     out.motivo = `Dos sesiones al tope: hoy una serie más (${out.series}).`;
     return out;
