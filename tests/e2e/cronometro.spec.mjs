@@ -175,7 +175,9 @@ test('U1 con el móvil bloqueado y una hoja abierta: al volver, la alarma está 
   await esconder(page, false);
   await expect(page.locator('#temporizador.alarma')).toBeVisible();
   await expect(page.locator('#temporizador .alarma-sub')).toContainText(/terminó hace 0:4\d/);
-  await barraEncima(page, 'al volver');
+  // Al volver la barra crece de descanso a alarma y la hoja reserva el alto nuevo en el siguiente fotograma
+  // (ResizeObserver): se comprueba en cuanto el diseño se asienta.
+  await expect(async () => barraEncima(page, 'al volver')).toPass({ timeout: 2000 });
   expect(await page.evaluate(() => window.__vibra.at(-1))).toEqual(TRES_TOQUES);
   await page.clock.runFor(7000);
   await expect(page.locator('#temporizador.alarma')).toBeVisible();
