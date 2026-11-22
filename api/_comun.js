@@ -4,7 +4,7 @@
 // almacén Blob conectado al proyecto (BLOB_READ_WRITE_TOKEN, o BLOB_STORE_ID con OIDC).
 import { createHash, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { revisarIP, apuntarFallo } from './_freno.js';
+import { frenoCodigo } from './_freno.js';
 
 export { Anthropic };
 export const MODELO = 'claude-opus-5-5';
@@ -42,7 +42,7 @@ function codigoDe(req) {
 
 // Puerta común a todas las funciones: método POST, APP_CODE configurado y código correcto (en tiempo constante).
 // Resuelve true si se puede seguir; si no, ya ha respondido (405, 500, 429 o 401). Siempre deja `no-store`.
-// S1: tras 10 códigos malos en 10 minutos desde una IP, esa IP recibe 429 durante 15 minutos, también con el
+// S1: tras 10 códigos malos distintos en 10 minutos desde una IP, esa IP recibe 429 durante 15 minutos, también con el
 // código bueno (ver api/_freno.js: en memoria y, si está conectado, en el almacén Blob).
 export const BLOQUEADA = 'demasiados intentos con un código incorrecto; prueba dentro de un rato';
 export async function puerta(req, res) {
@@ -50,10 +50,12 @@ export async function puerta(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'Usa POST' }); return false; }
   const codigo = process.env.APP_CODE;
   if (!codigo) { console.error('servidor: falta APP_CODE'); res.status(500).json({ error: 'el servidor no está configurado' }); return false; }
-  const ip = await revisarIP(req);
-  if (ip.bloqueada) { res.setHeader('Retry-After', '900'); res.status(429).json({ error: BLOQUEADA }); return false; }
-  if (!codigoValido(codigoDe(req), codigo)) {
-    if (await apuntarFallo(ip)) console.error('servidor: IP bloqueada por códigos incorrectos');
+  const dado = codigoDe(req);
+  const valido = codigoValido(dado, codigo);
+  const f = await frenoCodigo(req, valido, dado);
+  if (f.bloqueada) { res.setHeader('Retry-After', '900'); res.status(429).json({ error: BLOQUEADA }); return false; }
+  if (!valido) {
+    if (f.recienBloqueada) console.error('servidor: IP bloqueada por códigos incorrectos');
     res.status(401).json({ error: 'código de acceso incorrecto' }); return false;
   }
   return true;

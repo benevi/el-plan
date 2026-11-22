@@ -52,24 +52,55 @@ test('S1: los fallos espaciados (menos de 10 por ventana de 10 min) no bloquean'
 });
 
 test('S1: el freno de /api/copia es el mismo (misma puerta)', async () => {
-  for (let i = 0; i < FALLOS.max; i++) { const r = new Respuesta(); await handlerCopia(peticion({ codigo: 'malo', cuerpo: { accion: 'listar', persona: 'victor' }, cabeceras: { 'x-forwarded-for': '203.0.113.7' } }), r); assert.equal(r.codigo, 401); }
+  for (let i = 0; i < FALLOS.max; i++) { const r = new Respuesta(); await handlerCopia(peticion({ codigo: 'malo' + i, cuerpo: { accion: 'listar', persona: 'victor' }, cabeceras: { 'x-forwarded-for': '203.0.113.7' } }), r); assert.equal(r.codigo, 401); }
   assert.equal((await pedir()).codigo, 429);
 });
 
-test('S1: con el almacén Blob, el bloqueo vale en otra instancia (sin memoria compartida); sin él, solo en esta', async () => {
+test('S1: con el almacén Blob, otra instancia ve el bloqueo ante otro código malo; el código bueno no toca el Blob', async () => {
   const blob = new BlobSimulado(); ponerAlmacenFreno(blob);
-  for (let i = 0; i < FALLOS.max; i++) await pedir({ codigo: 'malo' });
+  const r0 = new Respuesta(); await handlerCopia(peticion({ codigo: 'el-codigo-bueno', cuerpo: { accion: 'listar', persona: 'victor' }, cabeceras: { 'x-forwarded-for': '203.0.113.7' } }), r0);
+  assert.equal(r0.codigo, 503, 'pasa la puerta (sin almacén de copias)');
+  assert.deepEqual(blob.llamadas, [], 'M1: con el código bueno, la puerta no hace ni una operación del Blob');
+  for (let i = 0; i < 2; i++) await pedir({ codigo: 'malo' + i });
+  assert.deepEqual(blob.llamadas, [], 'M1: los dos primeros códigos malos, solo en memoria');
+  for (let i = 2; i < FALLOS.max; i++) await pedir({ codigo: 'malo' + i });
+  assert.ok(blob.llamadas.length > 0, 'a partir del 3.º, al Blob');
   reiniciarFrenos(); // otra instancia: memoria vacía
-  assert.equal((await pedir()).codigo, 429);
+  // Otra instancia solo mira el Blob a partir del 3.º código malo de esa IP (M1): con él ve el bloqueo.
+  assert.equal((await pedir({ codigo: 'otro-1' })).codigo, 401);
+  assert.equal((await pedir({ codigo: 'otro-2' })).codigo, 401);
+  assert.equal((await pedir({ codigo: 'otro-3' })).codigo, 429, 'otra instancia: bloqueada');
+  assert.equal((await pedir()).codigo, 429, 'y ya lo sabe esa instancia');
   const archivos = [...blob.blobs.keys()];
   assert.ok(archivos.every(k => k.startsWith('frenos/codigo/')), archivos.join());
   assert.ok(!archivos.some(k => k.includes('203.0.113.7')), 'la IP no se guarda en claro');
+  assert.ok(![...blob.blobs.values()].some(b => b.bytes.toString().includes('malo')), 'ni los códigos probados');
   // Sin Blob: la memoria de cada instancia es lo único (límite documentado en LEEME).
   ponerAlmacenFreno(null); reiniciarFrenos();
-  for (let i = 0; i < FALLOS.max; i++) await pedir({ codigo: 'malo', ip: '192.0.2.1' });
+  for (let i = 0; i < FALLOS.max; i++) await pedir({ codigo: 'malo' + i, ip: '192.0.2.1' });
   assert.equal((await pedir({ ip: '192.0.2.1' })).codigo, 429);
   reiniciarFrenos();
   assert.equal((await pedir({ ip: '192.0.2.1' })).codigo, 200);
+});
+
+test('G1: el mismo código malo repetido (un móvil con el código viejo) cuenta una vez y no bloquea a nadie', async () => {
+  for (let i = 0; i < 50; i++) assert.equal((await pedir({ codigo: 'el-codigo-viejo' })).codigo, 401);
+  assert.equal((await pedir()).codigo, 200);
+});
+
+test('M1: IPv6 se agrupa por /64 (cambiar la parte de dispositivo no reinicia el freno)', async () => {
+  for (let i = 0; i < FALLOS.max; i++) assert.equal((await pedir({ codigo: 'malo' + i, ip: `2001:db8:1:2:${i.toString(16)}::1` })).codigo, 401);
+  assert.equal((await pedir({ ip: '2001:db8:1:2:abcd:ef::9' })).codigo, 429);
+  assert.equal((await pedir({ ip: '2001:db8:1:3::1' })).codigo, 200, 'otra /64 no');
+});
+
+test('M2: si el Blob se cuelga, el freno no espera más de 1,5 s y sigue con la memoria', async () => {
+  const colgado = { get: () => new Promise(() => {}), put: () => new Promise(() => {}), list: async () => ({ blobs: [] }), del: async () => {}, llamadas: [] };
+  ponerAlmacenFreno(colgado);
+  const t0 = performance.now();
+  for (let i = 0; i < 4; i++) assert.equal((await pedir({ codigo: 'malo' + i })).codigo, 401);
+  assert.equal((await pedir()).codigo, 200);
+  assert.ok(performance.now() - t0 < 4 * 1700 + 1700, 'cada espera, como mucho 1,5 s');
 });
 
 test('S1: si el Blob falla, no se bloquea a nadie por eso', async () => {
@@ -111,4 +142,17 @@ test('S1: una petición rechazada antes (código malo, 400) no gasta cupo', asyn
   const r = new Respuesta(); await handler(peticion({ codigo: 'el-codigo-bueno', cuerpo: { modo: 'sesion', catalogo: [] } }), r);
   assert.equal(r.codigo, 400);
   assert.equal((await pedir()).codigo, 200);
+});
+
+test('cupo: si la IA falla antes de responder (saturada, sin conexión) no se cuenta; si responde mal, sí', async () => {
+  process.env.CUPO_IA_SESIONES = '2';
+  ponerClienteIA(clienteSimulado(() => { const e = new Error('overloaded'); e.status = 529; throw e; }));
+  for (let i = 0; i < 5; i++) assert.equal((await pedir()).codigo, 529);
+  ponerClienteIA(clienteSimulado(() => mensaje('no es json')));
+  assert.equal((await pedir()).codigo, 502);
+  ponerClienteIA(cliente);
+  assert.equal((await pedir()).codigo, 200);
+  const r = await pedir();
+  assert.equal(r.codigo, 429);
+  assert.ok(r.cuerpo.vuelve.endsWith('T00:00:00.000Z'));
 });

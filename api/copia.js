@@ -30,7 +30,7 @@
 import { puerta, tipoDe, largoAdmitido, leerJSON, LIMITE_CUERPO } from './_comun.js';
 import * as blobReal from '@vercel/blob';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { reiniciarFrenos } from './_freno.js';
+import { reiniciarFrenos, conTope } from './_freno.js';
 
 export const LIMITE_COPIA = 4 * 1024 * 1024; // bytes del archivo cifrado
 export const PERSONAS = ['victor', 'virginia'];
@@ -67,15 +67,13 @@ const NO_ACTIVADA = 'las copias en la nube aún no están activadas';
 // Además, un tope de SUBIDAS_DIA subidas al día por persona con un contador en el propio Blob (ver subir).
 const RITMO = { ventana: 10 * 60e3, todas: 60, subir: 20 };
 const historial = new Map();
-export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; reiniciarFrenos(); } // (también los de _freno.js)
-function dentroDeRitmo(persona, accion, ahora = reloj()) {
+export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; etiquetasMem.clear(); reiniciarFrenos(); } // (también los de _freno.js)
+function ritmoLleno(persona, accion, ahora = reloj()) {
   const lista = (historial.get(persona) || []).filter(x => ahora - x.t < RITMO.ventana);
-  const subidas = lista.filter(x => x.accion === 'subir').length;
-  if (lista.length >= RITMO.todas || (accion === 'subir' && subidas >= RITMO.subir)) { historial.set(persona, lista); return false; }
-  lista.push({ t: ahora, accion });
   historial.set(persona, lista);
-  return true;
+  return lista.length >= RITMO.todas || (accion === 'subir' && lista.filter(x => x.accion === 'subir').length >= RITMO.subir);
 }
+const apuntarRitmo = (persona, accion, ahora = reloj()) => { (historial.get(persona) || historial.set(persona, []).get(persona)).push({ t: ahora, accion }); };
 
 // ── Nombres ──
 // ISO con guiones en la hora (los «:» no van bien en URL y rutas).
@@ -167,13 +165,25 @@ async function aplicarRetencion(persona, ahora) {
 // ── Etiquetas (S2) ──
 const rutaEtiquetas = persona => `${prefijoEntorno()}etiquetas/${persona}.json`;
 const huella = e => createHash('sha256').update('pipos-copia-etiqueta|' + e).digest('hex');
-async function leerEtiquetas(persona) {
+// M2: con un tope de tiempo. Si el Blob se cuelga, vale lo último leído en esta instancia; si no hay nada, se
+// lanza (502: el móvil reintenta) en vez de aceptar una subida sin comprobar.
+const etiquetasMem = new Map();
+async function leerEtiquetasBlob(persona) {
   const r = await blob().get(rutaEtiquetas(persona), { access: 'private', useCache: false });
   if (!r || r.statusCode !== 200 || !r.stream) return [];
   try { const x = JSON.parse((await aBuffer(r.stream, 64 * 1024)).toString('utf8')); return Array.isArray(x.e) ? x.e.filter(h => /^[0-9a-f]{64}$/.test(h)) : []; } catch { return []; }
 }
-const ponerEtiquetas = (persona, lista) => blob().put(rutaEtiquetas(persona), JSON.stringify({ e: lista.slice(-MAX_ETIQUETAS) }),
-  { access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 });
+async function leerEtiquetas(persona) {
+  try { const l = await conTope(leerEtiquetasBlob(persona)); etiquetasMem.set(persona, l); return l; } catch (e) {
+    if (etiquetasMem.has(persona)) return etiquetasMem.get(persona);
+    throw e;
+  }
+}
+const ponerEtiquetas = async (persona, lista) => {
+  await conTope(blob().put(rutaEtiquetas(persona), JSON.stringify({ e: lista.slice(-MAX_ETIQUETAS) }),
+    { access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 }));
+  etiquetasMem.set(persona, lista.slice(-MAX_ETIQUETAS));
+};
 const iguales = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 // ¿Puede subir? Devuelve null si sí (y registra lo que haga falta) o [status, error].
 async function comprobarEtiqueta(persona, etiqueta, anterior) {
@@ -263,7 +273,11 @@ export default async function handler(req, res) {
   if (!ACCIONES.includes(accion)) return fin(400, { error: 'acción desconocida' });
   if (!PERSONAS.includes(persona)) return fin(400, { error: 'persona no válida' });
   if (!hayCredenciales()) { console.error('copia: faltan las credenciales del Blob'); return fin(503, { error: NO_ACTIVADA, activada: false }); }
-  if (!dentroDeRitmo(persona, accion)) return fin(429, { error: 'demasiadas copias seguidas, prueba en unos minutos' });
+  const demasiadas = () => { res.setHeader('Retry-After', String(RITMO.ventana / 1000)); return fin(429, { error: 'demasiadas copias seguidas, prueba en unos minutos' }); };
+  if (ritmoLleno(persona, accion)) return demasiadas();
+  // Una subida cuenta en el freno solo después de comprobar su etiqueta: así las rechazadas de otro no frenan las
+  // de la persona (revisión del PR #46).
+  if (accion !== 'subir') apuntarRitmo(persona, accion);
 
   try {
     if (accion === 'subir') {
@@ -277,11 +291,17 @@ export default async function handler(req, res) {
       if (!SAL.test(sal) || !META.test(meta) || datos.subarray(11, 27).toString('base64url') !== sal) return fin(400, { error: 'faltan los datos de la copia' });
       const rechazo = await comprobarEtiqueta(persona, String(req.headers['x-copia-etiqueta'] || ''), String(req.headers['x-copia-etiqueta-anterior'] || ''));
       if (rechazo) return fin(rechazo[0], { error: rechazo[1], ...(rechazo[0] === 403 ? { etiqueta: true } : {}) });
+      if (ritmoLleno(persona, accion)) return demasiadas();
+      apuntarRitmo(persona, accion);
       // Fecha siempre creciente en esta instancia: dos subidas en el mismo milisegundo no chocan.
       const ahora = new Date(Math.max(reloj(), ultimoSello + 1));
       ultimoSello = ahora.getTime();
       const hechas = await contadorHoy(persona, ahora.getTime());
-      if (hechas >= SUBIDAS_DIA) return fin(429, { error: 'ya se han hecho muchas copias hoy; la siguiente, mañana' });
+      if (hechas >= SUBIDAS_DIA) {
+        const mañana = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate() + 1);
+        res.setHeader('Retry-After', String(Math.ceil((mañana - ahora.getTime()) / 1000)));
+        return fin(429, { error: 'ya se han hecho muchas copias hoy; la siguiente, mañana' });
+      }
       const nombre = nombreCopia(persona, ahora, sal, meta);
       await blob().put(nombre, datos, { access: 'private', contentType: 'application/octet-stream', addRandomSuffix: false, allowOverwrite: false, cacheControlMaxAge: 60 });
       try { await ponerContador(persona, ahora.getTime(), hechas + 1); } catch (e) { console.error('copia: no se pudo apuntar el contador', tipoError(e)); }

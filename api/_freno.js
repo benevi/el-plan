@@ -39,46 +39,68 @@ const escribirJSON = (ruta, x) => blob().put(ruta, JSON.stringify(x), { access: 
 const avisar = (que, e) => console.error(`freno: ${que}`, (e && e.constructor && e.constructor.name) || 'error'); // nunca el mensaje (podría llevar rutas)
 
 // ── Intentos de código fallidos ──
-// 10 fallos en 10 minutos desde la misma IP la bloquean 15 minutos (también con el código bueno: si no, el
-// bloqueo no frenaría a quien prueba códigos). Con un APP_CODE de 20 caracteres al azar, ni sin freno se podría
-// adivinar; el freno es para un código corto o filtrado.
-export const FALLOS = { ventana: 10 * 60e3, max: 10, bloqueo: 15 * 60e3 };
-const fallosMem = new Map(); // huella → { v, n, hasta }
+// 10 códigos incorrectos DISTINTOS en 10 minutos desde la misma IP (o la misma red /64 en IPv6) la bloquean 15
+// minutos, también con el código bueno (si no, el bloqueo no frenaría a quien prueba códigos). El mismo código
+// malo repetido (un móvil con el código viejo reintentando) cuenta una vez: así no se bloquea a los dos por un
+// código cambiado en Vercel. Con un APP_CODE de 20 caracteres al azar, ni sin freno se podría adivinar.
+// Operaciones del Blob (M1): con el código bueno no se toca el Blob (solo la memoria de esta instancia); con uno
+// malo se lleva en memoria y se escribe en el Blob a partir del 3.º distinto (y se lee entonces), así que quien
+// no tiene el código no puede gastar operaciones del Blob con cada petición.
+// Límite real: entre instancias, el bloqueo solo se ve en la instancia que lo aplicó y en las que luego reciben
+// 3 códigos malos distintos de esa IP (cada instancia nueva regala 2 intentos); un código bueno que llegue a otra
+// instancia pasa. Con pocas instancias (Fluid Compute) y un APP_CODE largo, basta.
+export const FALLOS = { ventana: 10 * 60e3, max: 10, bloqueo: 15 * 60e3, blobDesde: 3 };
+const fallosMem = new Map(); // huella de la IP → { v, c: [huellas de códigos], hasta }
 // IP del móvil: en Vercel, la pone su red (x-vercel-forwarded-for / x-forwarded-for, que sobrescribe).
 export function ipDe(req) {
   const h = req.headers || {};
   const v = h['x-vercel-forwarded-for'] || h['x-real-ip'] || h['x-forwarded-for'] || (req.socket && req.socket.remoteAddress) || '';
   return String(v).split(',')[0].trim() || 'desconocida';
 }
-const huella = ip => createHash('sha256').update('pipos-freno|' + ip).digest('hex').slice(0, 32);
-const rutaFallos = h => `${prefijo()}frenos/codigo/${h}.json`;
-
-// ¿Está bloqueada esta IP? Devuelve { bloqueada, h, rec } (rec: lo que había en el Blob, para sumar después).
-export async function revisarIP(req) {
-  const h = huella(ipDe(req)), ahora = reloj();
-  const m = fallosMem.get(h);
-  if (m && m.hasta > ahora) return { bloqueada: true, h, rec: m };
-  let rec = null;
-  if (hayBlob()) {
-    try { rec = await leerJSON(rutaFallos(h)); } catch (e) { avisar('no se pudo leer', e); }
-    if (rec && +rec.hasta > ahora) { fallosMem.set(h, { v: +rec.v || 0, n: +rec.n || 0, hasta: +rec.hasta }); return { bloqueada: true, h, rec }; }
-  }
-  return { bloqueada: false, h, rec: rec || m || null };
+// IPv6: una persona suele tener una red /64 entera; se agrupa por sus 4 primeros bloques.
+export function grupoIP(ip) {
+  if (!ip.includes(':') || /^::ffff:\d+\.\d+\.\d+\.\d+$/i.test(ip)) return ip.replace(/^::ffff:/i, '');
+  const [a, b = ''] = ip.toLowerCase().split('%')[0].split('::');
+  const izq = a ? a.split(':') : [], der = b ? b.split(':') : [];
+  const todos = ip.includes('::') ? [...izq, ...Array(Math.max(0, 8 - izq.length - der.length)).fill('0'), ...der] : izq;
+  return todos.slice(0, 4).map(x => x.replace(/^0+(?=.)/, '')).join(':') + '::/64';
 }
-// Apunta un fallo (memoria y Blob). Devuelve true si con este queda bloqueada.
-export async function apuntarFallo({ h, rec }) {
-  const ahora = reloj(), v = Math.floor(ahora / FALLOS.ventana);
+const huella = ip => createHash('sha256').update('pipos-freno|' + grupoIP(ip)).digest('hex').slice(0, 32);
+const huellaCodigo = c => createHash('sha256').update('pipos-freno-codigo|' + c).digest('hex').slice(0, 12);
+const rutaFallos = h => `${prefijo()}frenos/codigo/${h}.json`;
+const delaVentana = (x, v) => (x && +x.v === v && Array.isArray(x.c) ? x.c.filter(y => typeof y === 'string').slice(0, 50) : []);
+
+// Decide la puerta: { bloqueada } y, con un código malo, lo apunta. `valido`: si el código es el bueno.
+export async function frenoCodigo(req, valido, codigoProbado) {
+  const h = huella(ipDe(req)), ahora = reloj(), v = Math.floor(ahora / FALLOS.ventana);
   const mem = fallosMem.get(h);
-  const base = [rec, mem].filter(x => x && +x.v === v).reduce((n, x) => Math.max(n, +x.n || 0), 0);
-  const n = base + 1;
-  const nuevo = { v, n, hasta: n >= FALLOS.max ? ahora + FALLOS.bloqueo : 0 };
-  fallosMem.set(h, nuevo);
+  if (mem && mem.hasta > ahora) return { bloqueada: true };
+  if (valido) return { bloqueada: false }; // sin tocar el Blob
+  const c = huellaCodigo(String(codigoProbado || ''));
+  let lista = delaVentana(mem, v);
+  if (!lista.includes(c)) lista = [...lista, c];
+  let usarBlob = hayBlob() && lista.length >= FALLOS.blobDesde;
+  if (usarBlob) {
+    let rec = null;
+    try { rec = await conTope(leerJSON(rutaFallos(h))); } catch (e) { avisar('no se pudo leer', e); usarBlob = false; }
+    if (rec && +rec.hasta > ahora) { fallosMem.set(h, { v, c: lista, hasta: +rec.hasta }); return { bloqueada: true }; }
+    for (const x of delaVentana(rec, v)) if (!lista.includes(x)) lista.push(x);
+  }
+  const nuevo = { v, c: lista.slice(-50), hasta: lista.length >= FALLOS.max ? ahora + FALLOS.bloqueo : 0 };
   if (fallosMem.size > 5000) fallosMem.clear(); // por si acaso: la memoria no crece sin fin
-  if (hayBlob()) {
-    try { await escribirJSON(rutaFallos(h), nuevo); } catch (e) { avisar('no se pudo apuntar', e); }
+  fallosMem.set(h, nuevo);
+  if (usarBlob) {
+    try { await conTope(escribirJSON(rutaFallos(h), nuevo)); } catch (e) { avisar('no se pudo apuntar', e); }
     if (Math.random() < 0.05) limpiar(`${prefijo()}frenos/codigo/`, ahora - FALLOS.bloqueo - FALLOS.ventana).catch(() => {});
   }
-  return !!nuevo.hasta;
+  return { bloqueada: false, recienBloqueada: !!nuevo.hasta };
+}
+
+// M2: si el Blob se cuelga, no se espera más de TOPE_BLOB_MS: se sigue con la memoria (falla abierto).
+export const TOPE_BLOB_MS = 1500;
+export function conTope(promesa, ms = TOPE_BLOB_MS) {
+  let t;
+  return Promise.race([promesa, new Promise((_, rej) => { t = setTimeout(() => rej(new Error('el Blob tarda demasiado')), ms); if (t.unref) t.unref(); })]).finally(() => clearTimeout(t));
 }
 
 // ── Cupo diario de llamadas a la IA ──
@@ -97,21 +119,36 @@ export async function gastarCupo(modo) {
   const dia = new Date(reloj()).toISOString().slice(0, 10);
   const mem = cupoMem.get(dia) || { sesion: 0, plan: 0 };
   let cuenta = mem;
-  if (hayBlob()) {
+  const conBlob = hayBlob();
+  if (conBlob) {
     try {
-      const x = await leerJSON(rutaCupo(dia));
+      const x = await conTope(leerJSON(rutaCupo(dia)));
       if (x) cuenta = { sesion: Math.max(mem.sesion, +x.sesion || 0), plan: Math.max(mem.plan, +x.plan || 0) };
     } catch (e) { avisar('no se pudo leer el cupo', e); }
   }
   if (cuenta[modo] >= cupoDe(modo)) { cupoMem.set(dia, cuenta); return false; }
   const nueva = { ...cuenta, [modo]: cuenta[modo] + 1 };
   cupoMem.clear(); cupoMem.set(dia, nueva); // solo el día de hoy
-  if (hayBlob()) {
-    try { await escribirJSON(rutaCupo(dia), nueva); } catch (e) { avisar('no se pudo apuntar el cupo', e); }
+  if (conBlob) {
+    try { await conTope(escribirJSON(rutaCupo(dia), nueva)); } catch (e) { avisar('no se pudo apuntar el cupo', e); }
     if (cuenta.sesion + cuenta.plan === 0) limpiar(`${prefijo()}frenos/ia/`, Date.parse(dia)).catch(() => {});
   }
   return true;
 }
+// Devuelve una llamada al cupo: la IA falló antes de responder (saturada, sin conexión, cancelada…), así que no
+// ha costado nada que contar.
+export async function devolverCupo(modo) {
+  const dia = new Date(reloj()).toISOString().slice(0, 10);
+  const mem = cupoMem.get(dia);
+  if (mem && mem[modo] > 0) mem[modo]--;
+  if (!hayBlob()) return;
+  try {
+    const x = await conTope(leerJSON(rutaCupo(dia)));
+    if (x && +x[modo] > 0) await conTope(escribirJSON(rutaCupo(dia), { sesion: +x.sesion || 0, plan: +x.plan || 0, [modo]: +x[modo] - 1 }));
+  } catch (e) { avisar('no se pudo devolver el cupo', e); }
+}
+// Hora (ISO) a la que vuelve el cupo: el principio del día UTC siguiente.
+export const vuelveCupo = () => { const d = new Date(reloj()); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).toISOString(); };
 
 // Borra los contadores de antes de `antesDe` (ms). El SDK de Blob no tiene caducidad.
 async function limpiar(prefix, antesDe) {

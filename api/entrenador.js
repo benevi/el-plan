@@ -14,8 +14,8 @@
 //     sin «fin» ni «error», el móvil lo trata como corte.
 // El corte es por inactividad (INACTIVIDAD_IA_MS sin noticias de Claude), no por tiempo total; solo antes del
 // tope de la función en Vercel (maxDuration 300 s en vercel.json) se corta con un error claro (LIMITE_MS).
-import { gastarCupo } from './_freno.js';
-import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError, registrarError, errorPara, ErrorIA } from './_comun.js';
+import { gastarCupo, devolverCupo, vuelveCupo } from './_freno.js';
+import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError, registrarError, errorPara, ErrorIA, categoria } from './_comun.js';
 
 export const INACTIVIDAD_IA_MS = 150_000; // el razonamiento no manda eventos (los «ping» no llegan al SDK)
 export const LATIDO_MS = 10_000;
@@ -243,8 +243,13 @@ export default async function handler(req, res) {
   // S1: cupo diario de llamadas a la IA (api/_freno.js). Pasado, 429 y la app sigue con sus reglas.
   if (!await gastarCupo(modo)) {
     console.log(JSON.stringify({ entrenador: { modo, resultado: 'cupo', ms: Date.now() - inicio } }));
-    return res.status(429).json({ error: TOPE_DIARIO });
+    return res.status(429).json({ error: TOPE_DIARIO, vuelve: vuelveCupo() });
   }
+  // Si la IA falla antes de responder (saturada, sin conexión, clave o saldo, o el móvil cancela), la llamada no
+  // ha costado nada: se devuelve al cupo (una sola vez).
+  let devuelto = false;
+  const devolver = () => { if (!devuelto) { devuelto = true; devolverCupo(modo).catch(() => {}); } };
+  const SIN_COSTE = new Set(['sobrecarga', 'conexion', 'ritmo', 'clave', 'permiso', 'saldo', 'cancelada']);
 
   // Una línea JSON por llamada a la IA, sin datos personales ni el cuerpo.
   const registro = { modo, esfuerzo: pruebas.esfuerzo || (modo === 'plan' ? 'medium' : body.planDeHoy ? 'low' : 'medium'), ids: ids.length, catalogoDescartados };
@@ -266,7 +271,7 @@ export default async function handler(req, res) {
   registro.enVivo = enVivo;
   let latido = null, limite = null;
   const parar = () => { clearInterval(latido); clearTimeout(limite); };
-  const corte = cancelarAlCerrar(req, res, () => { parar(); registro.resultado = 'cancelada'; escribirRegistro(); });
+  const corte = cancelarAlCerrar(req, res, () => { parar(); devolver(); registro.resultado = 'cancelada'; escribirRegistro(); });
   // En vivo: una línea SSE por evento. Nada se escribe en una conexión cerrada.
   const enviar = o => { if (!res.writableEnded && !res.destroyed) res.write('data: ' + JSON.stringify(o) + '\n\n'); };
   let alEvento;
@@ -326,6 +331,7 @@ export default async function handler(req, res) {
   } catch (e0) {
     // El tope de Vercel se cuenta como inactividad (504): la IA no ha terminado a tiempo.
     const e = registro.limite && !corte.signal.aborted ? new ErrorIA('inactividad', 'tope de la función') : e0;
+    if (corte.signal.aborted || SIN_COSTE.has(categoria(e))) devolver();
     if (!enVivo) {
       const r = responderError(res, e, 'entrenador', corte.signal);
       if (!escrito) registro.resultado = r;

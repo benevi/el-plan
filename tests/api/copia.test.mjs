@@ -361,3 +361,23 @@ test('S2: otra frase (otra clave) entra si trae la etiqueta anterior registrada;
   assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'la anterior sigue valiendo (restaurar con la frase vieja)');
   assert.equal((await subir(cifrado(), conEtiqueta('corta'))).codigo, 400);
 });
+
+test('revisión #46: las subidas rechazadas por la etiqueta no gastan el freno de 20 cada 10 min de la persona', async () => {
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200);
+  for (let i = 0; i < 40; i++) assert.equal((await subir(cifrado(), i % 2 ? conEtiqueta(OTRA) : {})).codigo, 403);
+  assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200, 'Víctor sube justo después del ataque');
+});
+
+test('revisión #46: los 429 llevan Retry-After (10 min el freno; hasta el día UTC siguiente el tope diario)', async t => {
+  const reloj = fijarFecha('2026-11-21T22:00:00Z'); t.after(() => reloj.restaurar());
+  for (let i = 0; i < SUBIDAS_DIA; i++) { if (i % 15 === 0) reiniciarRitmo(); assert.equal((await subir(cifrado(), conEtiqueta(ETQ))).codigo, 200); }
+  reiniciarRitmo();
+  const r = await subir(cifrado(), conEtiqueta(ETQ));
+  assert.equal(r.codigo, 429);
+  assert.ok(Math.abs(+r.cabeceras['retry-after'] - 2 * 3600) <= 5, r.cabeceras['retry-after']);
+  reiniciarRitmo();
+  for (let i = 0; i < 60; i++) await json({ accion: 'listar', persona: 'victor' });
+  const l = await json({ accion: 'listar', persona: 'victor' });
+  assert.equal(l.codigo, 429);
+  assert.equal(l.cabeceras['retry-after'], '600');
+});
