@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-feabac7556d6';
+const VERSION = 'pipos-app-6bff593d1fe0';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-FV2HTGciNw3qqjjYBOmKsmcAuXuAl88GuP7yeoEUy1I=',
+  './': 'sha256-0Qq1V6wiXvYr6FqDB0VND6fArFe7Ejqx3yhwgd6Wq78=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-/PRQnpPMx6ibZwR6sm8eqcgnTtgengfu6Q8iYHqngiA=',
@@ -32,7 +32,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-FV2HTGciNw3qqjjYBOmKsmcAuXuAl88GuP7yeoEUy1I=',
+  './index.html': 'sha256-0Qq1V6wiXvYr6FqDB0VND6fArFe7Ejqx3yhwgd6Wq78=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
   './js/areas/ejercicios/indice.js': 'sha256-ShKymjOA1X2xP6s1HYhFukQl93SMisalAgZCUYYABsI=',
   './js/areas/entrenador/alarma.js': 'sha256-8NnNTcENxRFRXVyWpBfBDSsguazYB2fYLS02C71xgSo=',
@@ -78,7 +78,7 @@ const HUELLAS = {
   './js/nucleo/rescate.js': 'sha256-nkpOCeQb3GnT6xCB6tNjiXhruP4zeimkSE+h0l5KL2g=',
   './js/nucleo/router.js': 'sha256-HIAHGsItFE1Gm/IETqmMWZ7HjBRdXzOf3iQfE9kq1Ag=',
   './js/nucleo/ui.js': 'sha256-DMnY30Iy+xY3W0yTq3X2+L+4Q6Mp5pyYHhxREqvmNdU=',
-  './js/nucleo/version.js': 'sha256-Rdsv7ejLC7pR/m0P1neY4Q6Uithy7dSaqJJkEXWogXE=',
+  './js/nucleo/version.js': 'sha256-LtzF3eUp42lbAisHNOc3AzwPdP67nYrvklPceMWLwZM=',
   './js/reglas/catalogo.js': 'sha256-/iWZIq9XCIUwSRj7vvUoU8swW0K9xZs9RNlHc5oadds=',
   './js/reglas/contexto.js': 'sha256-hSJ2h5r06HIY2BWNC+lZEHoM/8fwCGIj/qSedGzvbQk=',
   './js/reglas/progresion.js': 'sha256-0uNieaVd51H3Pts8hL0N/asG/ne6HIpb7SMOO4V4Zy0=',

@@ -119,11 +119,22 @@ function versionActivada(nueva) {
 }
 
 // ¿Está instalado el service worker de esta app? (el de `main` y los de antes no contestan a la versión)
+// Cada comprobación tiene su turno: una vieja (que esperaba la respuesta de un service worker que ya no manda, p. ej.
+// el de `main` en el paso a esta versión) no pisa lo que ha dicho una más nueva.
+let turnoModo = 0;
 async function comprobarModo({ fallo = false } = {}) {
   if (!registro) return;
+  const turno = ++turnoModo;
+  const vigente = () => turno === turnoModo;
   const sw = navigator.serviceWorker;
-  if (sw.controller && await preguntarVersion(sw.controller)) return ponerModo('listo');
-  if (registro.active && await preguntarVersion(registro.active)) return ponerModo('listo');
+  const ctrl = sw.controller;
+  if (ctrl && await preguntarVersion(ctrl)) return vigente() && ponerModo('listo');
+  if (!vigente()) return;
+  const activo = registro.active;
+  if (activo && activo !== ctrl && await preguntarVersion(activo)) return vigente() && ponerModo('listo');
+  if (!vigente()) return;
+  // Mientras se esperaba, otro service worker ha tomado el control: se vuelve a mirar con él.
+  if (sw.controller !== ctrl) { comprobarModo({ fallo }); return; }
   if (registro.installing || registro.waiting) return ponerModo('instalando');
   ponerModo('no-instalado', { fallo });
 }
