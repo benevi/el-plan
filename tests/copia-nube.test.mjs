@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { est, cargarCon, hecha } from './ayuda/node.mjs';
 import { modulo, estadoBase } from './ayuda/comun.mjs';
 import { BlobSimulado, fetchNube, ClavesMemoria } from './ayuda/nube.mjs';
-import { ponerReloj, ponerAlmacen, nombreCopiaV1 } from '../api/copia.js';
+import { ponerReloj, ponerAlmacen, nombreCopia, nombreCopiaV1 } from '../api/copia.js';
 
 const C = await import(modulo('js/nucleo/copia.js'));
 process.env.VERCEL_ENV = 'production'; // rutas del Blob de producción (copias/…); las de las vistas previas, en tests/api/copia.test.mjs
@@ -122,18 +122,51 @@ test('metadatos del nombre: cifrados, atados a la persona y que no abren con otr
 
 test('frases: la propuesta son 6 palabras distintas de la lista; se rechazan las de baja entropía', () => {
   const vistas = new Set();
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 2000; i++) {
     const f = C.generarFrase();
     const p = f.split(' ');
     assert.equal(p.length, 6);
-    assert.ok(C.calidadFrase(f).ok || new Set(p).size < 6, f); // (una palabra repetida es posible por azar)
+    assert.equal(new Set(p).size, 6, f);
+    assert.ok(C.calidadFrase(f).ok, f); // S3: las que propone la app valen siempre
     vistas.add(f);
   }
-  assert.equal(vistas.size, 50);
+  assert.equal(vistas.size, 2000);
   for (const mala of ['corta', 'aaaaaaaaaaaaaaaa', 'abcabcabcabcabc', 'electroencefalografista', 'hola hola hola hola', '123456789012', 'contraseña1234', 'qwertyuiopasdf']) {
     assert.equal(C.calidadFrase(mala).ok, false, mala);
   }
   for (const buena of ['caballo grapa batería correcta', 'Mi perro Tobi come 3 manzanas', 'x7#Kq9!mZ2@pL']) assert.equal(C.calidadFrase(buena).ok, true, buena);
+});
+
+test('S3: frases triviales para quien os conoce (nombres, la app, años, frases hechas) no valen: entropía mínima', () => {
+  for (const mala of ['victor virginia', 'Víctor y Virginia', 'pipos fitness', 'te quiero mucho', 'barcelona 1985', 'virginia2026!', 'contraseña123', 'vicvir1990abc', 'mi perro toby', 'una frase bastante larga']) {
+    const q = C.calidadFrase(mala);
+    assert.equal(q.ok, false, mala);
+    assert.ok(q.bits < C.BITS_MIN, mala);
+  }
+  // 4 palabras de la lista son 44 bits: el mínimo.
+  assert.equal(C.BITS_MIN, 44);
+  assert.equal(C.bitsFrase('caballo perro mucho plan'), 44);
+  assert.equal(C.calidadFrase('caballo perro mucho plan').ok, true);
+  assert.equal(C.calidadFrase('caballo perro mucho').ok, false);
+});
+
+test('S3: una frase floja de antes que ya abre copias en la nube se sigue aceptando al activar (con aviso); una nueva, no', async () => {
+  // Copias hechas antes de S3 con una frase que ahora no pasa (pasaba las reglas de entonces).
+  const vieja = 'barcelona playa 1985';
+  assert.equal(C.calidadFrase(vieja).porBits, true);
+  await assert.rejects(C.activar('victor', vieja), e => e.codigo === 'corta', 'sin copias que abra, se rechaza');
+  const s0 = C.nuevaSal();
+  const k = { clave: await C.derivarClave(vieja, s0), sal: s0, iteraciones: C.ITERACIONES };
+  await C.activar('victor', FRASE); claves.regs.set('victor', { persona: 'victor', ...k, creada: new Date().toISOString() }); await C.cargarClave('victor');
+  sesion(); assert.equal(await C.copiarAhora(), 'ok');
+  // Móvil nuevo: activar con la frase floja de siempre abre esas copias y sigue con ellas.
+  claves.regs.clear(); await C.cargarClave('victor');
+  const r = await C.activar('victor', vieja);
+  assert.equal(r.floja, true);
+  assert.equal(r.abren, 1);
+  assert.deepEqual([...claves.regs.get('victor').sal], [...s0]);
+  // Cambiar a una frase floja, nunca.
+  await assert.rejects(C.cambiarFrase('victor', vieja), e => e.codigo === 'corta');
 });
 
 // ── Con la función y el Blob simulado ──
@@ -170,7 +203,8 @@ test('el servidor solo ve bytes cifrados: nada del estado en claro en lo subido,
   assert.equal(g.opciones.access, 'private');
   assert.match(g.pathname, /^copias\/victor\/[^_]+_k[\w-]{22}_m[\w-]+\.bin$/);
   const cab = subidas()[0].init.headers;
-  assert.deepEqual(Object.keys(cab).sort(), ['Content-Type', 'x-app-code', 'x-copia-accion', 'x-copia-meta', 'x-copia-persona', 'x-copia-sal']);
+  assert.deepEqual(Object.keys(cab).sort(), ['Content-Type', 'x-app-code', 'x-copia-accion', 'x-copia-etiqueta', 'x-copia-meta', 'x-copia-persona', 'x-copia-sal']);
+  assert.match(cab['x-copia-etiqueta'], /^[\w-]{43}$/); // S2: prueba de que tiene la clave, sin revelarla
   // Con la frase se recupera el estado exportado (sin el código de acceso) y sus metadatos.
   const a = await C.abrirArchivo(new Uint8Array(g.bytes), (s, it) => C.derivarClave(FRASE, s, it));
   assert.equal(JSON.parse(a.estado).perfil.notas, 'SECRETO-DE-SALUD rodilla');
@@ -220,10 +254,14 @@ test('M2: probar la frase no depende de la más nueva: frases antiguas y copias 
   await C.activar('victor', FRASE);
   sesion(); await C.copiarAhora();
   hora(); await C.cambiarFrase('victor', 'la frase nueva de este año'); await C.copiarAhora();
-  // Alguien con el código sube una copia basura (bien formada, con otra sal), que pasa a ser la más nueva.
+  // Una copia basura (bien formada, con otra sal) que pasa a ser la más nueva. Desde S2 el servidor ya no
+  // acepta subidas sin la etiqueta de la persona, pero puede haber alguna de antes en el Blob.
   hora();
   const basura = new Uint8Array(200); crypto.getRandomValues(basura); basura.set([0x50, 0x49, 0x50, 0x43, 2], 0);
-  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': Buffer.from(basura.slice(11, 27)).toString('base64url'), 'x-copia-meta': Buffer.from(basura.slice(0, 60)).toString('base64url') }, body: basura });
+  const sube = await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': Buffer.from(basura.slice(11, 27)).toString('base64url'), 'x-copia-meta': Buffer.from(basura.slice(0, 60)).toString('base64url') }, body: basura });
+  assert.equal(sube.status, 403, 'S2: sin la etiqueta de Víctor no se sube');
+  const nb = nombreCopia('victor', new Date(reloj), Buffer.from(basura.slice(11, 27)).toString('base64url'), Buffer.from(basura.slice(0, 60)).toString('base64url'));
+  blob.blobs.set(nb, { pathname: nb, bytes: Buffer.from(basura), opciones: {}, uploadedAt: new Date() });
   const lista = await C.listar('victor');
   assert.equal(lista.length, 3);
   // Frase antigua: abre la más vieja, no las otras; deriva una vez por sal distinta (3 sales).
@@ -259,7 +297,7 @@ test('M3: si los metadatos de dentro no cuadran con el nombre o la persona, se a
   const bytes = await C.cifrar(C.empaquetar({ persona: 'virginia', creada: new Date(reloj).toISOString(), sesiones: 0, ultima: '' }, est.exportar()), reg);
   hora();
   const cuerpo = Buffer.from(bytes);
-  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': C.b64u(reg.sal), 'x-copia-meta': await C.cifrarNombre({ sesiones: 0, ultima: '' }, reg.clave, 'victor') }, body: cuerpo });
+  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': C.b64u(reg.sal), 'x-copia-meta': await C.cifrarNombre({ sesiones: 0, ultima: '' }, reg.clave, 'victor'), 'x-copia-etiqueta': await C.etiquetaDe(reg.clave, 'victor') }, body: cuerpo });
   const [nueva] = (await C.probarCopias('victor', await C.listar('victor'), { reg })).copias;
   const x = await C.abrirCopia('victor', nueva.nombre, { esperado: nueva });
   assert.match(x.avisos.join(' '), /Virginia/);

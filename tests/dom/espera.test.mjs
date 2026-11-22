@@ -18,13 +18,13 @@ const modelo = await import(modulo('js/nucleo/modelo.js'));
 const crono = await import(modulo('js/areas/sesion/temporizador.js'));
 
 // Estado con una sesión de hoy hecha por la app por un fallo de la IA.
-async function conSesionDeLaApp({ perfil = p => p, dolor = {} } = {}) {
+async function conSesionDeLaApp({ perfil = p => p, dolor = {}, motivo = 'no hay conexión con el servidor' } = {}) {
   const b = estadoBase();
   b.ajustes.codigo = 'secreto';
   perfil(b.perfil);
   const s = modelo.crearSesion({ fuente: 'reglas', nombre: 'De la app', lugar: 'gym', minutos: 60, checkin: { energia: 3, dolor, tiempo: 60 },
     calentamiento: [T('Bici')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho')], vuelta: [T('Estirar')],
-    iaFallo: { motivo: 'no hay conexión con el servidor', peticion: 'algo de core', diaPlan: null, reintentable: true } });
+    iaFallo: { motivo, peticion: 'algo de core', diaPlan: null, reintentable: true } });
   b.sesiones[s.id] = s;
   a.w.localStorage.setItem('pipos4', JSON.stringify(b));
   a.estado.cargar();
@@ -75,4 +75,15 @@ test('un reintento que antes pregunta «¿desde cuándo?» sigue siendo reintent
   await a.esperar(() => !a.doc.querySelector('.hoja'), { max: 4000 });
   await a.espera(50);
   assert.equal(Object.keys(a.estado.estado().sesiones).length, 1);
+});
+
+test('S1 (revisión #46): tras el tope diario de la IA no se ofrece «Reintentar con IA» y se dice a qué hora vuelve', async () => {
+  const api = await import(modulo('js/nucleo/api.js'));
+  const motivo = api.textoError(new api.ErrorApi('se ha llegado al tope diario de llamadas a la IA; hoy la app hace las sesiones con sus reglas', { status: 429 }));
+  assert.match(motivo, /vuelve a estar a las \d\d:00/);
+  assert.equal(api.horaVuelveIA(new Date('2026-11-22T10:00:00Z')), '01:00', 'en invierno, la 1 en España');
+  assert.equal(api.horaVuelveIA(new Date('2027-07-01T10:00:00Z')), '02:00', 'en verano, las 2');
+  await conSesionDeLaApp({ motivo });
+  assert.match(a.doc.querySelector('.nota-fallo').textContent, /tope diario/);
+  assert.equal(boton(), null);
 });

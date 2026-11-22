@@ -3,16 +3,18 @@
 // - el cuerpo pasa entero por el saneado y el servidor (con un Claude simulado) responde con él;
 // - el juez aprueba una respuesta buena (la de las reglas de la app) y suspende las malas.
 // Contra el endpoint de verdad: scripts/casos-ia.mjs (lo ejecuta Víctor con URL_IA y APP_CODE).
-import { test } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { CASOS, prepararCaso, comoIA, planComoIA } from './casos.mjs';
 import { juzgar } from './juez.mjs';
 import { sanear, CLAVES, LIMITE_CUERPO, ponerClienteIA } from '../../api/_comun.js';
 import handler from '../../api/entrenador.js';
+import { reiniciarFrenos } from '../../api/_freno.js';
 import { Respuesta, peticion, mensaje, clienteSimulado } from '../api/_simulado.mjs';
 import { LARGO_IA } from '../../js/reglas/contexto.js';
 import { LUGARES } from '../../js/datos/constantes.js';
 import { T2 } from '../../js/areas/entrenador/alarma.js';
+beforeEach(() => reiniciarFrenos()); // S1: sin cupo gastado entre casos
 
 const preparados = new Map();
 const preparar = async caso => { if (!preparados.has(caso.id)) preparados.set(caso.id, await prepararCaso(caso)); return preparados.get(caso.id); };

@@ -4,11 +4,11 @@
 // Restaurar pasa SIEMPRE por importar() (que aparta antes lo actual en pipos4-antes-de-importar).
 
 import { acciones, pintar, rutaActual } from '../../nucleo/router.js';
-import { estado, cambiar, importar, ErrorCopia } from '../../nucleo/estado.js';
+import { estado, cambiar, importar, ErrorCopia, avisoSustituyeApartado } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, fechaCorta } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
 import { estadoNube, escucharNube, activar, cambiarFrase, copiarAhora, listar, abrirCopia, probarCopias, cargarClave, marcarBase,
-  reanudarNube, generarFrase, calidadFrase, metadatos, ErrorNube, FRASE_MIN, AVISO_DIAS } from '../../nucleo/copia.js';
+  reanudarNube, generarFrase, calidadFrase, metadatos, ErrorNube, AVISO_DIAS } from '../../nucleo/copia.js';
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : 'otra persona');
 const ADVERTENCIA = 'Sin la frase, las copias de la nube no se pueden abrir; guárdala en un gestor de contraseñas.';
@@ -29,7 +29,8 @@ export function cuando(iso, ahora = new Date()) {
 const avisoAcc = (clases, texto, botones) => `<div class="aviso aviso-linea aviso--aviso aviso-nube ${clases}" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>${texto}</p><div class="aviso-acciones">${botones}</div></div></div>`;
 const accion = (act, txt, sec = true) => `<button type="button" class="boton ${sec ? 'boton--secundario' : 'boton--texto'}" data-act="${act}">${txt}</button>`;
 // Aviso que se queda (Hoy y Perfil): copias desactivadas en este móvil, en pausa tras empezar de cero, una
-// copia automática retenida por tener menos datos, nube no activada en el servidor o más de 3 días sin copia.
+// copia automática retenida por tener menos datos, una subida que falló (se reintenta sola), nube no activada en
+// el servidor o más de 3 días sin copia.
 export function avisoNube() {
   const n = estadoNube();
   if (!n.avisar) return '';
@@ -42,6 +43,9 @@ export function avisoNube() {
   if (n.retenida) {
     const r = n.retenida;
     return avisoAcc('retenida-nube', `No he subido la copia automática: este móvil tiene ${+r.sesiones} sesiones${r.ultima ? ` (la última, ${h(fechaCorta(r.ultima))})` : ''} y la última copia en la nube tenía ${+r.base}${r.baseUltima ? ` (la última, ${h(fechaCorta(r.baseUltima))})` : ''}. Si la subo, la copia más nueva tendría menos datos.`, accion('nube.forzar', 'Subir de todos modos') + accion('nube.lista', 'Recuperar de la nube', false));
+  }
+  if (n.fallida) {
+    return avisoAcc('fallida-nube', `No se ha podido hacer la última copia en la nube. ${h(n.error)} ${n.reintenta ? 'Lo vuelvo a intentar solo; mientras tanto,' : 'Cuando esté arreglado, toca «Copiar ahora»; hasta entonces,'} lo último solo está en este móvil.`, accion('nube.copiar', 'Copiar ahora'));
   }
   const txt = n.inactiva
     ? 'Las copias en la nube aún no están activadas en el servidor: tus datos solo están en este móvil.'
@@ -57,7 +61,7 @@ export function grupoCopias() {
     <h2 id="p-nube">Copias en la nube</h2>
     ${n.activada ? `<p class="ultima-nube">${h(estadoTxt)}</p>
       ${avisoNube()}
-      ${n.error && !n.inactiva ? `<div class="aviso aviso-linea aviso--error error-nube" role="alert">${ICONOS.error}<div class="aviso-texto"><p>${h(n.error)}</p></div></div>` : ''}
+      ${n.error && !n.inactiva && !n.fallida ? `<div class="aviso aviso-linea aviso--error error-nube" role="alert">${ICONOS.error}<div class="aviso-texto"><p>${h(n.error)}</p></div></div>` : ''}
       <p>Se hacen solas: al terminar una sesión, al cambiar tu perfil, lesiones o medidas y cada día que abras la app (con conexión).</p>
       <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="nube.copiar">Copiar ahora</button><button type="button" class="boton boton--secundario" data-act="nube.lista">Ver copias y restaurar</button></div>
       <button type="button" class="boton boton--texto" data-act="nube.frase">Cambiar la frase</button>`
@@ -78,15 +82,17 @@ const camposFrase = () => {
   <div class="frase-propuesta"><p>Te propongo esta frase (6 palabras al azar: muy difícil de adivinar):</p>
     <p class="frase-generada"><b id="n-gen">${h(propuesta)}</b></p>
     <div class="fila-botones"><button type="button" class="btn sec" data-act="nube.generar">Generar otra</button><button type="button" class="btn sec" data-act="nube.usarGenerada">Usar esta</button></div></div>
-  <label class="campo col"><span>Frase de recuperación <small>al menos ${FRASE_MIN} caracteres; mejor varias palabras sin relación</small></span>
+  <label class="campo col"><span>Frase de recuperación <small>mejor la propuesta; si no, al menos 4 palabras sin relación (sin vuestros nombres ni años)</small></span>
     <input type="password" id="n-f1" autocomplete="new-password" autocapitalize="off" spellcheck="false"></label>
   <label class="campo col"><span>Repite la frase</span><input type="password" id="n-f2" autocomplete="new-password" autocapitalize="off" spellcheck="false"></label>
   <p class="nota aviso-nota"><b>${h(ADVERTENCIA)}</b> No se guarda ni en el móvil ni en el servidor.</p>`;
 };
-function leerFrases() {
+// { flojaVale }: al activar, una frase floja se deja pasar a activar(), que solo la acepta si ya abre copias
+// de la nube (frases anteriores a S3); para una frase nueva, nunca.
+function leerFrases({ flojaVale = false } = {}) {
   const a = $('#n-f1').value, b = $('#n-f2').value;
   const q = calidadFrase(a);
-  if (!q.ok) { aviso(q.motivo, 'error'); return null; }
+  if (!q.ok && !(flojaVale && q.porBits)) { aviso(q.motivo, 'error'); return null; }
   if (a !== b) { aviso('Las dos frases no coinciden', 'error'); return null; }
   return a;
 }
@@ -157,7 +163,7 @@ async function restaurarDe(persona, c, { frase = null, clave = null, codigo, byt
     ? `Copia de ${nombre(m.persona)} del ${cuando(m.creada || c.fecha)}: ${+m.sesiones} sesiones${m.ultima ? `, la última del ${fechaCorta(m.ultima)}` : ''}.`
     : `Copia del ${cuando(c.fecha)} (de la primera versión, sin datos por dentro).`;
   const avisos = abierta.avisos.length ? ` Ojo: ${abierta.avisos.join(' ')}` : '';
-  if (!await confirmar(`${dentro}${avisos} Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello). ¿Restaurar?`, { si: 'Restaurar', peligro: !!abierta.avisos.length })) return false;
+  if (!await confirmar(`${dentro}${avisos} Esto sustituye todos los datos de este móvil por los de la copia (lo de ahora queda apartado y puedes volver a ello).${avisoSustituyeApartado()} ¿Restaurar?`, { si: 'Restaurar', peligro: !!abierta.avisos.length })) return false;
   if (!await cargar(abierta.texto)) return false;
   // Si el móvil no tenía código, se queda el que se ha escrito para recuperar.
   if (codigo && !(estado().ajustes && estado().ajustes.codigo)) cambiar(S => { S.ajustes.codigo = codigo; }, 'perfil-silencio');
@@ -194,7 +200,7 @@ acciones({
     aviso('Apúntala ahora en tu gestor de contraseñas', 'info');
   },
   'nube.confirmarActivar': el => conEspera(el, async () => {
-    const frase = leerFrases(); if (!frase) return;
+    const frase = leerFrases({ flojaVale: true }); if (!frase) return;
     const persona = estado().dueño;
     let r;
     try { r = await activar(persona, frase); } catch (e) {
@@ -212,7 +218,8 @@ acciones({
       }
       return;
     }
-    aviso('Copias en la nube activadas. Hago la primera ahora.');
+    if (r.floja) aviso('Copias activadas con tu frase de siempre, pero es fácil de adivinar: cámbiala en «Cambiar la frase» (las copias nuevas irán con la nueva).', 'info');
+    else aviso('Copias en la nube activadas. Hago la primera ahora.');
     copiarAhora('activar');
   }),
   'nube.frase': () => {

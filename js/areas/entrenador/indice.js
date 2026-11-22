@@ -7,7 +7,7 @@
 import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, es, mmss, plural } from '../../nucleo/ui.js';
-import { enLinea } from '../../nucleo/api.js';
+import { enLinea, esTopeIA } from '../../nucleo/api.js';
 import { diaSemana, sesionDeHoy, sesionTocada } from '../../nucleo/modelo.js';
 import { info as cronometro } from '../sesion/temporizador.js';
 import { LUGARES, DIAS, DIAS_CORTOS, MUSCULOS, NIVELES } from '../../datos/constantes.js';
@@ -290,7 +290,8 @@ export function notaFallo(s) {
   // Nada de rehacerla si ya ha apuntado algo (kilos, series, comentarios, cambios) o tiene el cronómetro en marcha.
   const crono = cronometro();
   const tocada = sesionTocada(s) || !!(crono && crono.meta && crono.meta.sesion === s.id);
-  const puede = s.estado === 'pendiente' && !tocada && f.reintentable !== false;
+  // Tras el tope diario de la IA no se ofrece reintentar: volvería a dar el mismo 429 (S1).
+  const puede = s.estado === 'pendiente' && !tocada && f.reintentable !== false && !esTopeIA(f.motivo);
   const acciones = [puede && enLinea() ? `<button type="button" class="boton boton--secundario" data-act="entrenador.reintentarIA" data-v="${h(s.id)}">${ICONOS.ia}Reintentar con IA</button>` : '', enlaceCodigo(f.motivo)].join('');
   return `<div class="aviso aviso--aviso nota-fallo" role="note">${ICONOS.alerta}<div class="aviso-texto">
     <p><b>La ha hecho la app</b> porque ${h(f.motivo)}.</p>
@@ -304,7 +305,7 @@ export function notaFallo(s) {
 function notaFalloPlan(p) {
   const f = p && p.iaFallo;
   if (!f) return '';
-  const acciones = [enLinea() ? `<button type="button" class="boton boton--secundario" data-act="entrenador.reintentarPlan">${ICONOS.ia}Reintentar con IA</button>` : '', enlaceCodigo(f.motivo)].join('');
+  const acciones = [enLinea() && !esTopeIA(f.motivo) ? `<button type="button" class="boton boton--secundario" data-act="entrenador.reintentarPlan">${ICONOS.ia}Reintentar con IA</button>` : '', enlaceCodigo(f.motivo)].join('');
   return `<div class="aviso aviso--aviso nota-fallo" role="note">${ICONOS.alerta}<div class="aviso-texto">
     <p><b>La semana la ha hecho la app</b> porque ${h(f.motivo)}.</p>
     ${enLinea() ? '' : '<p>Cuando tengas conexión podrás reintentarlo con la IA.</p>'}

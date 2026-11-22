@@ -17,8 +17,20 @@
 // - listar, bajar, borrar-viejas: cuerpo JSON { accion, persona, nombre? } (límites de comprobar()).
 //   bajar responde con los bytes cifrados (application/octet-stream).
 // Sin credenciales del Blob (el almacén aún no está creado o conectado) responde 503 y la app lo enseña.
+//
+// Quién sube (S2): el código de acceso es el mismo para los dos, así que con él cualquiera podría subir basura
+// a nombre de la otra persona (agotar su tope diario y que la retención borre sus copias buenas). Por eso cada
+// subida lleva x-copia-etiqueta: un valor que solo puede calcular quien tiene la clave de cifrado de esa persona
+// (ver etiquetaDe en js/nucleo/copia.js). El servidor guarda su SHA-256 en etiquetas/<persona>.json:
+// - la primera subida con etiqueta la registra (confianza en el primer uso);
+// - después solo se aceptan subidas con una etiqueta registrada; una nueva (otra frase) se añade si la subida
+//   trae también x-copia-etiqueta-anterior con una ya registrada (el móvil la manda al cambiar de clave);
+// - sin etiqueta (la app de antes, mientras se actualiza) se acepta solo si esa persona aún no tiene ninguna.
+// Si alguien pierde la frase y el móvil a la vez, Víctor borra etiquetas/<persona>.json en el Blob (LEEME).
 import { puerta, tipoDe, largoAdmitido, leerJSON, LIMITE_CUERPO } from './_comun.js';
 import * as blobReal from '@vercel/blob';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { reiniciarFrenos, conTope } from './_freno.js';
 
 export const LIMITE_COPIA = 4 * 1024 * 1024; // bytes del archivo cifrado
 export const PERSONAS = ['victor', 'virginia'];
@@ -32,7 +44,8 @@ const NOMBRE_V1 = new RegExp(`^(preview\\/)?copias\\/(victor|virginia)\\/${FECHA
 // aparte, bajo «preview/», para que una prueba no se mezcle con las copias de verdad (retención, contador
 // diario). Producción (VERCEL_ENV = 'production') sigue con las rutas de siempre.
 export const prefijoEntorno = () => (process.env.VERCEL_ENV === 'production' ? '' : 'preview/');
-const SAL = /^[A-Za-z0-9_-]{22}$/, META = /^[A-Za-z0-9_-]{40,200}$/;
+const SAL = /^[A-Za-z0-9_-]{22}$/, META = /^[A-Za-z0-9_-]{40,200}$/, ETIQUETA = /^[A-Za-z0-9_-]{43}$/;
+export const MAX_ETIQUETAS = 20; // claves (frases) registradas por persona; se olvidan las más antiguas
 const MAX_LISTA = 400; // copias que se enseñan por persona (con la retención quedan unas 60-90)
 
 // ── Almacén ──
@@ -54,15 +67,13 @@ const NO_ACTIVADA = 'las copias en la nube aún no están activadas';
 // Además, un tope de SUBIDAS_DIA subidas al día por persona con un contador en el propio Blob (ver subir).
 const RITMO = { ventana: 10 * 60e3, todas: 60, subir: 20 };
 const historial = new Map();
-export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; }
-function dentroDeRitmo(persona, accion, ahora = reloj()) {
+export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; etiquetasMem.clear(); reiniciarFrenos(); } // (también los de _freno.js)
+function ritmoLleno(persona, accion, ahora = reloj()) {
   const lista = (historial.get(persona) || []).filter(x => ahora - x.t < RITMO.ventana);
-  const subidas = lista.filter(x => x.accion === 'subir').length;
-  if (lista.length >= RITMO.todas || (accion === 'subir' && subidas >= RITMO.subir)) { historial.set(persona, lista); return false; }
-  lista.push({ t: ahora, accion });
   historial.set(persona, lista);
-  return true;
+  return lista.length >= RITMO.todas || (accion === 'subir' && lista.filter(x => x.accion === 'subir').length >= RITMO.subir);
 }
+const apuntarRitmo = (persona, accion, ahora = reloj()) => { (historial.get(persona) || historial.set(persona, []).get(persona)).push({ t: ahora, accion }); };
 
 // ── Nombres ──
 // ISO con guiones en la hora (los «:» no van bien en URL y rutas).
@@ -151,6 +162,41 @@ async function aplicarRetencion(persona, ahora) {
   return fuera.length;
 }
 
+// ── Etiquetas (S2) ──
+const rutaEtiquetas = persona => `${prefijoEntorno()}etiquetas/${persona}.json`;
+const huella = e => createHash('sha256').update('pipos-copia-etiqueta|' + e).digest('hex');
+// M2: con un tope de tiempo. Si el Blob se cuelga, vale lo último leído en esta instancia; si no hay nada, se
+// lanza (502: el móvil reintenta) en vez de aceptar una subida sin comprobar.
+const etiquetasMem = new Map();
+async function leerEtiquetasBlob(persona) {
+  const r = await blob().get(rutaEtiquetas(persona), { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200 || !r.stream) return [];
+  try { const x = JSON.parse((await aBuffer(r.stream, 64 * 1024)).toString('utf8')); return Array.isArray(x.e) ? x.e.filter(h => /^[0-9a-f]{64}$/.test(h)) : []; } catch { return []; }
+}
+async function leerEtiquetas(persona) {
+  try { const l = await conTope(leerEtiquetasBlob(persona)); etiquetasMem.set(persona, l); return l; } catch (e) {
+    if (etiquetasMem.has(persona)) return etiquetasMem.get(persona);
+    throw e;
+  }
+}
+const ponerEtiquetas = async (persona, lista) => {
+  await conTope(blob().put(rutaEtiquetas(persona), JSON.stringify({ e: lista.slice(-MAX_ETIQUETAS) }),
+    { access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 }));
+  etiquetasMem.set(persona, lista.slice(-MAX_ETIQUETAS));
+};
+const iguales = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+// ¿Puede subir? Devuelve null si sí (y registra lo que haga falta) o [status, error].
+async function comprobarEtiqueta(persona, etiqueta, anterior) {
+  const lista = await leerEtiquetas(persona);
+  if (!etiqueta) return lista.length ? [403, 'actualiza la app para seguir haciendo copias en la nube'] : null; // app de antes
+  if (!ETIQUETA.test(etiqueta) || (anterior && !ETIQUETA.test(anterior))) return [400, 'faltan los datos de la copia'];
+  const h = huella(etiqueta);
+  if (lista.some(x => iguales(x, h))) return null;
+  if (lista.length && !(anterior && lista.some(x => iguales(x, huella(anterior))))) return [403, 'la nube no reconoce la clave de este móvil'];
+  await ponerEtiquetas(persona, [...lista, h]);
+  return null;
+}
+
 // Subidas de hoy de una persona: un contador en el Blob (cuentas/<persona>/<día>.json), porque la retención
 // deja menos copias de las que se suben y la memoria de una instancia no dura. Dos subidas a la vez pueden
 // contar una sola: es un tope aproximado contra un móvil en bucle.
@@ -208,7 +254,7 @@ export default async function handler(req, res) {
     console.log(JSON.stringify({ copia: registro })); // una línea, sin contenido ni nombres de persona
     if (cuerpo !== undefined) res.status(status).json(cuerpo);
   };
-  if (!puerta(req, res)) return; // 405, 500 o 401, como el entrenador
+  if (!await puerta(req, res)) return; // 405, 500, 429 o 401, como el entrenador
   const tipo = tipoDe(req);
   let accion, persona, cuerpo = null;
   if (tipo === 'application/octet-stream') {
@@ -227,7 +273,11 @@ export default async function handler(req, res) {
   if (!ACCIONES.includes(accion)) return fin(400, { error: 'acción desconocida' });
   if (!PERSONAS.includes(persona)) return fin(400, { error: 'persona no válida' });
   if (!hayCredenciales()) { console.error('copia: faltan las credenciales del Blob'); return fin(503, { error: NO_ACTIVADA, activada: false }); }
-  if (!dentroDeRitmo(persona, accion)) return fin(429, { error: 'demasiadas copias seguidas, prueba en unos minutos' });
+  const demasiadas = () => { res.setHeader('Retry-After', String(RITMO.ventana / 1000)); return fin(429, { error: 'demasiadas copias seguidas, prueba en unos minutos' }); };
+  if (ritmoLleno(persona, accion)) return demasiadas();
+  // Una subida cuenta en el freno solo después de comprobar su etiqueta: así las rechazadas de otro no frenan las
+  // de la persona (revisión del PR #46).
+  if (accion !== 'subir') apuntarRitmo(persona, accion);
 
   try {
     if (accion === 'subir') {
@@ -239,11 +289,19 @@ export default async function handler(req, res) {
       // nunca un JSON en claro por error.
       if (datos.length < 64 || datos.subarray(0, 4).toString('latin1') !== MAGIA) return fin(400, { error: 'no es una copia cifrada' });
       if (!SAL.test(sal) || !META.test(meta) || datos.subarray(11, 27).toString('base64url') !== sal) return fin(400, { error: 'faltan los datos de la copia' });
+      const rechazo = await comprobarEtiqueta(persona, String(req.headers['x-copia-etiqueta'] || ''), String(req.headers['x-copia-etiqueta-anterior'] || ''));
+      if (rechazo) return fin(rechazo[0], { error: rechazo[1], ...(rechazo[0] === 403 ? { etiqueta: true } : {}) });
+      if (ritmoLleno(persona, accion)) return demasiadas();
+      apuntarRitmo(persona, accion);
       // Fecha siempre creciente en esta instancia: dos subidas en el mismo milisegundo no chocan.
       const ahora = new Date(Math.max(reloj(), ultimoSello + 1));
       ultimoSello = ahora.getTime();
       const hechas = await contadorHoy(persona, ahora.getTime());
-      if (hechas >= SUBIDAS_DIA) return fin(429, { error: 'ya se han hecho muchas copias hoy; la siguiente, mañana' });
+      if (hechas >= SUBIDAS_DIA) {
+        const mañana = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate() + 1);
+        res.setHeader('Retry-After', String(Math.ceil((mañana - ahora.getTime()) / 1000)));
+        return fin(429, { error: 'ya se han hecho muchas copias hoy; la siguiente, mañana' });
+      }
       const nombre = nombreCopia(persona, ahora, sal, meta);
       await blob().put(nombre, datos, { access: 'private', contentType: 'application/octet-stream', addRandomSuffix: false, allowOverwrite: false, cacheControlMaxAge: 60 });
       try { await ponerContador(persona, ahora.getTime(), hechas + 1); } catch (e) { console.error('copia: no se pudo apuntar el contador', tipoError(e)); }
