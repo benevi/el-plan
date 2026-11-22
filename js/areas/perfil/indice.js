@@ -299,7 +299,11 @@ acciones({
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
   'perfil.quitarGusto': el => cambiar(S => { delete S.perfil.gustos[el.dataset.id]; }, 'perfil'),
   'perfil.objetivo': el => cambiar(S => alternar(S.perfil.objetivos, el.dataset.v), 'perfil'),
-  'perfil.nivel': el => cambiar(S => { S.perfil.nivel = +el.dataset.v; }, 'perfil'),
+  // El cambio a mano queda apuntado: la bajada de C-NIVEL-3 no lo pisa (revisión del PR #45, G2).
+  'perfil.nivel': el => cambiar(S => {
+    const de = +S.perfil.nivel || 1, a = +el.dataset.v; S.perfil.nivel = a;
+    if (de !== a) S.perfil.nivelCambios = [...(S.perfil.nivelCambios || []), { fecha: new Date().toISOString(), de, a, motivo: 'Lo cambias tú.' }].slice(-20);
+  }, 'perfil'),
   'perfil.nivelAuto': el => cambiar(S => { S.perfil.nivelAuto = el.checked; }, 'perfil'),
   'perfil.diaSemana': el => cambiar(S => { alternar(S.perfil.disponibilidad.diasSemana, +el.dataset.v); S.perfil.disponibilidad.diasSemana.sort(); if (S.perfil.disponibilidad.diasSemana.length) S.perfil.disponibilidad.dias = S.perfil.disponibilidad.diasSemana.length; }, 'perfil'),
   'perfil.minutos': el => cambiar(S => { S.perfil.disponibilidad.minutos = +el.dataset.v; }, 'perfil'),

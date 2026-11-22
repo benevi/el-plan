@@ -431,6 +431,11 @@ export function revisarBajadaNivel() {
   const S = estado(); if (!S || !S.dueño || !S.perfil.nivelAuto) return false;
   const m = medidorNivel(S);
   if (!(m.sugerido < m.nivel)) return false;
+  // Una sola bajada por parón, y nunca encima de un nivel puesto después (a mano o por la app): si ya hay un
+  // cambio de nivel posterior a la última sesión hecha, no se toca.
+  const ultima = sesionesHechas(S).slice(-1)[0];
+  const tUltima = ultima ? String(ultima.terminada || ultima.fecha || '') : '';
+  if ((S.perfil.nivelCambios || []).some(c => String(c.fecha || '') > tUltima)) return false;
   aplicarNivel(true);
   return true;
 }

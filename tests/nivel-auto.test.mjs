@@ -27,3 +27,18 @@ test('COD-2, C-NIVEL-3: 70 días sin entrenar con el nivel automático → al ab
   assert.equal(revisarBajadaNivel(), false);
   assert.equal(est.estado().perfil.nivelCambios.length, n);
 });
+
+test('G2, C-NIVEL-3: una sola bajada por parón, y un nivel puesto a mano después no se vuelve a bajar', async () => {
+  const est = await import('../js/nucleo/estado.js');
+  const { revisarBajadaNivel } = await import('../js/areas/entrenador/indice.js');
+  est.cambiar(S => { S.perfil.nivel = 3; S.perfil.nivelCambios = []; }, 'perfil');
+  assert.equal(revisarBajadaNivel(), true);
+  assert.equal(est.estado().perfil.nivel, 2);
+  // Al abrir el check-in (o volver a arrancar) no baja otra vez.
+  assert.equal(revisarBajadaNivel(), false);
+  assert.equal(est.estado().perfil.nivel, 2);
+  // Ella lo pone a mano en 3 (desde Perfil queda apuntado): se respeta.
+  est.cambiar(S => { S.perfil.nivel = 3; S.perfil.nivelCambios.push({ fecha: new Date().toISOString(), de: 2, a: 3, motivo: 'Lo cambias tú.' }); }, 'perfil');
+  assert.equal(revisarBajadaNivel(), false);
+  assert.equal(est.estado().perfil.nivel, 3);
+});
