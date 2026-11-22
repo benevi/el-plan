@@ -17,8 +17,19 @@
 // - listar, bajar, borrar-viejas: cuerpo JSON { accion, persona, nombre? } (límites de comprobar()).
 //   bajar responde con los bytes cifrados (application/octet-stream).
 // Sin credenciales del Blob (el almacén aún no está creado o conectado) responde 503 y la app lo enseña.
+//
+// Quién sube (S2): el código de acceso es el mismo para los dos, así que con él cualquiera podría subir basura
+// a nombre de la otra persona (agotar su tope diario y que la retención borre sus copias buenas). Por eso cada
+// subida lleva x-copia-etiqueta: un valor que solo puede calcular quien tiene la clave de cifrado de esa persona
+// (ver etiquetaDe en js/nucleo/copia.js). El servidor guarda su SHA-256 en etiquetas/<persona>.json:
+// - la primera subida con etiqueta la registra (confianza en el primer uso);
+// - después solo se aceptan subidas con una etiqueta registrada; una nueva (otra frase) se añade si la subida
+//   trae también x-copia-etiqueta-anterior con una ya registrada (el móvil la manda al cambiar de clave);
+// - sin etiqueta (la app de antes, mientras se actualiza) se acepta solo si esa persona aún no tiene ninguna.
+// Si alguien pierde la frase y el móvil a la vez, Víctor borra etiquetas/<persona>.json en el Blob (LEEME).
 import { puerta, tipoDe, largoAdmitido, leerJSON, LIMITE_CUERPO } from './_comun.js';
 import * as blobReal from '@vercel/blob';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 export const LIMITE_COPIA = 4 * 1024 * 1024; // bytes del archivo cifrado
 export const PERSONAS = ['victor', 'virginia'];
@@ -32,7 +43,8 @@ const NOMBRE_V1 = new RegExp(`^(preview\\/)?copias\\/(victor|virginia)\\/${FECHA
 // aparte, bajo «preview/», para que una prueba no se mezcle con las copias de verdad (retención, contador
 // diario). Producción (VERCEL_ENV = 'production') sigue con las rutas de siempre.
 export const prefijoEntorno = () => (process.env.VERCEL_ENV === 'production' ? '' : 'preview/');
-const SAL = /^[A-Za-z0-9_-]{22}$/, META = /^[A-Za-z0-9_-]{40,200}$/;
+const SAL = /^[A-Za-z0-9_-]{22}$/, META = /^[A-Za-z0-9_-]{40,200}$/, ETIQUETA = /^[A-Za-z0-9_-]{43}$/;
+export const MAX_ETIQUETAS = 20; // claves (frases) registradas por persona; se olvidan las más antiguas
 const MAX_LISTA = 400; // copias que se enseñan por persona (con la retención quedan unas 60-90)
 
 // ── Almacén ──
@@ -151,6 +163,29 @@ async function aplicarRetencion(persona, ahora) {
   return fuera.length;
 }
 
+// ── Etiquetas (S2) ──
+const rutaEtiquetas = persona => `${prefijoEntorno()}etiquetas/${persona}.json`;
+const huella = e => createHash('sha256').update('pipos-copia-etiqueta|' + e).digest('hex');
+async function leerEtiquetas(persona) {
+  const r = await blob().get(rutaEtiquetas(persona), { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200 || !r.stream) return [];
+  try { const x = JSON.parse((await aBuffer(r.stream, 64 * 1024)).toString('utf8')); return Array.isArray(x.e) ? x.e.filter(h => /^[0-9a-f]{64}$/.test(h)) : []; } catch { return []; }
+}
+const ponerEtiquetas = (persona, lista) => blob().put(rutaEtiquetas(persona), JSON.stringify({ e: lista.slice(-MAX_ETIQUETAS) }),
+  { access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 });
+const iguales = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+// ¿Puede subir? Devuelve null si sí (y registra lo que haga falta) o [status, error].
+async function comprobarEtiqueta(persona, etiqueta, anterior) {
+  const lista = await leerEtiquetas(persona);
+  if (!etiqueta) return lista.length ? [403, 'actualiza la app para seguir haciendo copias en la nube'] : null; // app de antes
+  if (!ETIQUETA.test(etiqueta) || (anterior && !ETIQUETA.test(anterior))) return [400, 'faltan los datos de la copia'];
+  const h = huella(etiqueta);
+  if (lista.some(x => iguales(x, h))) return null;
+  if (lista.length && !(anterior && lista.some(x => iguales(x, huella(anterior))))) return [403, 'la nube no reconoce la clave de este móvil'];
+  await ponerEtiquetas(persona, [...lista, h]);
+  return null;
+}
+
 // Subidas de hoy de una persona: un contador en el Blob (cuentas/<persona>/<día>.json), porque la retención
 // deja menos copias de las que se suben y la memoria de una instancia no dura. Dos subidas a la vez pueden
 // contar una sola: es un tope aproximado contra un móvil en bucle.
@@ -239,6 +274,8 @@ export default async function handler(req, res) {
       // nunca un JSON en claro por error.
       if (datos.length < 64 || datos.subarray(0, 4).toString('latin1') !== MAGIA) return fin(400, { error: 'no es una copia cifrada' });
       if (!SAL.test(sal) || !META.test(meta) || datos.subarray(11, 27).toString('base64url') !== sal) return fin(400, { error: 'faltan los datos de la copia' });
+      const rechazo = await comprobarEtiqueta(persona, String(req.headers['x-copia-etiqueta'] || ''), String(req.headers['x-copia-etiqueta-anterior'] || ''));
+      if (rechazo) return fin(rechazo[0], { error: rechazo[1], ...(rechazo[0] === 403 ? { etiqueta: true } : {}) });
       // Fecha siempre creciente en esta instancia: dos subidas en el mismo milisegundo no chocan.
       const ahora = new Date(Math.max(reloj(), ultimoSello + 1));
       ultimoSello = ahora.getTime();

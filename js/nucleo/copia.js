@@ -250,6 +250,16 @@ export async function descifrarNombre(txt, clave, persona) {
     return { sesiones: Number.isInteger(x.s) ? x.s : null, ultima: typeof x.u === 'string' && x.u ? x.u : null };
   } catch { return null; }
 }
+// Etiqueta de subida (S2): demuestra al servidor que quien sube tiene la clave de esa persona, sin dársela. Es
+// AES-GCM de 16 bytes a cero con un IV fijo (todo unos) y AAD propia: una función determinista de la clave (la
+// misma en cualquier móvil con la misma frase y sal) que no revela nada de ella. Las copias usan IV aleatorios
+// de 96 bits, así que no coinciden con este (probabilidad 2^-96). Sirve con las claves ya guardadas (no
+// exportables) sin volver a pedir la frase. El servidor guarda solo su SHA-256 (api/copia.js).
+const IV_ETIQUETA = new Uint8Array(LARGO_IV).fill(0xff);
+export async function etiquetaDe(clave, persona) {
+  const c = await sutil().encrypt({ name: 'AES-GCM', iv: IV_ETIQUETA, additionalData: utf8.encode('pipos-copia-etiqueta/v1/' + persona), tagLength: 128 }, clave, new Uint8Array(16));
+  return b64u(new Uint8Array(c));
+}
 const mismaSal = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
 
 // ── Dónde se guarda la clave: IndexedDB 'pipos-copia', almacén 'clave', un registro por persona ──
@@ -383,6 +393,7 @@ async function pedir({ json, binario, cabeceras = {}, codigo }) {
   if (r.status === 503) throw new ErrorNube('Las copias en la nube aún no están activadas en el servidor.', 'inactiva', { status: 503 });
   if (r.status === 401) throw new ErrorNube('El código de acceso no es correcto (Perfil → Ajustes).', 'codigo', { status: 401 });
   if (r.status === 500) throw new ErrorNube('El servidor no está configurado.', 'servidor', { status: 500 });
+  if (r.status === 403 && datos && datos.etiqueta) throw new ErrorNube('La nube no reconoce la clave de este móvil para tus copias (quizá cambiaste la frase en otro móvil): actívalas otra vez con tu frase actual en Perfil › Copias.', 'etiqueta', { status: 403 });
   throw new ErrorNube('La nube no responde: ' + msg + '.', 'servidor', { status: r.status });
 }
 export async function listar(persona, opciones = {}) {
@@ -488,10 +499,18 @@ export async function activar(persona, frase, { aunqueNoCoincida = false } = {})
 }
 async function guardarClave(persona, { clave, sal, iteraciones }) {
   const reg = { persona, sal: new Uint8Array(sal), iteraciones, clave, creada: new Date(dep.ahora()).toISOString() };
+  // S2: si se cambia de clave (otra frase, o restaurar con una frase antigua), la etiqueta de la anterior sirve
+  // para que el servidor acepte la nueva en la siguiente subida.
+  // Si ya había una pendiente de usar (dos cambios antes de subir), se queda la primera: es la registrada.
+  const ya = nube();
+  const previa = claveActual && claveActual.persona === persona && !mismaSal(claveActual.sal, reg.sal)
+    && !(ya.persona === persona && typeof ya.etiquetaPrevia === 'string') ? claveActual : null;
+  let etiquetaPrevia = null;
+  if (previa) { try { etiquetaPrevia = await etiquetaDe(previa.clave, persona); } catch { etiquetaPrevia = null; } }
   const ok = await almacenClave.escribir(reg);
   if (!ok) throw new ErrorNube('Este móvil no deja guardar la clave de las copias (IndexedDB no disponible, p. ej. en modo privado).', 'sin-idb');
   if (estado() && estado().dueño === persona) claveActual = reg;
-  ponerNube({ error: null });
+  ponerNube({ error: null, ...(etiquetaPrevia ? { etiquetaPrevia } : {}) });
   return reg;
 }
 // La base: lo último subido o restaurado. Con siMayor, solo sube (nunca baja) lo que ya hubiera.
@@ -596,8 +615,10 @@ async function subirYa(motivo, { forzar = false } = {}) {
   const bytes = await cifrar(empaquetar({ persona, creada, ...m }, exportar()), reg);
   if (bytes.length > LIMITE_SUBIDA) { ponerNube({ error: 'Tus datos ocupan demasiado para la nube: guarda una copia en un archivo.' }); return 'grande'; }
   const meta = await cifrarNombre(m, reg.clave, persona);
+  const cab = { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': b64u(reg.sal), 'x-copia-meta': meta, 'x-copia-etiqueta': await etiquetaDe(reg.clave, persona) };
+  if (typeof n.etiquetaPrevia === 'string' && n.persona === persona) cab['x-copia-etiqueta-anterior'] = n.etiquetaPrevia;
   try {
-    await pedir({ binario: bytes, cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': b64u(reg.sal), 'x-copia-meta': meta } });
+    await pedir({ binario: bytes, cabeceras: cab });
   } catch (e) {
     if (e.codigo === 'sin-red') { faltaRed = true; quedaPendiente('sin-red'); return 'sin-red'; }
     if (e.codigo === 'inactiva') { ponerNube({ inactiva: true, error: e.message }); return 'inactiva'; }
@@ -607,7 +628,7 @@ async function subirYa(motivo, { forzar = false } = {}) {
   }
   faltaRed = false;
   sinPendiente();
-  ponerNube({ persona, ultima: new Date(dep.ahora()).toISOString(), sesiones: m.sesiones, ultimaSesion: m.ultima, error: null, inactiva: false, retenida: null, pausada: false, pendiente: null, motivo });
+  ponerNube({ persona, ultima: new Date(dep.ahora()).toISOString(), sesiones: m.sesiones, ultimaSesion: m.ultima, error: null, inactiva: false, retenida: null, pausada: false, pendiente: null, etiquetaPrevia: null, motivo });
   return 'ok';
 }
 

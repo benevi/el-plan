@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { est, cargarCon, hecha } from './ayuda/node.mjs';
 import { modulo, estadoBase } from './ayuda/comun.mjs';
 import { BlobSimulado, fetchNube, ClavesMemoria } from './ayuda/nube.mjs';
-import { ponerReloj, ponerAlmacen, nombreCopiaV1 } from '../api/copia.js';
+import { ponerReloj, ponerAlmacen, nombreCopia, nombreCopiaV1 } from '../api/copia.js';
 
 const C = await import(modulo('js/nucleo/copia.js'));
 process.env.VERCEL_ENV = 'production'; // rutas del Blob de producción (copias/…); las de las vistas previas, en tests/api/copia.test.mjs
@@ -203,7 +203,8 @@ test('el servidor solo ve bytes cifrados: nada del estado en claro en lo subido,
   assert.equal(g.opciones.access, 'private');
   assert.match(g.pathname, /^copias\/victor\/[^_]+_k[\w-]{22}_m[\w-]+\.bin$/);
   const cab = subidas()[0].init.headers;
-  assert.deepEqual(Object.keys(cab).sort(), ['Content-Type', 'x-app-code', 'x-copia-accion', 'x-copia-meta', 'x-copia-persona', 'x-copia-sal']);
+  assert.deepEqual(Object.keys(cab).sort(), ['Content-Type', 'x-app-code', 'x-copia-accion', 'x-copia-etiqueta', 'x-copia-meta', 'x-copia-persona', 'x-copia-sal']);
+  assert.match(cab['x-copia-etiqueta'], /^[\w-]{43}$/); // S2: prueba de que tiene la clave, sin revelarla
   // Con la frase se recupera el estado exportado (sin el código de acceso) y sus metadatos.
   const a = await C.abrirArchivo(new Uint8Array(g.bytes), (s, it) => C.derivarClave(FRASE, s, it));
   assert.equal(JSON.parse(a.estado).perfil.notas, 'SECRETO-DE-SALUD rodilla');
@@ -253,10 +254,14 @@ test('M2: probar la frase no depende de la más nueva: frases antiguas y copias 
   await C.activar('victor', FRASE);
   sesion(); await C.copiarAhora();
   hora(); await C.cambiarFrase('victor', 'la frase nueva de este año'); await C.copiarAhora();
-  // Alguien con el código sube una copia basura (bien formada, con otra sal), que pasa a ser la más nueva.
+  // Una copia basura (bien formada, con otra sal) que pasa a ser la más nueva. Desde S2 el servidor ya no
+  // acepta subidas sin la etiqueta de la persona, pero puede haber alguna de antes en el Blob.
   hora();
   const basura = new Uint8Array(200); crypto.getRandomValues(basura); basura.set([0x50, 0x49, 0x50, 0x43, 2], 0);
-  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': Buffer.from(basura.slice(11, 27)).toString('base64url'), 'x-copia-meta': Buffer.from(basura.slice(0, 60)).toString('base64url') }, body: basura });
+  const sube = await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': Buffer.from(basura.slice(11, 27)).toString('base64url'), 'x-copia-meta': Buffer.from(basura.slice(0, 60)).toString('base64url') }, body: basura });
+  assert.equal(sube.status, 403, 'S2: sin la etiqueta de Víctor no se sube');
+  const nb = nombreCopia('victor', new Date(reloj), Buffer.from(basura.slice(11, 27)).toString('base64url'), Buffer.from(basura.slice(0, 60)).toString('base64url'));
+  blob.blobs.set(nb, { pathname: nb, bytes: Buffer.from(basura), opciones: {}, uploadedAt: new Date() });
   const lista = await C.listar('victor');
   assert.equal(lista.length, 3);
   // Frase antigua: abre la más vieja, no las otras; deriva una vez por sal distinta (3 sales).
@@ -292,7 +297,7 @@ test('M3: si los metadatos de dentro no cuadran con el nombre o la persona, se a
   const bytes = await C.cifrar(C.empaquetar({ persona: 'virginia', creada: new Date(reloj).toISOString(), sesiones: 0, ultima: '' }, est.exportar()), reg);
   hora();
   const cuerpo = Buffer.from(bytes);
-  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': C.b64u(reg.sal), 'x-copia-meta': await C.cifrarNombre({ sesiones: 0, ultima: '' }, reg.clave, 'victor') }, body: cuerpo });
+  await f('/api/copia', { method: 'POST', headers: { 'x-app-code': 'secreto', 'Content-Type': 'application/octet-stream', 'x-copia-accion': 'subir', 'x-copia-persona': 'victor', 'x-copia-sal': C.b64u(reg.sal), 'x-copia-meta': await C.cifrarNombre({ sesiones: 0, ultima: '' }, reg.clave, 'victor'), 'x-copia-etiqueta': await C.etiquetaDe(reg.clave, 'victor') }, body: cuerpo });
   const [nueva] = (await C.probarCopias('victor', await C.listar('victor'), { reg })).copias;
   const x = await C.abrirCopia('victor', nueva.nombre, { esperado: nueva });
   assert.match(x.avisos.join(' '), /Virginia/);
