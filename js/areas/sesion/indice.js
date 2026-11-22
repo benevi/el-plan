@@ -13,8 +13,21 @@ import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '
 import { LUGARES, MUSCULOS, GUSTOS } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
-import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias, alternativasHoy } from '../entrenador/entrenador.js';
+import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
+
+// «Cambiar por otro»: el dolor de hoy con el «dolor durante» del ejercicio (C-DOLOR-6) y las alternativas que
+// acepta el validador para su rol, sin crear problemas nuevos en la sesión (G1 de la revisión del PR #45).
+const dolorDeCambio = (s, x) => {
+  const dd = x && x.dolorDurante, ck = (s.checkin && s.checkin.dolor) || {};
+  return { ...ck, ...(dd ? { [dd.zona]: Math.max(+dd.dolor, +(ck[dd.zona] || 0)) } : {}) };
+};
+function alternativasDe(S, s, i) {
+  const x = s.ejercicios[i], e = ex(x.id); if (!e) return [];
+  const esMia = !!(s.origen && s.origen.tipo === 'mia');
+  return alternativasHoy(S, e, { lugar: s.lugar, rol: x.rol, excluir: s.ejercicios.map(y => y.id), dolorHoy: dolorDeCambio(s, x), energia: (s.checkin || {}).energia,
+    nivel: x.rol === 'principal' && !esMia ? Math.max(1, Math.min(3, +S.perfil.nivel || 1)) : null, sesion: s, indice: i });
+}
 
 const ROL = { rehab: 'Rehabilitación', cardio: 'Cardio' };
 const minus = t => String(t || '').toLowerCase();
@@ -659,13 +672,12 @@ acciones({
   },
   'sesion.comentar': el => { const t = $('#m-com').value.trim(); conSesion(s => { s.ejercicios[+el.dataset.e].comentario = t; }); cerrarHoja(); aviso('Lo leerá tu entrenador en la próxima sesión'); },
   'sesion.cambiar': el => {
+    // (las alternativas salen de alternativasDe, con las reglas del validador)
     const S = estado(), s = sesion(idActual()), i = +el.dataset.e, x = s.ejercicios[i], e = ex(x.id);
     // Un principal, de su nivel (C-DOSIS-10), salvo en una de «Mis sesiones» (C-MIA-2). Si el ejercicio se paró
     // por dolor, tampoco nada que cargue esa zona a ese dolor (C-DOLOR-6).
-    const esMia = !!(s.origen && s.origen.tipo === 'mia');
     const dd = x.dolorDurante;
-    const dolorHoy = { ...((s.checkin && s.checkin.dolor) || {}), ...(dd ? { [dd.zona]: Math.max(+dd.dolor, +(((s.checkin || {}).dolor || {})[dd.zona] || 0)) } : {}) };
-    const alts = alternativasHoy(S, e, { lugar: s.lugar, excluir: s.ejercicios.map(y => y.id), dolorHoy, nivel: x.rol === 'principal' && !esMia ? Math.max(1, Math.min(3, +S.perfil.nivel || 1)) : null }).slice(0, 8);
+    const alts = alternativasDe(S, s, i).slice(0, 8);
     const hechas = dd ? 0 : x.sets.filter(z => z.hecha).length;
     const pl = hechas > 1;
     abrirHoja(`<h2>Cambiar ${h(minus(e.n))}</h2>
@@ -675,6 +687,8 @@ acciones({
   'sesion.cambiarPor': async el => {
     const i = +el.dataset.e, nuevoId = el.dataset.id;
     const s0 = sesion(idActual()), v0 = s0 && s0.ejercicios[i], n0 = ex(nuevoId); if (!v0 || !n0) return;
+    // Solo lo que acepta el validador para ese rol y esta sesión (revisión del PR #45, G1).
+    if (!alternativasDe(estado(), s0, i).some(a => a.id === nuevoId)) { aviso('Ese cambio ya no vale con tu sesión de hoy: elige otro.', 'error'); cerrarHoja(); return; }
     const hechas = v0.dolorDurante ? 0 : v0.sets.filter(z => z.hecha).length;
     // Con series ya hechas se pregunta antes (auditoría, R17): no se pierde nada, pero cambia la sesión.
     if (hechas) {
@@ -686,7 +700,8 @@ acciones({
       const nota = `En lugar de ${ex(viejo.id).n.toLowerCase()}.`;
       const yaHechas = viejo.dolorDurante ? 0 : viejo.sets.filter(z => z.hecha).length;
       const series = yaHechas ? Math.max(1, viejo.sets.length - yaHechas) : viejo.series;
-      const nuevo = crearEjercicio({ id: n.id, rol: viejo.rol, series, reps: n.t === ex(viejo.id).t ? viejo.reps : n.d[1], descanso: viejo.descanso, nota });
+      const d = ejercicioCambiado(estado(), viejo, n, contextoDia(estado(), { lugar: s.lugar, dolorHoy: dolorDeCambio(s, viejo) }));
+      const nuevo = crearEjercicio({ ...d, series: yaHechas ? series : d.series, nota });
       // Uno parado por dolor se queda (con su «dolor durante» apuntado) y el nuevo va detrás (C-DOLOR-6).
       // Si ya se había cambiado (el siguiente es su sustituto sin nada hecho), se cambia ese: no se van sumando.
       const sustituto = s.ejercicios[i + 1];

@@ -9,7 +9,7 @@ import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRe
 import { LUGARES, MUSCULOS, OBJETIVOS } from '../../datos/constantes.js';
 import { semanaISO } from '../../nucleo/modelo.js';
 import { restriccionesSalud } from './salud.js';
-import { validarSesion } from './validar.js';
+import { validarSesion, problemasSesion } from './validar.js';
 
 // ── Plantillas de día: huecos por músculo principal, del más importante al menos ──
 export const PLANTILLAS = {
@@ -178,15 +178,54 @@ export function permitidoBase(S, e, { lugar, niveles, salud, bandas }) {
   return true;
 }
 
-// «Cambiar por otro» (COD-1): las alternativas de un ejercicio con la misma regla que el validador
-// (permitidoBase con las bandas de hoy, el lugar, el material, los rechazos y los datos de salud).
-// op: { lugar, dolorHoy, excluir, nivel }.
+// «Cambiar por otro» (COD-1, revisión del PR #45 G1): las alternativas de un ejercicio con las reglas del
+// validador para SU rol. Rehabilitación: solo las de la zona y la fase de hoy (candidatosRehab, C-DOLOR-1,
+// C-DOSIS-7); cardio: solo cardio válido de hoy (opcionesCardio, C-CARDIO-5/6, C-PISC-2); principal: lo que vale
+// como principal (valePrincipal) y el resto de permitidoBase. Con la sesión (op.sesion, op.indice), además, nada
+// que cree un problema nuevo en problemasSesion (C-DOSIS-4, tiempo, nivel…). op: { lugar, dolorHoy, excluir,
+// nivel, rol, sesion, indice, minutos, energia }.
 export function alternativasHoy(S, e, op = {}) {
-  const ctx = contextoDia(S, { lugar: op.lugar, dolorHoy: op.dolorHoy || {} });
-  return alternativas(e, ctx.lugar, S.perfil, { excluir: op.excluir || [], nivel: op.nivel == null ? null : op.nivel, permitido: x => permitidoBase(S, x, ctx) });
+  const ctx = contextoDia(S, { lugar: op.lugar, dolorHoy: op.dolorHoy || {}, minutos: op.minutos, energia: op.energia });
+  const excluir = new Set([...(op.excluir || []), e.id]);
+  const rol = op.rol || 'principal';
+  let cand;
+  if (rol === 'rehab') {
+    // Primero la zona de la que era (si lo era), luego las demás zonas activas.
+    const zs = zonasRehab(ctx).sort((a, b) => (fasesRehab(e, b, detalleDe0(ctx, b)).length ? 1 : 0) - (fasesRehab(e, a, detalleDe0(ctx, a)).length ? 1 : 0));
+    cand = [...new Set(zs.flatMap(z => candidatosRehab(S, z, ctx)))].filter(x => !excluir.has(x.id));
+  } else if (rol === 'cardio') {
+    cand = opcionesCardio(S, ctx).filter(x => !excluir.has(x.id));
+  } else {
+    cand = alternativas(e, ctx.lugar, S.perfil, { excluir: [...excluir], nivel: op.nivel == null ? null : op.nivel, permitido: x => permitidoBase(S, x, ctx) && valePrincipal(S, x, ctx) });
+  }
+  if (!op.sesion || op.indice == null) return cand;
+  const cvi = { lugar: ctx.lugar, minutos: op.sesion.minutos, dolorHoy: op.dolorHoy || {}, energia: op.energia };
+  const antes = new Set(problemasSesion(S, op.sesion, cvi));
+  return cand.filter(n => {
+    const ejs = op.sesion.ejercicios.slice();
+    ejs[op.indice] = { ...ejercicioCambiado(S, op.sesion.ejercicios[op.indice], n, ctx), sets: [] };
+    // Lo que ya fallaba con el ejercicio de antes (p. ej. sus series) no cuenta como nuevo.
+    return problemasSesion(S, { ...op.sesion, ejercicios: ejs }, cvi).every(p => antes.has(p) || antes.has(p.split(n.id).join(e.id)));
+  });
+}
+// El ejercicio nuevo de «Cambiar por otro»: la rehabilitación con la dosis de su fase de hoy (C-DOSIS-7); el
+// cardio con los mismos minutos; un principal con las series y descansos de antes (y su dosis si se mide distinto).
+export function ejercicioCambiado(S, viejo, n, ctx) {
+  const ve = ex(viejo.id);
+  if (viejo.rol === 'rehab') {
+    const z = zonasRehab(ctx).find(z => rehabValida(S, n, z, ctx));
+    if (z) { const r = ejercicioRehab(S, n, z, ctx); return { id: n.id, rol: 'rehab', series: r.series, reps: r.reps, descanso: r.descanso }; }
+  }
+  if (viejo.rol === 'cardio') return { id: n.id, rol: 'cardio', series: 1, reps: viejo.reps, descanso: 0 };
+  return { id: n.id, rol: viejo.rol, series: viejo.series, reps: ve && n.t === ve.t ? viejo.reps : n.d[1], descanso: viejo.descanso };
 }
 // Lo que vale de un ejercicio en un lugar con el dolor de hoy (para el catálogo que se manda a la IA).
-export const permitidoEn = (S, lugar, dolorHoy = {}, { futuro = false } = {}) => { const ctx = contextoDia(S, { lugar, dolorHoy, futuro }); return e => permitidoBase(S, e, ctx); };
+// Además, quien no sabe nadar no recibe largos ni nado continuo, y la movilidad (que la IA usa en el calentamiento y la
+// vuelta) cumple la regla de las tareas: uso de la ficha y nada tumbado en la calle (revisión del PR #45, M5).
+export const permitidoEn = (S, lugar, dolorHoy = {}, { futuro = false } = {}) => {
+  const ctx = contextoDia(S, { lugar, dolorHoy, futuro });
+  return e => permitidoBase(S, e, ctx) && !(ctx.lugar === 'piscina' && noSabeNadar(S, e)) && (e.m[0] !== 'movilidad' || tareaOk(S, e.id, ctx));
+};
 
 // ── Cardio (D3, C-CARDIO-1 a 6, decisiones 4-7): la única regla de cuándo va y cuánto ──
 // Toda sesión lleva cardio. Devuelve { objetivo, minutos (mínimo), max, rpe, intervalos, obligatorio: true }.

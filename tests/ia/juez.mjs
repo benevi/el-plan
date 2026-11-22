@@ -92,7 +92,9 @@ export function juzgarSesion(S, crudo, ctx, caso = {}) {
 
   // ── Validador ──
   const problemas = problemasSesion(S, s, { ...ctx, dolorHoy: ctx.dolorHoy || {} });
-  const graves = problemas.filter(p => GRAVE.test(p));
+  // Una tarea de calentamiento o vuelta que hoy no vale la quita la app sin más (C-EST-4, C-EST-2): no es eliminatoria
+  // (revisión del PR #45, M5). Lo demás que no vale sí.
+  const graves = problemas.filter(p => GRAVE.test(p) && !/^tarea /.test(p));
   const v = validarSesion(S, copia(s), { ...ctx, dolorHoy: ctx.dolorHoy || {}, origen: 'ia' });
   const validador = { pasa: v.valida && graves.length === 0, valida: v.valida, problemas, graves, cambios: v.cambios };
 
