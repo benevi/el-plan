@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-1a6772e7e4bf';
+const VERSION = 'pipos-app-ff9740e74940';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-weAaLs0jusTtPfGiWa7J2Q0teG68qTlsbMAcla9Xlsg=',
+  './': 'sha256-fvYRmJLp89LwjP063PR6S/Y0ockWmgVuXW4fDJ1PxFg=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-/PRQnpPMx6ibZwR6sm8eqcgnTtgengfu6Q8iYHqngiA=',
@@ -22,7 +22,7 @@ const HUELLAS = {
   './css/marco.css': 'sha256-Y+9bAghnBzSPmNsyhRjFXl7t4/GluCD4RxuZJC+MI1Y=',
   './css/perfil.css': 'sha256-H6CV+eKgPbraY6G6JDMr/oQCxgTxqjh0DtjxAvgeMgk=',
   './css/progreso.css': 'sha256-75RgtZQWBEvIJXxzCiDfI398Q4tRh2/I5y5mTlPsQN0=',
-  './css/sesion.css': 'sha256-/mq1Yh+m88eIsfuWzYeIsi0yTqjGWsezorrfGpAJR/c=',
+  './css/sesion.css': 'sha256-8vdh+Q16m9Zebr8JbB4SXDVhvg8VN7YTWdjd8UJkZLY=',
   './css/tokens.css': 'sha256-IS6xlCpgQu+R18m0qtXYBDDUhNou1isluEAd7ZsmNxc=',
   './fonts/instrument-sans.woff2': 'sha256-rk9YUt7Enho5JjLjCQhuZacfSGX9yMdsX2u2zxJx4AU=',
   './icons/icon-180.png': 'sha256-HL2I8vR+SqWC6lipjg6LtjomGLg7MFrjTv7eaCfJIrg=',
@@ -32,7 +32,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-weAaLs0jusTtPfGiWa7J2Q0teG68qTlsbMAcla9Xlsg=',
+  './index.html': 'sha256-fvYRmJLp89LwjP063PR6S/Y0ockWmgVuXW4fDJ1PxFg=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
   './js/areas/ejercicios/indice.js': 'sha256-ShKymjOA1X2xP6s1HYhFukQl93SMisalAgZCUYYABsI=',
   './js/areas/entrenador/alarma.js': 'sha256-8NnNTcENxRFRXVyWpBfBDSsguazYB2fYLS02C71xgSo=',

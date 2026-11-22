@@ -253,4 +253,24 @@ body.con-final { overflow: hidden; }
   .sesion-ej .ultima { margin-top: var(--e-1); }
   .serie--actual { padding-top: var(--e-2); }
 }
+/* 320 × 568 y menos (COD-5): la serie actual y su «Serie hecha» siguen cabiendo sin desplazarse. Cifras de 40 px
+   (≥ 28, R06), menos aire entre bloques y la línea del lugar en una sola línea; todo lo que se pulsa sigue ≥ 48 px. */
+@media (max-height: 600px) {
+  .cab-sesion { min-height: 52px; padding-top: 0; }
+  .cab-sesion p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vista-sesion > .avance { margin-top: var(--e-1); }
+  .modo-sesion { margin-top: var(--e-2); }
+  .pasos-sesion { margin-top: var(--e-1); padding-bottom: var(--e-1); }
+  .vista-sesion > .tarjeta { padding-top: var(--e-2); }
+  .ejercicio-cab h2 { font-size: 18px; line-height: 1.2; }
+  .sesion-ej .series { margin-top: var(--e-2); }
+  .serie--actual { margin-top: 0; padding-bottom: var(--e-3); }
+  .serie-cuenta { margin-bottom: 0; }
+  .serie--actual .selectores { margin: 0 0 var(--e-2); }
+  .serie--actual .boton { margin-top: 0; }
+  .serie--actual .selector-valor b { font-size: 40px; }
+  .serie-tiempo { margin-bottom: var(--e-2); }
+  .serie-tiempo b { font-size: var(--t-cifra-m); }
+  .serie-manual { margin-top: var(--e-3); }
+}
 .contador-sonido { align-self: center; }
