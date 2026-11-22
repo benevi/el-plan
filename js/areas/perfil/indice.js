@@ -4,7 +4,7 @@
 
 import { rutas, acciones, pestaña, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
-  infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
+  infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, infoApartado, recuperarApartado, descartarApartado, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
@@ -158,6 +158,7 @@ function grupoAjustes(S) {
     ${puedeCompartirArchivos() ? '<button type="button" class="boton boton--texto" data-act="perfil.compartir">Enviar la copia a otra app (Archivos, Drive…)</button>' : ''}
     ${bloqueCopia()}
     ${bloqueDeshacer()}
+    ${bloqueApartado()}
     <p class="ayuda">Las copias automáticas están en Perfil › Copias.</p>`)}
   ${tarjeta('Este móvil', `<p>Móvil de ${h(nombre(S.dueño))}.</p>
     <button type="button" class="boton boton--texto" data-act="perfil.cambiarDueño">Cambiar de quién es</button>
@@ -185,6 +186,15 @@ function bloqueDeshacer() {
   if (!a) return '';
   return `<div class="aviso aviso-linea aviso--info deshacer-importar" role="note">${ICONOS.info}<div class="aviso-texto"><p>Antes de cargar la última copia (${h(fechaCorta(a.fecha))}) tus datos quedaron apartados. Se borran solos a los 7 días.</p>
     <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.deshacerImportar">Volver a ellos</button><button type="button" class="boton boton--texto" data-act="perfil.descartarAntes">Descartar</button></div></div></div>`;
+}
+
+// Lo apartado (D5): cambios de otra ventana que no se pudieron juntar, o lo que había al cargar otra copia.
+function bloqueApartado() {
+  const a = infoApartado();
+  if (!a) return '';
+  const de = a.dueño && a.dueño !== estado().dueño ? ` de ${h(nombre(a.dueño))}` : '';
+  return `<div class="aviso aviso-linea aviso--info apartado" role="note">${ICONOS.info}<div class="aviso-texto"><p>Hay unos datos apartados${de}${a.fecha ? ` del ${h(fechaCorta(a.fecha))}` : ''} (${+a.sesiones} sesiones hechas): cambios de otra ventana que no se pudieron juntar, o lo que tenías al cargar otra copia.</p>
+    <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.recuperarApartado">Recuperarlos</button><button type="button" class="boton boton--texto" data-act="perfil.descartarApartado">Descartar</button></div></div></div>`;
 }
 
 // ── Guardar y cargar copias ──
@@ -355,6 +365,16 @@ acciones({
     const a = infoAntesDeImportar(); if (!a) return;
     if (!await confirmar(`¿Volver a los datos que había antes de cargar la última copia (${fechaCorta(a.fecha)})? Lo de ahora queda apartado en su lugar.`, { si: 'Volver a ellos' })) return;
     try { deshacerImportar(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
+  },
+  'perfil.recuperarApartado': async () => {
+    const a = infoApartado(); if (!a) return;
+    if (!await confirmar(`¿Cambiar los datos de ahora por los apartados (${+a.sesiones} sesiones hechas)? Lo de ahora queda apartado en su lugar y puedes volver a ello.`, { si: 'Recuperarlos' })) return;
+    try { await recuperarApartado(); aviso('Has recuperado los datos apartados'); } catch (e) { aviso(e.message, 'error'); }
+    pintar();
+  },
+  'perfil.descartarApartado': async () => {
+    if (!await confirmar('¿Descartar los datos apartados? Ya no podrás recuperarlos.', { si: 'Descartar', peligro: true })) return;
+    await descartarApartado(); pintar();
   },
   'perfil.descartarAntes': async () => {
     if (!await confirmar('¿Descartar los datos de antes de la última copia? Ya no podrás volver a ellos.', { si: 'Descartar', peligro: true })) return;

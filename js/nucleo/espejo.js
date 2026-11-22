@@ -4,7 +4,8 @@
 //
 // Una base pequeña ('pipos-espejo'), un almacén ('estado') y un único registro ('pipos4'):
 //   { txt: JSON del estado, rev: revisión, fecha: ISO }
-// Aparte, el registro 'conflicto' guarda los cambios de una pestaña que otra se adelantó a guardar.
+// Aparte, el registro 'conflicto' guarda lo apartado: los cambios de una pestaña que otra se adelantó a guardar
+// (o lo de ahora al cargar otra copia, ver estado.js). Se lee y se borra desde Perfil › Ajustes.
 // Nada de esto bloquea la interfaz: las escrituras se encolan y solo se escribe la última pendiente.
 // Si el navegador no tiene IndexedDB (o falla), todo es un «no hace nada» silencioso.
 
@@ -77,6 +78,32 @@ export async function apartar(reg) {
     try {
       const t = db.transaction(TABLA, 'readwrite');
       t.objectStore(TABLA).put(reg, CONFLICTO);
+      t.oncomplete = () => res(true);
+      t.onerror = t.onabort = () => res(false);
+    } catch { bd = null; res(false); }
+  });
+}
+
+// Lee lo apartado (registro 'conflicto'), o null.
+export async function leerApartado() {
+  const db = await abrir();
+  if (!db) return null;
+  return new Promise(res => {
+    try {
+      const q = db.transaction(TABLA, 'readonly').objectStore(TABLA).get(CONFLICTO);
+      q.onsuccess = () => res(q.result || null);
+      q.onerror = () => res(null);
+    } catch { bd = null; res(null); }
+  });
+}
+// Borra lo apartado (tras recuperarlo o descartarlo).
+export async function borrarApartado() {
+  const db = await abrir();
+  if (!db) return false;
+  return new Promise(res => {
+    try {
+      const t = db.transaction(TABLA, 'readwrite');
+      t.objectStore(TABLA).delete(CONFLICTO);
       t.oncomplete = () => res(true);
       t.onerror = t.onabort = () => res(false);
     } catch { bd = null; res(false); }
