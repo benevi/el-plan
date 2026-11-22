@@ -324,6 +324,31 @@ test('la tira de la semana se lee sin color y el botón de abajo no la tapa (390
   expect(errores).toEqual([]);
 });
 
+// U2 (re-auditoría): los días L-D de «Tu semana» / «Cambiar días» y de «Hoy no puedo → Reorganizar» miden ≥ 44 × 44 px
+// (T9) en los tres tamaños, sin desplazamiento lateral.
+test('días de la semana de las hojas «Tu semana» y «Reorganizar»: ≥ 44 × 44 px a 390, 360 y 320', async ({ page, context }) => {
+  const errores = await preparar(page, context);
+  await escenario(page, 'victor', {});
+  const medir = () => page.locator('.hoja .chips.dias .chip').evaluateAll(l => l.map(x => { const r = x.getBoundingClientRect(); return { w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10, dentro: r.left >= 0 && r.right <= innerWidth }; }));
+  for (const [w, h] of [[390, 844], [360, 640], [320, 568]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const act of ['entrenador.plan', 'entrenador.hoyNo']) {
+      await page.locator(`#vista [data-act="${act}"]`).first().click();
+      await expect(page.locator('.hoja .chips.dias .chip')).toHaveCount(7);
+      const dias = await medir();
+      for (const [i, d] of dias.entries()) {
+        expect(d.w, `${act} a ${w} px: ancho del día ${i + 1}`).toBeGreaterThanOrEqual(44);
+        expect(d.h, `${act} a ${w} px: alto del día ${i + 1}`).toBeGreaterThanOrEqual(44);
+        expect(d.dentro, `${act} a ${w} px: el día ${i + 1} se sale`).toBe(true);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(w);
+      await page.click('.hoja [data-cerrar-hoja]');
+      await expect(page.locator('.hoja-fondo')).toHaveCount(0);
+    }
+  }
+  expect(errores).toEqual([]);
+});
+
 test('sesión de ayer sin cerrar: «Cerrar la de ayer» abre su cierre y «Descartarla» la borra tras confirmarlo', async ({ page, context }) => {
   const errores = await preparar(page, context);
   await escenario(page, 'victor', { ayer: true });

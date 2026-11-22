@@ -140,6 +140,10 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 
 > Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es solo el dolor de tu lesión y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
 
+**T3b · Durante la sesión, sin lesiones activas (botón «Algo va mal»)** — *pendiente de que Víctor apruebe el texto* (re-auditoría del PR 18, U6: quien no tiene lesiones leía «el dolor de tu lesión»):
+
+> Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es un dolor en una zona concreta (un músculo o una articulación) y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
+
 **T4 · Aviso de consulta (no urgente):**
 
 > Tu [zona] lleva [dato concreto: «tres días a 7/10» / «dos semanas sin bajar de 5/10»]. La app seguirá adaptando tus sesiones, pero conviene que lo valore tu médico o tu fisioterapeuta. Cuéntale qué ejercicios te lo suben (los tienes en Progreso › Dolor).

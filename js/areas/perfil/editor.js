@@ -326,5 +326,3 @@ rutas({
   },
 });
 
-// Para las pruebas: lo que hay en el borrador.
-export const borradorMia = () => (borrador ? copia(borrador) : null);

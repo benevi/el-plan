@@ -2,7 +2,7 @@
 
 import { rutas, acciones, antesDeCadaRuta, ir } from '../../nucleo/router.js';
 import { estado, cambiar, migrarDeViejo, resultadoMigracion, dueñoSoltadoConConfirmacion } from '../../nucleo/estado.js';
-import { h, aviso, confirmar } from '../../nucleo/ui.js';
+import { h, aviso, confirmar, plural } from '../../nucleo/ui.js';
 import { PERSONAS } from '../../datos/constantes.js';
 import { T1 } from '../entrenador/alarma.js';
 import { QUEDA } from './indice.js';
@@ -38,10 +38,11 @@ acciones({
     const r = resultadoMigracion();
     if (r && (r.sesiones || r.descartadas.length)) {
       const partes = [];
-      if (r.sesiones) partes.push(`He traído ${r.sesiones} sesiones de la app anterior`);
+      if (r.sesiones) partes.push(`He traído ${plural(r.sesiones, 'sesión', 'sesiones')} de la app anterior`);
       if (r.descartadas.length) partes.push(`No he podido traer ${r.descartadas.join(', ')}`);
       aviso(partes.join('. '), r.descartadas.length ? 'info' : '');
     }
-    ir(estado().perfil.objetivos.length ? 'hoy' : 'perfil');
+    // Siempre a Hoy (U5): sin perfil, su tarjeta «Cuéntale a tu entrenador quién eres» dice qué hacer y lleva a Perfil.
+    ir('hoy');
   },
 });

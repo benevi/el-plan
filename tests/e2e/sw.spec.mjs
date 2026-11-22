@@ -448,3 +448,60 @@ test('paso desde main (SW viejo) con red a medias, luego sin red, y marcha atrá
   await page.reload();
   await expect(page).toHaveTitle('App vieja');
 });
+
+// D5 (re-auditoría): si el service worker de esta versión no llega a instalarse (un archivo que no casa con su
+// huella), la app lo dice en Perfil › Ajustes con «Reintentar»; al reintentar con el archivo bueno se instala y
+// la app abre sin conexión.
+test('D5: service worker sin instalar: lo dice en Ajustes y «Reintentar» lo instala; luego abre sin conexión', async ({ page, context }) => {
+  const errores = vigilarErrores(page);
+  const malo = path.join(tmp, 'malo');
+  fs.mkdirSync(path.join(malo, 'icons'), { recursive: true });
+  fs.writeFileSync(path.join(malo, 'icons/maskable-512.png'), 'no es el archivo de la huella');
+  srv.control.porRuta = { '/icons/maskable-512.png': malo };
+  await page.goto('/');
+  await expect(page.locator('#aviso')).toContainText('El modo sin conexión no se ha podido instalar', { timeout: 15000 });
+  await page.click('[data-act="bienvenida.elegir"][data-v="victor"]');
+  await expect(page.locator('#nav a')).toHaveCount(4);
+  await page.goto('/#perfil');
+  await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+  const linea = page.locator('[data-modo-sin-conexion]');
+  await expect(linea).toHaveAttribute('data-modo-sin-conexion', 'no-instalado', { timeout: 15000 });
+  await expect(linea).toContainText('Modo sin conexión: no instalado');
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+  // Arreglado el despliegue: «Reintentar» lo instala sin recargar
+  srv.control.porRuta = {};
+  await page.click('[data-act="perfil.reintentarSinConexion"]');
+  await expect(linea).toHaveAttribute('data-modo-sin-conexion', 'listo', { timeout: 15000 });
+  await expect(page.locator('[data-act="perfil.reintentarSinConexion"]')).toHaveCount(0);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  await page.reload();
+  await appEntera(page, 'A');
+  await context.setOffline(false);
+  expect(errores).toEqual([]);
+});
+
+// Revisión del PR #47: en el paso desde main (su SW controla la página y el de esta versión entra después), una
+// comprobación vieja del modo sin conexión (que esperaba al SW de main, que no contesta) no pisa a la nueva:
+// Ajustes dice «listo», no un falso «no instalado».
+test('D5: tras el paso desde main, Ajustes dice «Modo sin conexión: listo» (sin falso «no instalado»)', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  srv.control.raiz = legado;
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  srv.control.raiz = vA;
+  await page.reload();
+  await page.waitForTimeout(5000); // que el SW nuevo entre y las comprobaciones en vuelo acaben
+  expect(await page.evaluate(async () => (await import('/js/nucleo/version.js')).modoSinConexion()), 'modo sin conexión tras el paso').toBe('listo');
+  await page.click('[data-act="bienvenida.elegir"][data-v="victor"]');
+  await expect(page.locator('#nav a')).toHaveCount(4);
+  await page.goto('/#perfil');
+  await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+  const linea = page.locator('[data-modo-sin-conexion]');
+  await expect(linea).toHaveAttribute('data-modo-sin-conexion', 'listo', { timeout: 15000 });
+  // Las comprobaciones que quedaban en vuelo (esperan hasta 1,5 s a un SW que no contesta) no lo cambian
+  await page.waitForTimeout(3500);
+  await expect(linea).toHaveAttribute('data-modo-sin-conexion', 'listo');
+  await expect(page.getByText('El modo sin conexión no se ha podido instalar')).toHaveCount(0);
+  expect(errores).toEqual([]);
+});

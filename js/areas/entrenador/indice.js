@@ -6,7 +6,7 @@
 
 import { acciones, ir } from '../../nucleo/router.js';
 import { estado, cambiar, escuchar, hoyISO } from '../../nucleo/estado.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, es, mmss } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, es, mmss, plural } from '../../nucleo/ui.js';
 import { enLinea, esTopeIA } from '../../nucleo/api.js';
 import { diaSemana, sesionDeHoy, sesionTocada } from '../../nucleo/modelo.js';
 import { info as cronometro } from '../sesion/temporizador.js';
@@ -26,8 +26,11 @@ const minus = t => String(t || '').toLowerCase();
 // Minutos de una sesión o un día del plan: la misma cuenta en Hoy, la semana, el día y la vista previa del
 // check-in (calentamiento + ejercicios + vuelta a la calma), para que no digan cosas distintas.
 export const minutosDe = d => +tiempoSesion(d) || 0;
-// «1 ejercicio», «5 ejercicios», «6 de 13 series»
-export const plural = (n, uno, varios, de = null) => de == null ? `${+n} ${+n === 1 ? uno : varios}` : `${+n} de ${+de} ${+de === 1 ? uno : varios}`;
+export { plural };
+// El foco del día es una lista de músculos («Pecho, cuádriceps, espalda»): tras el primero, en minúscula (U7).
+// Sirve también para los planes ya guardados con «Pecho, Cuádriceps…»; un foco escrito por la IA no cambia.
+const NOMBRES_MUSCULO = new Set(Object.values(MUSCULOS));
+export const focoTexto = f => String(f || '').split(', ').map((p, i) => (i && NOMBRES_MUSCULO.has(p) ? minus(p) : p)).join(', ');
 // Las opciones de minutos siempre incluyen el valor elegido (el del perfil o el del día pueden ser 50 o 40).
 const OPCIONES_MIN = [30, 45, 60, 75, 90];
 const opcionesMin = m => [...new Set([...OPCIONES_MIN, +m].filter(Boolean))].sort((a, b) => a - b);
@@ -225,7 +228,6 @@ async function crearConAlarma() {
 // momento. La respuesta solo lleva a la sesión si la persona sigue en la misma pantalla que al empezar.
 // Los pasos se marcan según avanza: conectando → pensando → escribiendo (con el número de ejercicios o días).
 let enCurso = null;
-export const esperandoIA = () => !!enCurso;
 const PASOS = {
   sesion: ['Conectando con tu entrenador…', 'Pensando tu sesión con tus datos…', 'Escribiendo tu sesión…'],
   plan: ['Conectando con tu entrenador…', 'Pensando tu semana con tus datos…', 'Escribiendo tu semana…'],
@@ -381,7 +383,7 @@ function hojaDia(n) {
   const S = estado(), d = estadoDias(S).find(x => x.diaSemana === n); if (!d) return;
   const fila = x => { const e = ex(x.id); return e ? `<li><b>${h(e.n)}</b> <span class="texto-2">${+x.series} × ${h(x.reps)}${x.rol === 'rehab' ? ', rehabilitación' : x.rol === 'cardio' ? ', cardio' : ''}</span>${x.nota ? `<br><small>${h(x.nota)}</small>` : ''}</li>` : ''; };
   abrirHoja(`<h2>${h(DIAS[n])}: ${h(d.nombre)}</h2>
-    <p class="hoja-texto">${h(LUGARES[d.lugar])}, unos ${minutosDe(d)} min${d.foco ? '. ' + h(d.foco) : ''}.</p>
+    <p class="hoja-texto">${h(LUGARES[d.lugar])}, unos ${minutosDe(d)} min${d.foco ? '. ' + h(focoTexto(d.foco)) : ''}.</p>
     ${d.explicacion.length ? `<p class="porque porque-linea">${ICONOS.ia}<span>${h(d.explicacion[0])}</span></p>` : ''}
     <h3>Calentamiento</h3><ul class="lista-dia">${d.calentamiento.map(t => `<li>${h(t.nombre)} <span class="texto-2">${h(t.duracion || '')}</span></li>`).join('')}</ul>
     <h3>Trabajo</h3><ul class="lista-dia">${d.ejercicios.map(fila).join('')}</ul>
@@ -406,15 +408,6 @@ export function tarjetaAnalisis(S) {
     </ul></section>`;
 }
 
-// Medidor de nivel (lo pinta Perfil).
-export function bloqueMedidor(S) {
-  const m = medidorNivel(S);
-  return `<div class="medidor">
-    ${m.criterios.length ? `<p class="tenue">Para subir a ${h(minus(NIVELES[m.nivel + 1]))}:</p><ul class="criterios">${m.criterios.map(c => `<li class="${c.ok ? 'ok' : ''}">${c.ok ? ICONOS.check : '○'} ${h(c.que)} <span class="tenue">· ${h(c.valor)}</span></li>`).join('')}</ul>` : '<p class="tenue">Nivel máximo.</p>'}
-    ${m.sugerido !== m.nivel && !S.perfil.nivelAuto ? `<p class="nota">${h(m.motivo)} <button class="enlace" data-act="entrenador.aplicarNivel">Pasar a ${h(minus(NIVELES[m.sugerido]))}</button></p>` : ''}
-    ${(S.perfil.nivelCambios || []).slice(-2).map(c => `<p class="tenue">${h(c.fecha.slice(0, 10))}: ${h(NIVELES[c.de])} → ${h(NIVELES[c.a])}. ${h(c.motivo)}</p>`).join('')}
-  </div>`;
-}
 function aplicarNivel(auto) {
   const S = estado(), m = medidorNivel(S);
   if (m.sugerido === m.nivel) return;
@@ -555,4 +548,3 @@ acciones({
 
 // Texto corto de un ejercicio para listas (lo usan Hoy y Progreso).
 export const nombreEj = id => (ex(id) ? ex(id).n : id);
-export const musculoEj = id => (ex(id) ? MUSCULOS[ex(id).m[0]] : '');
