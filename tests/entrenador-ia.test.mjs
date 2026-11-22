@@ -325,3 +325,12 @@ test('COD-6: un ejercicio rechazado que propone la IA no se guarda, ni en la ses
   assert.equal(plan.fuente, 'ia');
   assert.deepEqual(plan.dias.flatMap(d => d.ejercicios).filter(x => x.id === 'prensa-piernas'), []);
 });
+test('M4 (revisión del PR #45), C-IA-3: con muchos «Ajustado por la app» siguen los cambios de la IA, primero los de la lesión', async () => {
+  const cambios = ['Cambio el orden porque lo pides.', 'Tu rodilla está a 5/10: hoy nada que la cargue y consúltalo si no baja.'];
+  const malos = BASE.ejercicios.map(x => ({ ...x, series: 9, reps: 'al fallo', descanso: 5 }));
+  const { sesion } = await sesionIA({ objetivos: ['musculo'] }, { ...BASE, cambios, ejercicios: [...malos, E('no-existe'), E('crol'), E('aquajogging')] });
+  const e = sesion.explicacion;
+  assert.equal(e.filter(t => /^Ajustado por la app:/.test(t)).length, 1, e.join(' | '));
+  const iRodilla = e.findIndex(t => /^De tu entrenador: Tu rodilla/.test(t)), iOrden = e.findIndex(t => /^De tu entrenador: Cambio el orden/.test(t));
+  assert.ok(iRodilla > 0 && (iOrden < 0 || iRodilla < iOrden), e.join(' | '));
+});

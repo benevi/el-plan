@@ -97,11 +97,21 @@ export const sinEntrenarHoy = S => (S.alarmas || []).some(a => a.fecha === hoyIS
 // comprueba frase a frase: fuera las que diagnostican o hablan de curar, las de «al fallo», aguantar la
 // respiración, ignorar o seguir con dolor, y (en notas y explicación) las que piden más kilos de los que deja
 // la app. Si no queda nada, la nota la escribe la app con sus datos.
-const PROHIBIDO = /\b(diagnostic\w*|tratamiento\w*|curar\w*|curacion|cura|curan|curara)\b|(?<!(sin llegar|no llegues|nunca llegues|sin ir|nada) )\bal fallo\b|hasta el fallo|(?<!(sin|no|nunca) )aguant\w* (la )?respiracion|\bignora\w*|aunque (te )?(duela|moleste)|sin importar el dolor|pese al dolor/;
+// Cada término peligroso cuenta solo si no va negado justo antes («nunca al fallo», «evita aguantar la
+// respiración», «no sigas aunque te moleste», «no es un tratamiento»): esos son consejos de seguridad (M6).
+// «Ignorar» solo cuando invita a hacerlo («puedes ignorar», «ignora el dolor»), no cuando la IA dice que no
+// hace caso de una petición así (C-PRIN-5).
+const PROHIBIDO = /\bal fallo\b|hasta el fallo|aguant\w* (la )?respiracion|(puedes|podeis|debes|hay que|se puede)\s+ignorar|\bignora (el|la|tu|tus|los|las|ese|esa)\b|aunque (te )?(duela|moleste)|sin importar el dolor|pese al dolor/g;
+const NEGADO = /(\bno\b|\bnunca\b|nada de|\bevita\w*|\bsin\b|lejos del|\bjamas\b|\bni\b)[^.;:!?]{0,25}$/;
+// Las palabras de C-PRIN-1 no se usan nunca, tampoco negadas.
+const PRIN1 = /\b(diagnostic\w*|tratamiento\w*|curar\w*|curacion|cura|curan|curara)\b/;
+const peligrosa = f => { const t = normalizarTexto(f); return PRIN1.test(t) || [...t.matchAll(PROHIBIDO)].some(m => !NEGADO.test(t.slice(0, m.index))); };
 const frasesDe = t => String(t || '').split(/(?<=[.!?])\s+/).map(f => f.trim()).filter(Boolean);
 const kgDe = f => [...normalizarTexto(f).matchAll(/(\d+(?:[.,]\d+)?)\s*kg\b/g)].map(m => +m[1].replace(',', '.'));
-const kgOk = (f, maxKg) => kgDe(f).every(k => k <= maxKg);
-export const fraseIAOk = (f, maxKg = Infinity) => !PROHIBIDO.test(normalizarTexto(f)) && kgOk(f, maxKg);
+// Una frase de progresión para la próxima vez («la próxima, 42,5 kg») puede ir un paso por encima de lo de hoy.
+const FUTURO = /la proxima|proxima sesion|proxima semana|cuando (llegues|completes|hagas)|si (llegas|completas|haces)|despues/;
+const kgOk = (f, maxKg) => { const tope = maxKg > 0 && FUTURO.test(normalizarTexto(f)) ? maxKg * 1.1 + 2.5 : maxKg; return kgDe(f).every(k => k <= tope); };
+export const fraseIAOk = (f, maxKg = Infinity) => !peligrosa(f) && kgOk(f, maxKg);
 export const limpiarTextoIA = (t, maxKg) => frasesDe(t).filter(f => fraseIAOk(f, maxKg)).join(' ');
 // Solo los campos que entiende la app (IA-7): ni fecha, ni tipo, ni origen, ni nada más.
 const tareaIA = t => (t && typeof t === 'object' ? { id: t.id, nombre: t.nombre, detalle: limpiarTextoIA(t.detalle), duracion: t.duracion } : null);
@@ -113,6 +123,10 @@ export function sesionDeIA(s) {
   return { nombre: String(s.nombre || '').slice(0, 60), foco: String(s.foco || '').slice(0, 80), explicacion: textosIA(s.explicacion), cambios: textosIA(s.cambios),
     calentamiento: listaIA(s.calentamiento, tareaIA), vueltaCalma: listaIA(s.vueltaCalma || s.vuelta, tareaIA), ejercicios: listaIA(s.ejercicios, ejIA) };
 }
+// Los «Ajustado por la app» en un solo punto (C-IA-3), con el número de cambios si son muchos.
+export const ajustadoEnUno = cambios => (cambios.length ? [`Ajustado por la app: ${cambios.slice(0, 6).join('; ')}${cambios.length > 6 ? `; y ${cambios.length - 6} cambios más` : ''}`.slice(0, 600)] : []);
+const IMPORTANTE = /alarma|consulta|dolor|lesi[oó]n|rodilla|hombro|lumbar|espalda|cadera|tobillo|codo|mu[nñ]eca|cuello|cervical|pecho|mareo|hormigueo/i;
+const ordenCambiosIA = l => [...l.filter(c => IMPORTANTE.test(c)), ...l.filter(c => !IMPORTANTE.test(c))];
 // La IA dice que es el último recurso de tiempo y trae un cardio: la decisión la toma el validador (IA-1).
 const ultimoRecursoIA = (s, lugar) => (s.explicacion || []).some(esUltimoRecurso) && (s.ejercicios || []).some(x => x && x.rol === 'cardio' && ex(x.id) && ex(x.id).l.includes(lugar));
 
@@ -224,8 +238,10 @@ export async function crearSesionHoy(ci, op = {}) {
             // Primero lo que no se puede perder (IA-3): el resumen, el último recurso de tiempo (por qué hay menos de
             // 3 principales, C-TIEMPO-2), las notas de salud (C-SALUD-0) y lo que ha cambiado la app (C-IA-3). Lo
             // que sobre de 8 sale de lo de la IA: sus cambios y el resto de su explicación.
-            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...salud, ...d.cambios.map(c => 'Ajustado por la app: ' + c),
-              ...s.cambios.map(c => 'De tu entrenador: ' + c), ...resto].slice(0, 8),
+            // Los ajustes de la app van juntos en un punto, y los cambios de la IA que hablan de alarma, dolor o
+            // lesión pasan delante de los demás (revisión del PR #45, M4).
+            explicacion: [...ex0.slice(0, 1), ...ex0.slice(1).filter(esUltimoRecurso), ...salud, ...ajustadoEnUno(d.cambios),
+              ...ordenCambiosIA(s.cambios).map(c => 'De tu entrenador: ' + c), ...resto].slice(0, 8),
           };
         }
       }
@@ -346,7 +362,7 @@ function normalizarPlan(S, p, lugares, dias, minutos, maxSuaves = 0) {
     if (suave) suaves++;
     vistos.add(ds);
     const dd = c.sesion;
-    if (c.cambios.length) dd.explicacion = [...dd.explicacion, ...c.cambios.map(t => 'Ajustado por la app: ' + t)];
+    if (c.cambios.length) dd.explicacion = [...dd.explicacion, ...ajustadoEnUno(c.cambios)];
     return { diaSemana: ds, lugar, minutos: min, tipo: suave ? 'suave' : null, nombre: dd.nombre, foco: dd.foco, explicacion: dd.explicacion, calentamiento: dd.calentamiento, ejercicios: dd.ejercicios, vuelta: dd.vuelta };
   }).filter(Boolean);
   // Días que la IA se dejó (o que no se pudieron corregir): los completa la app.

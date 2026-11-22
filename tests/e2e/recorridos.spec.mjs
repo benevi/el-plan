@@ -679,7 +679,7 @@ for (const persona of ['victor', 'virginia']) {
         expect(ofrecidos).not.toContain('prensa-piernas');
         expect(enviado.analisis.ejercicios).toContainEqual(expect.objectContaining({ id: 'press-pecho-maquina', gusto: 'rechazo', accion: 'No volver a ponerlo.' }));
         expect(s.explicacion.join(' ')).toMatch(/Ajustado por la app: añado .+ para tu rodilla/);
-        expect(s.explicacion.join(' ')).toMatch(/Ajustado por la app: añado \d+ min de cardio/);
+        expect(s.explicacion.join(' ')).toMatch(/Ajustado por la app: [^.]*añado \d+ min de cardio/);
         expect(await criterios(page, s), 'la sesión de la IA tras el validador').toEqual([]);
         // La pantalla lo cuenta: por qué cada decisión.
         await page.click('[data-act="sesion.modo"][data-v="lista"]');
