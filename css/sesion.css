@@ -161,6 +161,18 @@ body.sin-nav .temporizador.descanso--fija { bottom: 0; padding-bottom: calc(var(
 .temporizador .descanso-fila { flex-wrap: wrap; row-gap: var(--e-2); }
 .temporizador .descanso-txt { flex: 1 1 auto; min-width: min(5.5em, 100%); }
 .descanso-botones { display: flex; flex-wrap: wrap; gap: var(--e-2); margin-left: auto; justify-content: flex-end; }
+/* Muy estrecho (texto ×2 en un móvil de 360: 180 px CSS): la barra lo más baja posible para que se vea la serie y
+   la hoja. Cifra que se ajusta al ancho (nunca menos de 28 px, R06) y, bajo el reloj, los tres botones en una
+   sola fila de 48 px cada uno (revisión del PR #47). */
+@media (max-width: 239px) {
+  .temporizador.descanso { padding-left: var(--e-3); padding-right: var(--e-3); padding-top: var(--e-2); }
+  .temporizador.descanso--fija, body.con-hoja .temporizador.descanso--fija { padding-bottom: calc(var(--e-2) + env(safe-area-inset-bottom)); }
+  .temporizador .descanso-fila { row-gap: var(--e-1); }
+  .temporizador .descanso-et { margin-bottom: 0; }
+  .temporizador .descanso-reloj { font-size: clamp(28px, 16vw, var(--t-cifra-m)); }
+  .descanso-botones { flex: 1 1 100%; gap: var(--e-1); margin-left: 0; }
+  .temporizador.descanso .descanso-botones .boton { flex: 1 1 0; min-width: var(--toque-sesion); padding: 0; }
+}
 .temporizador .descanso-et { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .descanso-sonido { display: flex; width: 100%; max-width: 520px; margin: var(--e-2) auto 0; justify-content: center; }
 .descanso-sonido .icono { width: 18px; height: 18px; }
@@ -290,3 +302,6 @@ body.con-final { overflow: hidden; }
   .serie-manual { margin-top: var(--e-3); }
 }
 .contador-sonido { align-self: center; }
+.contador-pregunta { display: flex; flex-direction: column; gap: var(--e-3); width: 100%; }
+.contador-pregunta p { outline: none; }
+.contador-pregunta .contador-acciones { flex-wrap: wrap; }

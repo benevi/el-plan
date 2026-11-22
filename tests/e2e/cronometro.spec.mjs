@@ -232,6 +232,28 @@ test('U1 con teclado y una hoja abierta: Tab llega a «+15» y «Cerrar» de la 
   expect(errores).toEqual([]);
 });
 
+test('la alarma no quita el foco al selector de dolor de «Algo va mal» (spinbutton) y la reserva de alto sigue a la barra', async ({ page, context }) => {
+  const errores = await preparar(page, context);
+  const id = await sesionDeHoy(page);
+  await irPaso(page, 1);
+  await descanso(page, id, 5);
+  await page.locator('#vista [data-act="sesion.algoVaMal"]').first().click();
+  const spin = page.locator('.hoja [role="spinbutton"]').first();
+  await spin.focus();
+  await hastaAlarma(page);
+  await expect(spin).toBeFocused();
+  // Con la alarma a la vista, la barra cambia de alto (aquí, más estrecha) y su sitio reservado la sigue
+  const reserva = () => page.evaluate(() => ({ v: parseFloat(getComputedStyle(document.body).getPropertyValue('--alto-descanso')), h: Math.ceil(document.getElementById('temporizador').getBoundingClientRect().height) }));
+  await page.setViewportSize({ width: 180, height: 640 });
+  await page.clock.runFor(100);
+  await expect.poll(async () => { const r = await reserva(); return r.v === r.h; }, { message: 'la reserva no sigue a la barra' }).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.runFor(100);
+  await expect.poll(async () => { const r = await reserva(); return r.v === r.h; }, { message: 'la reserva no sigue a la barra' }).toBe(true);
+  expect(errores).toEqual([]);
+});
+
 test('COD-12: la alarma que se cierra sola no corta el audio (la tercera alarma suena entera); «Cerrar» sí lo para', async ({ page, context }) => {
   const errores = await preparar(page, context);
   const id = await sesionDeHoy(page);
@@ -251,7 +273,7 @@ test('COD-12: la alarma que se cierra sola no corta el audio (la tercera alarma 
   expect(errores).toEqual([]);
 });
 
-test('U4: atrás con el contador a pantalla completa cancela sin apuntar y no cambia la pantalla; tras «Hecho», atrás va a la anterior', async ({ page, context }) => {
+test('U4: atrás con el contador en la previa cancela sin apuntar y no cambia la pantalla; adelante no deja una entrada muerta; tras «Hecho», atrás va a la anterior', async ({ page, context }) => {
   const errores = await preparar(page, context);
   await page.goto('/');
   const id = await sesionDeHoy(page);
@@ -261,13 +283,17 @@ test('U4: atrás con el contador a pantalla completa cancela sin apuntar y no ca
   const antes = await valores();
   await page.click('[data-actual] [data-act="sesion.cuenta"]');
   await expect(page.locator('#temporizador.contador--pantalla')).toBeVisible();
-  await page.clock.runFor(12000);
+  await page.clock.runFor(3000); // en la previa: nada hecho, se cancela sin preguntar
   await page.goBack();
   await expect(page.locator('#temporizador')).toHaveCount(0);
   expect(page.url()).toBe(url);
   await expect(page.locator('.vista-sesion')).toBeVisible();
   expect(await valores(), 'atrás apuntó algo').toEqual(antes);
   expect(await page.evaluate(() => document.body.classList.contains('con-cuenta') || !!document.querySelector('[inert]:not(.hoja-velo)'))).toBe(false);
+  // «Adelante» vuelve a la entrada del contador, ya cerrado: se quita sola (no hace falta un atrás de más)
+  await page.goForward();
+  await expect.poll(() => page.evaluate(() => !!(history.state && history.state.piposCuenta))).toBe(false);
+  expect(page.url()).toBe(url);
   // Ahora sí: se hace y se apunta; luego atrás vuelve a Hoy (no queda una entrada muerta en el historial)
   await page.click('[data-actual] [data-act="sesion.cuenta"]');
   await page.clock.runFor(5000 + 35000);
@@ -277,6 +303,60 @@ test('U4: atrás con el contador a pantalla completa cancela sin apuntar y no ca
   await page.clock.runFor(1000);
   await page.goBack();
   await expect(page).toHaveURL(/#hoy$/);
+  expect(errores).toEqual([]);
+});
+
+// Revisión del PR #47: atrás (o Escape) con un ejercicio por tiempo ya en marcha no borra lo hecho en silencio: pregunta.
+test('atrás con 6 min de cardio: pregunta «¿Salir sin apuntar?»; «Apuntar lo hecho» apunta 6 min y «Salir sin apuntar» no apunta nada', async ({ page, context }) => {
+  const errores = await preparar(page, context);
+  await page.goto('/');
+  const id = await sesionDeHoy(page);
+  const cardio = () => page.evaluate(async id => (await import('/js/nucleo/estado.js')).estado().sesiones[id].ejercicios[3].sets[0].valor, id);
+  await irPaso(page, 4);
+  const url = page.url();
+  await page.click('[data-actual] [data-act="sesion.cuenta"]');
+  await page.clock.runFor(5000 + 6 * 60000);
+  await page.goBack();
+  const pregunta = page.locator('#temporizador .contador-pregunta');
+  await expect(pregunta).toContainText('¿Salir sin apuntar?');
+  await expect(pregunta).toContainText('6:00 min');
+  await expect(page.locator('#ct-preg')).toBeFocused();
+  expect(page.url()).toBe(url);
+  // Atrás otra vez: sigue preguntando, no borra
+  await page.goBack();
+  await expect(pregunta).toBeVisible();
+  await page.click('#temporizador [data-t="apuntarHecho"]');
+  await expect(page.locator('#temporizador')).toHaveCount(0);
+  await expect.poll(cardio).toMatch(/^6( min)?$/);
+  // Otra vez con la plancha, ahora con Escape y «Salir sin apuntar»
+  const plancha = () => page.evaluate(async id => (await import('/js/nucleo/estado.js')).estado().sesiones[id].ejercicios[1].sets[0], id);
+  await irPaso(page, 2);
+  await page.click('[data-actual] [data-act="sesion.cuenta"]');
+  await page.clock.runFor(5000 + 20000);
+  await page.keyboard.press('Escape');
+  await expect(pregunta).toContainText('20 s');
+  await page.click('#temporizador [data-t="salir"]');
+  await expect(page.locator('#temporizador')).toHaveCount(0);
+  expect((await plancha()).hecha).toBe(false);
+  expect(errores).toEqual([]);
+});
+
+test('atrás con «El móvil estuvo bloqueado»: pregunta y «Apuntar lo hecho» apunta lo elegido', async ({ page, context }) => {
+  const errores = await preparar(page, context);
+  await page.goto('/');
+  const id = await sesionDeHoy(page);
+  await irPaso(page, 2);
+  await page.click('[data-actual] [data-act="sesion.cuenta"]');
+  await page.clock.runFor(2000);
+  await esconder(page, true);
+  await page.clock.runFor(120000);
+  await esconder(page, false);
+  await expect(page.locator('#temporizador.confirmar')).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('#temporizador .contador-pregunta')).toContainText('¿Salir sin apuntar?');
+  await page.click('#temporizador [data-t="apuntarHecho"]');
+  await expect(page.locator('#temporizador.contador--pantalla')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(async id => (await import('/js/nucleo/estado.js')).estado().sesiones[id].ejercicios[1].sets[0].valor, id)).toBe('40');
   expect(errores).toEqual([]);
 });
 
@@ -290,6 +370,9 @@ for (const [w, alto] of [[180, 320], [195, 422], [160, 284]]) {
     await page.click('[data-actual] [data-principal]');
     await expect(page.locator('#temporizador.descanso')).toBeVisible();
     await barraEncima(page, 'descanso');
+    // La barra deja a la vista la mayor parte de la pantalla: a 180 px de ancho o más, como mucho el 40 % del alto
+    // (revisión del PR #47: ocupaba 211 de 320 px)
+    if (w >= 180) expect((await page.locator('#temporizador').boundingBox()).height, 'alto de la barra').toBeLessThanOrEqual(alto * 0.4);
     await page.click('#temporizador [data-t="menos"]');
     await page.click('#temporizador [data-t="mas"]');
     await page.clock.runFor(121000);

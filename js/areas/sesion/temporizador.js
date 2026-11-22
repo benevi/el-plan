@@ -166,7 +166,13 @@ const enOtraSesion = meta => {
 };
 function caja(rol) {
   let el = document.getElementById('temporizador');
-  if (!el) { el = document.createElement('div'); el.id = 'temporizador'; document.body.appendChild(el); }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'temporizador'; document.body.appendChild(el);
+    // Si la barra cambia de alto (se abre o se cierra una hoja, cambia una línea), vuelve a reservar su sitio.
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => { if (el.isConnected && el.classList.contains('descanso--fija')) reservarAlto(el); }).observe(el, { box: 'border-box' });
+    }
+  }
   if (el.getAttribute('role') !== rol) el.setAttribute('role', rol);
   return el;
 }
@@ -209,6 +215,9 @@ function pintarCaja() {
   const tx = seg => enMin ? `${mmss(seg)} min` : `${seg} s`;
   const objetivo = F.f === 'previa' ? '' : enMin ? (F.lo === F.hi ? `${F.hi / 60} min` : `${F.lo / 60}-${F.hi / 60} min`) : F.lo === F.hi ? `${F.hi} s` : `${F.lo}-${F.hi} s`;
   let grande, arriba, abajo, estadoCls = F.f, prog, botones;
+  // Atrás o Escape con algo hecho: no se pierde en silencio, se pregunta (revisión del PR #47).
+  const pregunta = t.preguntar ? `<div class="contador-pregunta" role="group" aria-labelledby="ct-preg"><p id="ct-preg" tabindex="-1"><b>¿Salir sin apuntar?</b> Llevas ${h(hechoTexto(enMin))}.</p>
+      <div class="contador-acciones"><button type="button" class="boton boton--secundario" data-t="salir">Salir sin apuntar</button><button type="button" class="boton" data-t="apuntarHecho">${ICONOS.check}Apuntar lo hecho</button></div></div>` : '';
   if (t.confirmar) {
     // El máximo llegó con el móvil bloqueado: no se apunta solo; se pregunta, con el objetivo como partida.
     estadoCls = 'confirmar';
@@ -236,6 +245,7 @@ function pintarCaja() {
     botones = `<div class="contador-acciones"><button type="button" class="boton boton--secundario" data-t="pausa">${pausa ? ICONOS.play + 'Seguir' : ICONOS.pausa + 'Pausar'}</button>
       <button type="button" class="boton" data-t="fin">${ultimoLado ? ICONOS.check + 'Hecho' : 'Cambiar de lado'}</button></div>`;
   }
+  if (pregunta) botones = pregunta;
   poner(el, `temporizador cuenta contador contador--pantalla ${estadoCls}${pausa && !t.confirmar ? ' pausado' : ''}`,
     `<span class="contador-agua" aria-hidden="true"></span>
     <div class="contador-cab"><p class="contador-nombre" id="ct-n" tabindex="-1">${h(t.nombre || t.etiqueta)}</p><p class="contador-estado c-arriba"></p></div>
@@ -248,6 +258,29 @@ function pintarCaja() {
     ponerInerte(true); entradaCuenta(true);
     const n = el.querySelector('#ct-n'); try { n && n.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
   }
+}
+
+// Lo hecho hasta ahora en un ejercicio por tiempo (segundos por lado; con el móvil bloqueado, lo que se va a apuntar).
+function lohecho() {
+  if (!t || t.tipo !== 'tiempo') return [];
+  if (t.confirmar) return [...t.tiempos, t.confirmar.seg];
+  const F = fase();
+  return F && F.f === 'trabajo' ? [...t.tiempos, Math.round(transcurrido())] : t.tiempos.slice();
+}
+function hechoTexto(enMin) {
+  const seg = lohecho().reduce((a, x) => a + x, 0);
+  return enMin ? `${mmss(seg)} min` : `${seg} s`;
+}
+// Se cancela sin preguntar en la previa o con menos de 5 s de trabajo; si no, se pregunta.
+const MINIMO_PREGUNTA = 5;
+function salirConAtras() {
+  if (!t || t.tipo !== 'tiempo') return;
+  const total = lohecho().reduce((a, x) => a + x, 0);
+  if (!t.confirmar && total < MINIMO_PREGUNTA) return accion('cancelar');
+  t.preguntar = true; guardar();
+  entradaCuenta(true); // atrás otra vez sigue en la pregunta
+  pintarCaja();
+  const p = document.getElementById('ct-preg'); try { p && p.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
 }
 
 // ── Alarma de fin de descanso: en la propia barra ──
@@ -281,7 +314,7 @@ function alarmaDescanso(titulo, hace, meta) {
   // foco vuelve a donde estaba en la hoja. Si se está escribiendo en un campo, no se le quita el foco.
   const el = document.getElementById('temporizador');
   const act = document.activeElement;
-  const escribiendo = act && act.matches('input:not([type=hidden]), textarea, select, [contenteditable]');
+  const escribiendo = act && act.matches('input:not([type=hidden]), textarea, select, [contenteditable], [role=spinbutton]');
   if (act && act.closest && act.closest('.hoja-fondo')) alarmaViva.volver = act;
   try { el && !escribiendo && el.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
   programarCierre();
@@ -408,6 +441,8 @@ function accion(a) {
   if (!t) return;
   const F = fase();
   if (a === 'sonido') { t.sinSonido = false; guardar(); pitar('corto'); programarSonido(); return pintarCaja(); }
+  if (a === 'salir') return parar();
+  if (a === 'apuntarHecho') { t.tiempos = lohecho(); return t.tiempos.length ? terminar(true) : parar(); }
   if (t.confirmar) {
     const paso = t.u === 'min' || F.hi >= 120 ? 60 : 5;
     if (a === 'conf-menos') t.confirmar.seg = Math.max(paso, t.confirmar.seg - paso);
@@ -439,13 +474,13 @@ document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('#temporizador [data-t]'); if (!b) return;
   accion(b.dataset.t);
 });
-// Escape en el contador: cancelar sin apuntar; en la alarma: cerrarla.
+// Escape en el contador: como atrás (cancela, o pregunta si hay algo hecho); en la alarma: cerrarla.
 // Con una hoja abierta, Escape cierra la hoja (ui.js), salvo si el foco está en la alarma: entonces cierra la alarma.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || e.defaultPrevented) return;
   const enAlarma = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#temporizador.alarma'));
   if (alarmaViva && (enAlarma || !document.querySelector('.hoja-fondo'))) { cerrarAlarma(); return; }
-  if (t && t.tipo === 'tiempo' && !document.querySelector('.hoja-fondo')) { e.preventDefault(); accion('cancelar'); }
+  if (t && t.tipo === 'tiempo' && !document.querySelector('.hoja-fondo')) { e.preventDefault(); if (t.preguntar) return; salirConAtras(); }
 });
 
 // Al volver a la app: recolocar, y si algo terminó mientras no mirabas, enseñarlo.
@@ -466,13 +501,15 @@ window.addEventListener('storage', e => {
   cerrarAlarma({ foco: false });
   t = g; mediaSession(); bucle(false);
 });
-// Atrás con el contador abierto: cancelar sin apuntar, como ✕ y Escape (U4).
+// Atrás con el contador abierto (U4): en la previa o con menos de 5 s, cancela sin apuntar; si no, pregunta.
 window.addEventListener('popstate', e => {
+  // «Adelante» tras cerrar el contador vuelve a su entrada, ya sin contador: se quita (no queda una entrada muerta).
+  if (e.state && e.state[ENTRADA] && !(t && t.tipo === 'tiempo')) { quitarEntradaCapa(ENTRADA); return; }
   if (!conEntrada || (e.state && e.state[ENTRADA])) return;
   conEntrada = false;
   // Ir a otra dirección (location.hash = …) también avisa con popstate: eso no es «atrás» y no cancela nada.
   if (location.href !== urlCuenta) return;
-  if (t && t.tipo === 'tiempo') accion('cancelar');
+  if (t && t.tipo === 'tiempo') salirConAtras();
 });
 // Al cambiar de pantalla, la barra se enseña o se esconde (no va encima de otra sesión).
 window.addEventListener('hashchange', () => { if (t || alarmaViva) pintarCaja(); });
