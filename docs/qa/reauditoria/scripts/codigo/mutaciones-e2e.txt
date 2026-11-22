@@ -1,0 +1,4 @@
+M3 alarma se cierra a los 30 s [('4', 'failed'), ('8', 'passed')] ['tests/e2e/humo.spec.mjs:26:1 › arranca, elige dueño y recorre las 4 pestañas sin errores', 'tests/e2e/sesion.spec.mjs:117:3 › recorrido de la sesión de Víctor en 390 × 844: diseño aprobado, contraste AA, toques de 48', 'tests/e2e/humo.spec.mjs:44:1 › con el service worker instalado, recarga sin red y sigue pintando']
+M11 una sola alarma sonora [('12', 'passed')] 
+M13 −15 sin tope [('12', 'passed')] 
+M14 previa de 3 s [('12', 'passed')] 
