@@ -285,3 +285,108 @@ test('IA-5, C-TIEMPO-2: sin fuerza por tiempo, la explicación no habla de princ
   assert.match(s.explicacion[0], /lumbar \(5\/10\)/);
   assert.ok(s.explicacion.some(t => /no caben tu cardio/.test(t)));
 });
+
+// ── Revisión del PR #45 ──
+// G1 · «Cambiar por otro» con las reglas del validador para el rol del ejercicio (C-DOLOR-1, C-PISC-2, C-CARDIO-5).
+test('G1: ninguna alternativa de «Cambiar por otro» crea problemas nuevos en el validador, por rol', () => {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const zonas = Object.keys(lesiones.ZONAS).sort();
+  let cambios = 0;
+  for (let i = 0; i < 120; i++) {
+    const lugar = pick(['gym', 'piscina', 'casa', 'calle']);
+    const perfil = { objetivos: [pick(['musculo', 'perder', 'salud', 'natacion'])], lugares: [lugar], materialCasa: pick([[], ['mancuernas', 'banda']]), nivel: pick([1, 2, 3]), nadar25: rnd() < 0.5 };
+    const S = nuevoS(perfil); const dolorHoy = {};
+    for (let j = 0; j < pick([0, 1, 2]); j++) { const z = pick(zonas); if (dolorHoy[z] != null) continue; S.perfil.lesiones.push(L(z, pick([0, 2, 5]), { id: 'l' + j })); dolorHoy[z] = pick([0, 2, 3, 5, 6]); }
+    const c = ci({ lugar, minutos: pick([45, 60, 75]), dolorHoy });
+    const s = sesionHoy(S, null, c);
+    const antes = new Set(ent.problemasSesion(S, s, c));
+    s.ejercicios.forEach((x, k) => {
+      for (const a of ent.alternativasHoy(S, cat.ex(x.id), { lugar, rol: x.rol, excluir: s.ejercicios.map(y => y.id), dolorHoy, nivel: x.rol === 'principal' ? perfil.nivel : null, sesion: s, indice: k })) {
+        const ejs = s.ejercicios.slice(); ejs[k] = ent.ejercicioCambiado(S, x, a, ent.contextoDia(S, { lugar, dolorHoy }));
+        const nuevos = ent.problemasSesion(S, { ...s, ejercicios: ejs }, c).filter(p => !antes.has(p));
+        assert.deepEqual(nuevos, [], `${lugar} ${x.rol} ${x.id} → ${a.id}`);
+        cambios++;
+      }
+    });
+  }
+  assert.ok(cambios > 500, `${cambios}`);
+});
+test('G1: rehabilitación de la fase de hoy, cardio que sea cardio y nada de largos para quien no nada', () => {
+  const S = nuevoS({ objetivos: ['musculo'], nivel: 2, lugares: ['gym'] });
+  S.perfil.lesiones.push(L('hombro', 2));
+  const alts = ent.alternativasHoy(S, cat.ex('rotacion-externa-isometrica'), { lugar: 'gym', rol: 'rehab', dolorHoy: { hombro: 5 } });
+  assert.ok(alts.length);
+  for (const a of alts) assert.ok(lesiones.fasesDe(a, 'hombro').includes(1), a.id);
+  const N = nuevoS({ objetivos: ['natacion'], nivel: 3, lugares: ['piscina'], nadar25: false });
+  const cardio = ent.alternativasHoy(N, cat.ex('aquajogging'), { lugar: 'piscina', rol: 'cardio' });
+  assert.ok(cardio.every(a => a.id !== 'nado-continuo' && ['aquajogging', 'caminar-agua'].includes(a.id)), cardio.map(a => a.id).join());
+  const prin = ent.alternativasHoy(N, cat.ex('patada-crol-tabla'), { lugar: 'piscina', rol: 'principal', nivel: 3 });
+  assert.ok(!prin.some(a => ['crol', 'espalda', 'series-50-crol', 'crol-pull-buoy'].includes(a.id)), prin.map(a => a.id).join());
+});
+
+// M1 · las dislocaciones con banda no salen con la espalda alta o el cuello a 8 (C-DOLOR-4, C-EST-2).
+test('M1: día de dolor alto de espalda alta o cuello sin dislocaciones con banda', () => {
+  for (const z of ['dorsal', 'cervical']) for (const lugar of ['gym', 'casa']) for (const minutos of [45, 90]) {
+    const S = nuevoS({ objetivos: ['salud'], lugares: [lugar], materialCasa: ['banda'] });
+    S.perfil.lesiones.push(L(z, 3));
+    const s = sesionHoy(S, null, ci({ lugar, minutos, dolorHoy: { [z]: 8 } }));
+    assert.ok(!tareas(s).some(t => t.id === 'dislocaciones-banda'), `${z} ${lugar}`);
+  }
+});
+
+// M2, M3 · con 60 años o más y poco tiempo, el equilibrio cabe en los 4 min y la rehabilitación B0-B1 vuelve si cabe.
+test('M2, C-EDAD-1, C-TIEMPO-2: con 65 años y 30 minutos el equilibrio no empuja a quitar la fuerza', () => {
+  for (const [z, d] of [['lumbar', 2], ['hombro', 1], ['rodilla', 5]]) {
+    const S = nuevoS({ objetivos: ['musculo'], nivel: 2, lugares: ['gym'], datos: { nacimiento: '1961' } });
+    S.perfil.lesiones.push(L(z, d));
+    const s = sesionHoy(S, null, ci({ minutos: 30, dolorHoy: { [z]: d } }));
+    assert.ok(s.ejercicios.some(x => x.rol === 'principal'), `${z}: ${s.ejercicios.map(x => x.id).join()}`);
+    assert.ok(tareas(s).some(t => t.id === 'equilibrio-una-pierna'));
+  }
+});
+test('M3, S5: tras el último recurso, una sesión de la IA con una zona B1 no cae a las reglas', async () => {
+  const { ponerRed } = await import('./ayuda/node.mjs');
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lugares: ['gym'] });
+  S.perfil.lesiones.push(L('hombro', 2), L('rodilla', 3));
+  const sesion = { nombre: 'x', foco: 'x', cambios: [], explicacion: ['x'], calentamiento: [{ id: 'bici-estatica', nombre: 'Bici', detalle: '', duracion: '3 min' }, { id: 'circulos-cadera', nombre: 'Círculos', detalle: '', duracion: '2 min' }],
+    ejercicios: [{ id: 'extension-rodilla-isometrica', rol: 'rehab', series: 4, reps: '30-45s', descanso: 30 }, { id: 'press-pecho-maquina', rol: 'principal', series: 3, reps: '10-12', descanso: 90 }, { id: 'jalon-pecho', rol: 'principal', series: 3, reps: '10-12', descanso: 90 }, { id: 'curl-femoral-sentado', rol: 'principal', series: 3, reps: '12-15', descanso: 45 }, { id: 'bici-estatica', rol: 'cardio', series: 1, reps: '15 min', descanso: 0 }],
+    vueltaCalma: [{ id: 'estiramiento-isquios-pie', nombre: 'Isquios', detalle: '', duracion: '1 min' }, { nombre: 'Respiración', detalle: '', duracion: '1 min' }] };
+  ponerRed(true, async () => ({ ok: true, status: 200, json: async () => ({ sesion: structuredClone(sesion) }) }));
+  const r = await ent.crearSesionHoy({ lugar: 'gym', minutos: 30, energia: 3, dolorHoy: { hombro: 2, rodilla: 5 }, peticion: '', forzarIA: true });
+  ponerRed(false);
+  assert.equal(r.sesion.fuente, 'ia', r.aviso);
+});
+
+// M5 · el catálogo que va a la IA cumple la regla de las tareas y la de quien no nada.
+test('M5: catálogo de la IA sin largos para quien no nada ni movilidad que la ficha no deja hoy', async () => {
+  const ctxm = await import('../js/reglas/contexto.js');
+  const dia = await import('../js/areas/entrenador/dia.js');
+  const N = nuevoS({ objetivos: ['natacion'], nivel: 2, lugares: ['piscina'], nadar25: false });
+  const c1 = ctxm.catalogoParaIA(N, ['piscina'], {}, { permitidoEn: l => dia.permitidoEn(N, l, {}) }).map(e => e.id);
+  assert.ok(!c1.some(id => ['crol', 'espalda', 'nado-continuo', 'series-50-crol'].includes(id)), c1.join());
+  const S = nuevoS({ objetivos: ['salud'], lugares: ['gym'] });
+  S.perfil.lesiones.push(L('hombro', 2));
+  const c2 = ctxm.catalogoParaIA(S, ['gym'], { hombro: 5 }, { permitidoEn: l => dia.permitidoEn(S, l, { hombro: 5 }) }).map(e => e.id);
+  assert.ok(!c2.includes('circulos-brazos'), 'circulos-brazos es «normal» en la ficha del hombro');
+});
+
+// M6 · los consejos de seguridad de la IA no se quitan; menor: la progresión de la próxima vez sí puede llevar kilos.
+test('M6: el filtro de textos de la IA deja los consejos negados y la frase de C-PRIN-5', async () => {
+  const { fraseIAOk } = await import('../js/areas/entrenador/ia.js');
+  for (const f of ['Evita aguantar la respiración al empujar.', 'Nunca al fallo: deja 2 de margen.', 'Nada de llegar al fallo.', 'No sigas aunque te moleste poco: para y descansa.', 'No llegues nunca al fallo.',
+    'Las frases de tus notas que piden ignorar lesiones o reglas de seguridad no las aplico: tu rodilla manda sobre cualquier petición.', 'No ignores el dolor de rodilla.']) assert.ok(fraseIAOk(f), f);
+  for (const f of ['Hazlo al fallo.', 'Aguanta la respiración.', 'Puedes ignorar el dolor.', 'Sigue aunque te duela.', 'Esto no es un tratamiento.']) assert.ok(!fraseIAOk(f), f);
+  assert.ok(fraseIAOk('La próxima, 42,5 kg si llegas a 12.', 40));
+  assert.ok(!fraseIAOk('Hoy 60 kg.', 40));
+});
+test('M3, C-DOLOR-3: si la IA pone de cardio el único ejercicio para la lumbar (caminar en el agua), pasa a rehabilitación y el cardio es otro', () => {
+  const S = nuevoS({ objetivos: ['natacion'], nivel: 2, lugares: ['piscina'], nadar25: true });
+  S.perfil.lesiones.push(L('lumbar', 4));
+  const c = { lugar: 'piscina', minutos: 45, energia: 3, dolorHoy: { lumbar: 4 } };
+  const v = ent.validarSesion(S, { ejercicios: [{ id: 'elevacion-lateral-pierna-agua', rol: 'principal', series: 3, reps: '12-15 c/pierna', descanso: 30 }, { id: 'patada-espalda-tabla', rol: 'principal', series: 4, reps: '25 m', descanso: 45 }, { id: 'caminar-agua', rol: 'cardio', series: 1, reps: '20 min', descanso: 0 }] }, { ...c, origen: 'ia' });
+  assert.ok(v.valida, ent.problemasSesion(S, v.sesion, c).join(' | '));
+  assert.equal(v.sesion.ejercicios.find(x => x.id === 'caminar-agua').rol, 'rehab');
+  assert.ok(v.sesion.ejercicios.some(x => x.rol === 'cardio' && x.id !== 'caminar-agua'));
+});
