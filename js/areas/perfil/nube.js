@@ -29,7 +29,8 @@ export function cuando(iso, ahora = new Date()) {
 const avisoAcc = (clases, texto, botones) => `<div class="aviso aviso-linea aviso--aviso aviso-nube ${clases}" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>${texto}</p><div class="aviso-acciones">${botones}</div></div></div>`;
 const accion = (act, txt, sec = true) => `<button type="button" class="boton ${sec ? 'boton--secundario' : 'boton--texto'}" data-act="${act}">${txt}</button>`;
 // Aviso que se queda (Hoy y Perfil): copias desactivadas en este móvil, en pausa tras empezar de cero, una
-// copia automática retenida por tener menos datos, nube no activada en el servidor o más de 3 días sin copia.
+// copia automática retenida por tener menos datos, una subida que falló (se reintenta sola), nube no activada en
+// el servidor o más de 3 días sin copia.
 export function avisoNube() {
   const n = estadoNube();
   if (!n.avisar) return '';
@@ -42,6 +43,9 @@ export function avisoNube() {
   if (n.retenida) {
     const r = n.retenida;
     return avisoAcc('retenida-nube', `No he subido la copia automática: este móvil tiene ${+r.sesiones} sesiones${r.ultima ? ` (la última, ${h(fechaCorta(r.ultima))})` : ''} y la última copia en la nube tenía ${+r.base}${r.baseUltima ? ` (la última, ${h(fechaCorta(r.baseUltima))})` : ''}. Si la subo, la copia más nueva tendría menos datos.`, accion('nube.forzar', 'Subir de todos modos') + accion('nube.lista', 'Recuperar de la nube', false));
+  }
+  if (n.fallida) {
+    return avisoAcc('fallida-nube', `No se ha podido hacer la última copia en la nube. ${h(n.error)} ${n.reintenta ? 'Lo vuelvo a intentar solo; mientras tanto,' : 'Cuando esté arreglado, toca «Copiar ahora»; hasta entonces,'} lo último solo está en este móvil.`, accion('nube.copiar', 'Copiar ahora'));
   }
   const txt = n.inactiva
     ? 'Las copias en la nube aún no están activadas en el servidor: tus datos solo están en este móvil.'
@@ -57,7 +61,7 @@ export function grupoCopias() {
     <h2 id="p-nube">Copias en la nube</h2>
     ${n.activada ? `<p class="ultima-nube">${h(estadoTxt)}</p>
       ${avisoNube()}
-      ${n.error && !n.inactiva ? `<div class="aviso aviso-linea aviso--error error-nube" role="alert">${ICONOS.error}<div class="aviso-texto"><p>${h(n.error)}</p></div></div>` : ''}
+      ${n.error && !n.inactiva && !n.fallida ? `<div class="aviso aviso-linea aviso--error error-nube" role="alert">${ICONOS.error}<div class="aviso-texto"><p>${h(n.error)}</p></div></div>` : ''}
       <p>Se hacen solas: al terminar una sesión, al cambiar tu perfil, lesiones o medidas y cada día que abras la app (con conexión).</p>
       <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="nube.copiar">Copiar ahora</button><button type="button" class="boton boton--secundario" data-act="nube.lista">Ver copias y restaurar</button></div>
       <button type="button" class="boton boton--texto" data-act="nube.frase">Cambiar la frase</button>`

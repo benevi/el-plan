@@ -21,9 +21,12 @@
 // copiar sin preguntar. Cada copia lleva su sal: con la frase basta para abrirla desde un móvil nuevo.
 // Cambiar la frase crea sal y clave nuevas; las copias anteriores siguen con la anterior.
 //
-// Cuándo se copia (sin hacer nada): al terminar una sesión; tras cambios de perfil, lesiones o medidas
-// (1 minuto sin más cambios); al abrir la app si la última copia tiene más de 24 h. Solo con red (si no, se
-// reintenta al volver la conexión), nunca dos subidas a la vez (tampoco entre pestañas, con Web Locks si hay)
+// Cuándo se copia (sin hacer nada): al terminar una sesión; tras cambios de perfil, lesiones, medidas, gustos,
+// «Mis sesiones» o alarmas (1 minuto sin más cambios); al abrir la app si la última copia tiene más de 24 h o
+// si el móvil tiene sesiones que no están en la nube, o si quedó una subida pendiente. Solo con red. Si una
+// subida falla (sin red, la red que «miente», 5xx, 429), queda pendiente en 'pipos4-nube' y se reintenta sola
+// con espera creciente (REINTENTOS), al volver la conexión, al volver la app a primer plano y al abrirla
+// (D1, COD-3). Nunca dos subidas a la vez (tampoco entre pestañas, con Web Locks si hay)
 // y nunca durante el rescate. Nunca se sube sola una copia con menos sesiones (o con una última sesión
 // anterior) que la última subida: se pregunta (subir de todos modos o recuperar de la nube).
 
@@ -44,6 +47,8 @@ export const PALABRAS_FRASE = 6; // 6 × 11 bits = 66 bits con la lista de 2048
 export const DIA = 864e5;
 export const ESPERA_CAMBIOS = 60e3;
 export const AVISO_DIAS = 3;
+// Espera antes de cada reintento tras un fallo; la última se repite mientras siga fallando.
+export const REINTENTOS = [30e3, 2 * 60e3, 10 * 60e3, 30 * 60e3];
 const MAX_SALES = 8; // frases distintas que se prueban como mucho (cada una cuesta un PBKDF2)
 
 export class ErrorNube extends Error {
@@ -235,7 +240,8 @@ let almacenClave = almacenIDB;
 // ── Estado de la nube en este móvil (localStorage 'pipos4-nube'; no es parte de pipos4) ──
 // { persona, ultima: ISO de la última subida, sesiones y ultimaSesion de lo último subido o restaurado (la
 //   «base»: no se sube solo nada con menos), error, inactiva (el servidor dijo 503), retenida (se dejó de
-//   subir algo por tener menos que la base), pausada (tras «Empezar de cero» en el rescate) }
+//   subir algo por tener menos que la base), pausada (tras «Empezar de cero» en el rescate),
+//   pendiente ({ desde: ISO, motivo }: una subida falló y aún no se ha repetido bien; sobrevive a cerrar la app) }
 const CLAVE_NUBE = 'pipos4-nube';
 function leerNube() {
   try { const x = JSON.parse(globalThis.localStorage.getItem(CLAVE_NUBE) || 'null'); return x && typeof x === 'object' ? x : {}; } catch { return {}; }
@@ -297,9 +303,12 @@ export function estadoNube() {
   const desactivada = claveCargada && !activada && !!dueño && !!n.ultima && n.persona === dueño;
   const retenida = activada && deEsta && n.retenida ? n.retenida : null;
   const pausada = activada && !!n.pausada;
+  // Una subida que falló con error (no por falta de red) y sigue pendiente: se avisa ya, no a los 3 días (D1).
+  const fallida = activada && deEsta && !!n.error && !!n.pendiente;
   return { activada, cargada: claveCargada, ultima: deEsta ? n.ultima || null : null, error: deEsta ? n.error || null : null, inactiva: !!n.inactiva,
-    subiendo: !!subiendo, retenida, pausada, desactivada,
-    avisar: desactivada || (activada && (!!n.inactiva || vieja || !!retenida || pausada)) };
+    subiendo: !!subiendo, retenida, pausada, desactivada, fallida, pendiente: activada && deEsta && !!n.pendiente,
+    reintenta: fallida && n.pendiente.motivo !== 'sin-reintento',
+    avisar: desactivada || (activada && (!!n.inactiva || vieja || !!retenida || pausada || fallida)) };
 }
 
 // ── Servidor (api/copia.js) ──
@@ -487,6 +496,26 @@ let forzarOtraVez = false;
 let esperandoCerrojo = false;
 let faltaRed = false;     // se quiso copiar sin red: se reintenta al volver
 let tCambios = null;
+let tReintento = null;    // reintento programado tras un fallo
+let intentos = 0;         // fallos seguidos (para la espera creciente)
+
+// Tras un fallo que puede arreglarse solo: queda pendiente (también tras cerrar la app) y se programa un
+// reintento con espera creciente. No depende del evento «online», que no llega si el navegador nunca se
+// creyó sin red (cobertura que se cae un momento, fetch cortado al pasar a segundo plano).
+function quedaPendiente(motivo, cambios = {}) {
+  const n = nube();
+  ponerNube({ ...cambios, pendiente: { desde: (n.pendiente && n.pendiente.desde) || new Date(dep.ahora()).toISOString(), motivo } });
+  if (tReintento) return;
+  const espera = REINTENTOS[Math.min(intentos, REINTENTOS.length - 1)];
+  intentos++;
+  tReintento = dep.setTimeout(() => { tReintento = null; copiarAhora('reintento'); }, espera);
+  if (tReintento && typeof tReintento.unref === 'function') tReintento.unref(); // en Node (pruebas): no retiene el proceso
+}
+function sinPendiente() {
+  dep.clearTimeout(tReintento); tReintento = null; intentos = 0;
+}
+// Errores que no se arreglan reintentando (código malo, petición rechazada): se avisa y no se insiste.
+const reintentable = e => e.codigo === 'sin-red' || (e.codigo === 'servidor' && (e.status >= 500 || e.status === 429 || e.status === 408));
 
 async function subirYa(motivo, { forzar = false } = {}) {
   const S = estado();
@@ -501,7 +530,7 @@ async function subirYa(motivo, { forzar = false } = {}) {
     if (!n.retenida || n.retenida.sesiones !== m.sesiones) ponerNube({ retenida: { sesiones: m.sesiones, ultima: m.ultima, base: n.sesiones || 0, baseUltima: n.ultimaSesion || '' } });
     return 'retenida';
   }
-  if (!dep.enLinea()) { faltaRed = true; return 'sin-red'; }
+  if (!dep.enLinea()) { faltaRed = true; quedaPendiente('sin-red'); return 'sin-red'; }
   const creada = new Date(dep.ahora()).toISOString();
   const bytes = await cifrar(empaquetar({ persona, creada, ...m }, exportar()), reg);
   if (bytes.length > LIMITE_SUBIDA) { ponerNube({ error: 'Tus datos ocupan demasiado para la nube: guarda una copia en un archivo.' }); return 'grande'; }
@@ -509,13 +538,15 @@ async function subirYa(motivo, { forzar = false } = {}) {
   try {
     await pedir({ binario: bytes, cabeceras: { 'x-copia-accion': 'subir', 'x-copia-persona': persona, 'x-copia-sal': b64u(reg.sal), 'x-copia-meta': meta } });
   } catch (e) {
-    if (e.codigo === 'sin-red') { faltaRed = true; return 'sin-red'; }
+    if (e.codigo === 'sin-red') { faltaRed = true; quedaPendiente('sin-red'); return 'sin-red'; }
     if (e.codigo === 'inactiva') { ponerNube({ inactiva: true, error: e.message }); return 'inactiva'; }
-    ponerNube({ error: e.message });
+    if (reintentable(e)) { quedaPendiente('error', { error: e.message }); return 'error'; }
+    ponerNube({ error: e.message, pendiente: { desde: new Date(dep.ahora()).toISOString(), motivo: 'sin-reintento' } }); // p. ej. 401
     return 'error';
   }
   faltaRed = false;
-  ponerNube({ persona, ultima: new Date(dep.ahora()).toISOString(), sesiones: m.sesiones, ultimaSesion: m.ultima, error: null, inactiva: false, retenida: null, pausada: false, motivo });
+  sinPendiente();
+  ponerNube({ persona, ultima: new Date(dep.ahora()).toISOString(), sesiones: m.sesiones, ultimaSesion: m.ultima, error: null, inactiva: false, retenida: null, pausada: false, pendiente: null, motivo });
   return 'ok';
 }
 
@@ -545,7 +576,8 @@ export const subidaEnCurso = () => subiendo;
 let sesionesVistas = 0;
 let iniciado = false;
 let dejarDeEscuchar = null;
-const CAMBIOS = /^(perfil|medidas)(-silencio)?$/;
+// D7: también gustos (me gusta / no me gusta / no lo quiero), «Mis sesiones» y alarmas.
+const CAMBIOS = /^(perfil|medidas|gusto|misSesiones|alarma)(-silencio)?$/;
 function alCambiar(motivo) {
   const S = estado();
   const n = hechas(S).length;
@@ -558,13 +590,27 @@ function alCambiar(motivo) {
     tCambios = dep.setTimeout(() => { tCambios = null; copiarAhora('cambios'); }, ESPERA_CAMBIOS);
   }
 }
-function alVolverRed() { if (faltaRed) copiarAhora('red'); }
-// Al abrir: si la última copia tiene más de 24 h (o no hay), se hace una.
+// Al volver la red (evento «online») o la app a primer plano: si quedó algo pendiente, se sube ya.
+function alVolverRed() {
+  if (!faltaRed && !nube().pendiente) return;
+  sinPendiente();
+  copiarAhora('red');
+}
+function alVolverVisible() { if (typeof document === 'undefined' || !document.hidden) alVolverRed(); }
+// ¿Tiene el móvil sesiones que no están en la última copia subida (o restaurada)? (D1, COD-3)
+function atrasada(n, persona) {
+  if (n.persona !== persona) return false;
+  const m = metadatos(estado());
+  return m.sesiones > (n.sesiones || 0) || m.ultima > String(n.ultimaSesion || '');
+}
+// Al abrir: si la última copia tiene más de 24 h (o no hay), si hay sesiones sin subir o si quedó una subida
+// pendiente (la app se cerró sin red o a mitad), se hace una.
 export async function revisarApertura() {
   await cargarClave();
   const n = nube();
   if (!claveActual) return 'sin-clave';
-  if (n.ultima && n.persona === claveActual.persona && dep.ahora() - Date.parse(n.ultima) <= DIA) return 'reciente';
+  if (n.ultima && n.persona === claveActual.persona && dep.ahora() - Date.parse(n.ultima) <= DIA
+    && !n.pendiente && !atrasada(n, claveActual.persona)) return 'reciente';
   return copiarAhora('apertura');
 }
 export function iniciarCopias() {
@@ -573,13 +619,16 @@ export function iniciarCopias() {
   sesionesVistas = hechas(estado()).length;
   dejarDeEscuchar = escuchar(alCambiar);
   if (typeof window !== 'undefined') window.addEventListener('online', alVolverRed);
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', alVolverVisible);
   return revisarApertura();
 }
 // Solo para pruebas: deja el módulo como recién cargado.
 export function reiniciarCopia() {
   if (dejarDeEscuchar) { dejarDeEscuchar(); dejarDeEscuchar = null; }
   if (typeof window !== 'undefined') window.removeEventListener('online', alVolverRed);
+  if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', alVolverVisible);
   iniciado = false;
+  sinPendiente();
   dep.clearTimeout(tCambios); tCambios = null; subiendo = null; otraVez = false; forzarOtraVez = false; faltaRed = false; esperandoCerrojo = false;
   claveActual = null; claveCargada = false; memoria = null;
   sesionesVistas = hechas(estado()).length;
