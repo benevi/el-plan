@@ -1,0 +1,11 @@
+import { fijarFecha } from '/home/user/wt/auditoria/tests/ayuda/comun.mjs';
+fijarFecha('2026-11-16T10:00');
+const { nuevoS, ent, cat } = await import('/home/user/wt/auditoria/tests/ayuda/node.mjs');
+let S = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: ['gym', 'piscina'] });
+let p = ent.planReglas(S, { dias: [1, 2, 3, 4, 5], minutos: 45, lugares: ['gym', 'piscina'] });
+p.dias.forEach(d => console.log(d.diaSemana, d.lugar, d.tipo, d.nombre, d.ejercicios.filter(x => x.rol === 'principal').map(x => x.id).join(',')));
+S = nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['casa'], materialCasa: ['mancuernas', 'banda'] });
+p = ent.planReglas(S, { dias: [1, 2, 4, 5], minutos: 75, lugares: ['casa'] });
+p.dias.forEach(d => console.log(d.diaSemana, d.nombre, d.ejercicios.filter(x => x.rol === 'principal').map(x => `${x.id}(n${cat.ex(x.id).niv}) ${x.series}×${x.reps}`).join(', ')));
+console.log(p.dias.flatMap(d => d.explicacion).filter(t => /nivel|goblet/i.test(t)));
+console.log(cat.EJERCICIOS.filter(e => e.m[0] === 'cuadriceps' && e.l.includes('casa') && e.niv === 1).map(e => e.id + ' r=' + JSON.stringify(e.r)));

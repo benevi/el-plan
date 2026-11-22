@@ -1,0 +1,18 @@
+import { abrir, foto, BASE } from './h.mjs';
+import { sembrar, tTxt } from './sembrar.mjs';
+const { browser, page } = await abrir({ w: 390, hgt: 844 });
+const id = await sembrar(page, 'virginia', { modo: 'foco' });
+await page.goto(BASE + '/#sesion/' + id); await page.waitForSelector('.vista-sesion');
+await page.click('[data-act="sesion.ir"][data-v="1"]');
+await page.click('[data-act="sesion.serie"][data-principal]');
+await page.clock.runFor(1000);
+await page.click('[data-act="sesion.menu"]'); await page.clock.runFor(300);
+await page.click('.hoja [data-act="sesion.ficha"]'); await page.clock.runFor(30000);
+const r = await page.evaluate(() => { const t = document.getElementById('temporizador'); const b = t.getBoundingClientRect(); const top = document.elementFromPoint(b.left + 30, b.top + 20); return { temp: t.innerText.replace(/\s+/g, ' '), tapado: !top.closest('#temporizador'), hoja: document.querySelector('.hoja h2')?.textContent }; });
+console.log('a mitad del descanso con la ficha', JSON.stringify(r));
+await foto(page, '04b-ficha-tapa-descanso');
+await page.clock.runFor(61000);
+const r2 = await page.evaluate(() => { const t = document.getElementById('temporizador'); if (!t) return 'sin barra'; const b = t.getBoundingClientRect(); const top = document.elementFromPoint(b.left + 30, b.top + 20); return { temp: t.innerText.replace(/\s+/g, ' '), tapado: !top.closest('#temporizador') }; });
+console.log('alarma con la ficha', JSON.stringify(r2));
+await foto(page, '04b-ficha-tapa-alarma');
+await browser.close();
