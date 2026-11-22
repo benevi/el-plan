@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { Respuesta, peticion } from './_simulado.mjs';
 import { BlobSimulado } from './_blob-simulado.mjs';
+import { fijarFecha } from '../ayuda/comun.mjs';
 import handler, { ponerAlmacen, reiniciarRitmo, sobrantes, nombreCopia, nombreCopiaV1, leerNombre, LIMITE_COPIA, SUBIDAS_DIA } from '../../api/copia.js';
 
 let registros, errores, logAntes, errorAntes, blob;
@@ -151,7 +152,10 @@ test('el servidor solo ve bytes cifrados: lo guardado es exactamente lo que lleg
   assert.doesNotMatch(registros.join('\n'), /victor|virginia/);
 });
 
-test('listar: solo las de esa persona, de más nueva a más vieja; las v2 con sal y meta, las v1 con sus datos', async () => {
+test('listar: solo las de esa persona, de más nueva a más vieja; las v2 con sal y meta, las v1 con sus datos', async t => {
+  // COD-10: fecha fija; con el reloj real, a partir de 2028-11 la retención de 2 años borraría la v1 de 2026-11-01.
+  const reloj = fijarFecha('2026-11-21T10:00');
+  t.after(() => reloj.restaurar());
   const v1 = nombreCopiaV1('victor', new Date('2026-11-01T10:00:00Z'), 3, '2026-10-31');
   blob.blobs.set(v1, { pathname: v1, bytes: cifrado(), uploadedAt: new Date() });
   const bytes = cifrado();

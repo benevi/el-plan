@@ -99,12 +99,27 @@ test('texto plano (o sin tipo) → 415, aunque el texto sea JSON', async () => {
 });
 
 test('cuerpo grande → 413 (por content-length y por el cuerpo ya parseado)', async () => {
-  const grande = { ...cuerpoMinimo, perfil: { notas: 'A'.repeat(LIMITE_CUERPO) } };
+  // T7 (COD-7): el límite con un número literal, no con la constante (subirla a 1,5 MB tiene que romper esto).
+  assert.equal(LIMITE_CUERPO, 150 * 1024);
+  const grande = { ...cuerpoMinimo, perfil: { notas: 'A'.repeat(151 * 1024) } };
   let r = await llamar({ cuerpo: grande });
   assert.equal(r.res.codigo, 413);
   r = await llamar({ cuerpo: grande, cabeceras: { 'content-length': '100' } }); // cabecera engañosa
   assert.equal(r.res.codigo, 413);
   assert.equal(r.cliente.llamadas.length, 0);
+});
+
+test('T7 (COD-7): 149 KB pasan y 151 KB dan 413, con números fijos', async () => {
+  const conNotas = kb => {
+    const base = Buffer.byteLength(JSON.stringify({ ...cuerpoMinimo, perfil: { notas: '' } }));
+    return { ...cuerpoMinimo, perfil: { notas: 'A'.repeat(kb * 1024 - base) } };
+  };
+  const pasa = await llamar({ cuerpo: conNotas(149) });
+  assert.equal(pasa.res.codigo, 200);
+  assert.equal(pasa.cliente.llamadas.length, 1);
+  const no = await llamar({ cuerpo: conNotas(151) });
+  assert.equal(no.res.codigo, 413);
+  assert.equal(no.cliente.llamadas.length, 0);
 });
 
 test('JSON mal formado o que no es un objeto → 400', async () => {
