@@ -138,9 +138,9 @@ function criterios(page, s) {
     const niveles = {};
     for (const l of P.lesiones.filter(x => x.activa)) {
       const d = hoy && hoy[l.zona] != null ? +hoy[l.zona] : Math.min(6, +l.dolor || 0);
-      niveles[l.zona] = Math.max(1, c.nivelDolor(d));
+      niveles[l.zona] = Math.max(1, c.bandaDe(d));
     }
-    for (const [z, v] of Object.entries(hoy || {})) niveles[z] = Math.max(niveles[z] || 0, c.nivelDolor(+v));
+    for (const [z, v] of Object.entries(hoy || {})) niveles[z] = Math.max(niveles[z] || 0, c.bandaDe(+v));
     if ((s.calentamiento || []).length < 2) fallos.push('calentamiento con menos de 2 tareas');
     if ((s.vuelta || []).length < 2) fallos.push('vuelta a la calma con menos de 2 tareas');
     if (!(s.vuelta || []).some(t => /estir|postura/i.test(t.nombre) || /^estiramiento|postura-nino/.test(t.id || ''))) fallos.push('vuelta a la calma sin estiramientos');
