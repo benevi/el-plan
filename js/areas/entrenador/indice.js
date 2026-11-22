@@ -161,6 +161,7 @@ function dolorInicial(S, l) {
 
 // op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy sin plan).
 export function abrirCheckin(diaPlan = null, op = {}) {
+  revisarBajadaNivel();
   const S = estado();
   // Alarma confirmada hoy: no hay check-in ni sesión (C-ALAR-1).
   if (sinEntrenarHoy(S)) { hojaAlarma(); return; }
@@ -421,8 +422,19 @@ function aplicarNivel(auto) {
     S2.perfil.nivel = m.sugerido;
     S2.perfil.nivelCambios = [...(S2.perfil.nivelCambios || []), { fecha: new Date().toISOString(), de: m.nivel, a: m.sugerido, motivo: m.motivo }];
   }, 'perfil');
-  aviso(`${auto ? 'Tu progreso te sube' : 'Pasas'} a ${minus(NIVELES[m.sugerido])}. El entrenador lo usará desde la próxima sesión.`);
+  const baja = m.sugerido < m.nivel;
+  aviso(baja ? `${m.motivo} Pasas a ${minus(NIVELES[m.sugerido])}.` : `${auto ? 'Tu progreso te sube' : 'Pasas'} a ${minus(NIVELES[m.sugerido])}. El entrenador lo usará desde la próxima sesión.`);
 }
+// C-NIVEL-3 con «Que mi progreso me cambie de nivel» (COD-2): tras 56 días sin entrenar baja un nivel antes de la
+// primera sesión, al abrir la app o el check-in (al terminar esa sesión ya no se ve el parón).
+export function revisarBajadaNivel() {
+  const S = estado(); if (!S || !S.dueño || !S.perfil.nivelAuto) return false;
+  const m = medidorNivel(S);
+  if (!(m.sugerido < m.nivel)) return false;
+  aplicarNivel(true);
+  return true;
+}
+if (typeof window !== 'undefined') window.addEventListener('pipos:arrancado', () => { try { revisarBajadaNivel(); } catch (e) { console.error('Nivel', e); } });
 // Al terminar sesiones, el medidor revisa el nivel si el perfil lo permite.
 let hechasVistas = -1;
 escuchar(motivo => {
