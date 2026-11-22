@@ -14,6 +14,7 @@
 //     sin «fin» ni «error», el móvil lo trata como corte.
 // El corte es por inactividad (INACTIVIDAD_IA_MS sin noticias de Claude), no por tiempo total; solo antes del
 // tope de la función en Vercel (maxDuration 300 s en vercel.json) se corta con un error claro (LIMITE_MS).
+import { gastarCupo } from './_freno.js';
 import { comprobar, sanear, clienteIA, pedirJSON, cancelarAlCerrar, responderError, registrarError, errorPara, ErrorIA } from './_comun.js';
 
 export const INACTIVIDAD_IA_MS = 150_000; // el razonamiento no manda eventos (los «ping» no llegan al SDK)
@@ -182,6 +183,7 @@ export const mensajeUsuario = (modo, datos) => (modo === 'plan' ? 'Plan de la se
 // cerrada. El móvil nunca manda estas cabeceras.
 export const MODELOS_PRUEBA = ['claude-opus-5-5', 'claude-sonnet-5-5'];
 export const ESFUERZOS_PRUEBA = ['low', 'medium'];
+export const TOPE_DIARIO = 'se ha llegado al tope diario de llamadas a la IA; hoy la app hace las sesiones con sus reglas';
 function pruebasDe(req, modo) {
   const h = req.headers || {};
   const activa = h['x-pruebas'] === '1';
@@ -224,7 +226,7 @@ export function contador(modo, alCambiar) {
 
 export default async function handler(req, res) {
   const inicio = Date.now();
-  const crudo = comprobar(req, res); if (!crudo) return;
+  const crudo = await comprobar(req, res); if (!crudo) return;
   const { cuerpo: body, catalogoDescartados } = sanear(crudo);
   const catalogo = body.catalogo;
   const ids = [...new Set(catalogo.map(e => e.id))];
@@ -238,6 +240,11 @@ export default async function handler(req, res) {
     if (!lugares.length) return res.status(400).json({ error: 'faltan los lugares de la semana' });
   }
   const pruebas = pruebasDe(req, modo);
+  // S1: cupo diario de llamadas a la IA (api/_freno.js). Pasado, 429 y la app sigue con sus reglas.
+  if (!await gastarCupo(modo)) {
+    console.log(JSON.stringify({ entrenador: { modo, resultado: 'cupo', ms: Date.now() - inicio } }));
+    return res.status(429).json({ error: TOPE_DIARIO });
+  }
 
   // Una línea JSON por llamada a la IA, sin datos personales ni el cuerpo.
   const registro = { modo, esfuerzo: pruebas.esfuerzo || (modo === 'plan' ? 'medium' : body.planDeHoy ? 'low' : 'medium'), ids: ids.length, catalogoDescartados };

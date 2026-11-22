@@ -30,6 +30,7 @@
 import { puerta, tipoDe, largoAdmitido, leerJSON, LIMITE_CUERPO } from './_comun.js';
 import * as blobReal from '@vercel/blob';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { reiniciarFrenos } from './_freno.js';
 
 export const LIMITE_COPIA = 4 * 1024 * 1024; // bytes del archivo cifrado
 export const PERSONAS = ['victor', 'virginia'];
@@ -66,7 +67,7 @@ const NO_ACTIVADA = 'las copias en la nube aún no están activadas';
 // Además, un tope de SUBIDAS_DIA subidas al día por persona con un contador en el propio Blob (ver subir).
 const RITMO = { ventana: 10 * 60e3, todas: 60, subir: 20 };
 const historial = new Map();
-export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; }
+export function reiniciarRitmo() { historial.clear(); ultimoSello = 0; reiniciarFrenos(); } // (también los de _freno.js)
 function dentroDeRitmo(persona, accion, ahora = reloj()) {
   const lista = (historial.get(persona) || []).filter(x => ahora - x.t < RITMO.ventana);
   const subidas = lista.filter(x => x.accion === 'subir').length;
@@ -243,7 +244,7 @@ export default async function handler(req, res) {
     console.log(JSON.stringify({ copia: registro })); // una línea, sin contenido ni nombres de persona
     if (cuerpo !== undefined) res.status(status).json(cuerpo);
   };
-  if (!puerta(req, res)) return; // 405, 500 o 401, como el entrenador
+  if (!await puerta(req, res)) return; // 405, 500, 429 o 401, como el entrenador
   const tipo = tipoDe(req);
   let accion, persona, cuerpo = null;
   if (tipo === 'application/octet-stream') {

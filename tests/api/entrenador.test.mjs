@@ -7,6 +7,7 @@ import { Respuesta, peticion, mensaje, clienteSimulado } from './_simulado.mjs';
 import { cuerpoSesion, cuerpoPlan } from './_cuerpo-real.mjs';
 import handler, { SISTEMA, SISTEMA_SESION, SISTEMA_PLAN, mensajeUsuario } from '../../api/entrenador.js';
 import { ponerClienteIA, Anthropic, LIMITE_CUERPO } from '../../api/_comun.js';
+import { reiniciarFrenos } from '../../api/_freno.js';
 
 const CRUDO = 'TEXTO-CRUDO-DE-LA-API sk-ant-secreta';
 const cuerpoMinimo = { modo: 'sesion', catalogo: [{ id: 'remo', m: ['espalda'], l: ['gym'], niv: 1, t: 'reps' }], perfil: { notas: 'nada' } };
@@ -17,6 +18,7 @@ const sesionIA = { nombre: 'Torso', foco: 'Espalda', cambios: [], explicacion: [
 
 let registros, errores, logAntes, errorAntes;
 beforeEach(() => {
+  reiniciarFrenos(); // S1: cada prueba parte sin fallos de código ni cupo gastado
   process.env.APP_CODE = 'secreto';
   process.env.ANTHROPIC_API_KEY = 'clave-de-prueba';
   registros = []; errores = [];

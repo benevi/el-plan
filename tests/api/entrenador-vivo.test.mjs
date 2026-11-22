@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { Respuesta, peticion, mensaje, clienteSimulado, clienteEnVivo, espera, delta } from './_simulado.mjs';
 import handler, { ponerTiempos, contador } from '../../api/entrenador.js';
 import { ponerClienteIA, Anthropic } from '../../api/_comun.js';
+import { reiniciarFrenos } from '../../api/_freno.js';
 
 const cuerpoMinimo = { modo: 'sesion', catalogo: [{ id: 'remo', m: ['espalda'], l: ['gym'], niv: 1, t: 'reps' }], perfil: { notas: 'nada' } };
 const sesionIA = { nombre: 'Torso', foco: 'Espalda', cambios: [], explicacion: ['Hoy torso.'], calentamiento: [], vueltaCalma: [], ejercicios: [
@@ -19,6 +20,7 @@ const vivo = setInterval(() => {}, 1000);
 after(() => clearInterval(vivo));
 let registros, errores, logAntes, errorAntes;
 beforeEach(() => {
+  reiniciarFrenos(); // S1: cada prueba parte sin fallos de código ni cupo gastado
   process.env.APP_CODE = 'secreto'; process.env.ANTHROPIC_API_KEY = 'clave-de-prueba';
   registros = []; errores = [];
   logAntes = console.log; errorAntes = console.error;

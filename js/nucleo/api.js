@@ -143,7 +143,11 @@ export function textoError(e) {
   switch (e.tipo) {
     case 'sinRed': return 'no hay conexión con el servidor';
     case 'codigo': return 'el código de acceso no es correcto';
-    case 'ritmo': return 'se han hecho demasiadas peticiones seguidas (prueba en un minuto)';
+    case 'ritmo':
+      // Los dos frenos del servidor (S1, api/_freno.js) dicen por qué.
+      if (/tope diario/.test(e.message)) return 'se ha llegado al tope diario de llamadas a la IA (mañana vuelve a estar)';
+      if (/código incorrecto/.test(e.message)) return 'demasiados intentos con un código incorrecto (prueba dentro de un rato)';
+      return 'se han hecho demasiadas peticiones seguidas (prueba en un minuto)';
     case 'sobrecarga': return 'la IA está saturada ahora mismo (prueba en unos minutos)';
     case 'tiempo': return 'la IA ha dejado de responder';
     case 'corte': return 'la conexión se cortó antes de terminar';
