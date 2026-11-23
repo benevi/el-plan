@@ -717,3 +717,15 @@ test('C-CARDIO-5 (ronda del 23-11, CR-06): dos cardios de la IA se suman en uno 
   assert.ok(!v.cambios.some(c => /el cardio sube/.test(c)), v.cambios.join(' | '));
   assert.match(cardios[0].nota, /boxeo/i);
 });
+
+test('C-TIEMPO-2, C-IA-3 (ronda del 23-11, CR-26): lo que el ajuste de tiempo deshace no sale como «añado …»', () => {
+  // Perder grasa, 30 min, lumbar y rodilla a 5: la IA manda el último recurso (cardio y rehabilitación); la app no se
+  // fía del texto, añade 3 principales y el ajuste de tiempo los vuelve a quitar.
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('lumbar', 3), L('rodilla', 3)] });
+  const c = { lugar: 'gym', minutos: 30, dolorHoy: { lumbar: 5, rodilla: 5 }, origen: 'ia' };
+  const v = ent.validarSesion(S, { explicacion: ['Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu lumbar y fuerza.'],
+    ejercicios: [E('bici-estatica', 'cardio', { reps: '15 min' })], calentamiento: [T('Bici'), T('Movilidad')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] }, c);
+  assert.equal(v.sesion.ejercicios.filter(x => x.rol === 'principal').length, 0);
+  assert.ok(!v.cambios.some(x => /^añado .*principales/.test(x) || /series? menos/.test(x)), v.cambios.join(' | '));
+  assert.ok(v.ultimoRecurso);
+});

@@ -26,10 +26,11 @@ const FAMILIAS = [
   ['cardioMinimo', /el cardio sube de/],
   ['tiempo', /para que quepa en|calentamiento de 4 minutos|con \d+ minutos quito/],
   ['dosis', /son demasiadas|es demasiado, pongo|a \d+-\d+ repeticiones/],
+  ['idInventado', /que no está en el catálogo/], // sin el enum del esquema (IA-6), lo que vigilar en la próxima ronda
 ];
 const familia = c => (FAMILIAS.find(([, re]) => re.test(c)) || ['otros'])[0];
 const cuenta = {};
-let total = 0, malos = 0, seguridadMal = 0, rubrica = 0, conCambios = 0, nCambios = 0;
+let tareasCambiadas = 0, total = 0, malos = 0, seguridadMal = 0, rubrica = 0, conCambios = 0, nCambios = 0;
 for (const f of filas) {
   if (!f.respuesta) continue;
   const caso = CASOS.find(c => c.id === f.id);
@@ -58,6 +59,7 @@ for (const f of filas) {
   } finally { ponerRed(false); }
   const cambios = caso.modo === 'plan' ? j.porDia.flatMap(d => d.validador.cambios || []) : (j.validador.cambios || []);
   cambios.forEach(c => { const k = familia(c); cuenta[k] = (cuenta[k] || 0) + 1; });
+  cambios.forEach(c => { const m = c.match(/cambio (\d+) tareas? de calentamiento o vuelta/); if (m) tareasCambiadas += +m[1]; });
   if (cambios.length) conCambios++;
   nCambios += cambios.length;
   const ok = j.validador.pasa && j.aprueba && !problemas.length && /ia/.test(fuente);
@@ -68,4 +70,4 @@ for (const f of filas) {
   if (detalle && cambios.length) console.log('     cambios:', cambios.join(' · ').slice(0, 600));
 }
 console.log(`\n${total} respuestas · ${malos} con algo · seguridad mal ${seguridadMal} · rúbrica ${rubrica}/${total} · ${conCambios} con cambios de la app (${nCambios} cambios)`);
-console.log('Cambios de la app por familia:', JSON.stringify(cuenta));
+console.log('Cambios de la app por familia:', JSON.stringify(cuenta), `· tareas sin id cambiadas: ${tareasCambiadas}`);

@@ -386,6 +386,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   });
   const suaveDelPlan = (ctxIn.tipo || s.tipo) === 'suave' && nPrin() === 0; // día suave del reparto (C-REP-2): sin fuerza
   // La vista previa del plan ya trae sus principales ajustados al volumen semanal (C-VOL-2): no se rellenan aquí.
+  let añadidos = null;
   const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan || ctxIn.mia || ctxIn.vistaPrevia ? 0 : Math.min(3, maximo) - nPrin(); // C-MIA-1
   if (faltan > 0) {
     const tipo = tipoParaLugar(ctxIn.tipo || s.tipo, lugar);
@@ -394,7 +395,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       const i = nPrin(), d = dosis(S, e, i, lugar);
       ejs.push({ id: e.id, rol: 'principal', ...d, nota: porQueEjercicio(S, e, { i, d, an: ctx.an, carga: {}, niveles: ctx.niveles, dolorHoy }) });
     });
-    if (nuevos.length) cambios.push(`añado ${lista(nuevos.map(nombre))}: toda sesión lleva al menos 3 ejercicios principales`);
+    if (nuevos.length) { cambios.push(`añado ${lista(nuevos.map(nombre))}: toda sesión lleva al menos 3 ejercicios principales`); añadidos = { ids: nuevos.map(e => e.id), texto: cambios[cambios.length - 1] }; }
     if (nuevos.length < faltan) s.explicacion.push(`Hoy, en este lugar, solo ${nPrin() === 1 ? 'hay 1 ejercicio principal' : `hay ${nPrin()} ejercicios principales`} que respeten tu dolor y tu material.`);
   }
   // Orden: rehabilitación → principales (el primero sin riesgo en una zona activa) → cardio (C-REP-5, C-DOSIS-4).
@@ -521,6 +522,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
 
   // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
   const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
+  // Lo que el ajuste de tiempo deshace no se cuenta como hecho (ronda del 23-11, CR-26): si los principales que
+  // se añadieron ya no están, fuera el «añado …»; sin ningún principal, fuera también las «series menos».
+  if (añadidos && !añadidos.ids.some(id => s.ejercicios.some(x => x.id === id))) cambios.splice(cambios.indexOf(añadidos.texto), 1);
+  if (ultimo && !s.ejercicios.some(x => x.rol === 'principal')) { const i = cambios.findIndex(c => /^para que quepa en \d+ minutos, \d+ series? menos/.test(c)); if (i >= 0) cambios.splice(i, 1); }
   if (ultimo) {
     // La explicación dice lo que de verdad queda (IA-5): sin fuerza, fuera los puntos de principales y de dosis
     // y un primer punto nuevo con el dolor de hoy; con 2 en superserie, el número que queda.
