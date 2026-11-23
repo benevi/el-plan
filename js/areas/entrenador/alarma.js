@@ -59,6 +59,8 @@ export const SEÑALES = [
 ];
 
 // ── Palabras de alarma en textos libres (C-ALAR-4) ──
+// Vista nublada o borrosa (A2; verificación final, S8).
+const VISTA = /se me nublo (la vista|todo)|vista (nublada|borrosa)|vision borrosa|ve(ia|o) borroso/;
 const ALARMA = [
   /(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho/, /me aprieta el pecho/, /mare(o|a|e)|desmay|vertigo/, /palpitacion/,
   /(me )?falta(ba)? el aire|me ahogaba/, /hormigue/, /se me (duerme|durmio|dormia)/, /no (puedo|podia|pude) apoyar/, /vision doble/,
@@ -76,13 +78,19 @@ const ALARMA = [
   /dolor de cabeza .{0,15}(muy fuerte|fortisimo|subito|de golpe|repentino)|cabeza .{0,15}(muchisimo|de golpe)/,
   // Verificación final (S8, decisión de Víctor del 23-11-2026): vista nublada (A2) y el brazo izquierdo (A1). Del brazo,
   // solo el izquierdo y lo que no suena a músculo cansado: un calambre en el gemelo o en el brazo derecho no avisa.
-  /se me nublo (la vista|todo)|vista (nublada|borrosa)|vision borrosa|ve(ia|o) borroso/,
+  VISTA,
   /(calambre|pinchazo|opresion|entumecimiento)s? (en|del) (el )?brazo izquierdo|brazo izquierdo (entumecido|dormido)/,
+  // Revisión del PR #48 (M3): el brazo izquierdo con cualquier síntoma a pocas palabras, en los dos órdenes (no el
+  // antebrazo ni el codo), y dolor u opresión del pecho en la misma frase (los ejercicios y el día de pecho no cuentan).
+  /(duele|dolia|dolio|dolor|molestia|pesadez|pesaba|calambre|pinchazo|hormigue|entumec)[^.]{0,25}\bbrazo izquierdo|\bbrazo izquierdo[^.]{0,25}(duele|dolia|dolio|dolor|pesa|calambre|pinchazo|hormigue|entumec)/,
+  /(duele|dolia|dolio|dolor|opresion)[^.]{0,25}\bpecho/,
 ];
+// Expresiones que no avisan si la frase dice otra cosa que lo explica: la vista borrosa por las gafas o las lentillas.
+const EXCEPTO = new Map([[VISTA, /gafas|empanad|lentilla/]]);
 // Las expresiones tal cual, para comprobar que la lista de C-ALAR-4 de docs/criterio.md es la misma (S8).
 export const EXPRESIONES_ALARMA = ALARMA.map(re => re.source);
 // Nombres de ejercicios y del músculo que no son alarma.
-const NO_ALARMA = /press de pecho|pecho en maquina|aperturas de pecho|estiramiento de pecho/g;
+const NO_ALARMA = /press de pecho|pecho en maquina|aperturas de pecho|estiramiento de pecho|(dia|sesion|rutina|maquina) de pecho|(haciendo|entrenar|entrene|entrenando|toca) pecho/g;
 const NEGACION = /^(sin|no|ni|cero|ningun|ninguna)$/;
 export const normalizarTexto = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // Devuelve la frase original que dispara la alarma, o null. Sin negación en las 3 palabras anteriores.
@@ -95,11 +103,10 @@ export function fraseAlarma(texto) {
     while ((m = g.exec(t))) {
       const antes = t.slice(0, m.index).split(/[^a-zñ]+/).filter(Boolean).slice(-3);
       const negada = antes.some(w => NEGACION.test(w)) || /nada de\s*$/.test(t.slice(Math.max(0, m.index - 12), m.index)) || antes.join(' ').includes('nada de');
-      if (!negada) {
-        // La frase entera donde aparece (mismo tamaño en el texto normalizado y en el original).
-        const ini = Math.max(0, t.lastIndexOf('.', m.index) + 1), fin = t.indexOf('.', m.index);
-        return orig.slice(ini, fin < 0 ? orig.length : fin).trim();
-      }
+      // La frase entera donde aparece (mismo tamaño en el texto normalizado y en el original).
+      const ini = Math.max(0, t.lastIndexOf('.', m.index) + 1), fin = t.indexOf('.', m.index);
+      const excepto = EXCEPTO.get(re) && EXCEPTO.get(re).test(t.slice(ini, fin < 0 ? t.length : fin));
+      if (!negada && !excepto) return orig.slice(ini, fin < 0 ? orig.length : fin).trim();
       if (m[0].length === 0) g.lastIndex++;
     }
   }

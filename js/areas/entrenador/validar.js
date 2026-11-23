@@ -29,7 +29,7 @@ import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, faseDeBanda, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
   calentamientoDe, vueltaDe, tiempoSesionExacto, tareaSinIdOk, porNombre, tiempoEj, notaCardio, tiempoEjercicios, minutosTareas, minutosCalentamiento, minutosVuelta, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
-  sincronizarDosis, techoDolor, noSabeNadar,
+  sincronizarDosis, techoDolor, noSabeNadar, CARDIO_ULTIMO,
 } from './dia.js';
 import { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
 
@@ -197,7 +197,11 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
     // Una de «Mis sesiones» se respeta tal cual: ni mínimo de principales ni tope de tiempo (C-MIA-1).
     const ultimo = (sesion.explicacion || []).some(esUltimoRecurso) || sesion.tipo === 'suave' || !!ctxIn.mia; // el día suave lo marca su tipo, no un texto
     const prin = ejs.filter(x => x.rol === 'principal').length;
-    if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) out.push(`${prin} principales`);
+    // Menos de 3 solo es un fallo si queda alguno más que respete el dolor, el lugar y el material (revisión del PR #48).
+    if (prin < 3 && !ultimo && !(ctx.energia === 1 && prin >= 1)) {
+      const mas = elegirPrincipales(S, ctx, { huecos: PLANTILLAS[tipoParaLugar(sesion.tipo, ctx.lugar)].huecos, presupuesto: Infinity, k: 0, excluir: ids, maximo: 1 });
+      if (mas.length) out.push(`${prin} principales`);
+    }
     // Una zona en B2 siempre lleva rehabilitación; una en B0-B1, solo si cabe con el calentamiento y la vuelta
     // enteros: el paso 4 de C-TIEMPO-2 la quita antes de acortarlos (paso 5), así que no es un fallo (S5).
     const tEntero = tiempoEjercicios(ejs) + Math.max(minutosTareas(sesion.calentamiento) ?? 8, minutosCalentamiento(S, ctx)) + Math.max(minutosTareas(sesion.vuelta) ?? 5, minutosVuelta(S, ctx));
@@ -338,6 +342,11 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   const cardios = ejs.filter(x => x.rol === 'cardio');
   cardios.slice(1).forEach(x => { ejs.splice(ejs.indexOf(x), 1); });
   const cardio = cardios[0];
+  // La marcha sentada solo si no vale otro cardio (S7), también si la trae la IA (revisión del PR #48, M1).
+  if (cardio && CARDIO_ULTIMO.includes(cardio.id) && !ctxIn.mia) {
+    const mejor = opcionesCardio(S, ctx).find(e => !CARDIO_ULTIMO.includes(e.id) && !ejs.some(y => y.id === e.id));
+    if (mejor) { cambios.push(`cambio ${nombre(ex(cardio.id))} por ${nombre(mejor)}: la marcha sentada solo va si no vale otro cardio`); cardio.id = mejor.id; cardio.nota = ''; }
+  }
   if (!cardio) {
     const c = cardioDelDia(S, ctx, ctxIn.k || 0, 0, ejs.map(x => x.id));
     if (c) { ejs.push(c); cambios.push(`añado ${minDe(c.reps)} min de cardio (${nombre(ex(c.id))}): toda sesión lleva cardio`); }
@@ -377,6 +386,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       ejs.push({ id: e.id, rol: 'principal', ...d, nota: porQueEjercicio(S, e, { i, d, an: ctx.an, carga: {}, niveles: ctx.niveles, dolorHoy }) });
     });
     if (nuevos.length) cambios.push(`añado ${lista(nuevos.map(nombre))}: toda sesión lleva al menos 3 ejercicios principales`);
+    if (nuevos.length < faltan) s.explicacion.push(`Hoy, en este lugar, solo ${nPrin() === 1 ? 'hay 1 ejercicio principal' : `hay ${nPrin()} ejercicios principales`} que respeten tu dolor y tu material.`);
   }
   // Orden: rehabilitación → principales (el primero sin riesgo en una zona activa) → cardio (C-REP-5, C-DOSIS-4).
   const orden = { rehab: 0, principal: 1, cardio: 2 };
@@ -525,6 +535,11 @@ function notasSalud(s, ctx) {
   return notas;
 }
 
+// Antagonistas para la superserie (C-TIEMPO-3): empuje-tirón o dominante de rodilla y de cadera.
+const GRUPO = { pecho: 'empuje', hombro: 'empuje', triceps: 'empuje', espalda: 'tiron', biceps: 'tiron', cuadriceps: 'rodilla', gluteo: 'cadera', isquios: 'cadera' };
+const CONTRARIO = { empuje: 'tiron', tiron: 'empuje', rodilla: 'cadera', cadera: 'rodilla' };
+const antagonistas = (a, b) => !!a && !!b && !!GRUPO[a.m[0]] && CONTRARIO[GRUPO[a.m[0]]] === GRUPO[b.m[0]];
+
 // Orden para cuadrar el tiempo (C-TIEMPO-2). Devuelve el texto del último recurso si se ha usado.
 function ajustarTiempo(S, s, ctx, cambios) {
   const limite = ctx.minutos * 1.1;
@@ -573,7 +588,16 @@ function ajustarTiempo(S, s, ctx, cambios) {
   }
   if (T() <= limite) { reponer(); return null; }
   // 6. Último recurso: 2 principales en superserie de 2 series (decisión 8, C-TIEMPO-3).
-  prin().slice(2).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
+  // La pareja, de antagonistas si la hay: empuje-tirón o rodilla-cadera (C-TIEMPO-3, revisión del PR #48).
+  const todos = prin();
+  const pares = todos.flatMap((a, i) => todos.slice(i + 1).map(b => [a, b]));
+  const par = pares.find(([a, b]) => antagonistas(ex(a.id), ex(b.id))) || todos.slice(0, 2);
+  todos.filter(x => !par.includes(x)).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
+  // El primero, el que no tiene riesgo en una zona activa (C-DOSIS-4).
+  const [p0, p1] = prin();
+  if (p1 && riesgoHoy(ex(p0.id), ctx.niveles, ctx.bandas) !== 'ok' && riesgoHoy(ex(p1.id), ctx.niveles, ctx.bandas) === 'ok') {
+    s.ejercicios.splice(s.ejercicios.indexOf(p1), 1); s.ejercicios.splice(s.ejercicios.indexOf(p0), 0, p1);
+  }
   const dos = prin();
   if (dos.length === 2) {
     dos.forEach(x => { x.series = 2; delete x.superserie; });

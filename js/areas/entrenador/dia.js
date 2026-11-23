@@ -195,6 +195,8 @@ export function alternativasHoy(S, e, op = {}) {
     cand = [...new Set(zs.flatMap(z => candidatosRehab(S, z, ctx)))].filter(x => !excluir.has(x.id));
   } else if (rol === 'cardio') {
     cand = opcionesCardio(S, ctx).filter(x => !excluir.has(x.id));
+    // La marcha sentada solo se ofrece si no hay otro cardio (S7, revisión del PR #48, M1).
+    if (cand.some(x => !CARDIO_ULTIMO.includes(x.id))) cand = cand.filter(x => !CARDIO_ULTIMO.includes(x.id));
   } else {
     cand = alternativas(e, ctx.lugar, S.perfil, { excluir: [...excluir], nivel: op.nivel == null ? null : op.nivel, permitido: x => permitidoBase(S, x, ctx) && valePrincipal(S, x, ctx) });
   }
@@ -305,8 +307,10 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   if (regla.intervalos) partes.push('Si te ves bien: 3 min suaves y 6-8 veces 1 min fuerte (7 de 10) con 1-2 min suaves; como mucho 2 días por semana y no seguidos');
   if (ENCADENADO.includes(e.id) && ctx.lugar !== 'gym') {
     const otros = opciones.filter(o => ENCADENADO.includes(o.id) && o.id !== e.id && !CARDIO_ULTIMO.includes(o.id)).slice(0, 2).map(o => minus(o.n));
-    partes.push(`En bloque continuo: 1-3 min de cada uno sin parar${otros.length ? ` (alterna con ${lista(otros)})` : ''} hasta sumar los minutos`);
+    // Sin otro con el que alternar, no se habla de «cada uno» (revisión del PR #48).
+    if (otros.length) partes.push(`En bloque continuo: 1-3 min de cada uno sin parar (alterna con ${lista(otros)}) hasta sumar los minutos`);
   }
+  if (CARDIO_ULTIMO.includes(e.id)) partes.push('Si no llegas a notar un esfuerzo de 4 de 10, ve al ritmo más vivo que puedas sin dolor'); // S7, revisión del PR #48
   if (ctx.lugar === 'piscina') partes.push('Seguido; si paras en el borde, menos de 20 s y sin parar el reloj');
   if (ctx.lugar === 'piscina' && !S.perfil.nadar25) partes.push('Siempre donde hagas pie, con el agua por el pecho'); // C-PISC-2, S3
   const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(Boolean);
@@ -717,13 +721,18 @@ export function minutosTareas(tareas) {
   const ms = tareas.map(t => minDe(t.duracion));
   return ms.some(m => m > 0) ? ms.reduce((a, b) => a + b, 0) : null;
 }
-// Ejercicios con su tiempo; x.superserie: va en pareja con el siguiente (C-TIEMPO-1, C-TIEMPO-3).
+// Ejercicios con su tiempo; x.superserie: va en pareja con el siguiente (C-TIEMPO-1, C-TIEMPO-3). Tras la última serie
+// del último ejercicio de fuerza no se descansa: se pasa al cardio o a la vuelta (revisión del PR #48).
+const esBloqueMin = x => { const e = ex(x.id); return !e || x.rol === 'cardio' || (e.t === 'tiempo' && minDe(x.reps) >= 3); };
 export function tiempoEjercicios(ejs = []) {
   let t = 0;
+  const ult = ejs.reduce((u, x, i) => (esBloqueMin(x) ? u : i), -1);
   for (let i = 0; i < ejs.length; i++) {
     const x = ejs[i], y = ejs[i + 1];
-    if (x.superserie && y && ex(x.id) && ex(y.id)) { t += Math.max(+x.series || 1, +y.series || 1) * (1.4 + (+y.descanso || 0) / 60) + 1; i++; continue; }
-    t += tiempoEj(x);
+    if (x.superserie && y && ex(x.id) && ex(y.id)) {
+      t += Math.max(+x.series || 1, +y.series || 1) * (1.4 + (+y.descanso || 0) / 60) + 1 - (i + 1 === ult ? (+y.descanso || 0) / 60 : 0); i++; continue;
+    }
+    t += tiempoEj(x) - (i === ult ? (+x.descanso || 0) / 60 : 0);
   }
   return t;
 }

@@ -34,7 +34,7 @@ const R1 = ['remo-sentado-polea', 'remo-mancuerna', 'remo-australiano', 'remo-mo
   'dominadas-escapulares', 'press-banca-barra', 'press-hombro-maquina', 'press-militar-mancuernas', 'press-hombro-botellas', 'press-hombro-banda', 'pike-pushup',
   'peso-muerto-rumano', 'peso-muerto-rumano-una-pierna', 'hiperextension-45', 'superman', 'paseo-granjero', 'sentadilla-goblet', 'hip-thrust', 'crunch', 'crunch-maquina',
   'rueda-abdominal', 'pajaros', 'boxeo-sombra', 'crol', 'crol-un-brazo', 'crol-catch-up', 'crol-pull-buoy', 'patada-lateral', 'nado-continuo', 'series-50-crol',
-  'buenos-dias-sin-peso']; // S16 (23-11-2026): la bisagra de cadera de pie para la calle
+  'buenos-dias-sin-peso', 'remo-poste', 'remo-toalla-pie']; // S16 (23-11-2026): los de pie de la calle
 
 test('C-ZONA-DORSAL: la zona «Espalda alta» existe con todos los campos de una ficha', () => {
   const Z = ZONAS.dorsal;

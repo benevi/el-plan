@@ -66,8 +66,8 @@ test('S7, C-DOLOR-4: con un brazo a 8/10 y una pierna lesionada en la calle tamb
 
 // ── S18 · Superserie del último recurso: 90-120 s entre parejas (C-PAUSA-1, C-TIEMPO-2 paso 6, C-TIEMPO-4) ──
 for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
-  ['fuerza, casa, codo 0', { objetivos: ['fuerza'], nivel: 1, materialCasa: [] }, [L('codo', 0)], { codo: 0 }, 'casa', 3],
-  ['fuerza, casa, codo 0, energía 5', { objetivos: ['fuerza'], nivel: 1, materialCasa: [] }, [L('codo', 0)], { codo: 0 }, 'casa', 5],
+  ['perder grasa, gimnasio, rodilla B2 (C-TIEMPO-4)', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 5 }, 'gym', 3],
+  ['perder grasa, gimnasio, rodilla B2, energía 5', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 5 }, 'gym', 5],
   ['salud, casa, muñeca 5', { objetivos: ['salud'], nivel: 1, materialCasa: [] }, [L('muñeca', 5)], { muñeca: 5 }, 'casa', 3],
   ['resistencia, calle, cervical 5', { objetivos: ['resistencia'], nivel: 2, materialCasa: [] }, [L('cervical', 5)], { cervical: 5 }, 'calle', 2],
 ]) {
@@ -85,17 +85,23 @@ for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
     assert.match(primero.nota, new RegExp(`descansa ${segundo.descanso} s`));
     assert.doesNotMatch(primero.nota, / con 0 s/);
     assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
+    // Pareja de antagonistas: empuje-tirón o rodilla-cadera (C-TIEMPO-3, revisión del PR #48).
+    const G = { pecho: 'e', hombro: 'e', triceps: 'e', espalda: 't', biceps: 't', cuadriceps: 'r', gluteo: 'c', isquios: 'c' };
+    const [ga, gb] = [primero, segundo].map(x => G[cat.ex(x.id).m[0]]);
+    assert.ok(['e+t', 't+e', 'r+c', 'c+r'].includes(`${ga}+${gb}`), `${primero.id} + ${segundo.id}`);
     assert.deepEqual(ent.problemasSesion(S, s, c), []);
   });
 }
-test('S18, C-TIEMPO-4: perder grasa, 30 min, rodilla B2: con 90 s la superserie no cabe (≈ 33,3 de 33) y va el paso 7 con su aviso', () => {
+test('S18, C-TIEMPO-4 (revisión del PR #48): sin el descanso tras la última serie de fuerza, la superserie con 90 s cabe (≈ 31,8 de 33)', () => {
   const S = nuevoS({ objetivos: ['perder'], nivel: 1, lugares: ['gym'] });
   S.perfil.lesiones.push(L('rodilla', 3));
-  const c = ci({ minutos: 30, dolorHoy: { rodilla: 5 } });
-  const s = sesionHoy(S, null, c);
-  assert.equal(s.ejercicios.filter(x => x.rol === 'principal').length, 0);
-  assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu rodilla y fuerza\. Hoy: cardio y rehabilitación\. Si quieres fuerza, elige 45 minutos\.$/.test(t)), s.explicacion.join(' | '));
-  assert.deepEqual(ent.problemasSesion(S, s, c), []);
+  const s = sesionHoy(S, null, ci({ minutos: 30, dolorHoy: { rodilla: 5 } }));
+  assert.equal(s.ejercicios.filter(x => x.rol === 'principal').length, 2);
+  assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
+  // C-TIEMPO-1: el descanso tras la última serie del último ejercicio de fuerza no cuenta; el de los demás, sí.
+  const A = { id: 'press-pecho-maquina', rol: 'principal', series: 3, reps: '10-12', descanso: 90 }, B = { ...A, id: 'jalon-pecho' }, C = { id: 'bici-estatica', rol: 'cardio', series: 1, reps: '15 min', descanso: 0 };
+  assert.equal(dia.tiempoEjercicios([A, C]), ent.tiempoEj(A) - 1.5 + 15);
+  assert.equal(dia.tiempoEjercicios([A, B, C]), ent.tiempoEj(A) + ent.tiempoEj(B) - 1.5 + 15);
 });
 test('S18: el ejemplo de C-TIEMPO-4 ya no cuenta la superserie con 60 s', () => {
   const sec = criterio.slice(criterio.indexOf('**C-TIEMPO-4'), criterio.indexOf('## 16.'));
@@ -231,4 +237,95 @@ test('C-TIEMPO-1, C-TIEMPO-2, C-EST-4: la vista previa del plan por reglas pasa 
     const p = ent.planReglas(S, { dias, minutos, lugares });
     for (const d of p.dias) assert.deepEqual(ent.problemasSesion(S, d, { lugar: d.lugar, minutos: d.minutos, futuro: true, dolorHoy: {} }), [], `nivel ${nivel} ${objetivos} ${dias.length} días ${lugares} ${z}: ${d.nombre}`);
   }
+});
+
+// ── Revisión del PR #48 ──
+test('PR #48 M3, C-ALAR-4: el brazo izquierdo con cualquier síntoma y el dolor del pecho en la misma frase avisan', () => {
+  for (const t of ['me duele el brazo izquierdo y el pecho', 'dolor en el brazo izquierdo', 'pinchazo en el bíceps del brazo izquierdo', 'hormigueo en brazo izquierdo',
+    'pesadez en el brazo izquierdo', 'molestia en el brazo izquierdo al subir escaleras', 'el brazo izquierdo me pesaba y me dolía', 'me duele mucho el pecho', 'opresión fuerte en todo el pecho'])
+    assert.ok(ent.fraseAlarma(t), `debería avisar: ${t}`);
+});
+test('PR #48 M3, C-ALAR-4: no avisan las gafas empañadas, el antebrazo, el codo ni el día de pecho', () => {
+  for (const t of ['vista borrosa con las gafas de piscina empañadas', 'veo borroso sin las lentillas', 'tengo la vista cansada', 'calambre en el antebrazo izquierdo',
+    'dolor en el codo izquierdo', 'hoy toca pecho y me duele el hombro', 'dolor de hombro en el press de pecho', 'día de pecho: me duele la muñeca', 'calambre en el izquierdo'])
+    assert.equal(ent.fraseAlarma(t), null, `no debería avisar: ${t}`);
+});
+test('PR #48 G1: el remo en barandilla lleva r en codo y espalda alta (como el remo australiano) y no sale con el codo a 5/10', () => {
+  assert.deepEqual(cat.ex('remo-poste').r, { codo: 1, dorsal: 1 });
+  for (const z of ['codo', 'dorsal']) {
+    const S = nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+    S.perfil.lesiones.push(L(z, 5));
+    const c = ci({ lugar: 'calle', dolorHoy: { [z]: 5 } });
+    const s = sesionHoy(S, null, c);
+    assert.ok(!s.ejercicios.some(x => ['remo-poste', 'remo-toalla-pie'].includes(x.id)), `${z}: ${s.ejercicios.map(x => x.id)}`);
+    assert.deepEqual(ent.problemasSesion(S, s, c), []);
+  }
+});
+test('PR #48 M2: el remo en barandilla dice dónde agarrarse y, si no hay, se cambia por el remo isométrico con toalla', () => {
+  const e = cat.ex('remo-poste');
+  assert.match(e.p[0], /barandilla o una barra horizontal.*cintura o del pecho/);
+  assert.match(e.p[0], /poste vertical.*apenas te inclines/);
+  assert.ok(e.e.some(t => /si las manos resbalan, no lo hagas/.test(t)));
+  const S = nuevoS({ objetivos: ['musculo'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+  assert.ok(ent.alternativasHoy(S, e, { lugar: 'calle', rol: 'principal' }).some(a => a.id === 'remo-toalla-pie'));
+});
+for (const [lugar, d] of [['calle', 4], ['calle', 5], ['calle', 2]]) {
+  test(`PR #48 G2, C-DOLOR-3: ${lugar} con lumbar y cadera lateral a ${d}/10: rehabilitación de las dos zonas`, () => {
+    const S = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: [lugar], materialCasa: [] });
+    S.perfil.lesiones.push(L('lumbar', d, { desde: '2026-09-20' }), L('cadera_lateral', d, { desde: '2026-09-20' }));
+    const c = ci({ lugar, minutos: 60, dolorHoy: { lumbar: d, cadera_lateral: d } });
+    const s = sesionHoy(S, null, c);
+    for (const z of ['lumbar', 'cadera_lateral']) assert.ok(s.ejercicios.some(x => x.rol === 'rehab' && lesiones.fasesDe(cat.ex(x.id), z).length), `sin rehabilitación de ${z}: ${s.ejercicios.map(x => x.id)}`);
+    assert.deepEqual(ent.problemasSesion(S, s, c), []);
+    // El validador marca la zona en B2 que se queda sin rehabilitación cuando la hay (C-DOLOR-3).
+    const sinLumbar = { ...s, ejercicios: s.ejercicios.filter(x => !(x.rol === 'rehab' && lesiones.fasesDe(cat.ex(x.id), 'lumbar').length)) };
+    if (d >= 4) assert.ok(ent.problemasSesion(S, sinLumbar, c).includes('sin rehabilitación de lumbar'));
+  });
+}
+test('PR #48 G2: el dead bug de pie no lleva r en la cadera y su ficha dice qué hacer con la cadera dolorida', () => {
+  const e = cat.ex('dead-bug-pared');
+  assert.deepEqual(e.r, {});
+  assert.match(e.c, /cadera dolorida, levanta solo el brazo, o el pie un par de centímetros/);
+});
+test('PR #48 M1: la marcha sentada de la IA se cambia si vale otro cardio, y «Cambiar por otro» no la ofrece mientras haya otro', () => {
+  const S = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+  const c = { lugar: 'calle', minutos: 45, energia: 3, dolorHoy: {}, origen: 'ia' };
+  const v = ent.validarSesion(S, { calentamiento: [], vueltaCalma: [], ejercicios: [{ id: 'flexiones', rol: 'principal', series: 3, reps: '8-15', descanso: 90 }, { id: 'zancadas', rol: 'principal', series: 3, reps: '8-15', descanso: 90 }, { id: 'remo-poste', rol: 'principal', series: 3, reps: '12-15', descanso: 60 }, { id: 'marcha-sentada', rol: 'cardio', series: 1, reps: '15 min', descanso: 0 }] }, c);
+  const cardio = v.sesion.ejercicios.find(x => x.rol === 'cardio');
+  assert.notEqual(cardio.id, 'marcha-sentada');
+  assert.ok(v.cambios.some(t => /la marcha sentada solo va si no vale otro cardio/.test(t)));
+  assert.ok(!ent.alternativasHoy(S, cat.ex(cardio.id), { lugar: 'calle', rol: 'cardio' }).some(a => a.id === 'marcha-sentada'));
+  // Con una pierna y un brazo en B2 es la única: entonces sí se ofrece y se queda.
+  const S2 = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+  S2.perfil.lesiones.push(L('tobillo_pie', 5), L('hombro', 5));
+  const s2 = sesionHoy(S2, null, ci({ lugar: 'calle', dolorHoy: { tobillo_pie: 5, hombro: 5 } }));
+  const c2 = s2.ejercicios.find(x => x.rol === 'cardio');
+  assert.equal(c2.id, 'marcha-sentada');
+  assert.match(c2.nota, /Si no llegas a notar un esfuerzo de 4 de 10, ve al ritmo más vivo que puedas sin dolor/);
+  assert.doesNotMatch(c2.nota, /1-3 min de cada uno/, 'sin otro con el que alternar');
+});
+test('PR #48 M4: el prompt de la IA deja en la calle flexiones, plancha y mountain-climbers', () => {
+  const api = fs.readFileSync(ruta('api/entrenador.js'), 'utf8');
+  assert.match(api, /Calle:[^\n]*Sí valen flexiones, plancha y mountain-climbers/);
+});
+test('PR #48: fichas de ytw-inclinado y buenos-dias-sin-peso, y la marcha en el sitio en la fila de calle de C-CARDIO-5', () => {
+  const y = cat.ex('ytw-inclinado');
+  assert.match(y.p[0], /frente.*45°/); assert.match(y.p[0], /cuello alineado/); assert.match(y.p[0], /sin levantar la cabeza/);
+  assert.match(cat.ex('buenos-dias-sin-peso').c, /más de 20 repeticiones.*dos sesiones seguidas.*C-PROG-9/);
+  assert.match(criterio, /\| Calle \| `marcha-rapida`, `carrera-suave` \(nivel ≥ 2\) \| `marcha-estatica`,/);
+});
+test('PR #48: con cadera, codo y lumbar a 5/10 en la calle sin material, 2 principales es lo que hay, y la sesión lo dice', () => {
+  const S = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+  S.perfil.lesiones.push(L('cadera_lateral', 5, { desde: '2026-09-20' }), L('codo', 5, { desde: '2026-09-20' }), L('lumbar', 5, { desde: '2026-09-20' }));
+  const c = ci({ lugar: 'calle', dolorHoy: { cadera_lateral: 5, codo: 5, lumbar: 5 } });
+  const s = sesionHoy(S, null, c);
+  assert.ok(!s.ejercicios.some(x => x.id === 'remo-poste'), 'el remo en barandilla carga el codo');
+  for (const z of ['cadera_lateral', 'codo', 'lumbar']) assert.ok(s.ejercicios.some(x => x.rol === 'rehab' && lesiones.fasesDe(cat.ex(x.id), z).length), z);
+  assert.ok(s.explicacion.some(t => /^Hoy, en este lugar, solo hay 2 ejercicios principales que respeten tu dolor y tu material\.$/.test(t)), s.explicacion.join(' | '));
+  assert.deepEqual(ent.problemasSesion(S, s, c), []);
+  // Con un principal de menos que sí cabría, el validador lo marca.
+  const S2 = nuevoS({ objetivos: ['salud'], nivel: 1, lugares: ['calle'], materialCasa: [] });
+  const s2 = sesionHoy(S2, null, ci({ lugar: 'calle' }));
+  const menos = { ...s2, ejercicios: s2.ejercicios.filter((x, i) => !(x.rol === 'principal' && i === s2.ejercicios.findIndex(y => y.rol === 'principal'))) };
+  assert.ok(ent.problemasSesion(S2, menos, ci({ lugar: 'calle' })).some(p => /principales$/.test(p)));
 });
