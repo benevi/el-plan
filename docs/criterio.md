@@ -456,7 +456,7 @@ Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superse
 **C-EDAD-1 [Criterio] [PR 8, PR 11]** Con **60 años o más**:
 - margen mínimo 2;
 - calentamiento +2 min (en D2, dentro del bloque);
-- un ejercicio de equilibrio por sesión (`equilibrio-una-pierna`, con apoyo en la pared);
+- un ejercicio de equilibrio por sesión (`equilibrio-una-pierna`, con apoyo en la pared), **siempre**: si venía como rehabilitación de tobillo y el ajuste de tiempo (C-TIEMPO-2, paso 4) la quita, vuelve al calentamiento [aprobado por Víctor el 23-11-2026] (S4);
 - sin intervalos (C-CARDIO-4).
 
 ### 5.5 Energía

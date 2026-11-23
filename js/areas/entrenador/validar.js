@@ -551,11 +551,13 @@ function ajustarTiempo(S, s, ctx, cambios) {
   const ultimaDeB2 = x => zonas.some(z2 => ctx.bandas[z2].banda >= 2 && rehabValida(S, ex(x.id), z2, ctx) && deZona(z2).length <= 1);
   zonas.forEach(z => { while (T() > limite && deZona(z).length > 1) { const x = deZona(z).filter(y => !ultimaDeB2(y)).pop(); if (!x) break; s.ejercicios.splice(s.ejercicios.indexOf(x), 1); } });
   zonas.slice().reverse().forEach(z => { if (T() > limite && ctx.bandas[z].banda <= 1) deZona(z).filter(x => !ultimaDeB2(x)).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1)); });
+  // Si se ha ido el equilibrio que venía como rehabilitación (tobillo), vuelve al calentamiento (C-EDAD-1, S4).
+  ponerEquilibrio(S, s, ctx);
   // Tras acortar o quitar fuerza, vuelve la rehabilitación de las zonas B0-B1 que quitó el paso 4 si ahora cabe
   // (revisión del PR #45, M3).
   const reponer = () => zonas.forEach(z => {
     if (ctx.bandas[z].banda > 1 || deZona(z).length) return;
-    const c = candidatosRehab(S, z, ctx).filter(e => !s.ejercicios.some(y => y.id === e.id))[0]; if (!c) return;
+    const c = candidatosRehab(S, z, ctx).filter(e => !s.ejercicios.some(y => y.id === e.id) && !s.calentamiento.some(t => t.id === e.id))[0]; if (!c) return;
     const x = ejercicioRehab(S, c, z, ctx);
     conPrecaucion(S, x, ctx);
     if (T() + tiempoEj(x) <= limite) s.ejercicios.unshift(x);
