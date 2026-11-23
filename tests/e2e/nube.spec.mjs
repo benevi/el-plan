@@ -94,12 +94,12 @@ test('terminar sesión → copia en la nube → navegador limpio → restaurar c
   await q.fill('#n-frase', FRASE);
   await q.click('[data-act="nube.buscar"]');
   await expect(q.locator('#n-lista li')).toHaveCount(2);
-  await expect(q.locator('#n-lista li').first()).toContainText('✓ 1 sesiones');
+  await expect(q.locator('#n-lista li').first()).toContainText('✓ 1 sesión');
   await expect(q.locator('#n-lista li').nth(1)).toContainText('✓ 0 sesiones');
   await q.locator('[data-act="nube.restaurarCon"]').first().click();
   // Antes de cargar, enseña lo que hay dentro (metadatos cifrados en la copia).
   await expect(q.locator('.hoja')).toContainText('Copia de Víctor');
-  await expect(q.locator('.hoja')).toContainText('1 sesiones');
+  await expect(q.locator('.hoja')).toContainText('1 sesión');
   await q.click('.hoja [data-r="1"]'); // «Restaurar»
   await expect(q.locator('#aviso')).toContainText('Copia de la nube cargada');
   const despues = await q.evaluate(() => JSON.parse(localStorage.getItem('pipos4')));
