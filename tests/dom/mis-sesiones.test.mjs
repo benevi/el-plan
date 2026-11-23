@@ -31,6 +31,9 @@ async function reiniciar(datos) {
 const abrir = async () => {
   const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.doc.querySelector('#vista').append(b);
   a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja.checkin'));
+  // Check-in de un toque (M21): para tocar lugar, tiempo, energía o dolor, «Algo ha cambiado».
+  const cmp = a.doc.querySelector('[data-act="entrenador.ciCompleto"]');
+  if (cmp) { a.clic(cmp); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); }
 };
 const pulsada = () => a.doc.querySelector('[data-act="entrenador.ciMia"][aria-pressed="true"]').dataset.v;
 const lugarOn = () => a.doc.querySelector('[data-act="entrenador.ci"][data-k="lugar"].on').dataset.v;

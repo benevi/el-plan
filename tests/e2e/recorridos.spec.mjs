@@ -320,6 +320,14 @@ async function abrirCheckin(page) {
   const b = page.locator('#vista [data-act="entrenador.prepararHoy"]').first();
   await b.click();
   await expect(page.locator('.hoja.checkin-pantalla h2')).toHaveText('Antes de empezar');
+  // Check-in de un toque (M21, C-CHECK-1): la casilla de alarma a la vista y «Algo ha cambiado» para el completo.
+  // Con una ficha a 7 o más, o un dolor de hoy de 7 o más, el completo sale directo (C-DOLOR-0).
+  if (await page.locator('.hoja.checkin-toque').count()) {
+    await expect(page.locator('.hoja [data-cambio="entrenador.ciAlarma"]')).toBeVisible();
+    await expect(page.locator('.hoja [data-act="entrenador.crearHoy"]')).toHaveText('Todo bien, empezar');
+    await page.click('.hoja [data-act="entrenador.ciCompleto"]');
+    await expect(page.locator('.hoja.checkin-toque')).toHaveCount(0);
+  }
 }
 async function prepararDesdeCheckin(page) {
   await page.click('.hoja [data-act="entrenador.crearHoy"]');

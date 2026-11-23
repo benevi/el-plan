@@ -69,7 +69,7 @@ export function restriccionesSalud(S) {
   }
   if (+s.posparto > 0) {
     const tope = s.cesarea ? 8 : 6;
-    if (+s.posparto < tope) suave(`Parto hace ${+s.posparto} semanas: de momento caminar, respiración, suelo pélvico y movilidad.`);
+    if (+s.posparto < tope) suave(`Parto hace ${+s.posparto} semana${+s.posparto === 1 ? '' : 's'}: de momento caminar, respiración, suelo pélvico y movilidad.`);
     if (+s.posparto < 12) { r.sinImpacto = true; fuera(IMPACTO); }
     fuera(ABDOMINALES_FLEXION);
   }

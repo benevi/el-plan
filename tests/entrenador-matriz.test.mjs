@@ -47,7 +47,7 @@ for (const [camino, filas] of [['reglas', FILAS], ['IA simulada', FILAS_IA]]) {
     assert.deepEqual(fallan(filas, f => new Set(f.sesion.ejercicios.map(x => x.id)).size !== f.sesion.ejercicios.length), []);
   });
   test(`C-TIEMPO-1 (${camino}): el tiempo estimado no pasa de lo pedido + 10 % salvo el último recurso explicado`, () => {
-    const mal = filas.filter(f => ent.tiempoSesion(f.sesion) > pedidos(f) * 1.1 && !f.sesion.explicacion.some(t => /no caben tu cardio/.test(t))).map(f => `${f.nombre}: ${ent.tiempoSesion(f.sesion)} min`);
+    const mal = filas.filter(f => ent.tiempoSesion(f.sesion) > pedidos(f) && !f.sesion.explicacion.some(t => /no caben tu cardio/.test(t))).map(f => `${f.nombre}: ${ent.tiempoSesion(f.sesion)} min`);
     assert.equal(mal.length, 0, ejemplo(mal));
   });
 }

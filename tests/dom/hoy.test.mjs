@@ -29,6 +29,9 @@ const conPlan = (extra = {}) => {
 const abrirCheckin = async () => {
   const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.vista().append(b);
   a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.crearHoy"]'));
+  // Check-in de un toque (M21): para tocar lugar, tiempo o dolor, «Algo ha cambiado».
+  const cmp = a.doc.querySelector('[data-act="entrenador.ciCompleto"]');
+  if (cmp) { a.clic(cmp); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); }
 };
 
 test('R20: una sesión de anteayer sin cerrar sale en Hoy con «Cerrarla» y «Descartarla» (que pregunta y la borra)', async () => {

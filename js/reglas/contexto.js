@@ -371,9 +371,9 @@ export function medidorNivel(S) {
   const dolorAlto = S.dolor.some(d => +d.dolor >= 4 && ahora - tFecha(d.fecha) <= 56 * DIA)
     || hechas.some(s => ahora - new Date(s.terminada || s.fecha) <= 56 * DIA && s.checkin && Object.values(s.checkin.dolor || {}).some(v => +v >= 4));
   const criterios = nivel === 1
-    ? [['8 semanas entrenando', semanasEntrenando >= 8, `${semanasEntrenando} semanas`], ['6 de las últimas 8 semanas con 2 sesiones o más', semanasActivas >= 6, `${semanasActivas} de 8`], ['4 ejercicios mejorados un 10 % o más', mejoran >= 4, `${mejoran}`]]
+    ? [['8 semanas entrenando', semanasEntrenando >= 8, `${semanasEntrenando} semana${semanasEntrenando === 1 ? '' : 's'}`], ['6 de las últimas 8 semanas con 2 sesiones o más', semanasActivas >= 6, `${semanasActivas} de 8`], ['4 ejercicios mejorados un 10 % o más', mejoran >= 4, `${mejoran}`]]
     : nivel === 2
-      ? [['12 meses entrenando', semanasEntrenando >= 52, `${semanasEntrenando} semanas`], ['6 de las últimas 8 semanas con 3 sesiones o más', semanasActivas >= 6, `${semanasActivas} de 8`], ['8 ejercicios mejorados un 25 % o más', mejoranMucho >= 8, `${mejoranMucho}`], ['Ninguna zona con dolor 4 o más en 8 semanas', !dolorAlto, dolorAlto ? 'con dolor' : 'sin dolor']]
+      ? [['12 meses entrenando', semanasEntrenando >= 52, `${semanasEntrenando} semana${semanasEntrenando === 1 ? '' : 's'}`], ['6 de las últimas 8 semanas con 3 sesiones o más', semanasActivas >= 6, `${semanasActivas} de 8`], ['8 ejercicios mejorados un 25 % o más', mejoranMucho >= 8, `${mejoranMucho}`], ['Ninguna zona con dolor 4 o más en 8 semanas', !dolorAlto, dolorAlto ? 'con dolor' : 'sin dolor']]
       : [];
   let sugerido = nivel, motivo = '';
   if (nivel > 1 && diasSinEntrenar != null && diasSinEntrenar >= 56) { sugerido = nivel - 1; motivo = `Llevas ${semanasSinEntrenar} semanas sin entrenar: se vuelve un nivel más abajo para retomar con cuidado.`; }

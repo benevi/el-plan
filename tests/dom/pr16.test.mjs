@@ -261,6 +261,7 @@ test('check-in de una mía en Casa con el perfil en gimnasio y piscina: ofrece y
   await a.ir('hoy');
   const bt = a.doc.createElement('button'); bt.dataset.act = 'entrenador.prepararHoy'; a.vista().append(bt);
   a.clic(bt); await a.esperar(() => $('.hoja.checkin'));
+  a.clic('[data-act="entrenador.ciCompleto"]'); await a.esperar(() => $('.hoja.checkin [data-act="entrenador.ci"]')); // M21: «Algo ha cambiado»
   a.clic('[data-act="entrenador.ciMia"][data-v="mc"]'); await a.tic();
   const casa = $('[data-act="entrenador.ci"][data-k="lugar"][data-v="casa"]');
   assert.ok(casa, 'el check-in no ofrece Casa');

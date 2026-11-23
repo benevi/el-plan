@@ -8,7 +8,7 @@ import { montar } from '../ayuda/dom.mjs';
 let llamadas = 0;
 const T = (n, d = '5 min') => ({ id: '', nombre: n, detalle: '', duracion: d });
 const E = id => ({ id, rol: 'principal', series: 3, reps: '8-12', descanso: 90, kg: 0, nota: 'Nota suficientemente larga para no ser genérica, con 30 kg.' });
-const BUENA = { nombre: 'Torso de la IA', foco: 'x', cambios: [], explicacion: ['Hoy torso.'], calentamiento: [T('Bici'), T('Movilidad')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')], vueltaCalma: [T('Estirar pecho', '1 min'), T('Estiramiento de cuádriceps', '1 min')] };
+const BUENA = { nombre: 'Cuerpo completo de la IA', foco: 'x', cambios: [], explicacion: ['Hoy torso.'], calentamiento: [T('Bici'), T('Movilidad')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')], vueltaCalma: [T('Estirar pecho', '1 min'), T('Estiramiento de cuádriceps', '1 min')] };
 const a = await montar({
   ls: { pipos4: estadoBase() }, hash: 'hoy',
   antes: () => { globalThis.fetch = async () => { llamadas++; return new Response(JSON.stringify({ sesion: BUENA }), { headers: { 'content-type': 'application/json' } }); }; },

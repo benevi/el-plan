@@ -339,7 +339,7 @@ export function avisoSustituyeApartado() {
   const a = cargarSustituyeApartado() && apartado;
   if (!a) return '';
   const f = a.fecha ? new Date(a.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} sesiones) se sustituirán por lo de ahora.`;
+  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} ${+a.sesiones === 1 ? 'sesión' : 'sesiones'}) se sustituirán por lo de ahora.`;
 }
 // Al cargar una copia, lo de ahora se aparta ya (en pipos4-conflicto, sin esperar) o, si no cabe, en el espejo.
 // Devuelve dónde: 'local' o 'espejo'.

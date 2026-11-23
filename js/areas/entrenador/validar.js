@@ -21,7 +21,7 @@
 //     aislamientos ≥ 8 (≥ 12 en hombro, C-DOSIS-3), descanso mínimo (C-PAUSA-1), kg nulo sin historial (C-PROG-1).
 //  7. Calentamiento (≥ 2 tareas con nombre, C-CAL-2) y vuelta (≥ 2 tareas y un estiramiento, C-VUELTA-1),
 //     cada tarea con id válida para el lugar y el dolor (C-EST-4).
-//  8. Tiempo ≤ pedido + 10 % con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
+//  8. Tiempo ≤ pedido (C-TIEMPO-1, decisión de Víctor del 23-11-2026) con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
 
 import { ex, hayMaterial, puntosTipo } from '../../reglas/catalogo.js';
 import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga, topeSeries } from '../../reglas/progresion.js';
@@ -40,6 +40,9 @@ export const ULTIMO_RECURSO = 'último recurso';
 // Nota de técnica de un principal de nivel superior que se mantiene en una de «Mis sesiones» (C-MIA-2).
 export const NOTA_NIVEL = 'Es de un nivel más alto que el tuyo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
 // Nota de un principal de nivel superior porque no hay otro de su nivel para ese músculo (C-DOSIS-10).
+// C-TIEMPO-1 (decisión de Víctor del 23-11-2026, «nunca más de lo pedido»): la sesión entera cabe en los minutos
+// pedidos, sin el +10 % de antes. Una de «Mis sesiones» no se recorta (C-MIA-1) y se avisa si pasa.
+export const topeMinutos = minutos => +minutos || 0;
 export const NOTA_SIN_NIVEL = 'Aquí no hay otro de tu nivel para este músculo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
 // La explicación lleva el último recurso (y así el validador acepta menos de 3 principales, C-TIEMPO-2).
 export const esUltimoRecurso = t => /\(último recurso\)|no caben tu cardio/.test(String(t));
@@ -206,12 +209,17 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
     // enteros: el paso 4 de C-TIEMPO-2 la quita antes de acortarlos (paso 5), así que no es un fallo (S5).
     const tEntero = tiempoEjercicios(ejs) + Math.max(minutosTareas(sesion.calentamiento) ?? 8, minutosCalentamiento(S, ctx)) + Math.max(minutosTareas(sesion.vuelta) ?? 5, minutosVuelta(S, ctx));
     zonasRehab(ctx).forEach(z => {
-      const c = candidatosRehab(S, z, ctx);
-      if (!c.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
-      const cabe = tEntero + tiempoEj(ejercicioRehab(S, c[0], z, ctx)) <= ctx.minutos * 1.1;
+      // Los mismos candidatos que repone ajustarTiempo: ni los que ya van en la sesión ni en el calentamiento
+      // (matriz de la revisión del PR #53: la movilidad de tobillo del calentamiento contaba como «cabe»).
+      const todos = candidatosRehab(S, z, ctx);
+      if (!todos.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
+      const c = todos.filter(e => !ejs.some(y => y.id === e.id) && !(sesion.calentamiento || []).some(t => t.id === e.id));
+      const cabe = !!c.length && tEntero + tiempoEj(ejercicioRehab(S, c[0], z, ctx)) <= topeMinutos(ctx.minutos);
       if (ctx.bandas[z].banda >= 2 || cabe) out.push(`sin rehabilitación de ${z}`);
     });
-    if (tiempoSesionExacto(sesion) > ctx.minutos * 1.1 + 0.5 && !ultimo) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
+    // Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa al prepararla, pero no es un fallo.
+    const mia = !!(sesion.origen && sesion.origen.tipo === 'mia');
+    if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ultimo && !mia) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
   }
   return out;
 }
@@ -375,7 +383,12 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // La nota es la del cardio que va (S17), no la del primero de la lista.
     // Una nota sin la intensidad (C-CARDIO-4) también es la de la regla.
     const sinIntensidad = !/rpe|esfuerzo|de 10\b|hablar|frases/i.test(String(cardio.nota || ''));
-    if (!cardio.nota || sinIntensidad || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
+    // Ni «a tope» ni «sprint»: lo fuerte de los intervalos es un 7 de 10 (C-CARDIO-4; verificación del 22-11).
+    // Lo negado («nunca a tope», «sin sprints», «nada de ir a tope») no cuenta (revisión del PR #53).
+    const notaN = String(cardio.nota || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const maximo = [...notaN.matchAll(/a tope|sprint|al maximo|a muerte|todo lo que puedas|(?:9|10) de 10|rpe ?(?:9|10)\b/g)]
+      .some(m => !/\b(?:nunca|sin|nada de|no)\b[^.,;:]{0,12}$/.test(notaN.slice(0, m.index)));
+    if (!cardio.nota || sinIntensidad || maximo || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
     if (combinado) {
       const encadenado = lugar === 'casa' || lugar === 'calle';
       const frase = encadenado
@@ -505,14 +518,32 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (app) return { ...t, ...app, id: undefined };
     const e = porNombre(t.nombre);
     if (e) return deTarea.has(e.id) ? { ...t, id: e.id } : fueraDeTarea(e, t);
-    if (conZonas) { descartadas++; return null; }
-    return { ...t, id: undefined };
+    // Sin casar con nada que la app sepa comprobar: con o sin zonas activas, su hueco lo ocupa una tarea de la
+    // app (verificación del 22-11: «Burpees» sin zonas se quedaba tal cual, con el detalle de la IA).
+    descartadas++;
+    return { hueco: true };
   }).filter(Boolean).filter(t => {
+    if (t.hueco) return true;
     if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) { cambios.push(`quito ${nombre(ex(t.id))} ${donde}: ${motivoNoVale(S, ex(t.id), ctx) || 'hoy no va con tu dolor o no se hace en este lugar'}`); return false; }
     if (!(t.id && ex(t.id)) && t.nombre && !tareaSinIdOk(S, t, ctx)) { cambios.push(`quito «${String(t.nombre).slice(0, 40)}» ${donde}: hoy no va con tu dolor`); return false; }
     return true;
-  }).map(t => ({ ...t, nombre: t.nombre || ex(t.id).n }));
+  }).map(t => (t.hueco ? t : { ...t, nombre: t.nombre || ex(t.id).n }));
+  // Cada hueco, con una tarea de la app de ese bloque que no esté ya (sin aproximación: esa va aparte).
+  // Sin repetidos (por id o por nombre; revisión del PR #53).
+  const igual = (a, b) => a.nombre === b.nombre || (!!a.id && a.id === b.id);
+  const sinRepetir = l => l.filter((t, i) => !l.slice(0, i).some(y => igual(y, t)));
+  const rellenar = (l, base) => {
+    const pool = sinRepetir(base).filter(t => !RE_APROXIMACION.test(String(t.nombre || '').trim()) && !l.some(y => !y.hueco && igual(y, t)));
+    return sinRepetir(l.flatMap(t => (!t.hueco ? [t] : pool.length ? [pool.shift()] : [])));
+  };
   s.calentamiento = limpiar(s.calentamiento, 'del calentamiento');
+  if (s.calentamiento.some(t => t.hueco)) {
+    // Si al rellenar queda más pobre que el de la app (sin la movilidad de la zona o la aproximación, C-CAL-2),
+    // va el de la app entero, como antes del PR #53.
+    const app = calentamientoDe(S, ctx, principales());
+    const relleno = rellenar(s.calentamiento, app);
+    s.calentamiento = relleno.length < app.length ? app : relleno;
+  }
   // La aproximación de la IA es la del primer compuesto que de verdad queda en la sesión (C-CAL-2), con el texto de
   // la app (porcentajes con kilos apuntados; si no, series de prueba); sin compuesto no hay aproximación.
   if (deIA) {
@@ -533,18 +564,21 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (/%/.test(t.detalle || '') && !principales().some(e => conKg.has(e.id))) { t.nombre = 'Series de prueba'; t.detalle = '1 × 10 muy ligera y 1 × 5 algo más pesada del primer ejercicio, para elegir el peso de hoy.'; }
   });
   s.vuelta = limpiar(s.vuelta || s.vueltaCalma, 'de la vuelta a la calma');
+  if (s.vuelta.some(t => t.hueco)) s.vuelta = rellenar(s.vuelta, vueltaDe(S, ctx, principales()));
   delete s.vueltaCalma;
-  if (!s.vuelta.some(esEstiramiento)) {
-    s.vuelta = [...vueltaDe(S, ctx, principales()).filter(esEstiramiento).slice(0, 2), ...s.vuelta];
+  // La flotación relaja pero no estira: la vuelta lleva un estiramiento de verdad (C-VUELTA-1, revisión del PR #53).
+  const estiraDeVerdad = t => esEstiramiento(t) && !/flotaci/i.test(`${t.nombre || ''} ${t.id || ''}`);
+  if (!s.vuelta.some(estiraDeVerdad)) {
+    s.vuelta = sinRepetir([...vueltaDe(S, ctx, principales()).filter(estiraDeVerdad).slice(0, 2), ...s.vuelta]);
     cambios.push('añado estiramientos a la vuelta a la calma, que siempre los lleva');
   }
   if (s.vuelta.length < 2) s.vuelta.push({ nombre: 'Respiración', detalle: respiracionDe(ctx), duracion: '1 min' });
   if (noSonTarea.length) cambios.push(`quito ${lista([...new Set(noSonTarea)])} del calentamiento o la vuelta: no ${noSonTarea.length > 1 ? 'son tareas' : 'es una tarea'} de calentar o estirar`);
-  if (descartadas) cambios.push(`cambio ${descartadas} tarea${descartadas > 1 ? 's' : ''} de calentamiento o vuelta que no puedo comprobar con tu lesión por las de la app`);
+  if (descartadas) cambios.push(`cambio ${descartadas} tarea${descartadas > 1 ? 's' : ''} de calentamiento o vuelta que no puedo comprobar${conZonas ? ' con tu lesión' : ''} por las de la app`);
   s.ejercicios = ejs;
   let notas = notasSalud(s, ctx);
 
-  // 8. Tiempo ≤ pedido + 10 % (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
+  // 8. Tiempo ≤ pedido (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
   const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
   // Lo que el ajuste de tiempo deshace no se cuenta como hecho (ronda del 23-11, CR-26): si los principales que
   // se añadieron ya no están, fuera el «añado …»; sin ningún principal, fuera también las «series menos».
@@ -610,7 +644,7 @@ const antagonistas = (a, b) => !!a && !!b && !!GRUPO[a.m[0]] && CONTRARIO[GRUPO[
 
 // Orden para cuadrar el tiempo (C-TIEMPO-2). Devuelve el texto del último recurso si se ha usado.
 function ajustarTiempo(S, s, ctx, cambios) {
-  const limite = ctx.minutos * 1.1;
+  const limite = topeMinutos(ctx.minutos);
   const T = () => tiempoSesionExacto(s);
   if (T() <= limite) return null;
   const prin = () => s.ejercicios.filter(x => x.rol === 'principal');
