@@ -28,7 +28,7 @@ import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga, topeSer
 import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, faseDeBanda, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
-  calentamientoDe, vueltaDe, tiempoSesionExacto, tareaSinIdOk, porNombre, tiempoEj, notaCardio, tiempoEjercicios, minutosTareas, minutosCalentamiento, minutosVuelta, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
+  calentamientoDe, vueltaDe, tiempoSesionExacto, tareaSinIdOk, porNombre, tareaLibreConocida, RE_APROXIMACION, aproximacionDe, tiempoEj, notaCardio, tiempoEjercicios, minutosTareas, minutosCalentamiento, minutosVuelta, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
   sincronizarDosis, techoDolor, noSabeNadar, CARDIO_ULTIMO,
 } from './dia.js';
 import { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
@@ -340,8 +340,17 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   // 4. Cardio: uno, válido, con los minutos mínimos de D3 (nunca menos, C-CARDIO-2).
   const regla = reglaCardio(S, lugar, { minutos, energia: ctx.energia, bandas: ctx.bandas });
   const cardios = ejs.filter(x => x.rol === 'cardio');
-  cardios.slice(1).forEach(x => { ejs.splice(ejs.indexOf(x), 1); });
   const cardio = cardios[0];
+  // Un solo ejercicio de cardio con todos los minutos: si vienen dos o más (un bloque encadenado, C-CARDIO-5), sus
+  // minutos se suman al primero y la nota dice con qué alterna (antes se perdían y el cardio quedaba por debajo).
+  if (cardios.length > 1) {
+    const minutosDe = x => { const t = String(x.reps == null ? '' : x.reps).trim(); return /^\d+(?:[.,]\d+)?$/.test(t) ? +t.replace(',', '.') : minDe(normalizarReps(ex(x.id), t) || ''); };
+    const total = Math.round(cardios.reduce((t, x) => t + minutosDe(x), 0));
+    const otros = cardios.slice(1).map(x => nombre(ex(x.id)));
+    cardios.slice(1).forEach(x => { ejs.splice(ejs.indexOf(x), 1); });
+    if (total > 0) cardio.reps = `${total} min`;
+    cardio.nota = `${String(cardio.nota || '').trim()} Alterna con ${lista(otros)} cada 1-3 min, sin parar.`.trim().slice(0, 300);
+  }
   // La marcha sentada solo si no vale otro cardio (S7), también si la trae la IA (revisión del PR #48, M1).
   if (cardio && CARDIO_ULTIMO.includes(cardio.id) && !ctxIn.mia) {
     const mejor = opcionesCardio(S, ctx).find(e => !CARDIO_ULTIMO.includes(e.id) && !ejs.some(y => y.id === e.id));
@@ -462,15 +471,18 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   const principales = () => ejs.filter(x => x.rol === 'principal').map(x => ex(x.id));
   const tareaValida = t => t && typeof t === 'object' && (t.nombre == null || typeof t.nombre === 'string') && (t.nombre || (t.id && ex(t.id)));
   // Tareas sin id (la IA las manda así): se busca su ejercicio por el nombre; si no casa y hay zonas activas,
-  // la tarea de la IA no se puede comprobar y se cambia por las de las reglas (C-EST-4, B3).
+  // la tarea de la IA no se puede comprobar y se cambia por las de las reglas (C-EST-4, B3). Las que escribe la
+  // propia app sin id (respiración, series de aproximación o de prueba, estiramientos libres y textos de la ficha)
+  // sí se pueden comprobar: se quedan si valen hoy (ronda real del 23-11: 20 de 48 sesiones perdían así tareas buenas).
   const conZonas = Object.keys(ctx.bandas).length > 0;
   const deIA = ctxIn.origen === 'ia';
   let descartadas = 0;
   const limpiar = (l, donde) => (Array.isArray(l) ? l : []).filter(tareaValida).map(t => {
     if (!deIA || (t.id && ex(t.id))) return t;
+    if (RE_APROXIMACION.test(String(t.nombre || '').trim())) return { ...t, id: undefined };
     const e = porNombre(t.nombre);
     if (e) return { ...t, id: e.id };
-    if (conZonas) { descartadas++; return null; }
+    if (conZonas && !tareaLibreConocida(t)) { descartadas++; return null; }
     return { ...t, id: undefined };
   }).filter(Boolean).filter(t => {
     if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) { cambios.push(`quito ${nombre(ex(t.id))} ${donde}: ${motivoNoVale(S, ex(t.id), ctx) || 'hoy no va con tu dolor o no se hace en este lugar'}`); return false; }
@@ -478,6 +490,18 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     return true;
   }).map(t => ({ ...t, nombre: t.nombre || ex(t.id).n }));
   s.calentamiento = limpiar(s.calentamiento, 'del calentamiento');
+  // La aproximación de la IA es la del primer compuesto que de verdad queda en la sesión (C-CAL-2), con el texto de
+  // la app (porcentajes con kilos apuntados; si no, series de prueba); sin compuesto no hay aproximación.
+  if (deIA) {
+    const primero = principales().find(e => tipoEj(e) === 'compuesto');
+    let puesta = false;
+    s.calentamiento = s.calentamiento.flatMap(t => {
+      if (!RE_APROXIMACION.test(String(t.nombre || '').trim())) return [t];
+      if (!primero || puesta) return [];
+      puesta = true;
+      return [{ ...aproximacionDe(S, primero), duracion: t.duracion }];
+    });
+  }
   if (s.calentamiento.length < 2) { s.calentamiento = calentamientoDe(S, ctx, principales()); cambios.push('añado el calentamiento, que siempre va'); }
   ponerEquilibrio(S, s, ctx, ejs);
   // Sin historial no hay porcentajes: series de prueba (C-CAL-2).

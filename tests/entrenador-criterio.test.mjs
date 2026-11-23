@@ -665,3 +665,55 @@ test('M5: una tarea cuyo nombre no es texto se descarta', () => {
   const { v } = vIA({ objetivos: ['musculo'] }, { ejercicios: IA3, calentamiento: [null, { nombre: { a: 1 } }, { nombre: 5 }], vuelta: [{ nombre: ['estiramiento'] }] });
   assert.ok([...v.sesion.calentamiento, ...v.sesion.vuelta].every(t => typeof t.nombre === 'string'));
 });
+
+// ── Ronda real de la IA del 23-11 (20 de 48 sesiones perdían tareas buenas; CR-06 perdía su bloque encadenado) ──
+test('C-EST-4, C-CAL-2 (ronda del 23-11): con zonas activas, la respiración y la aproximación sin id de la IA se quedan', () => {
+  const { S, v } = vIA({ objetivos: ['musculo'], lesiones: [L('hombro', 2)] }, {
+    ejercicios: IA3,
+    calentamiento: [{ id: 'bici-estatica', nombre: 'Bici', detalle: 'Suave.', duracion: '4 min' }, T('Aproximación al press de pecho'), T('Activación inventada sin ficha')],
+    vuelta: [{ id: 'estiramiento-pectoral-puerta', nombre: 'Pecho', detalle: '', duracion: '1 min' }, { ...T('Respiración lenta'), detalle: 'Tumbado boca arriba, 6 respiraciones.' }],
+  }, { dolorHoy: { hombro: 2 } });
+  // La aproximación es la del primer compuesto que queda (con el hombro activo, la prensa va delante del press,
+  // C-DOSIS-4), con el texto de la app (sin kilos apuntados: series de prueba).
+  const ap = v.sesion.calentamiento.find(t => /series de prueba/i.test(t.nombre));
+  assert.ok(ap, v.sesion.calentamiento.map(t => t.nombre).join(', '));
+  assert.match(ap.detalle, /^Prensa de piernas: 1 × 10 muy ligera/);
+  assert.ok(v.sesion.vuelta.some(t => /^Respiración lenta$/.test(t.nombre)));
+  // Lo que la app no sabe comprobar sigue fuera, y se dice.
+  assert.ok(!v.sesion.calentamiento.some(t => /inventada/.test(t.nombre)));
+  assert.ok(v.cambios.some(c => /1 tarea de calentamiento o vuelta que no puedo comprobar/.test(c)), v.cambios.join(' | '));
+  sinProblemas(S, v.sesion, ci({ dolorHoy: { hombro: 2 } }));
+});
+
+test('C-EST-4 (ronda del 23-11): en la calle, la respiración tumbado de la IA no vale; de pie, sí', () => {
+  const c = { lugar: 'calle', minutos: 45, dolorHoy: { rodilla: 2 } };
+  const perfil = { objetivos: ['salud'], lugares: ['calle'], lesiones: [L('rodilla', 2)] };
+  const vuelta = det => [{ id: 'estiramiento-isquios-pie', nombre: 'Isquios de pie', detalle: '', duracion: '1 min' }, { ...T('Respiración'), detalle: det }];
+  let { v } = vIA(perfil, { ejercicios: [E('sentadilla-peso-corporal')], calentamiento: [T('Marcha'), T('Movilidad')], vuelta: vuelta('Tumbado en el suelo, 6 respiraciones.') }, c);
+  assert.ok(!v.sesion.vuelta.some(t => /tumbado/i.test(t.detalle || '')), JSON.stringify(v.sesion.vuelta));
+  ({ v } = vIA(perfil, { ejercicios: [E('sentadilla-peso-corporal')], calentamiento: [T('Marcha'), T('Movilidad')], vuelta: vuelta('De pie, 6 respiraciones lentas.') }, c));
+  assert.ok(v.sesion.vuelta.some(t => t.nombre === 'Respiración' && /De pie/.test(t.detalle)));
+});
+
+test('C-CAL-2 (ronda del 23-11): sin compuesto no hay aproximación; con kilos apuntados, porcentajes del primero', () => {
+  const sinCompuesto = vIA({ objetivos: ['musculo'] }, { ejercicios: [E('curl-mancuernas'), E('elevaciones-laterales', 'principal', { reps: '12-15' }), E('extension-cuadriceps')], calentamiento: [T('Bici'), T('Movilidad'), T('Series de aproximación')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] });
+  assert.ok(!sinCompuesto.v.sesion.calentamiento.some(t => /aproximaci|prueba/i.test(t.nombre)));
+  const S = nuevoS({ objetivos: ['fuerza'], nivel: 2 });
+  hecha(S, 3, [{ id: 'jalon-pecho', sets: [[45, 8], [45, 8]] }]);
+  const v = ent.validarSesion(S, { ejercicios: [E('jalon-pecho'), E('press-pecho-maquina'), E('prensa-piernas')], calentamiento: [T('Bici'), T('Series de prueba en jalón'), T('Aproximación otra vez')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] }, { lugar: 'gym', minutos: 60, origen: 'ia' });
+  const ap = v.sesion.calentamiento.filter(t => /aproximaci|prueba/i.test(t.nombre));
+  assert.equal(ap.length, 1);
+  assert.equal(ap[0].nombre, 'Series de aproximación');
+  assert.match(ap[0].detalle, /^Jalón.*1 × 8 al 50 % y 1 × 4 al 70 % y 1 × 2 al 85 %/);
+});
+
+test('C-CARDIO-5 (ronda del 23-11, CR-06): dos cardios de la IA se suman en uno y no se quedan por debajo del mínimo', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 1, lugares: ['casa'], materialCasa: [] });
+  const v = ent.validarSesion(S, { ejercicios: [E('sentadilla-peso-corporal', 'principal', { reps: '10-12' }), E('flexiones-inclinadas', 'principal', { reps: '10-12' }), E('puente-gluteo', 'principal', { reps: '12-15' }),
+    E('step-bajo', 'cardio', { reps: '8 min', nota: 'Bloque encadenado a RPE 4-5.' }), E('boxeo-sombra', 'cardio', { reps: '7 min' })], calentamiento: [T('Marcha'), T('Movilidad')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] }, { lugar: 'casa', minutos: 45, origen: 'ia' });
+  const cardios = v.sesion.ejercicios.filter(x => x.rol === 'cardio');
+  assert.equal(cardios.length, 1);
+  assert.equal(cardios[0].reps, '15 min');
+  assert.ok(!v.cambios.some(c => /el cardio sube/.test(c)), v.cambios.join(' | '));
+  assert.match(cardios[0].nota, /boxeo/i);
+});

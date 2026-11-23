@@ -414,9 +414,47 @@ export const tareaOk = (S, id, ctx) => { const e = ex(id); return !!e && permiti
 export function tareaSinIdOk(S, t, ctx) {
   const e = porNombre(t.nombre);
   if (e) return tareaOk(S, e.id, ctx);
+  // Respiración: tumbado no en la calle, en la piscina ni sin poder tumbarse por salud (C-EST-4, C-SALUD-0).
+  if (RE_RESPIRACION.test(String(t.nombre || '').trim()) && TUMBADO_TXT.test(String(t.detalle || '')) && (ctx.lugar === 'calle' || ctx.lugar === 'piscina' || ctx.salud.sinTumbado)) return false;
   const r = RIESGO_LIBRE[t.nombre];
   if (r && riesgoHoy({ id: '', r }, ctx.niveles, ctx.bandas) === 'evitar') return false;
   return !fichaLaQuita(ctx, t);
+}
+// Tareas sin id que la app escribe ella misma y sabe comprobar (C-CAL-2, C-VUELTA-1, C-EST-2): la respiración, las
+// series de aproximación o de prueba del primer compuesto, los estiramientos libres de pie o en el borde y los textos
+// de la ficha de cada zona. La IA puede mandarlas sin id; cualquier otra sin id solo vale si su nombre es el de un
+// ejercicio (porNombre).
+const RE_RESPIRACION = /^respiraci[oó]n\b/i;
+const TUMBADO_TXT = /tumbad|boca (arriba|abajo)|en el suelo|de rodillas|a cuatro patas/i;
+export const RE_APROXIMACION = /^(series de (aproximaci[oó]n|prueba)|aproximaci[oó]n)\b/i;
+const TEXTOS_FICHA = new Set(Object.values(ZONAS).flatMap(Z => Object.values((Z && Z.tareas) || {}).flat().map(t => t && t.texto).filter(Boolean)));
+export const tareaLibreConocida = t => {
+  const n = String((t && t.nombre) || '').trim();
+  return RE_RESPIRACION.test(n) || RE_APROXIMACION.test(n) || !!RIESGO_LIBRE[n] || n === ESTIRA_SUAVE[0] || TEXTOS_FICHA.has(n);
+};
+// Aproximación del primer compuesto con carga (C-CAL-2): con kilos apuntados, porcentajes; sin historial, series de prueba.
+export function aproximacionDe(S, primero) {
+  const conKg = conKgAntes(S, primero.id);
+  return conKg
+    ? { nombre: 'Series de aproximación', detalle: `${primero.n}: 1 × 8 al 50 % y 1 × 4 al 70 %${tiene(S, 'fuerza') ? ' y 1 × 2 al 85 %' : ''} de tu peso de trabajo.` }
+    : { nombre: 'Series de prueba', detalle: `${primero.n}: 1 × 10 muy ligera y 1 × 5 algo más pesada, para elegir el peso de hoy.` };
+}
+// Lo que vale hoy en el calentamiento y la vuelta a la calma, para que la IA lo pida por id (C-EST-4, C-EST-2, C-CAL-2):
+// ids: movilidad, cardio y natación que pasan tareaOk, y las tareas con id de la ficha de cada zona activa que su
+// banda deja; activacion: { zona: id } de su fase 1 (la que pone la app); sinId: los nombres sin id que la app sabe
+// comprobar. Como mucho 60 ids (el tope de una lista en el servidor): primero los de las zonas.
+export function tareasDelDia(S, ctx) {
+  const ids = [], activacion = {};
+  const poner = id => { if (id && !ids.includes(id)) ids.push(id); };
+  zonasRehab(ctx).filter(z => ZONAS[z]).forEach(z => {
+    const t = tareasFicha(z, 'calentar', detalleDe0(ctx, z)).find(t => t.id && t.uso === 'activacion' && usoOk(t.uso, ctx.bandas[z].banda) && tareaOk(S, t.id, ctx));
+    if (t) { activacion[z] = t.id; poner(t.id); }
+  });
+  Object.entries(ctx.bandas).filter(([z]) => ZONAS[z]).forEach(([z, b]) => ['calentar', 'estirar'].forEach(tipo =>
+    tareasFicha(z, tipo, (b.lesion || {}).detalle).filter(t => t.id && usoOk(t.uso, b.banda) && tareaOk(S, t.id, ctx)).forEach(t => poner(t.id))));
+  EJERCICIOS.filter(e => ['movilidad', 'cardio', 'natacion'].includes(e.m[0]) && e.niv <= ctx.nivel && tareaOk(S, e.id, ctx) && !(ctx.lugar === 'piscina' && noSabeNadar(S, e))).forEach(e => poner(e.id));
+  const sinId = ['Respiración', 'Series de aproximación', 'Series de prueba', ...libresDe(ctx.lugar).map(([n]) => n).filter(n => tareaSinIdOk(S, { nombre: n }, ctx))];
+  return { ids: ids.slice(0, 60), activacion, sinId };
 }
 // El ejercicio del catálogo que corresponde a un nombre de tarea (las tareas sin id de la IA o de la ficha).
 export const porNombre = n => { const k = normalizar(n).trim(); return k ? EJERCICIOS.find(e => normalizar(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizar(e.n).length >= 8 && k.includes(normalizar(e.n))) : null) : null; };
@@ -458,11 +496,7 @@ export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
     }
     if (act) { out.push({ ...(act.id ? { id: act.id } : {}), nombre: act.nombre, detalle: `Activación para tu ${nombreZona(z)}, sin dolor.`, duracion: '1 min' }); queda -= 1; }
     const primero = elegidos.find(e => tipoEj(e) === 'compuesto');
-    if (primero && queda > 0) {
-      const conKg = conKgAntes(S, primero.id);
-      const detalle = conKg ? `${primero.n}: 1 × 8 al 50 % y 1 × 4 al 70 %${tiene(S, 'fuerza') ? ' y 1 × 2 al 85 %' : ''} de tu peso de trabajo.` : `${primero.n}: 1 × 10 muy ligera y 1 × 5 algo más pesada, para elegir el peso de hoy.`;
-      out.push({ nombre: conKg ? 'Series de aproximación' : 'Series de prueba', detalle, duracion: `${queda} min` });
-    } else if (queda > 0) out[0].duracion = `${minDe(out[0].duracion) + queda} min`;
+    if (primero && queda > 0) out.push({ ...aproximacionDe(S, primero), duracion: `${queda} min` }); else if (queda > 0) out[0].duracion = `${minDe(out[0].duracion) + queda} min`;
   }
   return out;
 }
