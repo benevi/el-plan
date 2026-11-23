@@ -301,7 +301,7 @@ export default async function handler(req, res) {
   // ha costado nada: se devuelve al cupo (una sola vez).
   let devuelto = false;
   const devolver = () => { if (!devuelto) { devuelto = true; devolverCupo(modo).catch(() => {}); } };
-  const SIN_COSTE = new Set(['sobrecarga', 'conexion', 'ritmo', 'clave', 'permiso', 'saldo', 'cancelada']);
+  const SIN_COSTE = new Set(['sobrecarga', 'conexion', 'ritmo', 'clave', 'permiso', 'saldo', 'tope', 'cancelada']);
 
   // Una línea JSON por llamada a la IA, sin datos personales ni el cuerpo.
   const registro = { modo, esfuerzo: pruebas.esfuerzo || (modo === 'plan' ? 'medium' : body.planDeHoy ? 'low' : 'medium'), ids: ids.length, catalogoDescartados };
