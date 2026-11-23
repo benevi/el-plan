@@ -172,6 +172,7 @@ test('check-in: al tocar una opción, la hoja se repinta y el foco sigue en esa 
   await a.ir('hoy');
   const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.doc.querySelector('#vista').append(b);
   a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja.checkin'));
+  a.clic('[data-act="entrenador.ciCompleto"]'); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); // M21
   const sel = '.hoja [data-act="entrenador.ci"][data-k="minutos"][data-v="45"]';
   const chip = a.doc.querySelector(sel);
   chip.focus(); a.clic(chip); await a.tic();

@@ -384,7 +384,7 @@ export function normalizarEstado(x) {
       if (n && !sesiones[n.id]) sesiones[n.id] = n; else descartadas++;
     }
   }
-  if (descartadas) avisos.push(`${descartadas} sesiones con datos que no se entienden no se han traído`);
+  if (descartadas) avisos.push(`${descartadas} ${descartadas === 1 ? 'sesión con datos que no se entienden no se ha traído' : 'sesiones con datos que no se entienden no se han traído'}`);
   const porFecha = new Map();
   lista(x.medidas, 5000).map(medida).filter(Boolean).forEach(m => porFecha.set(m.fecha, m)); // una por día
   const a = esObjeto(x.ajustes) ? x.ajustes : {};

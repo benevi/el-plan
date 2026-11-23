@@ -8,8 +8,8 @@ import { tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas, semanaDescarga, seriesDescarga, lesionNueva, topeSeries } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
-import { validarSesion } from './validar.js';
-import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
+import { validarSesion, topeMinutos } from './validar.js';
+import { montarDia, objetivosDe, tiene, lista, minus, minusNombre, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
 
 const GRANDES = ['pecho', 'espalda', 'cuadriceps', 'gluteo', 'isquios', 'hombro'];
 const PEQUEÑOS = ['biceps', 'triceps', 'gemelo', 'core'];
@@ -92,7 +92,7 @@ export function ajustesPorTendencia(S) {
   if (t.perdidaRapida) out.notas.push('Estás bajando más de un 1 % de tu peso por semana: prioriza la fuerza y come algo más para no perder músculo.');
   const sube = t.dolor.filter(d => d.tendencia === 'sube');
   if (sube.length) { out.rehabExtra = true; out.notas.push(`El dolor de ${lista(sube.map(d => minus(d.nombre)))} ha subido estas dos semanas: más rehabilitación y menos carga en esa zona.`); }
-  if (t.constancia != null && t.constancia < 50 && sesionesHechas(S).length >= 4) out.notas.push(`Estas 4 semanas has hecho ${es(t.sesionesPorSemana)} sesiones por semana de ${S.perfil.disponibilidad.dias} previstas: mejor un plan realista que uno que no se cumple.`);
+  if (t.constancia != null && t.constancia < 50 && sesionesHechas(S).length >= 4) out.notas.push(`Estas 4 semanas has hecho ${es(t.sesionesPorSemana)} ${+t.sesionesPorSemana === 1 ? 'sesión' : 'sesiones'} por semana de ${S.perfil.disponibilidad.dias} previstas: mejor un plan realista que uno que no se cumple.`);
   return out;
 }
 
@@ -248,7 +248,7 @@ function añadirEjercicio(S, out, d, m, obj, vol) {
     if ([...e.m, ...(e.s || [])].some(mm => obj.musculos[mm] && (vol[mm] || 0) + series * (e.m.includes(mm) ? 1 : 0.5) > obj.musculos[mm].techo)) continue;
     if (e.m.some(mm => GRANDES.includes(mm) && directas(d, mm) + series >= 4 && vecinos(out, d).some(o => directas(o, mm) >= 4))) continue;
     const x = { id: e.id, rol: 'principal', ...dz, series };
-    if (tiempoSesionExacto(d) + tiempoEj(x) > (+d.minutos || 60) * 1.1) return false;
+    if (tiempoSesionExacto(d) + tiempoEj(x) > topeMinutos(+d.minutos || 60)) return false;
     x.nota = porQueEjercicio(S, e, { i: iPrin, d: x, an: {}, carga: {}, niveles: ctx.niveles, dolorHoy: {} });
     const pos = d.ejercicios.map(y => y.rol).lastIndexOf('principal') + 1;
     d.ejercicios.splice(pos, 0, x);
@@ -393,7 +393,7 @@ export function planReglas(S, semana, { hechas = [] } = {}) {
   const [lo, hi] = obj.banda;
   return {
     semana: semanaISO(), creado: new Date().toISOString(), fuente: 'reglas',
-    resumen: `${dias.length} días: ${lista(out.map(d => `${DIAS[d.diaSemana].toLowerCase()} (${d.nombre})`))}.${hechasTxt} Cada día se ajusta a tu check-in.`,
+    resumen: `${resumenDias(out)}${hechasTxt} Cada día se ajusta a tu check-in.`,
     criterios: [
       desc.toca && desc.motivo,
       `Reparto para ${dias.length} días y tus objetivos (${lista(objetivosDe(S).map(o => minus(OBJETIVOS[o].nombre)))}), con al menos 48 h entre sesiones que cargan el mismo músculo grande.`,
@@ -450,6 +450,8 @@ export const siguientePendiente = S => estadoDias(S).find(x => x.estado === 'pen
 // libres: días que aún puede entrenar (>= hoy). Mueve los pendientes en orden; si no caben, los rehace.
 // Sin ningún día libre no se borra nada: el plan sigue igual y se dice.
 // quitarHoy: viene de «Hoy no puedo»; si no queda ningún día libre, se apunta que hoy no se entrena (E13).
+// «2 días: lunes (Cuerpo completo A) y jueves (Cuerpo completo B).»
+const resumenDias = dias => `${dias.length} día${dias.length === 1 ? '' : 's'}: ${lista(dias.map(d => `${minus(DIAS[d.diaSemana])} (${minusNombre(d.nombre)})`))}.`;
 export function reorganizar(libres, { quitarHoy = false } = {}) {
   const S = estado(), p = planDeLaSemana(S); if (!p) return null;
   const hoy = diaSemana();
@@ -469,7 +471,7 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
       recortarDia(d, ch.m, 3);
     }
     const mov = pendientes.map((d, i) => [d, libres[i]]).filter(([d, n]) => d.diaSemana !== n);
-    nota = mov.length ? `Muevo ${lista(mov.map(([d, n]) => `${minus(DIAS[d.diaSemana])} (${minus(d.nombre)}) al ${minus(DIAS[n])}`))}.` : 'Todo sigue en su día.';
+    nota = mov.length ? `Muevo ${lista(mov.map(([d, n]) => `${minus(DIAS[d.diaSemana])} (${minusNombre(d.nombre)}) al ${minus(DIAS[n])}`))}.` : 'Todo sigue en su día.';
   } else {
     // No caben: con los días que quedan, cuerpo completo priorizando lo que aún no se ha trabajado esta semana.
     const trabajado = new Set(hechos.flatMap(d => d.ejercicios.filter(x => x.rol === 'principal' && ex(x.id)).map(x => ex(x.id).m[0])));
@@ -490,6 +492,8 @@ export function reorganizar(libres, { quitarHoy = false } = {}) {
     const pl = S2.plan;
     pl.dias = [...hechos.map(d => p.dias.find(x => x.diaSemana === d.diaSemana) || d), ...nuevos.map(({ estado: _e, sesion: _s, ...d }) => d)].sort((a, b) => a.diaSemana - b.diaSemana);
     pl.cambios = [...(pl.cambios || []), { fecha: new Date().toISOString(), texto: nota }];
+    // El resumen nombraba los días de antes (M15 del informe del 21-11): ahora dice los de ahora y lo que cambió.
+    pl.resumen = `${resumenDias(pl.dias)} ${nota} Cada día se ajusta a tu check-in.`;
     delete pl.iaFallo; // reorganizada a mano: «Reintentar con IA» ya no la pisaría (PR 12)
   }, 'plan');
   return nota;

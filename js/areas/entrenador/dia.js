@@ -75,6 +75,8 @@ export const esCompuesto = e => (e.s || []).length > 0 && !/aperturas|cruces|ele
 export const minDe = txt => { const r = rango(txt); return !r ? 0 : r.u === 'min' ? r.hi : r.u === 's' ? r.hi / 60 : 0; };
 export const lista = a => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1];
 export const minus = t => String(t || '').toLowerCase();
+// En minúsculas, pero la letra del día sigue en mayúscula: «cuerpo completo A» (M15 del informe del 21-11).
+export const minusNombre = t => minus(t).replace(/ ([a-z])$/, (_, l) => ' ' + l.toUpperCase());
 export const nombreZona = z => minus((ZONAS[z] || {}).corta || String(z).replace(/_/g, ' '));
 export const esEstiramiento = t => !!t && ((typeof t.nombre === 'string' && /estir|postura|flotaci/i.test(t.nombre)) || (typeof t.id === 'string' && /estiramiento|postura-nino|flotacion/.test(t.id)));
 // Edad en años a partir del año de nacimiento (null si no lo sabemos).
@@ -318,7 +320,7 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   const otroLugar = c => Object.entries(EN_LUGAR).some(([l, re]) => l !== ctx.lugar && re.test(c));
   const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(c => c && !otroLugar(c));
   if (cond) partes.push(cond);
-  if (S.perfil.lugares.includes('piscina') && ctx.lugar === 'gym') partes.push('Si os apetece, hacedlo en la piscina: nado suave o aquajogging');
+  if (S.perfil.lugares.includes('piscina') && ctx.lugar === 'gym') partes.push('Si te apetece, hazlo en la piscina: nado suave o aquajogging');
   return partes.map(frase).join(' ');
 }
 
@@ -549,7 +551,8 @@ export function vueltaDe(S, ctx, elegidos = [], { total } = {}) {
 }
 
 // ── Por qué de cada ejercicio: corto y con sus datos, nunca una frase genérica ──
-export const frase = t => { t = String(t || '').trim(); return t ? t[0].toUpperCase() + t.slice(1) + (/[.!?»)]$/.test(t) ? '' : '.') : ''; };
+// Tras un paréntesis también va punto (M15: «(puedes hablar con frases completas) Si te apetece…»).
+export const frase = t => { t = String(t || '').trim(); return t ? t[0].toUpperCase() + t.slice(1) + (/(?:[.!?»]|[.!?]\))$/.test(t) ? '' : '.') : ''; };
 const POR_QUE_FUERA = { estancado: 'llevaba 4 sesiones sin mejorar', molesta: 'te ha molestado', rechazado: 'no lo quieres' };
 const OBJ_CORTO = { perder: 'perder grasa', musculo: 'ganar músculo', fuerza: 'ganar fuerza', resistencia: 'resistencia', salud: 'salud y movilidad', natacion: 'nadar mejor' };
 const objsTxt = S => lista(objetivosDe(S).map(o => OBJ_CORTO[o] || minus(OBJETIVOS[o] ? OBJETIVOS[o].nombre : o)));
@@ -749,6 +752,28 @@ export function resumenDia(S, c) {
   let t = partes.length > 1 ? `${partes[0]}, con ${lista(partes.slice(1))}` : partes[0];
   if (cambiados.length) t += `; dejo fuera ${lista(cambiados.slice(0, 2))} por cómo te ha ido`;
   return frase(t);
+}
+
+// El nombre que pone la IA no puede contradecir lo que lleva la sesión (verificación del 22-11: «Torso» con la
+// prensa de piernas daba «Torso (pecho, espalda y cuádriceps)»). Si dice solo tren superior y hay un principal de
+// pierna, o al revés, pasa a «Cuerpo completo».
+const INFERIOR = ['gluteo', 'cuadriceps', 'isquios', 'gemelo'];
+const sinTildes = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+export function nombreCoherente(nombre, ejercicios) {
+  const t = sinTildes(nombre);
+  if (/completo|full/.test(t)) return nombre;
+  const dice = { sup: /torso|superior|empuje|tiron|pecho|espalda|brazo|hombro/.test(t), inf: /pierna|inferior|gluteo|cuadriceps|isquio/.test(t) };
+  if (dice.sup === dice.inf) return nombre;
+  // Revisión del PR #53: la cadena posterior que también trabaja la espalda (peso muerto rumano, extensión a 45°)
+  // cuadra con «Espalda» o «Tirón»; y solo choca si hay 2 principales del otro tren o más que del nombrado.
+  const posterior = /espalda|tiron/.test(t);
+  const prin = (ejercicios || []).filter(x => x && x.rol === 'principal' && ex(x.id)).map(x => ex(x.id))
+    .filter(e => !(posterior && INFERIOR.includes(e.m[0]) && (e.s || []).includes('espalda')));
+  const delOtro = prin.filter(e => (dice.sup ? INFERIOR : SUPERIOR).includes(e.m[0])).length;
+  const delSuyo = prin.filter(e => (dice.sup ? SUPERIOR : INFERIOR).includes(e.m[0])).length;
+  if (!(delOtro >= 2 || delOtro > delSuyo)) return nombre;
+  const letra = String(nombre || '').trim().match(/ ([A-Z])$/);
+  return 'Cuerpo completo' + (letra ? ' ' + letra[1] : '');
 }
 
 // ── Tiempo (C-TIEMPO-1) ──

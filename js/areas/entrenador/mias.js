@@ -17,6 +17,7 @@ import { topeSeries } from '../../reglas/progresion.js';
 import { LUGARES } from '../../datos/constantes.js';
 import { tiempoSesion, dosis } from './dia.js';
 import { ajustarAlCheckin } from './checkin.js'; // solo dentro de funciones (checkin.js también importa de aquí)
+import { topeMinutos } from './validar.js';
 
 export const MAX_MIAS = 30;
 export const LARGO_NOMBRE_MIA = 40;
@@ -144,7 +145,7 @@ export function minutosMia(S, mia) {
     if (!r || !r.datos || !r.datos.origen || r.datos.origen.tipo !== 'mia') break; // día suave por salud: no es la mía
     dura = tiempoSesion(r.datos);
     const sig = OPCIONES_MIN.find(x => x >= dura);
-    if (dura <= min * 1.1 || !sig || sig === min) break;
+    if (dura <= topeMinutos(min) || !sig || sig === min) break;
     min = sig;
   }
   return Math.max(10, Math.min(240, Math.round(dura || estimado) || 10));
