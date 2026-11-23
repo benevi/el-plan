@@ -2,7 +2,8 @@
 // Toda sesión pasa por aquí antes de guardarse, venga de la IA, de las reglas o de un día del plan:
 //   validarSesion(S, sesion, ctx) → { sesion (corregida), cambios: [texto explicable], valida, ultimoRecurso }
 //   problemasSesion(S, sesion, ctx) → [texto]: lo que aún incumple (vacío si está bien). Lo usan las pruebas.
-// ctx: { lugar, minutos, dolorHoy, energia, futuro (día de plan), origen: 'ia'|'reglas'|'plan', k, tipo, mia }
+// ctx: { lugar, minutos, dolorHoy, energia, futuro (día de plan), origen: 'ia'|'reglas'|'plan', k, tipo, mia,
+//   vistaPrevia (repaso final del plan por reglas: sin rellenar principales, C-VOL-2) }
 // ctx.mia (solo una de «Mis sesiones», excepciones aprobadas por Víctor el 20-11-2026): C-MIA-1, no se rellena
 // hasta 3 principales ni se quitan por energía o tiempo; C-MIA-2, un principal de nivel superior se queda con
 // nota de técnica (C-DOSIS-10 no se aplica). Dolor, lesiones, lugar, material, rechazos, salud, calentamiento,
@@ -366,7 +367,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     });
   });
   const suaveDelPlan = (ctxIn.tipo || s.tipo) === 'suave' && nPrin() === 0; // día suave del reparto (C-REP-2): sin fuerza
-  const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan || ctxIn.mia ? 0 : Math.min(3, maximo) - nPrin(); // C-MIA-1
+  // La vista previa del plan ya trae sus principales ajustados al volumen semanal (C-VOL-2): no se rellenan aquí.
+  const faltan = s.explicacion.some(esUltimoRecurso) || suaveDelPlan || ctxIn.mia || ctxIn.vistaPrevia ? 0 : Math.min(3, maximo) - nPrin(); // C-MIA-1
   if (faltan > 0) {
     const tipo = tipoParaLugar(ctxIn.tipo || s.tipo, lugar);
     const nuevos = elegirPrincipales(S, ctx, { huecos: PLANTILLAS[tipo].huecos, presupuesto: Infinity, k: ctxIn.k || 0, excluir: ejs.map(x => x.id), maximo: faltan });

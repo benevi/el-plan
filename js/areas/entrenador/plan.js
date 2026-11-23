@@ -8,6 +8,7 @@ import { tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas, semanaDescarga, seriesDescarga, lesionNueva, topeSeries } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
+import { validarSesion } from './validar.js';
 import { montarDia, objetivosDe, tiene, lista, minus, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
 
 const GRANDES = ['pecho', 'espalda', 'cuadriceps', 'gluteo', 'isquios', 'hombro'];
@@ -301,12 +302,28 @@ function ajustarVolumen(S, out, obj, { rellenar = true } = {}) {
         const e = x.rol === 'principal' && ex(x.id);
         if (e && (e.m.includes(m) || (e.s || []).includes(m))) quitar.push({ d, x, peso: e.m.includes(m) ? 1 : 0.5, otros: e.m.filter(mm => mm !== m).length });
       }));
-      const q = quitar.sort((a, b) => a.otros - b.otros || b.peso - a.peso || b.x.series - a.x.series)[0];
+      // Primero de los días que siguen con 3 principales o más después de quitarlo (C-TIEMPO-2: mínimo 3).
+      const q = quitar.sort((a, b) => (nPrin(a.d) > 3 ? 0 : 1) - (nPrin(b.d) > 3 ? 0 : 1) || a.otros - b.otros || b.peso - a.peso || b.x.series - a.x.series)[0];
       if (!q) break;
       q.d.ejercicios.splice(q.d.ejercicios.indexOf(q.x), 1); vol = volumenSemana(out);
+
     }
   });
   return vol;
+}
+
+// Un día de fuerza del plan que se ha quedado con menos de 3 principales (por el techo semanal o por C-REP-1) lleva
+// otro de un músculo con sitio en la semana, sin pasar techos, el máximo por sesión ni los minutos, y sin crear
+// choques de C-REP-1 (añadirEjercicio lo comprueba). Si ninguno cabe, se queda como está (C-VOL-2 manda).
+const nPrin = d => d.ejercicios.filter(x => x.rol === 'principal').length;
+function completarPrincipales(S, out, obj) {
+  out.filter(d => d.tipo !== 'suave' && d.lugar !== 'piscina').forEach(d => {
+    for (let g = 0; g < 3 && nPrin(d) < 3; g++) {
+      const vol = volumenSemana(out);
+      const conSitio = [...GRANDES, ...PEQUEÑOS].filter(m => obj.musculos[m]).sort((a, b) => (vol[a] || 0) / obj.musculos[a].techo - (vol[b] || 0) / obj.musculos[b].techo);
+      if (!conSitio.some(m => añadirEjercicio(S, out, d, m, obj, vol))) break;
+    }
+  });
 }
 
 // semana: { dias [1..7], minutos, lugares }
@@ -357,6 +374,18 @@ export function planReglas(S, semana, { hechas = [] } = {}) {
       d.explicacion = ['Semana de descarga: mismos ejercicios y pesos, la mitad de series y 4 repeticiones de margen.', ...d.explicacion];
     });
   }
+  // La vista previa del plan pasa por las mismas reglas que la sesión del día (verificación final del 22-11-2026):
+  // el volumen, C-REP-1, el día suave y la descarga tocan los días después de montarlos, así que cada día se vuelve a
+  // validar (tiempo C-TIEMPO-1/2, tareas del lugar C-EST-4…), sin rellenar principales para no pasar el techo semanal
+  // (C-VOL-2). Los cambios no se repiten en la explicación: ya los dirá el check-in de ese día.
+  out.forEach((d, i) => {
+    const v = validarSesion(S, d, { lugar: d.lugar, minutos: d.minutos, futuro: true, origen: 'plan', k: i, tipo: d.tipo, vistaPrevia: true });
+    Object.assign(d, { calentamiento: v.sesion.calentamiento, ejercicios: v.sesion.ejercicios, vuelta: v.sesion.vuelta, explicacion: v.sesion.explicacion });
+  });
+  // El repaso puede cambiar algún ejercicio: el techo semanal y C-REP-1 vuelven a mandar (C-VOL-2: nunca se pasa).
+  ajustarVolumen(S, out, obj, { rellenar: false });
+  for (let g = 0; g < 20; g++) { const ch = choquesSeguidos(out)[0]; if (!ch) break; recortarDia(out.find(d => d.diaSemana === ch.dias[1]), ch.m, 3); }
+  completarPrincipales(S, out, obj);
   out.forEach(sincronizarDosis);
   const vol = volumenSemana(out);
   const hechasTxt = hechas.length ? ` Ya llevas ${hechas.length} sesión${hechas.length > 1 ? 'es' : ''} esta semana y lo que queda lo tiene en cuenta.` : '';

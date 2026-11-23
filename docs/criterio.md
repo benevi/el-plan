@@ -60,7 +60,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 
 **C-PRIN-2 [Objetivo] [PR 8, PR 11]** Ante la duda **gana lo más prudente**: si dos reglas chocan, se aplica la que menos carga la zona dolorida. Seguridad (secciones 2, 3, 12 y 16) por encima de rendimiento (5 a 10), y este por encima de gustos y variedad.
 
-**C-PRIN-3 [Objetivo] [PR 8]** Toda sesión, de la IA o de las reglas, pasa por el **validador único** antes de guardarse. Lo que no puede comprobar se evalúa con la rúbrica de la sección 19.
+**C-PRIN-3 [Objetivo] [PR 8]** Toda sesión, de la IA o de las reglas, pasa por el **validador único** antes de guardarse. Lo que no puede comprobar se evalúa con la rúbrica de la sección 19. También los días del plan semanal por reglas tal como se ven antes del check-in: tras el volumen semanal, C-REP-1, el día suave y la descarga, cada día vuelve a pasar por el validador (tiempo, lugar, tareas), sin rellenar principales para no pasar el techo (C-VOL-2); si el techo o C-REP-1 dejan un día de fuerza con menos de 3 principales, se añade uno de un músculo con sitio en la semana si cabe (verificación final del 22-11-2026).
 
 **C-PRIN-4 [D3 y decisión del dueño] [PR 8]** Toda sesión lleva **calentamiento, cardio y vuelta a la calma con al menos un estiramiento**, también el día de dolor alto y en la piscina.
 
