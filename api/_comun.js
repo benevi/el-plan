@@ -270,6 +270,7 @@ const MENSAJES = {
   clave: [502, 'la clave de la IA no es válida (revisa ANTHROPIC_API_KEY en Vercel)'],
   permiso: [502, 'la clave de la IA no tiene permiso para este modelo'],
   saldo: [502, 'la cuenta de la API de Claude no tiene saldo'],
+  tope: [502, 'la cuenta de la API de Claude ha llegado a su límite de gasto del mes (súbelo en la consola de Anthropic)'],
   ritmo: [429, 'demasiadas peticiones, prueba en un minuto'],
   sobrecarga: [529, 'la IA está saturada ahora mismo, prueba en unos minutos'],
   inactividad: [504, 'la IA ha dejado de responder'],
@@ -286,6 +287,8 @@ export function categoria(e) {
   if (e instanceof Anthropic.AuthenticationError) return 'clave';
   if (e instanceof Anthropic.PermissionDeniedError) return 'permiso';
   if (e instanceof Anthropic.PaymentRequiredError || (e && e.type === 'billing_error') || /credit balance/i.test(String(e && e.message))) return 'saldo';
+  // El límite de gasto que se pone en la consola de Anthropic llega como 400 «You have reached your specified API usage limits».
+  if (/usage limits?/i.test(String(e && e.message))) return 'tope';
   if (e instanceof Anthropic.RateLimitError) return 'ritmo';
   // 529 al pedir, o un evento «overloaded_error» a mitad del stream (llega como APIError sin status).
   if (e instanceof Anthropic.OverloadedError || (e && (e.status === 529 || e.type === 'overloaded_error' || (e.error && e.error.error && e.error.error.type === 'overloaded_error')))) return 'sobrecarga';

@@ -336,6 +336,7 @@ const casosError = [
   ['clave inválida', () => errorApi(401, 'authentication_error'), 502, 'la clave de la IA no es válida (revisa ANTHROPIC_API_KEY en Vercel)'],
   ['sin permiso', () => errorApi(403, 'permission_error'), 502, 'la clave de la IA no tiene permiso para este modelo'],
   ['sin saldo (402)', () => errorApi(402, 'billing_error'), 502, 'la cuenta de la API de Claude no tiene saldo'],
+  ['límite de gasto de la cuenta (400 usage limits)', () => Anthropic.APIError.generate(400, { type: 'error', error: { type: 'invalid_request_error', message: 'You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC. ' + CRUDO } }, undefined, h), 502, 'la cuenta de la API de Claude ha llegado a su límite de gasto del mes (súbelo en la consola de Anthropic)'],
   ['sin saldo (400 credit balance)', () => Anthropic.APIError.generate(400, { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low ' + CRUDO } }, undefined, h), 502, 'la cuenta de la API de Claude no tiene saldo'],
   ['demasiadas peticiones', () => errorApi(429, 'rate_limit_error'), 429, 'demasiadas peticiones, prueba en un minuto'],
   ['petición rechazada', () => errorApi(400, 'invalid_request_error'), 502, 'petición rechazada por la IA'],
