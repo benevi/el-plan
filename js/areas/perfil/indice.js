@@ -3,7 +3,7 @@
 // datos personales, notas para el entrenador y ajustes del móvil (código de acceso, vibración, copia).
 
 import { rutas, acciones, pestaña, pintar, ir } from '../../nucleo/router.js';
-import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
+import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, quitarMarcaDeCarga, infoCopia, usoAlmacen, ErrorCopia,
   infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, infoApartado, recuperarApartado, descartarApartado, avisoSustituyeApartado, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta, plural } from '../../nucleo/ui.js';
@@ -90,7 +90,7 @@ function grupoObjetivos(S) {
   const p = S.perfil;
   // Con varios, manda el primero (C-OBJ-1): se dice cuál y se puede poner otro en su lugar (M12).
   const [manda, ...otros] = p.objetivos.filter(k => OBJETIVOS[k]);
-  const orden = otros.length ? `<div class="objetivo-manda"><p class="ayuda">Manda <b>${h(OBJETIVOS[manda].nombre)}</b>: marca las series, el volumen y el cardio. ${otros.length === 1 ? 'El otro suma' : 'Los otros suman'} lo suyo.</p>
+  const orden = otros.length ? `<div class="objetivo-manda"><p class="ayuda" tabindex="-1">Manda <b>${h(OBJETIVOS[manda].nombre)}</b>: marca las series, el volumen y el cardio. ${otros.length === 1 ? 'El otro suma' : 'Los otros suman'} lo suyo.</p>
     <div class="fila-botones">${otros.map(k => `<button type="button" class="boton boton--secundario" data-act="perfil.objetivoPrincipal" data-v="${h(k)}">Que mande ${h(minus(OBJETIVOS[k].nombre))}</button>`).join('')}</div></div>` : '';
   return `${tarjeta('Objetivos', `<div class="chips" role="group" aria-label="Objetivos (puedes marcar varios)">${Object.entries(OBJETIVOS).map(([k, o]) => chip('perfil.objetivo', k, p.objetivos.includes(k), o.nombre)).join('')}</div>${orden}`, { sub: 'puedes marcar varios' })}
   ${tarjeta('Nivel', `${segmento('Nivel', 'perfil.nivel', Object.entries(NIVELES), p.nivel, { ancho: true })}
@@ -278,7 +278,12 @@ async function cargarCopia(txt, opciones = {}) {
     const r = importar(txt, opciones);
     // Lo que hay ahora en el móvil está entero en el archivo que se acaba de cargar: cuenta como copia guardada
     // y no se pide guardar otra por esas sesiones (M17). La de la app anterior se suma a lo que había: esa no.
-    if (r.tipo !== 'anterior') { marcarCopiaExportada(); pintar(); }
+    // Con la fecha de la última sesión hecha que trae (no «hoy»: la copia puede ser vieja).
+    if (r.tipo !== 'anterior') {
+      const ultima = Object.values(estado().sesiones).filter(x => x.estado === 'hecha').map(x => String(x.terminada || x.fecha || '')).sort().pop();
+      const d = ultima && new Date(ultima.length === 10 ? ultima + 'T23:59:59' : ultima);
+      if (d && !isNaN(d)) { marcarCopiaExportada(d, { porCarga: true }); pintar(); }
+    }
     avisoCargada(r);
   } catch (e) {
     if (e instanceof ErrorCopia && e.codigo === 'otra-persona') {
@@ -334,7 +339,12 @@ acciones({
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
   'perfil.quitarGusto': el => cambiar(S => { delete S.perfil.gustos[el.dataset.id]; }, 'perfil'),
   'perfil.objetivo': el => cambiar(S => alternar(S.perfil.objetivos, el.dataset.v), 'perfil'),
-  'perfil.objetivoPrincipal': el => cambiar(S => { const o = S.perfil.objetivos, i = o.indexOf(el.dataset.v); if (i > 0) o.unshift(...o.splice(i, 1)); }, 'perfil'),
+  // El botón desaparece al repintar: el foco va al texto «Manda …», que dice el cambio (M12).
+  'perfil.objetivoPrincipal': el => {
+    cambiar(S => { const o = S.perfil.objetivos, i = o.indexOf(el.dataset.v); if (i > 0) o.unshift(...o.splice(i, 1)); }, 'perfil');
+    pintar();
+    const t = $('#vista .objetivo-manda .ayuda'); try { t && t.focus({ preventScroll: true }); } catch { /* nada */ }
+  },
   // El cambio a mano queda apuntado: la bajada de C-NIVEL-3 no lo pisa (revisión del PR #45, G2).
   'perfil.nivel': el => cambiar(S => {
     const de = +S.perfil.nivel || 1, a = +el.dataset.v; S.perfil.nivel = a;
@@ -397,12 +407,12 @@ acciones({
   'perfil.deshacerImportar': async () => {
     const a = infoAntesDeImportar(); if (!a) return;
     if (!await confirmar(`¿Volver a los datos que había antes de cargar la última copia (${fechaCorta(a.fecha)})? Lo de ahora queda apartado en su lugar.`, { si: 'Volver a ellos' })) return;
-    try { deshacerImportar(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
+    try { deshacerImportar(); quitarMarcaDeCarga(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
   },
   'perfil.recuperarApartado': async () => {
     const a = infoApartado(); if (!a) return;
     if (!await confirmar(`¿Cambiar los datos de ahora por los apartados (${plural(+a.sesiones, 'sesión hecha', 'sesiones hechas')})? Lo de ahora queda apartado en su lugar y puedes volver a ello.`, { si: 'Recuperarlos' })) return;
-    try { await recuperarApartado(); aviso('Has recuperado los datos apartados'); } catch (e) { aviso(e.message, 'error'); }
+    try { await recuperarApartado(); quitarMarcaDeCarga(); aviso('Has recuperado los datos apartados'); } catch (e) { aviso(e.message, 'error'); }
     pintar();
   },
   'perfil.descartarApartado': async () => {

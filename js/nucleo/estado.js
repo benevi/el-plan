@@ -584,8 +584,19 @@ export function deshacerImportar() {
 
 // Fecha de la última copia exportada (en una clave aparte) y recordatorio cada 10 sesiones terminadas.
 export const SESIONES_RECORDATORIO = 10;
-export function marcarCopiaExportada(cuando = new Date()) {
-  try { almacen().setItem(CLAVE_COPIA, JSON.stringify({ fecha: cuando.toISOString() })); } catch (e) { console.warn('No se pudo apuntar la fecha de la copia', e); }
+// porCarga: la marca la pone cargar una copia (M17) y guarda la de antes, para devolverla con quitarMarcaDeCarga()
+// si se vuelve a los datos de antes o a lo apartado (esas sesiones no estaban en la copia cargada).
+export function marcarCopiaExportada(cuando = new Date(), { porCarga = false } = {}) {
+  let previa = null;
+  if (porCarga) { try { const c = JSON.parse(almacen().getItem(CLAVE_COPIA) || 'null'); previa = c && typeof c.fecha === 'string' ? (c.porCarga ? c.previa || null : c.fecha) : null; } catch { previa = null; } }
+  try { almacen().setItem(CLAVE_COPIA, JSON.stringify({ fecha: cuando.toISOString(), ...(porCarga ? { porCarga: true, previa } : {}) })); } catch (e) { console.warn('No se pudo apuntar la fecha de la copia', e); }
+}
+export function quitarMarcaDeCarga() {
+  try {
+    const c = JSON.parse(almacen().getItem(CLAVE_COPIA) || 'null');
+    if (!c || !c.porCarga) return;
+    if (typeof c.previa === 'string') almacen().setItem(CLAVE_COPIA, JSON.stringify({ fecha: c.previa })); else almacen().removeItem(CLAVE_COPIA);
+  } catch (e) { console.warn('No se pudo quitar la marca de la copia cargada', e); }
 }
 export function infoCopia() {
   let fecha = null;
