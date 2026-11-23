@@ -140,7 +140,7 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 
 > Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es solo el dolor de tu lesión y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
 
-**T3b · Durante la sesión, sin lesiones activas (botón «Algo va mal»)** — *pendiente de que Víctor apruebe el texto* (re-auditoría del PR 18, U6: quien no tiene lesiones leía «el dolor de tu lesión»):
+**T3b · Durante la sesión, sin lesiones activas (botón «Algo va mal»)** — *aprobado por Víctor el 23-11-2026* tal como está (re-auditoría del PR 18, U6: quien no tiene lesiones leía «el dolor de tu lesión»):
 
 > Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es un dolor en una zona concreta (un músculo o una articulación) y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
 
@@ -1051,6 +1051,8 @@ Vectores:
 | Avanzado | 1600-2500 m | 6-8 × 25-50 m | 20 min | `series-50-crol` 6-10 × 50 m | 15-20 s |
 
 Con 30 min se quitan técnica y series, nunca el bloque continuo.
+
+**C-PISC-2 · quien no nada 2 × 25 m [aprobado por Víctor el 23-11-2026] (S3)** Sea cual sea su nivel de fuerza (el nivel no es de natación): por tiempo, técnica solo con tabla (`patada-crol-tabla`, `patada-espalda-tabla`) y bloque de `aquajogging` o `caminar-agua` **siempre donde hace pie**, con el agua por el pecho; sin `crol`, `espalda`, `nado-continuo`, `series-50-crol` ni largos sin tabla. La nota del cardio lo dice («Siempre donde hagas pie, con el agua por el pecho») y el validador lo comprueba. En la parte honda, el aquajogging solo para quien sabe nadar y con cinturón de flotación (ficha de `aquajogging`).
 
 **C-PISC-3 [Criterio] [PR 8]** Piscina con lesión:
 - **Hombro en B2-B3**: sin `crol`, `espalda`, `nado-continuo`, `series-50-crol` ni `patada-crol-tabla`; bloque con `aquajogging`.

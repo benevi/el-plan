@@ -22,7 +22,7 @@ export const T2 = [
   'En los demás casos, pide cita con tu médico o tu fisioterapeuta y cuéntale lo que notas. Cuando te den el visto bueno, la app retoma tu plan.',
 ];
 export const T3 = techo => `Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es solo el dolor de tu lesión y pasa de ${techo}/10, salta este ejercicio y sigue con el siguiente.`;
-// T3b: lo mismo para quien no tiene lesiones activas (pendiente de que Víctor apruebe el texto, docs/criterio.md § 2.5).
+// T3b: lo mismo para quien no tiene lesiones activas (aprobado por Víctor el 23-11-2026, docs/criterio.md § 2.5).
 export const T3b = techo => `Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es un dolor en una zona concreta (un músculo o una articulación) y pasa de ${techo}/10, salta este ejercicio y sigue con el siguiente.`;
 export const T4 = (zona, dato) => `Tu ${corta(zona)} lleva ${dato}. La app seguirá adaptando tus sesiones, pero conviene que lo valore tu médico o tu fisioterapeuta. Cuéntale qué ejercicios te lo suben (los tienes en Progreso › Dolor).`;
 export const T5 = (techo, derivar) => [
