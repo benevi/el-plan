@@ -311,3 +311,17 @@ test('juez de plan (C-REP-2, C-REP-4): un cuerpo completo sin dominante de cader
   assert.equal(j.aprueba, false);
   assert.ok(j.seguridad.some(t => /cadera/.test(t) && /C-REP-4/.test(t)), j.seguridad.join(' | '));
 });
+
+// Ronda real del 23-11 (CR-25): «sin intervalos por tu tensión» no son intervalos; «6 × (1 min a RPE 7…)» sí.
+test('juez: «sin intervalos» en la nota del cardio no cuenta como intervalos (CR-25)', async () => {
+  const { conIntervalos } = await import('./casos.mjs');
+  for (const t of ['Cardio continuo a RPE 4-5, sin intervalos por tu tensión.', 'Continuo, sin cambios bruscos de ritmo. Nada de intervalos hoy.', 'Hoy no hay intervalos: ritmo cómodo.', 'Sin intervalos ni cuestas.'])
+    assert.equal(conIntervalos(t), false, t);
+  for (const t of ['3 min suaves + 6 × (1 min a RPE 7 + 2 min a RPE 3)', 'Intervalos en la bici: 1 min fuerte, 2 suave.', 'Sin cuestas; haz intervalos de 1 min.'])
+    assert.equal(conIntervalos(t), true, t);
+  const p = await preparar(CASOS.find(c => c.id === 'CR-25'));
+  const r = mutar(buena(p), x => { x.ejercicios.find(y => y.rol === 'cardio').nota = 'Cardio continuo para perder grasa a RPE 4-5, sin intervalos por tu tensión: puedes hablar con frases cortas.'; });
+  assert.deepEqual(juzgar(p, r).seguridad, []);
+  const mala = mutar(buena(p), x => { x.ejercicios.find(y => y.rol === 'cardio').nota = '3 min suaves y 6 × (1 min a RPE 7 + 2 min a RPE 3).'; });
+  assert.ok(juzgar(p, mala).seguridad.includes('intervalos en el cardio'));
+});
