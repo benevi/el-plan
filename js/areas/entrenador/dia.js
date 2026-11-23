@@ -764,9 +764,16 @@ export function nombreCoherente(nombre, ejercicios) {
   if (/completo|full/.test(t)) return nombre;
   const dice = { sup: /torso|superior|empuje|tiron|pecho|espalda|brazo|hombro/.test(t), inf: /pierna|inferior|gluteo|cuadriceps|isquio/.test(t) };
   if (dice.sup === dice.inf) return nombre;
-  const m = (ejercicios || []).filter(x => x && x.rol === 'principal' && ex(x.id)).map(x => ex(x.id).m[0]);
-  const choca = dice.sup ? m.some(z => INFERIOR.includes(z)) : m.some(z => SUPERIOR.includes(z));
-  return choca ? 'Cuerpo completo' : nombre;
+  // Revisión del PR #53: la cadena posterior que también trabaja la espalda (peso muerto rumano, extensión a 45°)
+  // cuadra con «Espalda» o «Tirón»; y solo choca si hay 2 principales del otro tren o más que del nombrado.
+  const posterior = /espalda|tiron/.test(t);
+  const prin = (ejercicios || []).filter(x => x && x.rol === 'principal' && ex(x.id)).map(x => ex(x.id))
+    .filter(e => !(posterior && INFERIOR.includes(e.m[0]) && (e.s || []).includes('espalda')));
+  const delOtro = prin.filter(e => (dice.sup ? INFERIOR : SUPERIOR).includes(e.m[0])).length;
+  const delSuyo = prin.filter(e => (dice.sup ? SUPERIOR : INFERIOR).includes(e.m[0])).length;
+  if (!(delOtro >= 2 || delOtro > delSuyo)) return nombre;
+  const letra = String(nombre || '').trim().match(/ ([A-Z])$/);
+  return 'Cuerpo completo' + (letra ? ' ' + letra[1] : '');
 }
 
 // ── Tiempo (C-TIEMPO-1) ──

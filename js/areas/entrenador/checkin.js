@@ -45,11 +45,17 @@ export function dolorNuevoSinLesion(S, s) {
   const dolor = (s && s.checkin && s.checkin.dolor) || {};
   return Object.entries(dolor).filter(([z, v]) => ZONAS[z] && +v >= 1 && !con.has(z)).map(([zona, v]) => ({ zona, dolor: +v }));
 }
-export function guardarDolorComoLesion(zona, dolor) {
+// fecha: la de la sesión (por si se guarda otro día). Si ya hay una lesión inactiva de esa zona, se reactiva con el
+// dolor y la fecha nuevos en vez de crear otra (revisión del PR #53).
+export function guardarDolorComoLesion(zona, dolor, fecha = hoyISO()) {
   if (!ZONAS[zona]) return;
+  const d = Math.max(0, Math.min(10, Math.round(+dolor || 0)));
+  const desde = /^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) ? String(fecha) : hoyISO();
   cambiar(S => {
     if (S.perfil.lesiones.some(l => l.activa && l.zona === zona)) return;
-    S.perfil.lesiones.push({ id: uid(), zona, dolor: Math.max(0, Math.min(10, Math.round(+dolor || 0))), desde: hoyISO(), nota: '', activa: true, tipo: 'puntual' });
+    const vieja = S.perfil.lesiones.find(l => !l.activa && l.zona === zona);
+    if (vieja) Object.assign(vieja, { activa: true, dolor: d, desde });
+    else S.perfil.lesiones.push({ id: uid(), zona, dolor: d, desde, nota: '', activa: true, tipo: 'puntual' });
   }, 'perfil');
 }
 

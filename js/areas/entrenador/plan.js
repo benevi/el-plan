@@ -451,7 +451,7 @@ export const siguientePendiente = S => estadoDias(S).find(x => x.estado === 'pen
 // Sin ningún día libre no se borra nada: el plan sigue igual y se dice.
 // quitarHoy: viene de «Hoy no puedo»; si no queda ningún día libre, se apunta que hoy no se entrena (E13).
 // «2 días: lunes (Cuerpo completo A) y jueves (Cuerpo completo B).»
-const resumenDias = dias => `${dias.length} día${dias.length === 1 ? '' : 's'}: ${lista(dias.map(d => `${minus(DIAS[d.diaSemana])} (${d.nombre})`))}.`;
+const resumenDias = dias => `${dias.length} día${dias.length === 1 ? '' : 's'}: ${lista(dias.map(d => `${minus(DIAS[d.diaSemana])} (${minusNombre(d.nombre)})`))}.`;
 export function reorganizar(libres, { quitarHoy = false } = {}) {
   const S = estado(), p = planDeLaSemana(S); if (!p) return null;
   const hoy = diaSemana();

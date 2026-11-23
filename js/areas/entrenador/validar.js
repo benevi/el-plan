@@ -376,7 +376,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Una nota sin la intensidad (C-CARDIO-4) también es la de la regla.
     const sinIntensidad = !/rpe|esfuerzo|de 10\b|hablar|frases/i.test(String(cardio.nota || ''));
     // Ni «a tope» ni «sprint»: lo fuerte de los intervalos es un 7 de 10 (C-CARDIO-4; verificación del 22-11).
-    const maximo = /a tope|sprint|al maximo|a muerte|todo lo que puedas|(?:9|10) de 10|rpe ?(?:9|10)\b/.test(String(cardio.nota || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    // Lo negado («nunca a tope», «sin sprints», «nada de ir a tope») no cuenta (revisión del PR #53).
+    const notaN = String(cardio.nota || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const maximo = [...notaN.matchAll(/a tope|sprint|al maximo|a muerte|todo lo que puedas|(?:9|10) de 10|rpe ?(?:9|10)\b/g)]
+      .some(m => !/\b(?:nunca|sin|nada de|no)\b[^.,;:]{0,12}$/.test(notaN.slice(0, m.index)));
     if (!cardio.nota || sinIntensidad || maximo || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
     if (combinado) {
       const encadenado = lugar === 'casa' || lugar === 'calle';
@@ -518,12 +521,21 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     return true;
   }).map(t => (t.hueco ? t : { ...t, nombre: t.nombre || ex(t.id).n }));
   // Cada hueco, con una tarea de la app de ese bloque que no esté ya (sin aproximación: esa va aparte).
+  // Sin repetidos (por id o por nombre; revisión del PR #53).
+  const igual = (a, b) => a.nombre === b.nombre || (!!a.id && a.id === b.id);
+  const sinRepetir = l => l.filter((t, i) => !l.slice(0, i).some(y => igual(y, t)));
   const rellenar = (l, base) => {
-    const pool = base.filter(t => !RE_APROXIMACION.test(String(t.nombre || '').trim()) && !l.some(y => !y.hueco && (y.nombre === t.nombre || (t.id && y.id === t.id))));
-    return l.flatMap(t => (!t.hueco ? [t] : pool.length ? [pool.shift()] : []));
+    const pool = sinRepetir(base).filter(t => !RE_APROXIMACION.test(String(t.nombre || '').trim()) && !l.some(y => !y.hueco && igual(y, t)));
+    return sinRepetir(l.flatMap(t => (!t.hueco ? [t] : pool.length ? [pool.shift()] : [])));
   };
   s.calentamiento = limpiar(s.calentamiento, 'del calentamiento');
-  if (s.calentamiento.some(t => t.hueco)) s.calentamiento = rellenar(s.calentamiento, calentamientoDe(S, ctx, principales()));
+  if (s.calentamiento.some(t => t.hueco)) {
+    // Si al rellenar queda más pobre que el de la app (sin la movilidad de la zona o la aproximación, C-CAL-2),
+    // va el de la app entero, como antes del PR #53.
+    const app = calentamientoDe(S, ctx, principales());
+    const relleno = rellenar(s.calentamiento, app);
+    s.calentamiento = relleno.length < app.length ? app : relleno;
+  }
   // La aproximación de la IA es la del primer compuesto que de verdad queda en la sesión (C-CAL-2), con el texto de
   // la app (porcentajes con kilos apuntados; si no, series de prueba); sin compuesto no hay aproximación.
   if (deIA) {
@@ -546,8 +558,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   s.vuelta = limpiar(s.vuelta || s.vueltaCalma, 'de la vuelta a la calma');
   if (s.vuelta.some(t => t.hueco)) s.vuelta = rellenar(s.vuelta, vueltaDe(S, ctx, principales()));
   delete s.vueltaCalma;
-  if (!s.vuelta.some(esEstiramiento)) {
-    s.vuelta = [...vueltaDe(S, ctx, principales()).filter(esEstiramiento).slice(0, 2), ...s.vuelta];
+  // La flotación relaja pero no estira: la vuelta lleva un estiramiento de verdad (C-VUELTA-1, revisión del PR #53).
+  const estiraDeVerdad = t => esEstiramiento(t) && !/flotaci/i.test(`${t.nombre || ''} ${t.id || ''}`);
+  if (!s.vuelta.some(estiraDeVerdad)) {
+    s.vuelta = sinRepetir([...vueltaDe(S, ctx, principales()).filter(estiraDeVerdad).slice(0, 2), ...s.vuelta]);
     cambios.push('añado estiramientos a la vuelta a la calma, que siempre los lleva');
   }
   if (s.vuelta.length < 2) s.vuelta.push({ nombre: 'Respiración', detalle: respiracionDe(ctx), duracion: '1 min' });

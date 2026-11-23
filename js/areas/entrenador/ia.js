@@ -208,10 +208,18 @@ export async function crearSesionHoy(ci, op = {}) {
   }
 
   // Check-in abierto ayer (ci.abierto) para el día que tocaba entonces y preparado pasada la medianoche (M10 del
-  // informe del 21-11): si hoy toca otro día del plan, la sesión es la de hoy. Un día elegido a propósito se respeta.
-  if (ci.abierto && ci.abierto !== hoyISO() && ci.diaPlan === diaSemana(new Date(ci.abierto + 'T12:00')) && !ci.mia) {
-    const hoyToca = planDeHoy(S);
-    if (hoyToca) ci = { ...ci, diaPlan: hoyToca.diaSemana };
+  // informe del 21-11): si hoy toca otro día del plan, la sesión es la de hoy, con su lugar y sus minutos si no se
+  // habían cambiado, y se dice. Un día elegido a propósito (ci.diaPorDefecto === false) se respeta.
+  let avisoDia = '';
+  if (ci.abierto && ci.abierto !== hoyISO() && ci.diaPorDefecto !== false && ci.diaPlan === diaSemana(new Date(ci.abierto + 'T12:00')) && !ci.mia) {
+    const hoyToca = planDeHoy(S), antes = diaElegido(S, ci.diaPlan);
+    if (hoyToca && hoyToca.diaSemana !== ci.diaPlan) {
+      const igual = (v, w) => v == null || w == null || +v === +w;
+      ci = { ...ci, diaPlan: hoyToca.diaSemana,
+        ...(!antes || ci.lugar === antes.lugar ? { lugar: hoyToca.lugar } : {}),
+        ...(!antes || igual(ci.minutos, antes.minutos) ? { minutos: hoyToca.minutos || ci.minutos } : {}) };
+      avisoDia = `Ya es ${minus(DIAS[hoyToca.diaSemana])}: te preparo el día de hoy.`;
+    }
   }
   const minutos = minutosSesion(ci.minutos);
   const dia = ci.mia && !ci.ocuparDia ? null : diaElegido(S, ci.diaPlan);
@@ -298,7 +306,7 @@ export async function crearSesionHoy(ci, op = {}) {
     S2.sesiones[sesion.id] = sesion;
     if (dia && S2.plan) { S2.plan.hechos = S2.plan.hechos || {}; S2.plan.hechos[dia.diaSemana] = sesion.id; }
   }, 'sesion');
-  return { sesion, aviso, motivo: decide.usar && !aviso ? decide.hecho || decide.motivo : decide.usar ? '' : decide.motivo };
+  return { sesion, aviso: [avisoDia, aviso].filter(Boolean).join(' '), motivo: decide.usar && !aviso ? decide.hecho || decide.motivo : decide.usar ? '' : decide.motivo };
 }
 
 // ── Plan de la semana ──

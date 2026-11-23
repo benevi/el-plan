@@ -581,7 +581,7 @@ test('C-EST-4 (revisión B3): las tareas sin id de la IA se casan por nombre con
   // Sin zonas activas, una tarea de texto que no casa tampoco se queda: su hueco es de una tarea de la app
   // (verificación del 22-11; antes se quedaba tal cual). Las libres de la app («Respiración») sí se quedan.
   const sano = vIA({ objetivos: ['musculo'] }, { ejercicios: IA3, calentamiento: [T('Bici suave'), T('Movilidad general')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] });
-  assert.ok(sano.v.sesion.calentamiento.length >= 2 && sano.v.sesion.calentamiento.every(t => t.id && t.nombre !== 'Bici suave'), sano.v.sesion.calentamiento.map(t => t.nombre).join(', '));
+  assert.ok(sano.v.sesion.calentamiento.length >= 2 && !sano.v.sesion.calentamiento.some(t => ['Bici suave', 'Movilidad general'].includes(t.nombre)), sano.v.sesion.calentamiento.map(t => t.nombre).join(', '));
   assert.ok(sano.v.sesion.vuelta.some(t => t.nombre === 'Respiración'));
 });
 

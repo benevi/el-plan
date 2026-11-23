@@ -559,9 +559,6 @@ export function importar(txt, { otraPersona = false, interno = false, deshacer =
     try { if (antesGuardado == null) almacen().removeItem(CLAVE_ANTES); else almacen().setItem(CLAVE_ANTES, antesGuardado); } catch { /* nada */ }
     throw new ErrorCopia('No he cargado la copia: no cabe en el almacenamiento del móvil. Tus datos siguen como estaban. Libera espacio (o descarta los datos de antes de la última copia) y vuelve a intentarlo.', 'sin-espacio');
   }
-  // Lo cargado de un archivo o de la nube ya está en esa copia: no son «sesiones sin guardar» (M17 del informe
-  // del 21-11). Lo interno (rescate, deshacer, recuperar lo apartado) no viene de una copia.
-  if (!interno) marcarCopiaExportada();
   avisar('importar');
   return { ...info, avisos, apartado: alApartado };
 }

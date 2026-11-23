@@ -176,13 +176,13 @@ export function abrirCheckin(diaPlan = null, op = {}) {
   const deMia = deHoy && deHoy.estado === 'pendiente' && deHoy.origen && deHoy.origen.tipo === 'mia' && miaDe(S, deHoy.origen.id) ? deHoy : null;
   const enlazado = deMia && S.plan && S.plan.hechos ? Object.entries(S.plan.hechos).find(([, id]) => id === deMia.id) : null;
   // abierto: la fecha del check-in, por si se prepara pasada la medianoche (M10).
-  ci = { abierto: hoyISO(), diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: pendiente, forzarIA: false };
+  ci = { abierto: hoyISO(), diaPorDefecto: diaPlan == null, diaPlan: p ? p.diaSemana : null, lugar: p ? p.lugar : S.perfil.lugares[0], minutos: (p && p.minutos) || S.perfil.disponibilidad.minutos, energia: 3, dolorHoy: {}, peticion: pendiente, forzarIA: false };
   // Si hoy no toca, adelanta el siguiente día pendiente.
   if (!p) { const sig = siguientePendiente(S); if (sig) { ci.diaPlan = sig.diaSemana; ci.lugar = sig.lugar; ci.minutos = sig.minutos || ci.minutos; } }
   S.perfil.lesiones.filter(l => l.activa).forEach(l => { ci.dolorHoy[l.zona] = dolorInicial(S, l); });
   const mia = op.mia || (deMia && deMia.origen.id);
   if (mia) elegirMia(S, mia);
-  if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; }
+  if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; ci.diaPorDefecto = false; }
   hojaCheckin({ arriba: true });
 }
 // Lugares del check-in: los del perfil y, con una de «Mis sesiones», también el suyo (PR 16).
