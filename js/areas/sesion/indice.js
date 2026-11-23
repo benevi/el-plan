@@ -6,7 +6,7 @@
 
 import { rutas, acciones, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, num, es, mmss, movimientoReducido } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, num, es, mmss, movimientoReducido, plural } from '../../nucleo/ui.js';
 import { crearEjercicio, trabajoHecho } from '../../nucleo/modelo.js';
 import { ex, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '../../reglas/progresion.js';
@@ -267,7 +267,7 @@ function vista([id]) {
       <div><h1>${h(s.nombre)}</h1><p>${h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> series${abierta ? '' : ', hecha'}</p></div>
       ${abierta ? '<button type="button" class="boton boton--secundario" data-act="sesion.terminar">Terminar</button>' : ''}
     </header>
-    <div class="avance" role="img" aria-label="${hechas} de ${total} series"><i data-var="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
+    <div class="avance" role="img" aria-label="${plural(hechas, 'serie', 'series', total)}"><i data-var="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
     ${abierta ? `<div class="segmento segmento--ancho modo-sesion" role="radiogroup" aria-label="Cómo ver la sesión">
       <button type="button" role="radio" data-act="sesion.modo" data-v="foco" aria-checked="${modoFoco}" tabindex="${modoFoco ? 0 : -1}">Uno a uno</button>
       <button type="button" role="radio" data-act="sesion.modo" data-v="lista" aria-checked="${!modoFoco}" tabindex="${modoFoco ? -1 : 0}">Toda la sesión</button></div>` : ''}`;
@@ -454,7 +454,7 @@ function enfocarSiguiente() {
 }
 
 function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
-  let descansar = 0, etiqueta = '', siguiente = '', avanza = false;
+  let descansar = 0, etiqueta = '', siguiente = '', avanza = false, desmarcada = false;
   const s0 = sesion(idSesion);
   if (!s0 || s0.estado === 'hecha') return; // una sesión hecha se ve en modo lectura
   cambiar(S => { const s = S.sesiones[idSesion]; if (!s) return;
@@ -462,7 +462,7 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
     if (x.dolorDurante && !z.hecha) return; // parado por dolor: no se repite (C-DOLOR-6)
     empezarSiHaceFalta(S, s);
     z.hecha = !z.hecha;
-    if (!z.hecha) return;
+    if (!z.hecha) { desmarcada = true; return; }
     if (!String(z.valor).trim()) { const r = rango(x.reps); z.valor = valorPorDefecto != null ? String(valorPorDefecto) : r ? String(r.lo) : ''; }
     if (z.kg == null && x.kg != null && conKg(x)) z.kg = x.kg;
     // Los kilos y las repeticiones pasan a las series siguientes que siguen vacías (R05): las que no se han
@@ -492,7 +492,9 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
   }, 'sesion');
   recien = '';
   cerrarAlarma();
-  if (descansar) descanso(descansar, etiqueta, { sesion: idSesion, siguiente }); else parar();
+  // Desmarcar una serie anterior no corta el descanso en marcha (M4): solo se quita si lo empezó esa serie.
+  if (desmarcada) { const cr = info(); if (cr && cr.tipo === 'descanso' && cr.meta && cr.meta.sesion === idSesion && cr.meta.e === i && cr.meta.s === j) parar(); }
+  else if (descansar) descanso(descansar, etiqueta, { sesion: idSesion, siguiente, e: i, s: j }); else parar();
   if (avanza) window.scrollTo(0, 0);
   enfocarSiguiente();
   mantenerVisible();
@@ -522,7 +524,7 @@ function datosFinal(S, s) {
   let semana = '';
   try {
     const d = estadoDias(S);
-    if (d.length) semana = `${d.filter(x => x.estado === 'hecho').length} de ${d.length} días del plan esta semana`;
+    if (d.length) semana = `${plural(d.filter(x => x.estado === 'hecho').length, 'día del plan', 'días del plan', d.length)} esta semana`;
   } catch { /* sin plan */ }
   return { series, kilos: Math.round(kilos), aprox, mejor, min, semana };
 }
