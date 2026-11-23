@@ -13,7 +13,7 @@ import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
 import { diaDolorAlto } from './dolor-alto.js';
-import { validarSesion, esUltimoRecurso } from './validar.js';
+import { validarSesion, esUltimoRecurso, topeMinutos } from './validar.js';
 import { avisosConsulta, T8 } from './alarma.js';
 import { restriccionesSalud } from './salud.js';
 import { planDeLaSemana, diaElegido } from './plan.js';
@@ -193,7 +193,7 @@ export function ajustarAlCheckin(S, dia, ci) {
   const ajustes = v.cambios.map(c => frase(c));
   // Tu sesión tal cual (C-MIA-1): si dura más de lo marcado, se dice en vez de recortarla.
   const dura = mia ? tiempoSesion(v.sesion) : 0;
-  if (mia && dura > minutos * 1.1) cambios.push(`Tu sesión dura unos ${dura} minutos, más de los ${minutos} que marcas: la dejo entera.`);
+  if (mia && dura > topeMinutos(minutos)) cambios.push(`Tu sesión dura unos ${dura} minutos, más de los ${minutos} que marcas: la dejo entera.`);
   const todos = [...cambios, ...ajustes];
   const datos = {
     ...v.sesion, fuente: mia ? 'reglas' : base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',

@@ -114,7 +114,7 @@ export function juzgarSesion(S, crudo, ctx, caso = {}) {
   const minCardio = cardio.reduce((t, x) => t + dia.minDe(x.reps), 0);
   const tiempo = dia.tiempoSesionExacto(s);
   const ultimo = (s.explicacion || []).some(t => /no caben tu cardio|último recurso/i.test(t)) || s.tipo === 'suave';
-  puntos.cardio = (minCardio >= regla.minutos ? 1 : 0) + (tiempo <= c.minutos * 1.1 + 0.5 ? 1 : 0);
+  puntos.cardio = (minCardio >= regla.minutos ? 1 : 0) + (tiempo <= c.minutos + 0.5 ? 1 : 0) /* C-TIEMPO-1: nunca más de lo pedido (23-11-2026) */;
   notas.cardio = `cardio ${minCardio} min (mínimo ${regla.minutos}); sesión ${Math.round(tiempo)} min de ${c.minutos}`;
   // 2. Dosis y descansos (C-PAUSA-1, C-DOSIS-3, C-SERIES-1).
   const fallosDosis = [];

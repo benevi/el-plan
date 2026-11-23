@@ -10,14 +10,14 @@ const { tiempoSesion } = await import(modulo('js/areas/entrenador/dia.js'));
 const { hoyISO } = await import(modulo('js/nucleo/estado.js'));
 
 // ── M1 · C-TIEMPO-1: la vista previa del plan no promete más minutos de los pedidos ──
-test('M1, C-TIEMPO-1: los días del plan por reglas caben en los minutos pedidos (+10 %)', () => {
+test('M1, M1b, C-TIEMPO-1: los días del plan por reglas no pasan de los minutos pedidos (decisión del 23-11)', () => {
   const mal = [];
   for (const objetivos of [['musculo'], ['fuerza'], ['salud'], ['perder'], ['musculo', 'salud']])
     for (const nivel of [1, 2, 3]) for (const lugares of [['gym'], ['gym', 'piscina'], ['casa'], ['calle']])
       for (const minutos of [45, 60, 90]) {
         const S = nuevoS({ objetivos, nivel, lugares });
         for (const d of ent.planReglas(S, { dias: [1, 3, 5, 6], minutos, lugares }).dias)
-          if (tiempoSesion(d) > minutos * 1.1 + 0.5) mal.push(`${objetivos} n${nivel} ${lugares} ${minutos}: ${d.nombre} ${tiempoSesion(d)}`);
+          if (tiempoSesion(d) > minutos) mal.push(`${objetivos} n${nivel} ${lugares} ${minutos}: ${d.nombre} ${tiempoSesion(d)}`);
       }
   assert.deepEqual(mal, []);
 });
@@ -252,4 +252,16 @@ test('PR #53: una nota larga se corta en una frase entera o en un espacio, nunca
   assert.equal(cortarTexto('corta', 300), 'corta');
   const s = crearSesion({ nombre: 'x', lugar: 'gym', ejercicios: [{ id: 'bici-estatica', rol: 'cardio', series: 1, reps: '10 min', nota: frase1 + ' ' + 'cincuenta '.repeat(40) }] });
   assert.equal(s.ejercicios[0].nota, frase1);
+});
+
+// ── Matriz de la revisión del PR #53 (caso 51): la movilidad del calentamiento no cuenta como rehabilitación que cabe ──
+test('PR #53, S5: el validador no suspende su corrección cuando la rehabilitación B1 ya va como movilidad en el calentamiento', async () => {
+  // Caso 51 de la matriz con IA tramposa (respuesta tal cual).
+  const C = {"perfil": {"objetivos": ["perder"], "lugares": ["casa"], "materialCasa": [], "nivel": 1, "datos": {"nacimiento": "1956-01-01"}}, "les": [{"id": "l0", "zona": "cadera_lateral", "dolor": 2, "activa": true, "desde": "2025-01-01"}, {"id": "l1", "zona": "tobillo_pie", "dolor": 0, "activa": true, "desde": "2026-11-01"}], "ci": {"lugar": "casa", "minutos": 45, "energia": 5, "dolorHoy": {"cadera_lateral": 3, "tobillo_pie": 1}, "peticion": ""}, "r": {"nombre": "IA", "calentamiento": [{"nombre": "Trote", "detalle": "", "duracion": "2 min"}, {"nombre": "Movilidad", "detalle": "", "duracion": "2 min"}], "ejercicios": [{"id": "puente-una-pierna", "rol": "rehab", "series": 3, "reps": "6-8", "descanso": 90, "kg": null, "nota": ""}, {"id": "abduccion-tumbada", "rol": "rehab", "series": 3, "reps": "6-8", "descanso": 90, "kg": null, "nota": ""}, {"id": "plancha-lateral", "rol": "principal", "series": 3, "reps": "8-12", "descanso": 90, "kg": null, "nota": ""}, {"id": "sentadilla-peso-corporal", "rol": "principal", "series": 3, "reps": "8-12", "descanso": 90, "kg": null, "nota": ""}, {"id": "sentadilla-goblet", "rol": "principal", "series": 3, "reps": "8-12", "descanso": 90, "kg": null, "nota": ""}, {"id": "puente-una-pierna", "rol": "principal", "series": 3, "reps": "4-6", "descanso": 30, "kg": null, "nota": ""}, {"id": "abduccion-tumbada", "rol": "principal", "series": 3, "reps": "4-6", "descanso": 30, "kg": null, "nota": ""}, {"id": "abduccion-pie", "rol": "principal", "series": 3, "reps": "4-6", "descanso": 30, "kg": null, "nota": ""}, {"id": "sentadilla-goblet", "rol": "principal", "series": 3, "reps": "4-6", "descanso": 30, "kg": null, "nota": ""}, {"id": "flexiones", "rol": "principal", "series": 8, "reps": "al fallo", "descanso": 90, "kg": null, "nota": ""}, {"id": "flexiones-inclinadas", "rol": "principal", "series": 8, "reps": "al fallo", "descanso": 90, "kg": null, "nota": ""}, {"id": "flexiones-rodillas", "rol": "principal", "series": 8, "reps": "al fallo", "descanso": 90, "kg": null, "nota": ""}, {"id": "bici-estatica", "rol": "cardio", "series": 3, "reps": "30 min", "descanso": 90, "kg": null, "nota": "Intervalos: 8 × 1 min a tope, sprint final"}], "vueltaCalma": [{"nombre": "Estiramiento de isquios tumbado con banda", "detalle": "", "duracion": "1 min"}, {"nombre": "Estiramiento de cuádriceps de pie", "detalle": "", "duracion": "1 min"}, {"nombre": "Estiramiento de gemelo en la pared", "detalle": "", "duracion": "1 min"}, {"nombre": "Estiramiento de pectoral en el marco de la puerta", "detalle": "", "duracion": "1 min"}], "cambios": []}};
+  const S = nuevoS(C.perfil);
+  S.perfil.lesiones.push(...C.les);
+  const ia = await import(modulo('js/areas/entrenador/ia.js'));
+  const v = ent.validarSesion(S, ia.sesionDeIA(structuredClone(C.r)), { ...C.ci, origen: 'ia' });
+  assert.deepEqual(ent.problemasSesion(S, v.sesion, C.ci), []);
+  assert.equal(v.valida, true);
 });

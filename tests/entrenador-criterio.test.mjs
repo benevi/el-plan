@@ -305,13 +305,22 @@ test('C-PRIN-4, C-VUELTA-1: vuelta de la IA sin estiramientos ni calentamiento: 
 
 // ── Tiempo (C-TIEMPO-1 a 4) ──
 
-// Con 90 s entre parejas (S18) y sin contar el descanso tras la última serie de fuerza (revisión del PR #48): ≈ 31,8 de 33.
-test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cabe con 2 principales en superserie', () => {
+// C-TIEMPO-1 «nunca más de lo pedido» (decisión de Víctor del 23-11-2026): sin zonas, la superserie cabe (≈ 27 de 30);
+// con una zona B2, 31,8 no cabe en 30: cardio y rehabilitación, con aviso (antes cabía con el límite de 33).
+test('C-TIEMPO-4: perder grasa, 30 min, sin zonas → cabe con 2 principales en superserie', () => {
+  const { S, s, c } = sesionReglas({ objetivos: ['perder'] }, { minutos: 30 });
+  assert.ok(cardioMin(s) >= 15);
+  assert.ok(ent.tiempoSesion(s) <= 30, `${ent.tiempoSesion(s)} min`);
+  assert.equal(prin(s).length, 2);
+  sinProblemas(S, s, c);
+});
+test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cardio y rehabilitación, sin fuerza y con aviso', () => {
   const { S, s, c } = sesionReglas({ objetivos: ['perder'], lesiones: [L('rodilla', 3)] }, { minutos: 30, dolorHoy: { rodilla: 5 } });
   assert.ok(cardioMin(s) >= 15);
   assert.ok(s.ejercicios.some(x => x.rol === 'rehab'));
-  assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
-  assert.equal(prin(s).length, 2);
+  assert.ok(ent.tiempoSesion(s) <= 30, `${ent.tiempoSesion(s)} min`);
+  assert.equal(prin(s).length, 0);
+  assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos/.test(t)), s.explicacion.join(' | '));
   sinProblemas(S, s, c);
 });
 
@@ -319,7 +328,7 @@ test('CR-26, C-TIEMPO-4: perder grasa, 30 min, lumbar 5 y rodilla 5: cardio y re
   const { S, s, c } = sesionReglas({ objetivos: ['perder'], lesiones: [L('lumbar', 3), L('rodilla', 3)] }, { minutos: 30, dolorHoy: { lumbar: 5, rodilla: 5 } });
   assert.ok(cardioMin(s) >= 15);
   for (const z of ['lumbar', 'rodilla']) assert.ok(s.ejercicios.some(x => x.rol === 'rehab' && cat.ZONAS[z].rehab.includes(x.id)), `sin rehabilitación de ${z}`);
-  if (ent.tiempoSesion(s) > 33) assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu .* y fuerza\. Hoy: cardio y rehabilitación\. Si quieres fuerza, elige 45 minutos\.$/.test(t)), s.explicacion.join(' | '));
+  if (ent.tiempoSesion(s) > 30) assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu .* y fuerza\. Hoy: cardio y rehabilitación\. Si quieres fuerza, elige 45 minutos\.$/.test(t)), s.explicacion.join(' | '));
   sinProblemas(S, s, c);
 });
 
@@ -635,7 +644,7 @@ test('B6: días de plan de la IA con 240 minutos usan los minutos pedidos; minut
   await ent.crearPlanSemana({ dias: [3], minutos: 60, lugares: ['gym'] });
   const d = est.estado().plan.dias[0];
   assert.equal(d.minutos, 60);
-  assert.ok(ent.tiempoSesion(d) <= 66);
+  assert.ok(ent.tiempoSesion(d) <= 60);
   const S = nuevoS({ objetivos: ['musculo'] });
   assert.equal(ent.validarSesion(S, { ejercicios: IA3 }, { lugar: 'gym', minutos: 240 }).sesion.minutos, 90);
 });

@@ -14,7 +14,7 @@ import { LUGARES, DIAS } from '../../datos/constantes.js';
 import { porQueEjercicio, porQueRehab, resumenDia, nombreCoherente, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn, valePrincipal, tareasDelDia } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias, planDeHoy } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
-import { validarSesion, esUltimoRecurso } from './validar.js';
+import { validarSesion, esUltimoRecurso, topeMinutos } from './validar.js';
 import { alarmaPendiente, preguntaAlarma, respondidasNo, normalizarTexto, T2 } from './alarma.js';
 import { etiquetasSalud } from './salud.js';
 import { miaDe, ejerciciosMia } from './mias.js';
@@ -49,7 +49,7 @@ export function pautasDia(S, { lugar, minutos, dolorHoy = {}, energia = 3, futur
   return {
     cardio: { minimo: c.minutos, maximo: c.max, rpe: c.rpe, intervalos: !!c.intervalos },
     calentamientoMin: minutosCalentamiento(S, ctx), vueltaMin: minutosVuelta(S, ctx),
-    minutosMax: Math.floor(ctx.minutos * 1.1),
+    minutosMax: topeMinutos(ctx.minutos),
     minPrincipales: ctx.energia === 1 ? 1 : 3,
     maxPrincipales: ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : undefined,
     margenMin: Math.max(sal.margenMin || 0, mayor ? 2 : 0) || undefined,

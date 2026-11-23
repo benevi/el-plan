@@ -74,7 +74,9 @@ test('C-VOL-1: el volumen semanal de cada músculo grande no pasa del techo del 
 });
 
 test('C-VOL-1: músculo intermedio llega al menos a la banda en los grandes principales', () => {
-  const { p } = plan({ objetivos: ['musculo'], nivel: 2 }, [1, 2, 4, 5]);
+  // Con «nunca más de lo pedido» (C-TIEMPO-1, 23-11-2026) 4 días de 60 min ya no dan para la banda de pecho: con 75, sí.
+  const S = nuevoS({ objetivos: ['musculo'], nivel: 2 });
+  const p = ent.planReglas(S, { dias: [1, 2, 4, 5], minutos: 75, lugares: ['gym'] });
   const vol = P.volumenSemana(p.dias);
   // Banda 10-14 (mitad alta para músculo): al menos el inicio de la banda en pecho y espalda. El cuádriceps
   // se queda algo por debajo porque las sentadillas y la prensa cuentan también como glúteo directo y el
@@ -94,11 +96,12 @@ test('D-B: el relleno de volumen no pasa de 3 series (principiante) ni de 4 (int
       assert.ok(prin.every(x => x.series <= tope), `nivel ${nivel}, días ${dias}: ${prin.map(x => `${x.id} ${x.series}`).join(', ')}`);
     }
   }
-  // Avanzado con 2 días: con 4 series por ejercicio no llega a su banda (12) sin otro ejercicio de pecho.
+  // Avanzado con 2 días: con 4 series por ejercicio, el pecho va repartido en más de un ejercicio. Su banda (12)
+  // ya no cabe en 2 días de 60 min con «nunca más de lo pedido» (C-TIEMPO-1, 23-11-2026): el tiempo manda.
   const { p } = plan({ objetivos: ['musculo'], nivel: 3 }, [1, 4]);
   const pecho = p.dias.flatMap(d => d.ejercicios.filter(x => x.rol === 'principal' && cat.ex(x.id).m[0] === 'pecho'));
-  assert.ok(pecho.length >= 3, pecho.map(x => x.id).join(', '));
-  assert.ok(P.volumenSemana(p.dias).pecho >= 12, JSON.stringify(P.volumenSemana(p.dias)));
+  assert.ok(pecho.length >= 2 && pecho.every(x => x.series <= 4), pecho.map(x => x.id).join(', '));
+  assert.ok(p.dias.every(d => ent.tiempoSesion(d) <= 60));
 });
 
 test('C-VOL-4: hombro en B1 deja hombro y pecho en el techo del nivel inferior; nunca suma series a lo que toca la zona', () => {

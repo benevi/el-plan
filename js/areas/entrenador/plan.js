@@ -8,7 +8,7 @@ import { tendencias } from '../../reglas/contexto.js';
 import { sesionesHechas, semanaDescarga, seriesDescarga, lesionNueva, topeSeries } from '../../reglas/progresion.js';
 import { ex, ZONAS, disponibles, nivelesZona, riesgo } from '../../reglas/catalogo.js';
 import { MUSCULOS, OBJETIVOS, DIAS } from '../../datos/constantes.js';
-import { validarSesion } from './validar.js';
+import { validarSesion, topeMinutos } from './validar.js';
 import { montarDia, objetivosDe, tiene, lista, minus, minusNombre, sincronizarDosis, contextoDia, valePrincipal, dosis, porQueEjercicio, tiempoEj, tiempoSesionExacto, riesgoHoy } from './dia.js';
 
 const GRANDES = ['pecho', 'espalda', 'cuadriceps', 'gluteo', 'isquios', 'hombro'];
@@ -248,7 +248,7 @@ function añadirEjercicio(S, out, d, m, obj, vol) {
     if ([...e.m, ...(e.s || [])].some(mm => obj.musculos[mm] && (vol[mm] || 0) + series * (e.m.includes(mm) ? 1 : 0.5) > obj.musculos[mm].techo)) continue;
     if (e.m.some(mm => GRANDES.includes(mm) && directas(d, mm) + series >= 4 && vecinos(out, d).some(o => directas(o, mm) >= 4))) continue;
     const x = { id: e.id, rol: 'principal', ...dz, series };
-    if (tiempoSesionExacto(d) + tiempoEj(x) > (+d.minutos || 60) * 1.1) return false;
+    if (tiempoSesionExacto(d) + tiempoEj(x) > topeMinutos(+d.minutos || 60)) return false;
     x.nota = porQueEjercicio(S, e, { i: iPrin, d: x, an: {}, carga: {}, niveles: ctx.niveles, dolorHoy: {} });
     const pos = d.ejercicios.map(y => y.rol).lastIndexOf('principal') + 1;
     d.ejercicios.splice(pos, 0, x);

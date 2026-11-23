@@ -66,10 +66,13 @@ test('S7, C-DOLOR-4: con un brazo a 8/10 y una pierna lesionada en la calle tamb
 
 // ── S18 · Superserie del último recurso: 90-120 s entre parejas (C-PAUSA-1, C-TIEMPO-2 paso 6, C-TIEMPO-4) ──
 for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
-  ['perder grasa, gimnasio, rodilla B2 (C-TIEMPO-4)', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 5 }, 'gym', 3],
-  ['perder grasa, gimnasio, rodilla B2, energía 5', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 5 }, 'gym', 5],
+  // Con «nunca más de lo pedido» (C-TIEMPO-1, 23-11-2026), perder grasa en el gimnasio con una zona B2 ya no cabe
+  // en 30 min con fuerza (C-TIEMPO-4): la superserie sale sin zonas o con una B1.
+  ['perder grasa, gimnasio, sin zonas (C-TIEMPO-4)', { objetivos: ['perder'], nivel: 1 }, [], {}, 'gym', 3],
+  ['perder grasa, gimnasio, rodilla B1, energía 5', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 3 }, 'gym', 5],
+  ['perder grasa, casa, tobillo B2', { objetivos: ['perder'], nivel: 1, materialCasa: [] }, [L('tobillo_pie', 3)], { tobillo_pie: 5 }, 'casa', 3],
   ['salud, casa, muñeca 5', { objetivos: ['salud'], nivel: 1, materialCasa: [] }, [L('muñeca', 5)], { muñeca: 5 }, 'casa', 3],
-  ['resistencia, calle, cervical 5', { objetivos: ['resistencia'], nivel: 2, materialCasa: [] }, [L('cervical', 5)], { cervical: 5 }, 'calle', 2],
+  ['resistencia, calle, cervical 3', { objetivos: ['resistencia'], nivel: 2, materialCasa: [] }, [L('cervical', 3)], { cervical: 3 }, 'calle', 2],
 ]) {
   test(`S18, C-PAUSA-1: superserie del último recurso (${nombre}): 90-120 s tras la pareja, nunca por debajo de C-PAUSA-1, y el primero sin descanso`, () => {
     const S = nuevoS({ lugares: [lugar], ...perfil });
@@ -84,7 +87,7 @@ for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
     for (const x of [primero, segundo]) assert.ok(segundo.descanso >= dia.pausaMinima(dia.tipoEj(cat.ex(x.id)), +String(x.reps).match(/\d+/)[0]), `${x.id} ${x.reps}`);
     assert.match(primero.nota, new RegExp(`descansa ${segundo.descanso} s`));
     assert.doesNotMatch(primero.nota, / con 0 s/);
-    assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
+    assert.ok(ent.tiempoSesion(s) <= 30, `${ent.tiempoSesion(s)} min`);
     // Pareja de antagonistas: empuje-tirón o rodilla-cadera (C-TIEMPO-3, revisión del PR #48).
     const G = { pecho: 'e', hombro: 'e', triceps: 'e', espalda: 't', biceps: 't', cuadriceps: 'r', gluteo: 'c', isquios: 'c' };
     const [ga, gb] = [primero, segundo].map(x => G[cat.ex(x.id).m[0]]);
@@ -92,12 +95,11 @@ for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
     assert.deepEqual(ent.problemasSesion(S, s, c), []);
   });
 }
-test('S18, C-TIEMPO-4 (revisión del PR #48): sin el descanso tras la última serie de fuerza, la superserie con 90 s cabe (≈ 31,8 de 33)', () => {
+test('S18, C-TIEMPO-4 (revisión del PR #48): sin el descanso tras la última serie de fuerza, la superserie con 90 s cabe (≈ 27 de 30, sin zonas)', () => {
   const S = nuevoS({ objetivos: ['perder'], nivel: 1, lugares: ['gym'] });
-  S.perfil.lesiones.push(L('rodilla', 3));
-  const s = sesionHoy(S, null, ci({ minutos: 30, dolorHoy: { rodilla: 5 } }));
+  const s = sesionHoy(S, null, ci({ minutos: 30 }));
   assert.equal(s.ejercicios.filter(x => x.rol === 'principal').length, 2);
-  assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
+  assert.ok(ent.tiempoSesion(s) <= 30, `${ent.tiempoSesion(s)} min`);
   // C-TIEMPO-1: el descanso tras la última serie del último ejercicio de fuerza no cuenta; el de los demás, sí.
   const A = { id: 'press-pecho-maquina', rol: 'principal', series: 3, reps: '10-12', descanso: 90 }, B = { ...A, id: 'jalon-pecho' }, C = { id: 'bici-estatica', rol: 'cardio', series: 1, reps: '15 min', descanso: 0 };
   assert.equal(dia.tiempoEjercicios([A, C]), ent.tiempoEj(A) - 1.5 + 15);
