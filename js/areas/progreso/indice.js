@@ -5,7 +5,7 @@
 
 import { rutas, pestaña, acciones } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, $, num, es, fechaCorta } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, $, num, es, fechaCorta, plural } from '../../nucleo/ui.js';
 import { sesionesHechas, resumen, registros } from '../../reglas/progresion.js';
 import { ex } from '../../reglas/catalogo.js';
 import { LUGARES, NIVELES } from '../../datos/constantes.js';
@@ -15,7 +15,9 @@ import { constancia, fuerza, salud, lecturaPeso, dolor, constanciaSemanas, racha
 import { linea, barras, vasos, activar } from './graficos.js';
 import { cuenta, listaY } from '../perfil/controles.js';
 
-const MEDIDAS = [['peso', 'Peso', 'kg', 1], ['cintura', 'Cintura', 'cm', 1], ['cadera', 'Cadera', 'cm', 0], ['cuello', 'Cuello', 'cm', 0], ['pecho', 'Pecho', 'cm', 0], ['brazo', 'Brazo', 'cm', 0], ['muslo', 'Muslo', 'cm', 0], ['grasa', '% de grasa', '%', 0]];
+// [clave, nombre, unidad, se ve sin abrir «Más medidas», mínimo, máximo]. Fuera de esos márgenes es un error al
+// escribir (1000 kg, una cintura negativa) y no se guarda (M16).
+const MEDIDAS = [['peso', 'Peso', 'kg', 1, 25, 300], ['cintura', 'Cintura', 'cm', 1, 40, 200], ['cadera', 'Cadera', 'cm', 0, 50, 200], ['cuello', 'Cuello', 'cm', 0, 20, 70], ['pecho', 'Pecho', 'cm', 0, 50, 200], ['brazo', 'Brazo', 'cm', 0, 15, 70], ['muslo', 'Muslo', 'cm', 0, 25, 100], ['grasa', '% de grasa', '%', 0, 3, 60]];
 const signo = v => (v > 0 ? '+' : v < 0 ? '−' : '') + es(Math.abs(v));
 const minus = t => String(t || '').toLowerCase();
 
@@ -81,7 +83,7 @@ function seccionFuerza(S) {
   const top = f.filas[0];
   const pts = puntosFecha(top.serie.filter(p => p.v != null));
   return `<section class="tarjeta bloque prog-sec" aria-labelledby="t-f"><h2 class="bloque-titulo" id="t-f">Fuerza</h2>
-    ${f.mediana != null ? `<p class="dato-grande"><b class="cifra">${signo(f.mediana)} %</b><span>de fuerza en ${+f.semanas} semanas, mediana de ${cuenta(+f.comparados, 'ejercicio', 'ejercicios')}${f.records ? `, ${cuenta(+f.records, 'récord', 'récords')} en la última vez` : ''}</span></p>` : '<p class="texto-2">Repite un ejercicio con kilos para ver la comparación.</p>'}
+    ${f.mediana != null ? `<p class="dato-grande"><b class="cifra">${signo(f.mediana)} %</b><span>de fuerza en ${plural(+f.semanas, 'semana', 'semanas')}, mediana de ${cuenta(+f.comparados, 'ejercicio', 'ejercicios')}${f.records ? `, ${cuenta(+f.records, 'récord', 'récords')} en la última vez` : ''}</span></p>` : '<p class="texto-2">Repite un ejercicio con kilos para ver la comparación.</p>'}
     ${pts.length >= 2 ? linea({ titulo: `${top.n}: 1RM estimado de cada sesión`, unidad: 'kg', valores: pts.map(p => p.v), etiquetas: pts.map(p => p.etiqueta), cab: 'Fecha', paso: 2.5, recorrido: 'las sesiones' }) : ''}
     <ul class="lista">${f.filas.slice(0, 12).map(x => `<li><button type="button" class="fila" data-act="progreso.ejercicio" data-id="${h(x.id)}">
       <span class="crece"><b>${h(x.n)}</b><span>${cuenta(+x.veces, 'vez', 'veces')}, último ${es(x.ultimoKg)} kg${x.record ? ', récord' : ''}</span></span>
@@ -138,7 +140,7 @@ function seccionDolor(S) {
     const graf = meses.length >= 2
       ? barras({ titulo, cifra: z.ultimo != null ? String(z.ultimo) : null, cifraTexto: 'de 10 la última vez', unidad: 'de 10', valores: meses.map(m => m.v), etiquetas: meses.map(m => m.etiqueta), max: 10, cab: 'Mes' })
       : `<div class="grafico"><p class="grafico-titulo">${h(titulo)}</p>${z.ultimo != null ? `<p class="grafico-cifra"><b>${+z.ultimo}</b><span>de 10 la última vez</span></p>` : ''}</div>`;
-    const nota = z.subidas ? `${cuenta(+z.subidas, 'sesión', 'sesiones')} en las que subió 2 puntos o más${z.sospechosos.length ? `; coincide con ${listaY(z.sospechosos.map(s => `${minus((ex(s.id) || {}).n || s.id)} (${+s.n} de ${+s.total} veces)`))}. Tu entrenador lo tiene en cuenta` : ''}.` : '';
+    const nota = z.subidas ? `${cuenta(+z.subidas, 'sesión', 'sesiones')} en las que subió 2 puntos o más${z.sospechosos.length ? `; coincide con ${listaY(z.sospechosos.map(s => `${minus((ex(s.id) || {}).n || s.id)} (${plural(+s.n, 'vez', 'veces', +s.total)})`))}. Tu entrenador lo tiene en cuenta` : ''}.` : '';
     return `<div class="dolor-zona">${graf}${nota ? `<p class="meta">${h(nota)}</p>` : ''}</div>`;
   }).join('')}
     <p class="meta">De 0 a 10: media de cada mes de lo que apuntas al terminar las sesiones y en tu perfil.</p></section>`;
@@ -173,11 +175,26 @@ acciones({
       <p class="hoja-texto">Por la mañana, en ayunas. La cintura, a la altura del ombligo y sin apretar.</p>
       <div class="rejilla-campos">${MEDIDAS.filter(m => m[3]).map(campo).join('')}</div>
       <details class="tecnica"><summary>Más medidas</summary><p class="tecnica-texto">Con cuello, cintura y cadera se estima el % de grasa.</p><div class="rejilla-campos">${MEDIDAS.filter(m => !m[3]).map(campo).join('')}</div></details>
+      <p class="mensaje mensaje--error" id="m-error" role="alert" hidden></p>
       <button type="button" class="boton boton--ancho" data-act="progreso.guardarMedida">Guardar medidas</button>`, { clase: 'hoja-pf' });
   },
   'progreso.guardarMedida': () => {
-    const x = { fecha: hoyISO() };
-    MEDIDAS.forEach(([k]) => { const v = num($('#m-' + k).value); if (v != null && v > 0) x[k] = v; });
+    const x = { fecha: hoyISO() }, malas = [];
+    MEDIDAS.forEach(([k, n, u, , min, max]) => {
+      const el = $('#m-' + k), txt = el.value.trim(), v = num(txt);
+      const mal = !!txt && (v == null || v < min || v > max);
+      if (mal) { el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', 'm-error'); malas.push(`${n}: entre ${min} y ${max} ${u}`); }
+      else { el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); if (v != null) x[k] = v; }
+    });
+    const error = $('#m-error');
+    if (malas.length) {
+      error.textContent = `Revisa ${malas.length === 1 ? 'esta medida' : 'estas medidas'}. ${malas.join('. ')}.`;
+      error.hidden = false;
+      const primera = $('.hoja [aria-invalid="true"]');
+      if (primera && primera.closest('details')) primera.closest('details').open = true;
+      try { primera && primera.focus(); } catch { /* nada */ }
+      return;
+    }
     if (Object.keys(x).length === 1) return cerrarHoja();
     cambiar(S => { S.medidas = S.medidas.filter(m => m.fecha !== x.fecha); S.medidas.push(x); }, 'medidas');
     cerrarHoja();

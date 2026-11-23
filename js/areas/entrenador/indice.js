@@ -278,7 +278,11 @@ async function prepararSesion(datos, op = {}) {
   if (r.pregunta) { ci = { ...datos, ...(op.reintento ? { reintento: op.reintento } : {}) }; hojaPregunta(r.pregunta); return; }
   if ($('.hoja.checkin')) cerrarHoja();
   if (r.descartada) { aviso(op.reintento ? 'Ya has empezado a apuntar en esta sesión: la dejo como está.' : 'Mientras tanto ya tenías otra sesión de hoy: la dejo como está.', 'info'); return; }
-  if (r.aviso) aviso(r.aviso, 'info'); else if (r.motivo) aviso(r.motivo, 'info');
+  // Si la hizo la IA, el motivo («Se lo pides al entrenador IA.») ya lo dijo la previa: se dice el resultado (M20).
+  const deIA = r.sesion && r.sesion.fuente === 'ia';
+  if (r.aviso) aviso(r.aviso, 'info');
+  else if (deIA && op.reintento) aviso('El entrenador IA ha rehecho tu sesión.', 'info');
+  else if (r.motivo && !deIA) aviso(r.motivo, 'info');
   if (r.sesion && (mismaPantalla(hash) || !usaIA)) ir('sesion/' + r.sesion.id);
   else if (r.sesion) aviso('Tu sesión está lista en Hoy.', 'info');
 }
@@ -403,7 +407,7 @@ export function tarjetaAnalisis(S) {
     <h2>Lo que ve tu entrenador</h2>
     <ul class="analisis">
       ${grupo('progresa', 'Progresan')}${grupo('estancado', 'Estancados')}${grupo('molesta', 'Te molestan')}
-      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} sesiones por semana (${t.constancia == null ? 'aún sin semanas completas' : +t.constancia + ' % de lo previsto'})${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
+      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} ${+t.sesionesPorSemana === 1 ? 'sesión' : 'sesiones'} por semana (${t.constancia == null ? 'aún sin semanas completas' : +t.constancia + ' % de lo previsto'})${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
       ${t.cambioPeso4sem != null ? `<li><b>Peso:</b> ${t.cambioPeso4sem > 0 ? '+' : ''}${es(t.cambioPeso4sem)} kg en 4 semanas.</li>` : ''}
       ${t.dolor.map(d => `<li><b>Dolor de ${h(minus(d.nombre))}:</b> ${es(d.media14)}/10 de media${d.tendencia === 'sube' ? ' (sube: más rehabilitación)' : d.tendencia === 'baja' ? ' (baja)' : ''}.</li>`).join('')}
     </ul></section>`;
