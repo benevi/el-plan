@@ -17,7 +17,7 @@ import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar, noPuedoHoy,
   previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, SEÑALES_CORTAS, T2, DESDE, misSesiones, miaDe,
-  motivoCheckinCompleto, resumenUnToque,
+  motivoCheckinCompleto, resumenUnToque, dolorReciente,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -176,10 +176,8 @@ function hojaAlarma() {
 // Dolor con que se rellena el check-in (C-DOLOR-0): el último de un check-in de hace ≤ 3 días; si no, el de
 // la ficha con tope 6 (así una ficha a 9 no lleva sola al día de dolor alto).
 function dolorInicial(S, l) {
-  const limite = Date.now() - 3 * 864e5;
-  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[l.zona] != null && new Date(s.creada || s.fecha) >= limite)
-    .sort((a, b) => String(b.creada).localeCompare(String(a.creada)))[0];
-  return ult ? +ult.checkin.dolor[l.zona] : Math.min(6, +l.dolor || 0);
+  const r = dolorReciente(S, l.zona);
+  return r != null ? r : Math.min(6, +l.dolor || 0);
 }
 
 // op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy sin plan).

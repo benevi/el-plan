@@ -13,7 +13,7 @@ import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '
 import { LUGARES, MUSCULOS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
-import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, T3b, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia } from '../entrenador/entrenador.js';
+import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, T3b, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia, dolorNuevoSinLesion, guardarDolorComoLesion } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
 
 // «Cambiar por otro»: el dolor de hoy con el «dolor durante» del ejercicio (C-DOLOR-6) y las alternativas que
@@ -365,15 +365,19 @@ function hojaCierre() {
       <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">Seguir con la sesión</button></div></div></div>` : '';
   // Solo zonas del catálogo: su clave va dentro de un id.
   const zonas = [...new Set([...Object.keys((s.checkin && s.checkin.dolor) || {}), ...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona)])].filter(z => tiene(ZONAS, z));
+  // Un dolor del check-in que no está en el perfil se puede guardar como molestia puntual (M11, C-LES-3).
+  const nuevas = new Set(dolorNuevoSinLesion(S, s).map(d => d.zona));
   abrirHoja(`<h2>¿Qué tal ha ido?</h2>
     ${quedan}
     <div class="grupo"><p class="grupo-et" id="c-esf-et">Esfuerzo</p>
       <div class="segmento segmento--ancho" role="radiogroup" aria-labelledby="c-esf-et" id="c-esf">${Object.entries(ESFUERZO).map(([v, t]) => `<button type="button" role="radio" data-v="${v}" aria-checked="${v === '3'}" tabindex="${v === '3' ? 0 : -1}" aria-label="${v}: ${t}">${v}</button>`).join('')}</div>
       <p class="ayuda" id="c-esf-txt">${ESFUERZO[3]}</p></div>
-    ${zonas.map(z => `<div class="grupo">${selector({ id: `c-dolor-${z}`, et: `Dolor ahora en ${minus(ZONAS[z].corta)}`, valor: Math.max(0, Math.min(10, ultimoDolor(S, s, z))), min: 0, max: 10, paso: 1, unidad: 'de 10', nombre: 'de 10', entrada: `data-zona="${h(z)}"` })}</div>`).join('')}
+    ${zonas.map(z => `<div class="grupo">${selector({ id: `c-dolor-${z}`, et: `Dolor ahora en ${minus(ZONAS[z].corta)}`, valor: Math.max(0, Math.min(10, ultimoDolor(S, s, z))), min: 0, max: 10, paso: 1, unidad: 'de 10', nombre: 'de 10', entrada: `data-zona="${h(z)}"` })}${nuevas.has(z) ? molestiaNueva(z) : ''}</div>`).join('')}
     <div class="campo"><label for="c-com">Para tu entrenador <small>molestias, qué cambiarías…</small></label><textarea id="c-com" rows="3" maxlength="${+LARGO_TEXTO.comentarioCierre}"></textarea></div>
     <button type="button" class="boton boton--ancho" data-act="sesion.cerrar">Guardar sesión</button>`, { clase: 'hoja-sesion' });
 }
+const molestiaNueva = z => `<div class="molestia-nueva" data-molestia="${h(z)}"><p class="ayuda">No la tienes en tu perfil: guárdala para que el entrenador la tenga en cuenta los próximos días.</p>
+  <button type="button" class="boton boton--secundario" data-act="sesion.guardarMolestia" data-z="${h(z)}" aria-label="Guardar ${h(minus(ZONAS[z].corta))} como molestia puntual">Guardar como molestia puntual</button></div>`;
 // Esfuerzo: grupo de radio (flechas, Inicio y Fin) que se actualiza en su sitio (R15).
 const ESFUERZO = { 1: 'Muy fácil', 2: 'Fácil', 3: 'Justo', 4: 'Duro', 5: 'Al límite' };
 function elegirEsfuerzo(b) {
@@ -628,6 +632,14 @@ acciones({
     cuenta({ lo: o.lo, hi: o.hi, lados: o.lados, u: o.u, nombre, etiqueta: `${nombre} · serie ${j + 1} de ${x.sets.length}`, meta: { sesion: id, e: i, s: j } });
   },
   'sesion.menu': el => menuEjercicio(+el.dataset.e),
+  // Con el dolor que marca ahora el cierre y la fecha de la sesión; el resto del cierre no se toca (M11).
+  'sesion.guardarMolestia': el => {
+    const s = sesion(idActual()), z = el.dataset.z; if (!s || !tiene(ZONAS, z)) return;
+    const campo = $(`.hoja input[data-zona="${z}"]`), ck = (s.checkin && s.checkin.dolor) || {};
+    guardarDolorComoLesion(z, campo ? num(campo.value) : +ck[z] || 0, s.fecha);
+    const caja = el.closest('.molestia-nueva');
+    if (caja) { caja.innerHTML = `<p class="ayuda" role="status" tabindex="-1">${ICONOS.check}Guardada en Perfil › Lesiones como molestia puntual.</p>`; try { caja.firstElementChild.focus({ preventScroll: true }); } catch { /* nada */ } }
+  },
   'sesion.algoVaMal': el => {
     const s = sesion(idActual()); if (!s || s.estado === 'hecha') return;
     // El ejercicio: el del menú o, uno a uno, el que está a la vista.

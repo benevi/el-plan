@@ -17,6 +17,7 @@ import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo, minutosD
 import { siguientePendiente, sinEntrenarHoy, T2, misSesiones } from '../entrenador/entrenador.js';
 import { info as cronometro, parar as pararCronometro } from '../sesion/temporizador.js';
 import * as progreso from '../progreso/indice.js';
+import { minusNombre } from '../entrenador/dia.js';
 import { recordatorioCopia } from '../perfil/indice.js';
 
 const minus = t => String(t || '').toLowerCase();
@@ -24,9 +25,8 @@ const series = s => s.ejercicios.reduce((a, x) => a + x.sets.length, 0);
 const seriesHechas = s => s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
 // El porqué en una frase, siempre a la vista: lo primero de la explicación del entrenador.
 const porque = d => d && d.explicacion && d.explicacion[0] ? `<p class="porque porque-linea">${ICONOS.ia}<span>${h(d.explicacion[0])}</span></p>` : '';
-// A mitad de frase el nombre del día va con minúscula inicial, pero sin tocar el resto: «cuerpo completo B» (M15).
-const inicialMinus = t => { const x = String(t || ''); return /^.[A-ZÁÉÍÓÚÑ]/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1); };
-const loSiguiente = sig => sig ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(inicialMinus(sig.nombre))}.` : '';
+// A mitad de frase el nombre del día va en minúscula, salvo la letra final: «cuerpo completo B» (M15).
+const loSiguiente = sig => sig ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minusNombre(sig.nombre))}.` : '';
 const fuente = s => s.origen ? 'tu sesión, ajustada por la app' : s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app';
 // «lunes, miércoles y viernes»
 const listaDias = l => { const n = l.map(i => minus(DIAS[i])).filter(Boolean); return n.length > 1 ? `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}` : n.join(''); };

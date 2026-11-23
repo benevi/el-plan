@@ -3,7 +3,7 @@
 // y «Algo ha cambiado», que abre el check-in completo. Con una ficha a 7 o más (C-DOLOR-0), el completo directo.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { estadoBase } from '../ayuda/comun.mjs';
+import { estadoBase, sesionDemo } from '../ayuda/comun.mjs';
 import { montar } from '../ayuda/dom.mjs';
 
 const conLesion = (dolor, extra = {}) => { const b = estadoBase(); b.perfil.lesiones.push({ id: 'l1', zona: 'rodilla', dolor, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true, ...extra }); return b; };
@@ -84,4 +84,17 @@ test('M21, C-DOLOR-0: con una ficha a 7 o más o un dolor por revisar, el check-
     assert.ok(!hoja().classList.contains('checkin-toque'), JSON.stringify(extra));
     assert.ok(a.doc.querySelector('input[type=range][data-z="rodilla"]'));
   }
+});
+
+test('C-DOLOR-0: si el dolor viene de un check-in de estos días, el paso de un toque dice «de estos días», no «de siempre»', async () => {
+  const b = conLesion(3);
+  b.perfil.lesiones.push({ id: 'l2', zona: 'hombro', dolor: 2, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true });
+  const ayer = new Date(Date.now() - 864e5);
+  b.sesiones.h1 = sesionDemo('h1', { fecha: ayer.toISOString().slice(0, 10), creada: ayer.toISOString(), estado: 'hecha', checkin: { energia: 3, dolor: { rodilla: 5 } } });
+  await reiniciar(b);
+  await abrir();
+  assert.match(hoja().textContent, /Con tu dolor de estos días: rodilla 5\/10\./);
+  assert.match(hoja().textContent, /Con tu dolor de siempre: hombro 2\/10\./);
+  assert.doesNotMatch(hoja().textContent, /de siempre: rodilla/);
+  a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
 });

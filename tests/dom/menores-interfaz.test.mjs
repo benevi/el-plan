@@ -66,6 +66,9 @@ test('M5: tocar fuera de «¿Hoy de verdad 7 o más?» vuelve al check-in con lo
   await reiniciar(b);
   const bt = a.doc.createElement('button'); bt.dataset.act = 'entrenador.prepararHoy'; a.vista().append(bt);
   a.clic(bt); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.crearHoy"]'));
+  // Check-in de un toque (M21): para tocar energía o dolor, «Algo ha cambiado».
+  const cmp = a.doc.querySelector('[data-act="entrenador.ciCompleto"]');
+  if (cmp) { a.clic(cmp); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); }
   a.clic('[data-act="entrenador.ci"][data-k="energia"][data-v="4"]'); await a.tic();
   a.clic('[data-act="entrenador.ciDolorPaso"][data-z="rodilla"][data-v="1"]');
   await a.esperar(() => /¿Hoy de verdad 7 o más\?/.test(textoHoja()));
@@ -264,4 +267,27 @@ test('M12 (revisión): tras «Que mande …» el foco va al texto que dice cuál
   bt.focus(); a.clic(bt); await a.tic();
   assert.ok(a.doc.activeElement && a.doc.activeElement.matches('.objetivo-manda .ayuda'), `foco en ${a.doc.activeElement && a.doc.activeElement.tagName}`);
   assert.match(a.doc.activeElement.textContent, /Manda Salud/);
+});
+
+// ── M11 ──
+test('M11 (C-LES-3): el cierre ofrece guardar un dolor nuevo como molestia puntual, con el dolor del cierre y la fecha de la sesión', async () => {
+  const s = sesionDemo('s1', { fecha: '2026-11-20', checkin: { energia: 3, dolor: { hombro: 4, rodilla: 2 } } });
+  const b = estadoBase({ sesiones: { s1: s } }); b.ajustes.modoSesion = 'lista';
+  b.perfil.lesiones.push({ id: 'l1', zona: 'rodilla', dolor: 2, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true });
+  await reiniciar(b, 'sesion/s1');
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  a.clic('[data-act="sesion.terminar"]'); await a.esperar(() => a.doc.querySelector('[data-act="sesion.cerrar"]'));
+  assert.ok(a.doc.querySelector('[data-act="sesion.guardarMolestia"][data-z="hombro"]'), 'se ofrece para el hombro');
+  assert.equal(a.doc.querySelector('[data-act="sesion.guardarMolestia"][data-z="rodilla"]'), null, 'la rodilla ya está en el perfil');
+  // El dolor del hombro en el cierre pasa a 5 y se guarda con ese valor.
+  a.doc.querySelector('.hoja input[data-zona="hombro"]').value = '5';
+  a.clic('[data-act="sesion.guardarMolestia"][data-z="hombro"]'); await a.tic();
+  const l = S().perfil.lesiones.find(x => x.zona === 'hombro');
+  assert.ok(l, 'se guardó');
+  assert.equal(l.tipo, 'puntual');
+  assert.equal(l.desde, '2026-11-20');
+  assert.equal(l.dolor, 5);
+  assert.match(textoHoja(), /Guardada en Perfil › Lesiones/);
+  assert.ok(a.doc.querySelector('[data-act="sesion.cerrar"]'), 'el cierre sigue abierto');
+  a.doc.querySelectorAll('.hoja-fondo').forEach(f => f.remove());
 });

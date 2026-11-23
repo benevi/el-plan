@@ -305,3 +305,8 @@ body.con-final { overflow: hidden; }
 .contador-pregunta { display: flex; flex-direction: column; gap: var(--e-3); width: 100%; }
 .contador-pregunta p { outline: none; }
 .contador-pregunta .contador-acciones { flex-wrap: wrap; }
+
+/* Cierre: un dolor nuevo que no está en el perfil, con «Guardar como molestia puntual» (M11) */
+.molestia-nueva { margin-top: var(--e-3); }
+.molestia-nueva .ayuda { margin: 0 0 var(--e-2); }
+.molestia-nueva .icono { width: 16px; height: 16px; vertical-align: -3px; margin-right: var(--e-1); color: var(--estado-bien); }
