@@ -77,20 +77,38 @@ export function lesionesParaIA(S, dolorHoy = {}, bandas = null, idsCatalogo = nu
 
 // Catálogo seguro de los lugares pedidos, en forma compacta (cada token cuesta):
 // { id, m: [principales, ...secundarios marcados con «~»], l: ids de los lugares donde se puede hacer, niv, t,
-//   tipo (compuesto · aislamiento · corporal · propia, C-DOSIS-1), prec?: ids de las zonas activas en las que
-//   tiene riesgo (dosis «con precaución», C-DOSIS-4), gusto? }
+//   tipo (compuesto · aislamiento · corporal · propia, C-DOSIS-1), d?: su dosis de referencia cuando el formato
+//   de «reps» no es un simple rango («10 c/lado», «8 × 5 s», «15 c/dirección», «30-45s»), np?: no puede ir con rol
+//   «principal» (1 en todos sus lugares, o la lista de lugares), prec?: ids de las zonas activas en las que tiene
+//   riesgo (dosis «con precaución», C-DOSIS-4), gusto? }
+// d y np salen de la ronda real del 23-11: la IA ponía «30 s» al dead bug o «30-45s» al tobillo con banda, y como
+// principal la retracción escapular isométrica o las rotaciones de hombro en el agua.
 // permitidoEn (opcional): l => (e => bool), la regla del validador para ese lugar (COD-1: una sola regla).
-export function catalogoParaIA(S, lugares, dolorHoy = {}, { permitidoEn } = {}) {
+// principalEn (opcional): l => (e => bool), si vale como principal ahí (valePrincipal del validador).
+const RANGO_SIMPLE = /^\d+(-\d+)?$/;
+export function catalogoParaIA(S, lugares, dolorHoy = {}, { permitidoEn, principalEn } = {}) {
   const bandas = bandasZonas(S.perfil, dolorHoy), niveles = nivelesDe(bandas);
-  const vistos = new Map();
-  lugares.forEach(l => disponibles(S.perfil, l, { dolorHoy, permitido: permitidoEn ? permitidoEn(l) : undefined }).forEach(e => {
-    const x = vistos.get(e.id) || { id: e.id, m: [...e.m, ...(e.s || []).map(m => '~' + m)], l: [], niv: e.niv, t: e.t, tipo: e.tipo };
-    x.l.push(l);
-    const z = zonasRiesgo(e, niveles, bandas); if (z.length) x.prec = z.join(',');
-    const g = S.perfil.gustos[e.id]; if (g) x.gusto = g === 'gusta' ? 'le gusta' : 'no le gusta';
-    vistos.set(e.id, x);
-  }));
-  return [...vistos.values()];
+  const vistos = new Map(), noPrincipal = new Map();
+  lugares.forEach(l => {
+    const vale = principalEn ? principalEn(l) : null;
+    disponibles(S.perfil, l, { dolorHoy, permitido: permitidoEn ? permitidoEn(l) : undefined }).forEach(e => {
+      const x = vistos.get(e.id) || { id: e.id, m: [...e.m, ...(e.s || []).map(m => '~' + m)], l: [], niv: e.niv, t: e.t, tipo: e.tipo };
+      x.l.push(l);
+      const d1 = String((e.d || [])[1] || '').trim();
+      // Sin «d» lo que nunca lleva «reps» propias: cardio y natación (minutos o metros) y la movilidad que solo va de tarea.
+      if (d1 && !RANGO_SIMPLE.test(d1) && !['cardio', 'natacion'].includes(e.m[0]) && !(e.m[0] === 'movilidad' && !e.rehab)) x.d = d1;
+      if (vale && !vale(e)) noPrincipal.set(e.id, [...(noPrincipal.get(e.id) || []), l]);
+      const z = zonasRiesgo(e, niveles, bandas); if (z.length) x.prec = z.join(',');
+      const g = S.perfil.gustos[e.id]; if (g) x.gusto = g === 'gusta' ? 'le gusta' : 'no le gusta';
+      vistos.set(e.id, x);
+    });
+  });
+  return [...vistos.values()].map(x => {
+    const np = noPrincipal.get(x.id);
+    if (!np) return x;
+    const { prec, gusto, ...resto } = x;
+    return { ...resto, np: np.length === x.l.length ? 1 : np, ...(prec ? { prec } : {}), ...(gusto ? { gusto } : {}) };
+  });
 }
 
 export function historialParaIA(S, ids, ctx = {}) {

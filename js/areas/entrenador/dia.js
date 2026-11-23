@@ -448,7 +448,9 @@ export function tareasDelDia(S, ctx) {
   const poner = id => { if (id && !ids.includes(id)) ids.push(id); };
   zonasRehab(ctx).filter(z => ZONAS[z]).forEach(z => {
     const t = tareasFicha(z, 'calentar', detalleDe0(ctx, z)).find(t => t.id && t.uso === 'activacion' && usoOk(t.uso, ctx.bandas[z].banda) && tareaOk(S, t.id, ctx));
-    if (t) { activacion[z] = t.id; poner(t.id); }
+    // Sin activación en su ficha, un ejercicio de su fase 1 que valga hoy (C-CAL-2).
+    const id = t ? t.id : (EJERCICIOS.find(e => fasesRehab(e, z, detalleDe0(ctx, z)).includes(1) && tareaOk(S, e.id, ctx)) || {}).id;
+    if (id) { activacion[z] = id; poner(id); }
   });
   Object.entries(ctx.bandas).filter(([z]) => ZONAS[z]).forEach(([z, b]) => ['calentar', 'estirar'].forEach(tipo =>
     tareasFicha(z, tipo, (b.lesion || {}).detalle).filter(t => t.id && usoOk(t.uso, b.banda) && tareaOk(S, t.id, ctx)).forEach(t => poner(t.id))));

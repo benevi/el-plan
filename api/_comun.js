@@ -133,6 +133,8 @@ function limpiarEjercicio(e) {
   if ('niv' in e) x.niv = Number.isFinite(e.niv) ? e.niv : null;
   if (typeof e.t === 'string') x.t = recortar(e.t, 20);
   if (typeof e.tipo === 'string') x.tipo = recortar(e.tipo, 20);
+  if (typeof e.d === 'string') x.d = recortar(e.d, 30);
+  if (e.np === 1) x.np = 1; else if (Array.isArray(e.np)) x.np = textos(e.np, 10, 30);
   if (typeof e.prec === 'string') x.prec = recortar(e.prec, 200);
   if (typeof e.gusto === 'string') x.gusto = recortar(e.gusto, 30);
   return x;
