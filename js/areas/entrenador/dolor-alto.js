@@ -75,9 +75,13 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
   const mov = [...new Set([...movAlivio, ...ctx.pool.filter(e => e.m[0] === 'movilidad' && !esEstiraId(e.id) && vale(e) && !deFichaAlta(e.id)
     && !(lugar === 'calle' && ['gato-camello', 'rotacion-toracica-cuadrupedia'].includes(e.id)))])];
   const nMov = Math.max(1, Math.min(movMin >= 10 ? 5 : 3, Math.max(1, mov.length)));
+  // El equilibrio a una pierna con una pierna activa: solo sobre la que no duele (verificación final, C-DOLOR-4).
+  const piernaActiva = zonas.some(z => ['cadera_lateral', 'rodilla', 'tobillo_pie'].includes(z));
+  const detalleMov = e => (e.id === 'equilibrio-una-pierna' && piernaActiva
+    ? `Solo sobre la pierna que no te duele, con la mano en ${lugar === 'piscina' ? 'el borde' : 'una pared'}; si molesta, sáltalo.` : 'Lento, en el rango que no duele.');
   repartir(movMin, nMov).forEach((m, i) => {
     const e = mov[i];
-    vuelta.push(e ? { id: e.id, nombre: e.n, detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` } : { nombre: MOV_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'], detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` });
+    vuelta.push(e ? { id: e.id, nombre: e.n, detalle: detalleMov(e), duracion: `${m} min` } : { nombre: MOV_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'], detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` });
   });
   // Estiramientos de las zonas sin dolor y respiración (más los «alivio» de la ficha, PR 9).
   const resp = t.estiramientos >= 12 ? 4 : t.estiramientos >= 8 ? 3 : 2;

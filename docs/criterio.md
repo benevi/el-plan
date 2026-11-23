@@ -216,6 +216,7 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 | 90 | 45 (6 + 39) | 25 | 20 | 90 |
 
 - **Con 60 años o más**: el tramo suave inicial dura 2 min más dentro del mismo bloque (el total no cambia).
+- **Equilibrio a una pierna** en la movilidad, con una zona de pierna activa (cadera lateral, rodilla o tobillo/pie): solo sobre la pierna que no duele, con la mano en una pared o en el borde, y si molesta se salta (verificación final del 22-11-2026, CR-01).
 - **Cardio del bloque**: solo ejercicios de cardio sin r en ninguna zona activa (C-CARDIO-6), con **prueba de 2 minutos**: «si el dolor sube 1 punto o más, cambia de ejercicio; si sigue subiendo, para el cardio y pasa a movilidad». Se puede alternar entre dos ejercicios para llenar el tiempo.
 - **Movilidad**: libre en las zonas sin dolor. En la zona dolorida, como mucho 2 tareas que su ficha marque como `alivio` (C-EST-2), en el rango que no sube el dolor.
 - **Estiramientos**: de las zonas sin dolor, más los `alivio` de la ficha de la zona.
