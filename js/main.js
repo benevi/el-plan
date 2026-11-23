@@ -52,12 +52,12 @@ escucharGuardado(ev => {
     quitarAvisoFijo(); aviso('Ya se guarda de nuevo');
   } else if (ev.tipo === 'externo') {
     if (ev.perdido) aviso('Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo guardar ni apartar y se ha perdido.', 'error');
-    else aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado (puedes recuperarlo en Perfil › Ajustes).' : 'Se han cargado los cambios guardados en otra ventana', 'info');
+    else aviso(ev.apartado ? 'Se han cargado los cambios guardados en otra ventana. Lo último que hiciste aquí no se pudo juntar y ha quedado apartado (puedes recuperarlo en Perfil › Copias).' : 'Se han cargado los cambios guardados en otra ventana', 'info');
     if (ev.apartado) pintar();
   }
 });
 arrancar();
-// Lo apartado (Perfil › Ajustes) se lee del espejo sin esperar: si hay algo, se repinta.
+// Lo apartado (Perfil › Copias) se lee del espejo sin esperar: si hay algo, se repinta.
 revisarApartado().then(a => { if (a) pintar(); }, () => {});
 if (migrado && migrado.sesiones) aviso(`He traído ${plural(migrado.sesiones, 'sesión nueva', 'sesiones nuevas')} de la app anterior`, 'info');
 // Marca el arranque para el vigilante de js/arranque.js (si no llega, avisa en vez de quedarse en blanco).

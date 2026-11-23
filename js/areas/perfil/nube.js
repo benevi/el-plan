@@ -74,7 +74,7 @@ export function grupoCopias() {
       ${n.cargada ? '' : '<p class="ayuda">Comprobando este móvil…</p>'}`}
     <p class="ayuda">Se cifran en este móvil con tu frase de recuperación antes de salir: ni el servidor ni quien tenga el código de acceso pueden leer lo que hay dentro, aunque sí ven cuándo se subió cada copia y cuánto ocupa. Cada uno tiene su frase. ${h(ADVERTENCIA)}</p>
     <button type="button" class="boton boton--texto" data-act="nube.recuperar">Recuperar de la nube en este móvil (con la frase)</button>
-    <p class="ayuda">La copia en un archivo (Perfil › Ajustes › Guardar copia) sigue siendo la segunda vía.</p>
+    <p class="ayuda">La copia en un archivo, aquí debajo, sigue siendo la segunda vía.</p>
   </section>`;
 }
 

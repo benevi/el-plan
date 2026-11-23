@@ -263,11 +263,12 @@ test('Perfil: las siete partes caben sin salirse, con el teclado se cambia de pa
   await expect.poll(async () => (await leer(page))?.perfil?.disponibilidad?.dias).toBe(1);
   await expect(page.locator('#p-dias')).toBeFocused();
   await expect(page.locator('#p-dias')).toHaveAttribute('aria-valuetext', '1 día por semana');
-  // Ajustes: ayuda del código, aviso de salud en la copia y versión visible
+  // Ajustes: ayuda del código y versión visible; el aviso de salud de la copia, en Copias (M19)
   await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
   await expect(page.locator('#a-codigo-ayuda')).toContainText('El mismo que te ha dado Víctor');
-  await expect(page.locator('.aviso-salud')).toContainText('Lleva tus datos de salud');
   await expect(page.locator('[data-version-app]')).not.toHaveText('');
+  await page.click('[data-act="perfil.grupo"][data-v="copias"]');
+  await expect(page.locator('.aviso-salud')).toContainText('Lleva tus datos de salud');
   expect(errores).toEqual([]);
 });
 

@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-906069cca3b7';
+const VERSION = 'pipos-app-31b80ac26ec8';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-LuxO2w3cNyRCL8xT3Av6AKUo+F8kPRMMJ1Wu9PvVK0I=',
+  './': 'sha256-1k/KQzWo/KJ0BG1LmLaRAv3neP51DH/90FbRd9er030=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-/PRQnpPMx6ibZwR6sm8eqcgnTtgengfu6Q8iYHqngiA=',
@@ -32,7 +32,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-LuxO2w3cNyRCL8xT3Av6AKUo+F8kPRMMJ1Wu9PvVK0I=',
+  './index.html': 'sha256-1k/KQzWo/KJ0BG1LmLaRAv3neP51DH/90FbRd9er030=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
   './js/areas/ejercicios/indice.js': 'sha256-ShKymjOA1X2xP6s1HYhFukQl93SMisalAgZCUYYABsI=',
   './js/areas/entrenador/alarma.js': 'sha256-VP4tbS0/BjFrgaUmbdAzZpH/1r1S/IhothJNZAwBgh4=',
@@ -51,8 +51,8 @@ const HUELLAS = {
   './js/areas/perfil/controles.js': 'sha256-SEK696W9UBpjbhv22oOmXxT0tYsT30bgaJ8nJHqt/JM=',
   './js/areas/perfil/editor.js': 'sha256-/TQ0RVykCQAx8WyVWczNq+jc5pVqsWluXaj5k0LwwjY=',
   './js/areas/perfil/grupo.js': 'sha256-aZDPUEqt80/gqYplOA5dxzPZgXJJK077aPGOVXr+ysU=',
-  './js/areas/perfil/indice.js': 'sha256-iTDsgjwIOR/AVSeKewo3AuMQr4RMZEdL3PV3kzIQh74=',
-  './js/areas/perfil/nube.js': 'sha256-YfxWYMZ/J9iwI4HPEsmc9LseWIJQnhTX95eRomCSuk0=',
+  './js/areas/perfil/indice.js': 'sha256-tezdbGwTEaRyuzrtVavvDK94oerwy4anAjTyrM2Lz0E=',
+  './js/areas/perfil/nube.js': 'sha256-VEopaGL7a80KV07vpn5+FqwCjpJKgPvL3/ZIO6E6/dc=',
   './js/areas/perfil/salud.js': 'sha256-38BQdSYXUddIOeO6Pcg+GH+DYJVE+qy+ex52fa9xYU8=',
   './js/areas/progreso/analisis.js': 'sha256-luOhjFmMpt3JyYX1w96zCLEsdFt2nTmLc88t7wJS0lI=',
   './js/areas/progreso/graficos.js': 'sha256-WU1aoXhXlaJc9GpP2nJIlv38ThfrPVEQi/MD7Xnmuyc=',
@@ -67,15 +67,15 @@ const HUELLAS = {
   './js/datos/ejercicios.js': 'sha256-yNvazSSs5zMJj8q4Bb00gWcOyx5YTNUSXzbnLov7+1U=',
   './js/datos/lesiones.js': 'sha256-EUTHi70/dUkKwir/veKkW/CRLyyWU/sjOgqsORNEJvY=',
   './js/datos/palabras.js': 'sha256-uNIKPRAkULGKC90yvFVDChjrk/Xymx0tBE8BuAulTF0=',
-  './js/main.js': 'sha256-RN+M/lfMJk80cXf+LrLGJ2s5pvASvNgK1ksyw29FcGM=',
+  './js/main.js': 'sha256-IsPmTIL30p4UrgeOzh6K/AaT1BbA69/cdx7dIUbZBMc=',
   './js/nucleo/api.js': 'sha256-OBdNq53SohnHUOON8LiIVQt3RJKDjXTNYVSfcXnV8HA=',
   './js/nucleo/copia.js': 'sha256-Ub9sGKl1qrha0qk3PKDQ+GzAFPqZ9NwvtItaQAaSrV8=',
-  './js/nucleo/espejo.js': 'sha256-a5UgPajqqC4dNBZKb0cEpujFTZkwxWVW87K3yfY6RZ0=',
-  './js/nucleo/estado.js': 'sha256-4dQosiQbE9EZHu64AsYKLy/ykhRCH9BHMHeUIaTL4Dk=',
+  './js/nucleo/espejo.js': 'sha256-5xazJbo5qKu+7HFH84IqumPb2W5HiHFd4gKgkxFGjCY=',
+  './js/nucleo/estado.js': 'sha256-aw6bTsfkJLOmP5C/ff04K6O1mcrqAQsTsGYQ6CU+HN4=',
   './js/nucleo/migracion.js': 'sha256-KU2w3gp99EJQ2i+nP4fZjKihPDMFPybH6i/JMKhZhs0=',
   './js/nucleo/modelo.js': 'sha256-xgsihlJYQ3FqdSoez5pnXzwsilNLsvIN1uJVntgomqg=',
   './js/nucleo/normalizar.js': 'sha256-WL0bfkw8ADUNySMh406stBzJVLBuRZbSe/cLCtcFLxQ=',
-  './js/nucleo/rescate.js': 'sha256-nkpOCeQb3GnT6xCB6tNjiXhruP4zeimkSE+h0l5KL2g=',
+  './js/nucleo/rescate.js': 'sha256-3+zga0iKoB8t0Mhm8KQgvX95APMDhUW/L4Peu6GeiMI=',
   './js/nucleo/router.js': 'sha256-+6PmHMap+ovhsvlM6v05KDA/L8vOz3D7NkQoitd2JE0=',
   './js/nucleo/ui.js': 'sha256-DMnY30Iy+xY3W0yTq3X2+L+4Q6Mp5pyYHhxREqvmNdU=',
   './js/nucleo/version.js': 'sha256-LtzF3eUp42lbAisHNOc3AzwPdP67nYrvklPceMWLwZM=',

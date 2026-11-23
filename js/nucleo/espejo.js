@@ -5,7 +5,7 @@
 // Una base pequeña ('pipos-espejo'), un almacén ('estado') y un único registro ('pipos4'):
 //   { txt: JSON del estado, rev: revisión, fecha: ISO }
 // Aparte, el registro 'conflicto' guarda lo apartado: los cambios de una pestaña que otra se adelantó a guardar
-// (o lo de ahora al cargar otra copia, ver estado.js). Se lee y se borra desde Perfil › Ajustes.
+// (o lo de ahora al cargar otra copia, ver estado.js). Se lee y se borra desde Perfil › Copias.
 // Nada de esto bloquea la interfaz: las escrituras se encolan y solo se escribe la última pendiente.
 // Si el navegador no tiene IndexedDB (o falla), todo es un «no hace nada» silencioso.
 

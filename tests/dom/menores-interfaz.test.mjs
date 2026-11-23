@@ -152,7 +152,7 @@ test('M17: tras cargar una copia no dice «Aún no has guardado ninguna copia» 
   a.w.localStorage.removeItem('pipos4-antes-de-importar');
   const otra = estadoBase();
   for (let i = 0; i < 12; i++) otra.sesiones['h' + i] = sesionDemo('h' + i, { estado: 'hecha', fecha: `2026-10-${String(i + 1).padStart(2, '0')}`, terminada: `2026-10-${String(i + 1).padStart(2, '0')}T18:00:00.000Z`, cierre: { esfuerzo: 3, dolor: {}, comentario: '' } });
-  a.clic('[data-act="perfil.grupo"][data-v="ajustes"]'); await a.tic();
+  a.clic('[data-act="perfil.grupo"][data-v="copias"]'); await a.tic();
   // «Cargar copia» con un archivo elegido: se coge el <input type=file> que crea y se le da el archivo.
   let entrada = null;
   const clicReal = a.w.HTMLInputElement.prototype.click;

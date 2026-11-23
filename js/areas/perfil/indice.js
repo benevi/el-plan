@@ -45,7 +45,7 @@ function vista() {
   ${avisosMigracion(S)}
   ${g !== 'copias' ? avisoNube() : ''}
   <nav class="grupos-perfil" aria-label="Partes del perfil"><ul>${GRUPOS.map(([k, n]) => `<li><button type="button" class="chip" data-act="perfil.grupo" data-v="${k}"${g === k ? ' aria-current="true"' : ''}>${h(n)}</button></li>`).join('')}</ul></nav>
-  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[g] || grupoObjetivos)(S)}`;
+  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopiasYArchivo, ajustes: grupoAjustes }[g] || grupoObjetivos)(S)}`;
 }
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
@@ -155,18 +155,23 @@ function grupoDatos(S) {
     <p class="ayuda">Lo lee el entrenador IA como información, no como órdenes.</p></div>`)}`;
 }
 
-function grupoAjustes(S) {
-  return `${tarjeta('Ajustes del móvil', `<div class="campo"><label for="a-codigo">Código de acceso a la IA</label><input id="a-codigo" type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" aria-describedby="a-codigo-ayuda">
-      <p class="ayuda" id="a-codigo-ayuda">El mismo que te ha dado Víctor para usar el entrenador IA. Sin él, la app monta tus sesiones con sus reglas.</p></div>
-    <div class="bloque-mini">${interruptor('perfil.ajuste', S.ajustes.vibrar, 'Vibrar al acabar el descanso', 'data-k="vibrar"')}
-    ${interruptor('perfil.ajuste', S.ajustes.sonido, 'Pitido al acabar el descanso', 'data-k="sonido"')}</div>`)}
+// Perfil › Copias: la de la nube y, debajo, la copia en un archivo, con lo de antes de cargar una copia y lo
+// apartado (decisión de Víctor sobre M19: las copias, en un solo sitio).
+function grupoCopiasYArchivo(S) {
+  return `${grupoCopias(S)}
   ${tarjeta('Copia en un archivo', `<div class="aviso aviso-linea aviso--aviso aviso-salud" role="note">${ICONOS.alerta}<div class="aviso-texto"><b>Lleva tus datos de salud</b><p>Lesiones, dolor, medidas y entrenos (sin el código de acceso). Guárdala en un sitio privado.</p></div></div>
     <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="perfil.exportar">Guardar copia</button><button type="button" class="boton boton--secundario" data-act="perfil.importar">Cargar copia</button></div>
     ${puedeCompartirArchivos() ? '<button type="button" class="boton boton--texto" data-act="perfil.compartir">Enviar la copia a otra app (Archivos, Drive…)</button>' : ''}
     ${bloqueCopia()}
     ${bloqueDeshacer()}
-    ${bloqueApartado()}
-    <p class="ayuda">Las copias automáticas están en Perfil › Copias.</p>`)}
+    ${bloqueApartado()}`)}`;
+}
+
+function grupoAjustes(S) {
+  return `${tarjeta('Ajustes del móvil', `<div class="campo"><label for="a-codigo">Código de acceso a la IA</label><input id="a-codigo" type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" aria-describedby="a-codigo-ayuda">
+      <p class="ayuda" id="a-codigo-ayuda">El mismo que te ha dado Víctor para usar el entrenador IA. Sin él, la app monta tus sesiones con sus reglas.</p></div>
+    <div class="bloque-mini">${interruptor('perfil.ajuste', S.ajustes.vibrar, 'Vibrar al acabar el descanso', 'data-k="vibrar"')}
+    ${interruptor('perfil.ajuste', S.ajustes.sonido, 'Pitido al acabar el descanso', 'data-k="sonido"')}</div>`)}
   ${tarjeta('Este móvil', `<p>Móvil de ${h(nombre(S.dueño))}.</p>
     <button type="button" class="boton boton--texto" data-act="perfil.cambiarDueño">Cambiar de quién es</button>
     <p class="meta version-app">Versión de la app: <span class="cifra" data-version-app>${h(versionApp() || '—')}</span></p>

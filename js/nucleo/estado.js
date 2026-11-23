@@ -272,7 +272,7 @@ function escribir(revMin = rev, { estricto = false } = {}) {
 // Un solo hueco con lo último apartado: los cambios de esta pestaña que otra se adelantó a guardar, pipos4 al
 // recuperar un espejo más nuevo, o lo de ahora al cargar otra copia cuando ya hay «datos de antes» (D2).
 // Vive en el espejo (registro 'conflicto') o en pipos4-conflicto ({ fecha, txt }; antes, el texto a secas);
-// vale el más nuevo. Perfil › Ajustes lo enseña con «Recuperarlo» (por importar(), reversible) y «Descartar».
+// vale el más nuevo. Perfil › Copias lo enseña con «Recuperarlo» (por importar(), reversible) y «Descartar».
 let apartado = null; // { fecha, dueño, sesiones, donde: 'espejo'|'local' } o null; se lee con revisarApartado()
 function infoApartadoDe(reg, donde) {
   let x;
@@ -498,7 +498,7 @@ export function importar(txt, { otraPersona = false, interno = false, deshacer =
   const x = leerCopia(txt);
   let candidato, avisos, info = { tipo: 'copia' };
   if (esViejo(x)) {
-    if (!S.dueño) throw new ErrorCopia('Es una copia de la app anterior. Elige primero de quién es este móvil y cárgala después desde Perfil → Ajustes.', 'vieja-sin-dueño');
+    if (!S.dueño) throw new ErrorCopia('Es una copia de la app anterior. Elige primero de quién es este móvil y cárgala después desde Perfil → Copias.', 'vieja-sin-dueño');
     if (migracionDeOtro()) throw new ErrorCopia(`Lo traído de la app anterior a este móvil es de ${nombre(S.migracion.dueño)}. Resuélvelo primero en Perfil («Traer lo de ${nombre(S.dueño)}») y vuelve a cargar la copia.`, 'migracion-de-otro');
     const base = JSON.parse(JSON.stringify(S));
     const r = migrar(base, x, S.dueño);
@@ -535,7 +535,7 @@ export function importar(txt, { otraPersona = false, interno = false, deshacer =
   if (!deAntes && S.dueño) deAntes = S;
   const antesGuardado = (() => { try { return almacen().getItem(CLAVE_ANTES); } catch { return null; } })();
   // D2: si ya hay «datos de antes» (de una copia cargada hace menos de 7 días), no se pisan: siguen siendo lo
-  // que había antes de empezar a cargar copias. Lo de ahora va entonces a lo apartado (Perfil › Ajustes).
+  // que había antes de empezar a cargar copias. Lo de ahora va entonces a lo apartado (Perfil › Copias).
   // Al deshacer sí se cambian (lo de ahora pasa a ser «los de antes»).
   const conservarAntes = !deshacer && !!infoAntesDeImportar();
   let alApartado = false;

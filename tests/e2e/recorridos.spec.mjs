@@ -725,7 +725,7 @@ for (const persona of ['victor', 'virginia']) {
     let copia;
     await paso('copia a un archivo', page, errores, async () => {
       await page.goto('/#perfil'); // desde una sesión no hay barra de pestañas
-      await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+      await page.click('[data-act="perfil.grupo"][data-v="copias"]');
       await expect(page.locator('.ultima-copia')).toContainText('Aún no has guardado ninguna copia');
       const [descarga] = await Promise.all([page.waitForEvent('download'), page.click('#vista [data-act="perfil.exportar"]')]);
       expect(descarga.suggestedFilename()).toBe(`pipos-fitness-${persona}-2026-11-18.json`);
@@ -752,7 +752,7 @@ for (const persona of ['victor', 'virginia']) {
       expect(Object.keys((await datos(p2)).sesiones)).toEqual([]); // móvil limpio: nada que migrar
       await p2.click('#nav a[href="#perfil"]');
       await expect(p2).toHaveURL(/#perfil$/);
-      await p2.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+      await p2.click('[data-act="perfil.grupo"][data-v="copias"]');
       const [elegir] = await Promise.all([p2.waitForEvent('filechooser'), p2.click('#vista [data-act="perfil.importar"]')]);
       await elegir.setFiles(copia);
       await expect(p2.locator('.hoja')).toContainText('Esto sustituye todos los datos de este móvil');
