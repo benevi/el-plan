@@ -6,7 +6,7 @@
 // «solo suave» de los datos de salud (C-SALUD-0) con otra primera línea.
 
 import { ex, ZONAS } from '../../reglas/catalogo.js';
-import { contextoDia, opcionesCardio, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab, tareasFicha, tareaOk, tareaSinIdOk, libresDe, ESTIRA_SUAVE } from './dia.js';
+import { contextoDia, opcionesCardio, CARDIO_ULTIMO, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab, tareasFicha, tareaOk, tareaSinIdOk, libresDe, ESTIRA_SUAVE } from './dia.js';
 import { T6 } from './alarma.js';
 
 // Minutos → [bloque de cardio suave, de ellos el tramo inicial más suave, movilidad, estiramientos y respiración].
@@ -38,7 +38,7 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
 
   // Cardio del bloque: sin impacto y sin r en ninguna zona activa (C-CARDIO-6), con la prueba de 2 minutos.
   const opciones = opcionesCardio(S, ctx, { sinRiesgo: true }).filter(e => !['comba', 'carrera-suave', 'jumping-jacks-sin-salto', 'step-bajo'].includes(e.id));
-  const [c1, c2] = opciones;
+  const c1 = opciones[0], c2 = opciones.slice(1).find(e => !CARDIO_ULTIMO.includes(e.id)); // la marcha sentada no se ofrece para alternar (S7)
   const ejercicios = [];
   const calentamiento = [];
   const explicacion = [motivo || T6(zMax, dMax, ctx.minutos)];
@@ -75,9 +75,13 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
   const mov = [...new Set([...movAlivio, ...ctx.pool.filter(e => e.m[0] === 'movilidad' && !esEstiraId(e.id) && vale(e) && !deFichaAlta(e.id)
     && !(lugar === 'calle' && ['gato-camello', 'rotacion-toracica-cuadrupedia'].includes(e.id)))])];
   const nMov = Math.max(1, Math.min(movMin >= 10 ? 5 : 3, Math.max(1, mov.length)));
+  // El equilibrio a una pierna con una pierna activa: solo sobre la que no duele (verificación final, C-DOLOR-4).
+  const piernaActiva = zonas.some(z => ['cadera_lateral', 'rodilla', 'tobillo_pie'].includes(z));
+  const detalleMov = e => (e.id === 'equilibrio-una-pierna' && piernaActiva
+    ? `Solo sobre la pierna que no te duele, con la mano en ${lugar === 'piscina' ? 'el borde' : 'una pared'}; si molesta, sáltalo.` : 'Lento, en el rango que no duele.');
   repartir(movMin, nMov).forEach((m, i) => {
     const e = mov[i];
-    vuelta.push(e ? { id: e.id, nombre: e.n, detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` } : { nombre: MOV_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'], detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` });
+    vuelta.push(e ? { id: e.id, nombre: e.n, detalle: detalleMov(e), duracion: `${m} min` } : { nombre: MOV_LIBRE[lugar === 'piscina' ? 'piscina' : 'otro'], detalle: 'Lento, en el rango que no duele.', duracion: `${m} min` });
   });
   // Estiramientos de las zonas sin dolor y respiración (más los «alivio» de la ficha, PR 9).
   const resp = t.estiramientos >= 12 ? 4 : t.estiramientos >= 8 ? 3 : 2;

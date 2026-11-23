@@ -412,7 +412,7 @@ function hojaAlgoVaMal() {
   const antes = +(((s.checkin || {}).dolor || {})[avm.zona] || 0);
   const { techo } = limiteDolor(S, avm.zona, antes, { rehab: !!x && x.rol === 'rehab' });
   if (avm.dolor == null) avm.dolor = antes;
-  // Sin lesiones activas, T3b (pendiente de aprobar por Víctor, § 2.5): no habla de «tu lesión» (U6).
+  // Sin lesiones activas, T3b (aprobado por Víctor el 23-11-2026, § 2.5): no habla de «tu lesión» (U6).
   const conLesion = S.perfil.lesiones.some(l => l.activa);
   abrirHoja(`<h2>Algo va mal</h2>
     <p class="hoja-texto">${h(conLesion ? T3(techo) : T3b(techo))}</p>

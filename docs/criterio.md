@@ -60,7 +60,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 
 **C-PRIN-2 [Objetivo] [PR 8, PR 11]** Ante la duda **gana lo más prudente**: si dos reglas chocan, se aplica la que menos carga la zona dolorida. Seguridad (secciones 2, 3, 12 y 16) por encima de rendimiento (5 a 10), y este por encima de gustos y variedad.
 
-**C-PRIN-3 [Objetivo] [PR 8]** Toda sesión, de la IA o de las reglas, pasa por el **validador único** antes de guardarse. Lo que no puede comprobar se evalúa con la rúbrica de la sección 19.
+**C-PRIN-3 [Objetivo] [PR 8]** Toda sesión, de la IA o de las reglas, pasa por el **validador único** antes de guardarse. Lo que no puede comprobar se evalúa con la rúbrica de la sección 19. También los días del plan semanal por reglas tal como se ven antes del check-in: tras el volumen semanal, C-REP-1, el día suave y la descarga, cada día vuelve a pasar por el validador (tiempo, lugar, tareas), sin rellenar principales para no pasar el techo (C-VOL-2); si el techo o C-REP-1 dejan un día de fuerza con menos de 3 principales, se añade uno de un músculo con sitio en la semana si cabe (verificación final del 22-11-2026).
 
 **C-PRIN-4 [D3 y decisión del dueño] [PR 8]** Toda sesión lleva **calentamiento, cardio y vuelta a la calma con al menos un estiramiento**, también el día de dolor alto y en la piscina.
 
@@ -112,10 +112,14 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 **C-ALAR-3 [Objetivo] [PR 8]** El check-in tiene **siempre visible** una casilla «Hoy noto alguna de estas señales» junto a la lista corta (lo más frecuente de A1-A11) a la vista y la lista completa desplegable, en lenguaje llano. (Texto cambiado a petición de Víctor el 21-11-2026: «Hoy noto algo de esto» con la lista plegada no se entendía.) Marcarla aplica C-ALAR-1.
 
 **C-ALAR-4 [Objetivo] [PR 8, PR 11]** **Palabras de alarma en textos libres** (comentarios de la última sesión, petición del check-in, notas nuevas). Si aparece una, **no se genera nada** (ni reglas ni IA) hasta que la persona conteste la casilla: «En tu comentario dices "[frase]". ¿Notas algo de esto hoy?». Si responde que no, sigue el flujo normal; si responde que sí, C-ALAR-1. No se propone una «sesión más suave» en su lugar.
-- Expresiones que disparan (expresión regular, sin tildes y en minúsculas): `(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho`, `me aprieta el pecho`, `mare[oóa]|desmay|vertigo`, `palpitacion`, `(me )?falta(ba)? el aire|me ahogaba`, `hormigue`, `se me (duerme|durmio|dormia)`, `no (puedo|podia|pude) apoyar`, `vision doble`, `sudor frio`, `nausea|vomit`, `fiebre`, `orina (muy )?oscura`, `mandibula`.
+- Expresiones que disparan (expresión regular sobre el texto sin tildes y en minúsculas; es la lista de `ALARMA` en `js/areas/entrenador/alarma.js`, y una prueba comprueba que las dos coinciden):
+  - las del PR 8 y el PR 11: `(dolor|opresion|presion|pinchazo)\s+(en el|del|de)\s+pecho`, `me aprieta el pecho`, `mare(o|a|e)|desmay|vertigo`, `palpitacion`, `(me )?falta(ba)? el aire|me ahogaba`, `hormigue`, `se me (duerme|durmio|dormia)`, `no (puedo|podia|pude) apoyar`, `vision doble`, `sudor frio`, `nausea|vomit`, `fiebre`, `orina (muy )?oscura`, `mandibula`;
+  - las de la re-auditoría (S8: A1, A2, A4, A6 y A11 dichas con otras palabras; solo frases que describen el síntoma, no el esfuerzo) [aprobadas por Víctor el 23-11-2026]: `(note|tengo|tenia|tuve|senti|mucha|bastante) falta de aire|falta de aire (fuera de lo normal|desproporcionad|rara|extrana|sin motivo|en reposo|que no (cede|se pasa))`, `me costaba (mucho )?respirar|no (podia|puedo|pude) respirar`, `(duele|dolia|dolio|doler) (el|en el) pecho|pecho oprimido|presion en el pecho`, `perd(i|io|ia) (la )?fuerza|me quede sin fuerza|sin fuerza en (el|la) (brazo|pierna|mano)`, `(pierna|brazo|mano|pie|cara) dormid[ao]|adormecid|adormecimiento`, `ve(ia|o) doble`, `taquicardia|corazon .{0,15}(a mil|desbocado|a toda velocidad)`, `\bgripe\b|gastroenteritis`, `(gemelo|pantorrilla).{0,20}(hinchad|calient|roj[oa])`, `dolor de cabeza .{0,15}(muy fuerte|fortisimo|subito|de golpe|repentino)|cabeza .{0,15}(muchisimo|de golpe)`;
+  - las de la verificación final (S8) [aprobadas por Víctor el 23-11-2026]: `se me nublo (la vista|todo)|vista (nublada|borrosa)|vision borrosa|ve(ia|o) borroso` (A2) y `(calambre|pinchazo|opresion|entumecimiento)s? (en|del) (el )?brazo izquierdo|brazo izquierdo (entumecido|dormido)` (A1; solo el brazo izquierdo: un calambre en el gemelo o en el brazo derecho es muscular y no avisa). La vista borrosa no avisa si la misma frase habla de gafas, gafas empañadas o lentillas (`gafas|empanad|lentilla`);
+  - las de la revisión del PR #48 [aprobadas con las del 23-11-2026]: `(duele|dolia|dolio|dolor|molestia|pesadez|pesaba|calambre|pinchazo|hormigue|entumec)[^.]{0,25}\bbrazo izquierdo|\bbrazo izquierdo[^.]{0,25}(duele|dolia|dolio|dolor|pesa|calambre|pinchazo|hormigue|entumec)` (A1: cualquier síntoma del brazo izquierdo a pocas palabras, en los dos órdenes; no el antebrazo ni el codo) y `(duele|dolia|dolio|dolor|opresion)[^.]{0,25}\bpecho` (A1: dolor u opresión del pecho en la misma frase). Además de los ejercicios, tampoco disparan «día, sesión, rutina o máquina de pecho» ni «haciendo, entrenar, entrené, entrenando o toca pecho».
 - **No disparan** los nombres de ejercicios ni el músculo: «press de pecho», «pecho en máquina», «aperturas de pecho», «estiramiento de pecho».
 - **Negaciones**: no dispara si en las 3 palabras anteriores hay `sin|no|ni|nada de|cero|ningun|ninguna`.
-- Vectores de prueba: «me mareé al acabar la cinta» → sí; «sin mareos hoy» → no; «press de pecho muy pesado» → no; «un poco de hormigueo en la mano» → sí; «no he notado hormigueo» → no; «dolor en el pecho al subir la escalera» → sí; «nada de náuseas» → no.
+- Vectores de prueba: «me mareé al acabar la cinta» → sí; «sin mareos hoy» → no; «press de pecho muy pesado» → no; «un poco de hormigueo en la mano» → sí; «no he notado hormigueo» → no; «dolor en el pecho al subir la escalera» → sí; «nada de náuseas» → no; «se me nubló la vista» → sí; «el día estaba nublado» → no; «calambre en el brazo izquierdo» → sí; «calambre en el gemelo nadando» → no; «me falta aire al nadar fuerte» → no; «me duele el brazo izquierdo y el pecho» → sí; «vista borrosa con las gafas empañadas» → no; «hoy toca pecho y me duele el hombro» → no.
 
 **C-ALAR-5 [Objetivo] [PR 11]** La IA nunca recibe una petición si hay una alarma marcada o pendiente de respuesta.
 
@@ -140,7 +144,7 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 
 > Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es solo el dolor de tu lesión y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
 
-**T3b · Durante la sesión, sin lesiones activas (botón «Algo va mal»)** — *pendiente de que Víctor apruebe el texto* (re-auditoría del PR 18, U6: quien no tiene lesiones leía «el dolor de tu lesión»):
+**T3b · Durante la sesión, sin lesiones activas (botón «Algo va mal»)** — *aprobado por Víctor el 23-11-2026* tal como está (re-auditoría del PR 18, U6: quien no tiene lesiones leía «el dolor de tu lesión»):
 
 > Para el ejercicio. Si notas dolor en el pecho, mareo, sudor frío, falta de aire fuera de lo normal, hormigueo o pérdida de fuerza, termina la sesión aquí y consulta (112 si es en el pecho o no cede). Si es un dolor en una zona concreta (un músculo o una articulación) y pasa de [techo]/10, salta este ejercicio y sigue con el siguiente.
 
@@ -213,6 +217,7 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 | 90 | 45 (6 + 39) | 25 | 20 | 90 |
 
 - **Con 60 años o más**: el tramo suave inicial dura 2 min más dentro del mismo bloque (el total no cambia).
+- **Equilibrio a una pierna** en la movilidad, con una zona de pierna activa (cadera lateral, rodilla o tobillo/pie): solo sobre la pierna que no duele, con la mano en una pared o en el borde, y si molesta se salta (verificación final del 22-11-2026, CR-01).
 - **Cardio del bloque**: solo ejercicios de cardio sin r en ninguna zona activa (C-CARDIO-6), con **prueba de 2 minutos**: «si el dolor sube 1 punto o más, cambia de ejercicio; si sigue subiendo, para el cardio y pasa a movilidad». Se puede alternar entre dos ejercicios para llenar el tiempo.
 - **Movilidad**: libre en las zonas sin dolor. En la zona dolorida, como mucho 2 tareas que su ficha marque como `alivio` (C-EST-2), en el rango que no sube el dolor.
 - **Estiramientos**: de las zonas sin dolor, más los `alivio` de la ficha de la zona.
@@ -319,13 +324,13 @@ No hay progresión de carga en lo que implica la zona mientras sea nueva; sí de
 - en piscina, `nado-continuo`, `aquajogging` o `caminar-agua` como bloque continuo;
 - por **distancia** en piscina (`crol`, `espalda`, `series-50-crol`): los minutos estimados con C-PISC-4, **solo** como añadido: la sesión de piscina necesita igualmente el bloque continuo (C-PISC-1).
 
-**No cuentan**: el calentamiento (salvo en D2), la movilidad, la fuerza en circuito, `paseo-granjero` y los cardios de 30 s sueltos (`rodillas-altas-agua`, `jumping-jacks-sin-salto` 3 × 30-45 s). En casa y en la calle, los cardios cortos (`step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `marcha-estatica`, `cardio-sentado`) cuentan solo encadenados en un **bloque continuo** de 1-3 min por ejercicio, sin pausa, hasta sumar los minutos.
+**No cuentan**: el calentamiento (salvo en D2), la movilidad, la fuerza en circuito, `paseo-granjero` y los cardios de 30 s sueltos (`rodillas-altas-agua`, `jumping-jacks-sin-salto` 3 × 30-45 s). En casa y en la calle, los cardios cortos (`step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `marcha-estatica`, `cardio-sentado`, `marcha-sentada`) cuentan solo encadenados en un **bloque continuo** de 1-3 min por ejercicio, sin pausa, hasta sumar los minutos.
 
 | Lugar | Cardio continuo | Bloque encadenado |
 |---|---|---|
 | Gimnasio | `bici-estatica`, `eliptica`, `cinta-inclinada`, `remo-ergometro` | — |
-| Casa | `bici-estatica` si tiene bici (material nuevo, sección 18) | `marcha-estatica`, `step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `cardio-sentado` |
-| Calle | `marcha-rapida`, `carrera-suave` (nivel ≥ 2) | `comba`, `cardio-sentado` (en un banco) |
+| Casa | `bici-estatica` si tiene bici (material nuevo, sección 18) | `marcha-estatica`, `step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `cardio-sentado`, `marcha-sentada` |
+| Calle | `marcha-rapida`, `carrera-suave` (nivel ≥ 2) | `marcha-estatica`, `comba`, `cardio-sentado` y `marcha-sentada` (en un banco) |
 | Piscina | `nado-continuo`, `aquajogging`, `caminar-agua` | — |
 
 ### 4.4 Cardio con lesión
@@ -349,6 +354,9 @@ ZONAS[z].cardio = {
 | Codo / muñeca | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`, `nado-continuo` (B1) | Sin agarrar fuerte el manillar |
 | Cervical | `bici-estatica`, `eliptica`, `cinta-inclinada` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida; sin crol en B2 |
 | Espalda alta (dorsal) [pendiente, sección 12.9] | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida con el manillar alto; cinta sin agarrarse; elíptica sin tirar de las asas; sin crol ni remo en B2 |
+
+**C-CARDIO-6 · pierna y brazo a la vez [aprobado por Víctor el 23-11-2026] (S7)** Cardio siempre (T1 al 100 %): con una zona de pierna (cadera lateral, rodilla o tobillo/pie) y otra de brazo (hombro, codo o muñeca) en B2, o en el día de dolor alto con una de ellas activa (C-DOLOR-4.3), ningún cardio de casa o calle de la tabla vale (todos tienen r en una de las dos). Para eso está **`marcha-sentada`** (casa y calle, en un banco): sentado y erguido, levantando los pies alternos a ritmo vivo, con las manos en los muslos. No apoya peso en las piernas ni mueve los brazos, así que no lleva r en ninguna zona de pierna ni de brazo; lleva r=1 en la lumbar (estar sentado y erguido mucho rato puede subir un dolor lumbar). Es la última opción del lugar: si cualquier otra vale, va la otra. Con la pierna dolorida, el pie apenas despega y el ritmo lo marca la otra.
+- **Caso sin cardio posible** (comprobado con las 660 combinaciones de 1 a 3 zonas en B2 y en el día de dolor alto, en casa sin bici y en la calle): cadera lateral o tobillo/pie, **más** hombro o codo, **más** lumbar, las tres a la vez. Lo que no carga esa pierna ni ese brazo (`marcha-sentada`) carga la lumbar, y lo que no carga la lumbar carga la pierna o el brazo. Ese día no hay cardio: en el día de dolor alto el bloque pasa a movilidad y respiración (C-DOLOR-4.5) y la explicación lo dice; con B2, la sesión va sin cardio y lo dice («hoy no hay ningún cardio posible en este lugar con tu dolor»). En el gimnasio queda la bici estática y en la piscina el agua.
 
 ---
 
@@ -425,7 +433,7 @@ No sube la carga si el dolor subió en la última sesión (C-DOLOR-7).
 | 11-15 | 60 s | 45 s |
 | > 15 | 45 s | 30 s |
 
-Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superseries de antagonistas (C-TIEMPO-3), con el descanso de la tabla entre parejas.
+Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superseries de antagonistas (C-TIEMPO-3), con el descanso de la tabla entre parejas; en la superserie del último recurso (C-TIEMPO-2 paso 6), 90-120 s entre parejas, nunca por debajo de la tabla [aprobado por Víctor el 23-11-2026] (S18).
 
 **C-RIR-1 [Criterio] [PR 8, PR 10]** Margen mínimo:
 - compuestos libres (barra o mancuernas pesadas): 1;
@@ -450,7 +458,7 @@ Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superse
 **C-EDAD-1 [Criterio] [PR 8, PR 11]** Con **60 años o más**:
 - margen mínimo 2;
 - calentamiento +2 min (en D2, dentro del bloque);
-- un ejercicio de equilibrio por sesión (`equilibrio-una-pierna`, con apoyo en la pared);
+- un ejercicio de equilibrio por sesión (`equilibrio-una-pierna`, con apoyo en la pared), **siempre**: si venía como rehabilitación de tobillo y el ajuste de tiempo (C-TIEMPO-2, paso 4) la quita, vuelve al calentamiento [aprobado por Víctor el 23-11-2026] (S4);
 - sin intervalos (C-CARDIO-4).
 
 ### 5.5 Energía
@@ -772,6 +780,7 @@ Mínimo 2 tareas y 1 estiramiento (validador). En piscina: 2 min de `flotacion` 
 
 **C-EST-4 [Objetivo] [PR 8, PR 9]** Toda tarea con id cumple tres condiciones: tener el lugar del día en `l`, que haya material y que su riesgo no sea «evitar». Las tareas de texto de la ficha pasan a ser ids (PR 9).
 - **Calle**: solo de pie o con apoyo en banco o pared, nada tumbado; para eso están `estiramiento-pectoral-pared` y `estiramiento-isquios-pie`.
+- **Calle, también los ejercicios [aprobado por Víctor el 23-11-2026] (S16)**: la regla vale para todo, no solo para las tareas. Nada tumbado (boca arriba, boca abajo o de lado), a cuatro patas, de rodillas ni sentado en el suelo; sí lo que se hace con el cuerpo en el aire apoyando manos o antebrazos y pies (`flexiones`, `plancha`, `mountain-climbers`). Se aplica en el catálogo: esos ejercicios no llevan `calle` en `l`, así que ni las reglas, ni la IA, ni «Cambiar por otro», ni el plan los ponen en la calle (`superman`, `plancha-lateral`, `dead-bug`, `bird-dog`, `crunch`, `elevacion-piernas`, `puente-gluteo`, `puente-una-pierna`, `abduccion-tumbada`, `almeja`, `curl-nordico-asistido`, `puente-talones-elevados`, `curl-femoral-banda`, `puente-banda-rodillas`, `patada-gluteo-cuadrupedia`, `ytw-tumbado`, `remo-banda`, `rotacion-toracica-cuadrupedia`, `flexiones-rodillas`). Para que la calle siga teniendo fuerza de cada músculo y nivel, sin material, hay ejercicios de pie o con apoyo, solo de la calle (en casa y en el gimnasio siguen los de siempre): `patada-gluteo-pie` (glúteo), `buenos-dias-sin-peso` (isquios), `remo-poste` (espalda; mejor en una barandilla o barra horizontal; r=1 en codo y espalda alta, como el remo australiano) y, si no hay dónde agarrarse, `remo-toalla-pie` (espalda, isométrico pisando una toalla), `ytw-inclinado` (hombro y espalda alta, con la frente apoyada y el tronco a unos 45°; rehabilitación de hombro y cervical en fase 3 y de espalda alta en fase 2, como el tumbado) y `dead-bug-pared` (core; rehabilitación lumbar de fase 1, como el dead bug, sin r en la cadera: con la cadera dolorida se levanta solo el brazo, o el pie un par de centímetros; revisión del PR #48). `retraccion-cervical` se queda: en la calle, sentado en un banco o de pie.
 - **Piscina**: de pie en el agua o en el borde.
 
 Hoy la vuelta de piscina puede incluir `estiramiento-pectoral-puerta` y la de calle `postura-nino`.
@@ -1048,6 +1057,8 @@ Vectores:
 
 Con 30 min se quitan técnica y series, nunca el bloque continuo.
 
+**C-PISC-2 · quien no nada 2 × 25 m [aprobado por Víctor el 23-11-2026] (S3)** Sea cual sea su nivel de fuerza (el nivel no es de natación): por tiempo, técnica solo con tabla (`patada-crol-tabla`, `patada-espalda-tabla`) y bloque de `aquajogging` o `caminar-agua` **siempre donde hace pie**, con el agua por el pecho; sin `crol`, `espalda`, `nado-continuo`, `series-50-crol` ni largos sin tabla. La nota del cardio lo dice («Siempre donde hagas pie, con el agua por el pecho») y el validador lo comprueba. En la parte honda, el aquajogging solo para quien sabe nadar y con cinturón de flotación (ficha de `aquajogging`).
+
 **C-PISC-3 [Criterio] [PR 8]** Piscina con lesión:
 - **Hombro en B2-B3**: sin `crol`, `espalda`, `nado-continuo`, `series-50-crol` ni `patada-crol-tabla`; bloque con `aquajogging`.
 - **Cervical en B2-B3**: `espalda` en lugar de crol; sin `respiracion-lateral-borde`.
@@ -1074,6 +1085,8 @@ Modelo de tiempo (minutos):
 | Cardio | sus minutos |
 | Piscina | C-PISC-4 |
 
+Tras la última serie del último ejercicio de fuerza (o de la última pareja) no hay descanso: se pasa al cardio o a la vuelta, así que ese descanso no se cuenta (revisión del PR #48).
+
 Ejemplos:
 - Compuesto 3 × 6-10 con 120 s ≈ 9,1.
 - Aislamiento 3 × 10-15 con 60 s ≈ 6,1.
@@ -1088,7 +1101,7 @@ Ejemplos:
 
 **Último recurso** [Decisión 8]:
 
-6. **2 ejercicios principales** en superserie de 2 series.
+6. **2 ejercicios principales** en superserie de 2 series, antagonistas si los hay (empuje-tirón o rodilla-cadera, C-TIEMPO-3): una serie de cada uno seguidas, sin descanso entre los dos, y **90-120 s entre parejas**, nunca por debajo de C-PAUSA-1 de ninguno de los dos [aprobado por Víctor el 23-11-2026] (S18).
 7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos».
 
 **Nunca** se quita el cardio mínimo ni el calentamiento y la vuelta enteros. El validador acepta menos de 3 principales **solo** con el motivo «último recurso» anotado.
@@ -1096,7 +1109,7 @@ Ejemplos:
 **C-TIEMPO-3 [Criterio] [PR 8]** Con 30 minutos, el principal va en superseries de antagonistas (empuje-tirón, rodilla-cadera), con el descanso de C-PAUSA-1 entre parejas.
 
 **C-TIEMPO-4 [Criterio] [PR 8]** Cálculos de comprobación:
-- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5; quedan 5,5 (límite 33). Paso 5: calentamiento 4. Paso 6: superserie de 2 principales × 2 series con 60 s ≈ 5,8. Total ≈ 32,3: cabe con 2 principales.
+- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5; quedan 5,5 (límite 33). Paso 5: calentamiento 4 (26,5). Paso 6: superserie de 2 principales antagonistas × 2 series con 90 s entre parejas (S18) ≈ 2 × (1,4 + 1,5) + 1 = 6,8, menos los 1,5 del descanso tras la última pareja, que no se hace (C-TIEMPO-1) = 5,3. Total ≈ 31,8: cabe con 2 principales. (Antes de la decisión S18 del 23-11-2026 el ejemplo contaba 60 s entre parejas; con 60 s se incumplía C-PAUSA-1.)
 - **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso.
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 17,8 (límite 49,5). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9). Total ≈ 48,6: cabe.
 
@@ -1295,6 +1308,16 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 **Aprobada el 21-11-2026:**
 
 13. **Zona nueva «Espalda alta (dorsal)»** (sección 12.9): qué evitar, rehabilitación por fases, techo 3 (también en crónica, como lumbar y cervical) y cuándo consultar: **aprobada**.
+
+**Aprobadas por Víctor el 23-11-2026** (decisiones pendientes de la verificación final de la re-auditoría del 22-11-2026):
+
+14. **S7 · Cardio siempre (T1 al 100 %)**: cardio sentado sin carga de piernas ni brazos para casa y calle (`marcha-sentada`, C-CARDIO-6 · pierna y brazo a la vez), con el único caso sin cardio posible dicho: **aprobada**.
+15. **S18 · Superserie del último recurso**: 90-120 s de descanso entre parejas, nunca por debajo de C-PAUSA-1 (C-TIEMPO-2 paso 6 y el ejemplo de C-TIEMPO-4): **aprobada**.
+16. **S16 · Calle sin nada tumbado**: la regla de C-EST-4 pasa de los estiramientos a todos los ejercicios, con ejercicios de pie o con apoyo en banco para que la calle siga teniendo fuerza: **aprobada**.
+17. **S3 · Aquajogging**: para quien no nada 2 × 25 m, solo donde hace pie; en lo hondo, solo si sabe nadar y con cinturón de flotación (C-PISC-2): **aprobado tal como está**.
+18. **T3b · Texto de «Algo va mal» sin lesiones** (§ 2.5): **aprobado tal como está**.
+19. **S8 · Palabras de alarma**: la lista de C-ALAR-4 es la del código, con «se me nubló la vista» y «calambre en el brazo izquierdo»: **aprobada**.
+20. **S4 · Equilibrio con 60 años o más**: queda siempre, también si el ajuste de tiempo quita la rehabilitación de tobillo que lo traía (C-EDAD-1): **aprobada**.
 
 ---
 

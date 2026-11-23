@@ -305,12 +305,13 @@ test('C-PRIN-4, C-VUELTA-1: vuelta de la IA sin estiramientos ni calentamiento: 
 
 // ── Tiempo (C-TIEMPO-1 a 4) ──
 
+// Con 90 s entre parejas (S18) y sin contar el descanso tras la última serie de fuerza (revisión del PR #48): ≈ 31,8 de 33.
 test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cabe con 2 principales en superserie', () => {
   const { S, s, c } = sesionReglas({ objetivos: ['perder'], lesiones: [L('rodilla', 3)] }, { minutos: 30, dolorHoy: { rodilla: 5 } });
   assert.ok(cardioMin(s) >= 15);
   assert.ok(s.ejercicios.some(x => x.rol === 'rehab'));
   assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
-  assert.ok(prin(s).length >= 2);
+  assert.equal(prin(s).length, 2);
   sinProblemas(S, s, c);
 });
 

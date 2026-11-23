@@ -33,7 +33,8 @@ const R2 = ['remo-barra', 'buenos-dias', 'sentadilla-barra', 'sentadilla-smith',
 const R1 = ['remo-sentado-polea', 'remo-mancuerna', 'remo-australiano', 'remo-mochila', 'remo-ergometro', 'jalon-pecho', 'jalon-maquina', 'dominadas-asistidas-maquina',
   'dominadas-escapulares', 'press-banca-barra', 'press-hombro-maquina', 'press-militar-mancuernas', 'press-hombro-botellas', 'press-hombro-banda', 'pike-pushup',
   'peso-muerto-rumano', 'peso-muerto-rumano-una-pierna', 'hiperextension-45', 'superman', 'paseo-granjero', 'sentadilla-goblet', 'hip-thrust', 'crunch', 'crunch-maquina',
-  'rueda-abdominal', 'pajaros', 'boxeo-sombra', 'crol', 'crol-un-brazo', 'crol-catch-up', 'crol-pull-buoy', 'patada-lateral', 'nado-continuo', 'series-50-crol'];
+  'rueda-abdominal', 'pajaros', 'boxeo-sombra', 'crol', 'crol-un-brazo', 'crol-catch-up', 'crol-pull-buoy', 'patada-lateral', 'nado-continuo', 'series-50-crol',
+  'buenos-dias-sin-peso', 'remo-poste', 'remo-toalla-pie']; // S16 (23-11-2026): los de pie de la calle
 
 test('C-ZONA-DORSAL: la zona «Espalda alta» existe con todos los campos de una ficha', () => {
   const Z = ZONAS.dorsal;
@@ -64,7 +65,7 @@ test('C-ZONA-DORSAL: etiquetas r.dorsal del catálogo (r=2 absoluto, r=1 con dol
 test('C-ZONA-DORSAL, C-ZONA-0: rehabilitación por fases, sin riesgo en fases 1-2 y como mucho r=1 en la 3', () => {
   const f = L.rehabPorFase('dorsal');
   assert.deepEqual(f[1], ['retraccion-escapular-isometrica']);
-  assert.deepEqual([...f[2]].sort(), ['face-pull-banda', 'rotacion-toracica-cuadrupedia', 'separacion-banda', 'ytw-tumbado']);
+  assert.deepEqual([...f[2]].sort(), ['face-pull-banda', 'rotacion-toracica-cuadrupedia', 'separacion-banda', 'ytw-inclinado', 'ytw-tumbado']); // ytw-inclinado: el de pie de la calle (S16)
   assert.deepEqual([...f[3]].sort(), ['face-pull', 'remo-banda', 'remo-mancuerna', 'remo-maquina']);
   for (const id of [...f[1], ...f[2]]) assert.equal(rD(id), 0, id);
   for (const id of f[3]) assert.ok(rD(id) <= 1, id);
@@ -135,8 +136,9 @@ test('C-DOLOR-1, C-DOSIS-4, validador: con la espalda alta a 2 (B1) se quita lo 
   assert.deepEqual(ent.problemasSesion(S, sesion, c), []);
 });
 
+// En casa con mancuernas: en la calle ya no está el superman (S16, nada tumbado en la calle), que era lo que implicaba la espalda alta.
 test('C-DOSIS-4 por reglas: con la espalda alta a 2, lo que la implica lleva la nota con la zona, su dolor y el techo', () => {
-  const { S, s, c } = sesionReglas({ objetivos: ['musculo'], nivel: 2, lugares: ['calle'], lesiones: [lesion(3)] }, { lugar: 'calle', minutos: 45, dolorHoy: { dorsal: 2 } });
+  const { S, s, c } = sesionReglas({ objetivos: ['musculo'], nivel: 2, lugares: ['casa'], materialCasa: ['mancuernas'], lesiones: [lesion(3)] }, { lugar: 'casa', minutos: 45, dolorHoy: { dorsal: 2 } });
   const riesgo = conR(s);
   assert.ok(riesgo.length >= 1 && riesgo.length <= 2, riesgo.map(x => x.id).join(', '));
   assert.ok(riesgo.every(x => /tu espalda alta \(2\/10\)/.test(x.nota)), riesgo.map(x => x.nota).join(' | '));
