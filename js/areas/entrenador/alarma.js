@@ -74,7 +74,13 @@ const ALARMA = [
   /ve(ia|o) doble/, /taquicardia|corazon .{0,15}(a mil|desbocado|a toda velocidad)/,
   /\bgripe\b|gastroenteritis/, /(gemelo|pantorrilla).{0,20}(hinchad|calient|roj[oa])/,
   /dolor de cabeza .{0,15}(muy fuerte|fortisimo|subito|de golpe|repentino)|cabeza .{0,15}(muchisimo|de golpe)/,
+  // Verificación final (S8, decisión de Víctor del 23-11-2026): vista nublada (A2) y el brazo izquierdo (A1). Del brazo,
+  // solo el izquierdo y lo que no suena a músculo cansado: un calambre en el gemelo o en el brazo derecho no avisa.
+  /se me nublo (la vista|todo)|vista (nublada|borrosa)|vision borrosa|ve(ia|o) borroso/,
+  /(calambre|pinchazo|opresion|entumecimiento)s? (en|del) (el )?brazo izquierdo|brazo izquierdo (entumecido|dormido)/,
 ];
+// Las expresiones tal cual, para comprobar que la lista de C-ALAR-4 de docs/criterio.md es la misma (S8).
+export const EXPRESIONES_ALARMA = ALARMA.map(re => re.source);
 // Nombres de ejercicios y del músculo que no son alarma.
 const NO_ALARMA = /press de pecho|pecho en maquina|aperturas de pecho|estiramiento de pecho/g;
 const NEGACION = /^(sin|no|ni|cero|ningun|ninguna)$/;
