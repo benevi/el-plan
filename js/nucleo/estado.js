@@ -339,7 +339,7 @@ export function avisoSustituyeApartado() {
   const a = cargarSustituyeApartado() && apartado;
   if (!a) return '';
   const f = a.fecha ? new Date(a.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} sesiones) se sustituirán por lo de ahora.`;
+  return ` Ojo: los datos apartados${f ? ` del ${f}` : ''} (${+a.sesiones} ${+a.sesiones === 1 ? 'sesión' : 'sesiones'}) se sustituirán por lo de ahora.`;
 }
 // Al cargar una copia, lo de ahora se aparta ya (en pipos4-conflicto, sin esperar) o, si no cabe, en el espejo.
 // Devuelve dónde: 'local' o 'espejo'.
@@ -559,6 +559,9 @@ export function importar(txt, { otraPersona = false, interno = false, deshacer =
     try { if (antesGuardado == null) almacen().removeItem(CLAVE_ANTES); else almacen().setItem(CLAVE_ANTES, antesGuardado); } catch { /* nada */ }
     throw new ErrorCopia('No he cargado la copia: no cabe en el almacenamiento del móvil. Tus datos siguen como estaban. Libera espacio (o descarta los datos de antes de la última copia) y vuelve a intentarlo.', 'sin-espacio');
   }
+  // Lo cargado de un archivo o de la nube ya está en esa copia: no son «sesiones sin guardar» (M17 del informe
+  // del 21-11). Lo interno (rescate, deshacer, recuperar lo apartado) no viene de una copia.
+  if (!interno) marcarCopiaExportada();
   avisar('importar');
   return { ...info, avisos, apartado: alApartado };
 }

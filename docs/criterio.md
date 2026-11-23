@@ -170,6 +170,8 @@ Se usan tal cual; cambiarlos requiere aprobación del dueño.
 
 > Tu [zona] lleva [n] semanas con dolor [d]/10: hoy nada que la cargue y solo ejercicios suaves para ella. Si en 2 semanas no baja, consúltalo.
 
+Con menos de una semana desde «Desde», la app lo dice en días («lleva 4 días») y, si es de hoy, «tiene dolor [d]/10 desde hoy» (informe del 21-11, M6).
+
 ---
 
 ## 3. Bandas de dolor, dolor durante el ejercicio y tipo de lesión

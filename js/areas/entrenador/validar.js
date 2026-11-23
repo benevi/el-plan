@@ -375,7 +375,9 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // La nota es la del cardio que va (S17), no la del primero de la lista.
     // Una nota sin la intensidad (C-CARDIO-4) también es la de la regla.
     const sinIntensidad = !/rpe|esfuerzo|de 10\b|hablar|frases/i.test(String(cardio.nota || ''));
-    if (!cardio.nota || sinIntensidad || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
+    // Ni «a tope» ni «sprint»: lo fuerte de los intervalos es un 7 de 10 (C-CARDIO-4; verificación del 22-11).
+    const maximo = /a tope|sprint|al maximo|a muerte|todo lo que puedas|(?:9|10) de 10|rpe ?(?:9|10)\b/.test(String(cardio.nota || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    if (!cardio.nota || sinIntensidad || maximo || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
     if (combinado) {
       const encadenado = lugar === 'casa' || lugar === 'calle';
       const frase = encadenado
@@ -505,14 +507,23 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (app) return { ...t, ...app, id: undefined };
     const e = porNombre(t.nombre);
     if (e) return deTarea.has(e.id) ? { ...t, id: e.id } : fueraDeTarea(e, t);
-    if (conZonas) { descartadas++; return null; }
-    return { ...t, id: undefined };
+    // Sin casar con nada que la app sepa comprobar: con o sin zonas activas, su hueco lo ocupa una tarea de la
+    // app (verificación del 22-11: «Burpees» sin zonas se quedaba tal cual, con el detalle de la IA).
+    descartadas++;
+    return { hueco: true };
   }).filter(Boolean).filter(t => {
+    if (t.hueco) return true;
     if (t.id && ex(t.id) && !tareaOk(S, t.id, ctx)) { cambios.push(`quito ${nombre(ex(t.id))} ${donde}: ${motivoNoVale(S, ex(t.id), ctx) || 'hoy no va con tu dolor o no se hace en este lugar'}`); return false; }
     if (!(t.id && ex(t.id)) && t.nombre && !tareaSinIdOk(S, t, ctx)) { cambios.push(`quito «${String(t.nombre).slice(0, 40)}» ${donde}: hoy no va con tu dolor`); return false; }
     return true;
-  }).map(t => ({ ...t, nombre: t.nombre || ex(t.id).n }));
+  }).map(t => (t.hueco ? t : { ...t, nombre: t.nombre || ex(t.id).n }));
+  // Cada hueco, con una tarea de la app de ese bloque que no esté ya (sin aproximación: esa va aparte).
+  const rellenar = (l, base) => {
+    const pool = base.filter(t => !RE_APROXIMACION.test(String(t.nombre || '').trim()) && !l.some(y => !y.hueco && (y.nombre === t.nombre || (t.id && y.id === t.id))));
+    return l.flatMap(t => (!t.hueco ? [t] : pool.length ? [pool.shift()] : []));
+  };
   s.calentamiento = limpiar(s.calentamiento, 'del calentamiento');
+  if (s.calentamiento.some(t => t.hueco)) s.calentamiento = rellenar(s.calentamiento, calentamientoDe(S, ctx, principales()));
   // La aproximación de la IA es la del primer compuesto que de verdad queda en la sesión (C-CAL-2), con el texto de
   // la app (porcentajes con kilos apuntados; si no, series de prueba); sin compuesto no hay aproximación.
   if (deIA) {
@@ -533,6 +544,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     if (/%/.test(t.detalle || '') && !principales().some(e => conKg.has(e.id))) { t.nombre = 'Series de prueba'; t.detalle = '1 × 10 muy ligera y 1 × 5 algo más pesada del primer ejercicio, para elegir el peso de hoy.'; }
   });
   s.vuelta = limpiar(s.vuelta || s.vueltaCalma, 'de la vuelta a la calma');
+  if (s.vuelta.some(t => t.hueco)) s.vuelta = rellenar(s.vuelta, vueltaDe(S, ctx, principales()));
   delete s.vueltaCalma;
   if (!s.vuelta.some(esEstiramiento)) {
     s.vuelta = [...vueltaDe(S, ctx, principales()).filter(esEstiramiento).slice(0, 2), ...s.vuelta];
@@ -540,7 +552,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   }
   if (s.vuelta.length < 2) s.vuelta.push({ nombre: 'Respiración', detalle: respiracionDe(ctx), duracion: '1 min' });
   if (noSonTarea.length) cambios.push(`quito ${lista([...new Set(noSonTarea)])} del calentamiento o la vuelta: no ${noSonTarea.length > 1 ? 'son tareas' : 'es una tarea'} de calentar o estirar`);
-  if (descartadas) cambios.push(`cambio ${descartadas} tarea${descartadas > 1 ? 's' : ''} de calentamiento o vuelta que no puedo comprobar con tu lesión por las de la app`);
+  if (descartadas) cambios.push(`cambio ${descartadas} tarea${descartadas > 1 ? 's' : ''} de calentamiento o vuelta que no puedo comprobar${conZonas ? ' con tu lesión' : ''} por las de la app`);
   s.ejercicios = ejs;
   let notas = notasSalud(s, ctx);
 

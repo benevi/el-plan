@@ -3,13 +3,13 @@
 // Todo lo que sale de aquí pasa por el validador único (validar.js) con el perfil de HOY: así un día del plan
 // hecho antes de una lesión nueva, un rechazo, otro material u otro nivel se revalida al hacer el check-in.
 
-import { estado } from '../../nucleo/estado.js';
+import { estado, cambiar, uid, hoyISO } from '../../nucleo/estado.js';
 import { enLinea } from '../../nucleo/api.js';
 import { es } from '../../nucleo/ui.js';
 import { diaSemana } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
 import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
-import { nivelesZona, ex } from '../../reglas/catalogo.js';
+import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
 import { diaDolorAlto } from './dolor-alto.js';
@@ -19,7 +19,6 @@ import { restriccionesSalud } from './salud.js';
 import { planDeLaSemana, diaElegido } from './plan.js';
 import { miaDe, miaComoDia } from './mias.js';
 
-const SEMANA = 7 * 864e5;
 // Avisos del dolor de hoy: dolor nuevo sin lesión (C-LES-3), lesión nueva (T8, C-LES-2), peor que de costumbre
 // y consulta no urgente (T4, C-ALAR-2, C-DOLOR-5).
 function avisosDolor(S, dolorHoy) {
@@ -30,12 +29,28 @@ function avisosDolor(S, dolorHoy) {
     const b = bandas[z];
     if (+v >= 1 && lesionDolor[z] == null) out.push(`Dolor nuevo en ${nombreZona(z)} (${v}/10): lo trato como una lesión reciente, sin nada que la cargue. Al terminar puedes guardarlo en Perfil › Lesiones como molestia puntual.`);
     else if (b && b.nueva && +v >= 2 && b.lesion) {
-      const sem = b.lesion.desde ? Math.max(1, Math.round((Date.now() - new Date(b.lesion.desde)) / SEMANA)) : 1;
-      out.push(T8(z, sem, +v));
+      // Días de calendario desde «Desde» (fecha local); sin fecha, como antes, 1 semana.
+      const dias = b.lesion.desde ? Math.max(0, Math.round((new Date(hoyISO() + 'T12:00') - new Date(String(b.lesion.desde).slice(0, 10) + 'T12:00')) / 864e5)) : 7;
+      out.push(T8(z, dias, +v));
     } else if (lesionDolor[z] != null && +v >= lesionDolor[z] + 2) out.push(`Tu ${nombreZona(z)} está peor que de costumbre (${v}/10 frente a ${lesionDolor[z]}/10).`);
   });
   out.push(...avisosConsulta(S, dolorHoy, { nueva: z => !!(bandas[z] && bandas[z].nueva) }));
   return out;
+}
+
+// C-LES-3 (M11 del informe del 21-11): zonas con dolor en el check-in de la sesión y sin lesión activa en el
+// perfil. Al terminar se ofrece guardarlas como molestia puntual con «Desde» = hoy (guardarDolorComoLesion).
+export function dolorNuevoSinLesion(S, s) {
+  const con = new Set(S.perfil.lesiones.filter(l => l.activa).map(l => l.zona));
+  const dolor = (s && s.checkin && s.checkin.dolor) || {};
+  return Object.entries(dolor).filter(([z, v]) => ZONAS[z] && +v >= 1 && !con.has(z)).map(([zona, v]) => ({ zona, dolor: +v }));
+}
+export function guardarDolorComoLesion(zona, dolor) {
+  if (!ZONAS[zona]) return;
+  cambiar(S => {
+    if (S.perfil.lesiones.some(l => l.activa && l.zona === zona)) return;
+    S.perfil.lesiones.push({ id: uid(), zona, dolor: Math.max(0, Math.min(10, Math.round(+dolor || 0))), desde: hoyISO(), nota: '', activa: true, tipo: 'puntual' });
+  }, 'perfil');
 }
 
 // ── Check-in: lo que cambia del día planificado con cómo estás hoy ──
@@ -208,7 +223,8 @@ export function motivoIA(S, ci, dia) {
   if (restriccionesSalud(S).soloSuave) return { usar: false, por: 'salud', motivo: 'Por tus datos de salud, hoy la sesión suave la prepara la app.' };
   if (miaDe(S, ci.mia)) return { usar: false, por: 'mia', motivo: 'Es una de tus sesiones: la ajusta la app con tu check-in, sin gastar IA.' };
   if (!enLinea()) return { usar: false, por: 'red', motivo: 'Sin conexión: lo ajusta la app con sus reglas.' };
-  if (ci.forzarIA) return { usar: true, motivo: 'Se lo pides al entrenador IA.' };
+  // hecho: el aviso tras prepararla bien (M20 del informe del 21-11); motivo es el de la previa.
+  if (ci.forzarIA) return { usar: true, motivo: 'Se lo pides al entrenador IA.', hecho: 'Te la ha preparado el entrenador IA, como pediste.' };
   if (modo === 'ahorro') return { usar: false, por: 'ahorro', motivo: 'Modo ahorro: la IA solo hace el plan semanal.' };
   if (modo === 'siempre') return { usar: true, motivo: 'Modo «siempre IA».' };
   const lesion = Object.fromEntries(S.perfil.lesiones.filter(l => l.activa).map(l => [l.zona, +l.dolor]));

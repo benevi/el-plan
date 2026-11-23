@@ -11,8 +11,8 @@ import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizar
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn, valePrincipal, tareasDelDia } from './dia.js';
-import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
+import { porQueEjercicio, porQueRehab, resumenDia, nombreCoherente, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn, valePrincipal, tareasDelDia } from './dia.js';
+import { planReglas, planDeLaSemana, diaElegido, estadoDias, planDeHoy } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
 import { alarmaPendiente, preguntaAlarma, respondidasNo, normalizarTexto, T2 } from './alarma.js';
@@ -143,6 +143,7 @@ const ultimoRecursoIA = (s, lugar) => (s.explicacion || []).some(esUltimoRecurso
 function completarIA(S, d, { lugar, minutos, dolorHoy = {}, energia = 3, k = 0, futuro = false }) {
   const v = validarSesion(S, d, { lugar, minutos, dolorHoy, energia, futuro, origen: 'ia', k });
   const s = v.sesion;
+  s.nombre = nombreCoherente(s.nombre, s.ejercicios);
   // Ni la nota ni la explicación piden más kilos de los que deja la app (IA-4). Lo demás ya se limpió al llegar
   // (sesionDeIA): aquí hay también textos de la app, que no se tocan.
   s.ejercicios.forEach(x => { if (x.nota) x.nota = frasesDe(x.nota).filter(f => kgOk(f, +x.kg || 0)).join(' '); });
@@ -206,6 +207,12 @@ export async function crearSesionHoy(ci, op = {}) {
     ci = { ...ci, peticion: '', forzarIA: false };
   }
 
+  // Check-in abierto ayer (ci.abierto) para el día que tocaba entonces y preparado pasada la medianoche (M10 del
+  // informe del 21-11): si hoy toca otro día del plan, la sesión es la de hoy. Un día elegido a propósito se respeta.
+  if (ci.abierto && ci.abierto !== hoyISO() && ci.diaPlan === diaSemana(new Date(ci.abierto + 'T12:00')) && !ci.mia) {
+    const hoyToca = planDeHoy(S);
+    if (hoyToca) ci = { ...ci, diaPlan: hoyToca.diaSemana };
+  }
   const minutos = minutosSesion(ci.minutos);
   const dia = ci.mia && !ci.ocuparDia ? null : diaElegido(S, ci.diaPlan);
   const local = ajustarAlCheckin(S, dia, ci);
@@ -280,14 +287,18 @@ export async function crearSesionHoy(ci, op = {}) {
   }
   const sesion = crearSesion({ ...datos, ...(iaFallo ? { iaFallo } : {}) });
   cambiar(S2 => {
-    if (vieja) {
-      delete S2.sesiones[vieja.id];
-      if (S2.plan && S2.plan.hechos) Object.keys(S2.plan.hechos).forEach(d => { if (S2.plan.hechos[d] === vieja.id) delete S2.plan.hechos[d]; });
+    // «Volver a ajustarla» (M2 del informe del 21-11): la sesión de hoy que sigue pendiente y sin tocar se
+    // sustituye; si no, se quedaba en los datos y en las copias sin verse. Lo que tenga algo hecho no se borra.
+    const sobran = Object.values(S2.sesiones).filter(x => x.id === (vieja && vieja.id) ||
+      (x.fecha === hoyISO() && x.fuente !== 'anterior' && x.estado === 'pendiente' && !sesionTocada(x)));
+    for (const v of sobran) {
+      delete S2.sesiones[v.id];
+      if (S2.plan && S2.plan.hechos) Object.keys(S2.plan.hechos).forEach(d => { if (S2.plan.hechos[d] === v.id) delete S2.plan.hechos[d]; });
     }
     S2.sesiones[sesion.id] = sesion;
     if (dia && S2.plan) { S2.plan.hechos = S2.plan.hechos || {}; S2.plan.hechos[dia.diaSemana] = sesion.id; }
   }, 'sesion');
-  return { sesion, aviso, motivo: decide.usar && !aviso ? decide.motivo : decide.usar ? '' : decide.motivo };
+  return { sesion, aviso, motivo: decide.usar && !aviso ? decide.hecho || decide.motivo : decide.usar ? '' : decide.motivo };
 }
 
 // ── Plan de la semana ──

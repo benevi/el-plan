@@ -32,7 +32,7 @@ srv.control.api = (req, res) => {
 // Sesión válida para el perfil de estadoBase (ganar músculo, principiante, gimnasio).
 const T = (n, d = '5 min') => ({ id: '', nombre: n, detalle: '', duracion: d });
 const E = id => ({ id, rol: 'principal', series: 3, reps: '8-12', descanso: 90, kg: 0, nota: 'Nota suficientemente larga para no ser genérica, con 30 kg.' });
-const BUENA = { nombre: 'Torso de la IA', foco: 'x', cambios: [], explicacion: ['Hoy torso con la IA.'], calentamiento: [T('Bici'), T('Movilidad')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')], vueltaCalma: [T('Estirar pecho', '1 min'), T('Estiramiento de cuádriceps', '1 min')] };
+const BUENA = { nombre: 'Cuerpo completo de la IA', foco: 'x', cambios: [], explicacion: ['Hoy cuerpo completo con la IA.'], calentamiento: [T('Bici'), T('Movilidad')], ejercicios: [E('press-pecho-maquina'), E('jalon-pecho'), E('prensa-piernas')], vueltaCalma: [T('Estirar pecho', '1 min'), T('Estiramiento de cuádriceps', '1 min')] };
 
 let modo = 'lento', cliente = null;
 // IA lenta: piensa ~1,5 s y escribe la sesión en trozos durante ~2 s.
@@ -84,7 +84,7 @@ test('servidor lento: progreso visible, tocar fuera no cierra y llega la sesión
   await expect(p.locator('#espera-fase')).toContainText(/Escribiendo tu sesión · \d ejercicio/, { timeout: 10000 });
   await expect(p).toHaveURL(/#sesion\//, { timeout: 15000 });
   await expect(hoja).toHaveCount(0);
-  await expect(p.locator('.cab-sesion h1')).toHaveText('Torso de la IA');
+  await expect(p.locator('.cab-sesion h1')).toHaveText('Cuerpo completo de la IA');
   await expect(p.locator('.nota-fallo')).toHaveCount(0);
   await expect.poll(async () => (await sesionGuardada(p)).map(x => x.fuente)).toEqual(['ia']);
   expect(errores).toEqual([]);
@@ -135,7 +135,7 @@ test('servidor caído a mitad: nota clara y «Reintentar con IA» funciona de ve
   modo = 'lento'; cliente = lenta(); ponerClienteIA(cliente);
   await nota.locator('[data-act="entrenador.reintentarIA"]').click();
   await expect(p.locator('.hoja.espera')).toBeVisible();
-  await expect(p.locator('.cab-sesion h1')).toHaveText('Torso de la IA', { timeout: 15000 });
+  await expect(p.locator('.cab-sesion h1')).toHaveText('Cuerpo completo de la IA', { timeout: 15000 });
   await expect(p.locator('.nota-fallo')).toHaveCount(0);
   await expect.poll(async () => (await sesionGuardada(p)).map(x => x.fuente)).toEqual(['ia']);
   expect((await sesionGuardada(p))[0].id).not.toBe(vieja);

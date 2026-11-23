@@ -578,9 +578,11 @@ test('C-EST-4 (revisión B3): las tareas sin id de la IA se casan por nombre con
   assert.ok(!v.sesion.vuelta.some(t => /postura del ni/i.test(t.nombre)), v.sesion.vuelta.map(t => t.nombre).join(', '));
   assert.ok(v.sesion.vuelta.some(t => /estir/i.test(t.nombre)) && v.sesion.vuelta.length >= 2);
   assert.ok(v.sesion.calentamiento.length >= 2);
-  // Sin zonas activas, una tarea de texto que no casa se queda.
+  // Sin zonas activas, una tarea de texto que no casa tampoco se queda: su hueco es de una tarea de la app
+  // (verificación del 22-11; antes se quedaba tal cual). Las libres de la app («Respiración») sí se quedan.
   const sano = vIA({ objetivos: ['musculo'] }, { ejercicios: IA3, calentamiento: [T('Bici suave'), T('Movilidad general')], vuelta: [T('Estiramiento de pecho'), T('Respiración')] });
-  assert.deepEqual(sano.v.sesion.calentamiento.map(t => t.nombre), ['Bici suave', 'Movilidad general']);
+  assert.ok(sano.v.sesion.calentamiento.length >= 2 && sano.v.sesion.calentamiento.every(t => t.id && t.nombre !== 'Bici suave'), sano.v.sesion.calentamiento.map(t => t.nombre).join(', '));
+  assert.ok(sano.v.sesion.vuelta.some(t => t.nombre === 'Respiración'));
 });
 
 test('C-CARDIO-4 (revisión B4): la nota de cardio de la IA con intervalos se cambia si no están permitidos', () => {
