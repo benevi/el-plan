@@ -17,7 +17,7 @@ import { cuenta, listaY } from '../perfil/controles.js';
 
 // [clave, nombre, unidad, se ve sin abrir «Más medidas», mínimo, máximo]. Fuera de esos márgenes es un error al
 // escribir (1000 kg, una cintura negativa) y no se guarda (M16).
-const MEDIDAS = [['peso', 'Peso', 'kg', 1, 25, 300], ['cintura', 'Cintura', 'cm', 1, 40, 200], ['cadera', 'Cadera', 'cm', 0, 50, 200], ['cuello', 'Cuello', 'cm', 0, 20, 70], ['pecho', 'Pecho', 'cm', 0, 50, 200], ['brazo', 'Brazo', 'cm', 0, 15, 70], ['muslo', 'Muslo', 'cm', 0, 25, 100], ['grasa', '% de grasa', '%', 0, 3, 60]];
+const MEDIDAS = [['peso', 'Peso', 'kg', 1, 25, 300], ['cintura', 'Cintura', 'cm', 1, 40, 200], ['cadera', 'Cadera', 'cm', 0, 50, 200], ['cuello', 'Cuello', 'cm', 0, 20, 70], ['pecho', 'Pecho', 'cm', 0, 50, 200], ['brazo', 'Brazo', 'cm', 0, 15, 70], ['muslo', 'Muslo', 'cm', 0, 25, 120], ['grasa', '% de grasa', '%', 0, 3, 60]];
 const signo = v => (v > 0 ? '+' : v < 0 ? '−' : '') + es(Math.abs(v));
 const minus = t => String(t || '').toLowerCase();
 
@@ -29,7 +29,7 @@ export function tarjetaConstancia(S, { planificados, hechosPlan } = {}) {
   const hechas = conPlan ? hechosPlan || 0 : c.estaSemana, meta = conPlan ? planificados : c.objetivo;
   return `<section class="tarjeta constancia-hoy">
     <div class="fila-dato"><div class="grow"><h2>Constancia</h2>
-      <p>${hechas >= meta ? `<b>Semana cumplida</b> · ${hechas} de ${meta}` : `<b>${hechas} de ${meta}</b> ${conPlan ? 'días del plan' : 'sesiones'} esta semana`}</p></div>
+      <p>${hechas >= meta ? `<b>Semana cumplida</b> · ${hechas} de ${meta}` : `<b>${hechas} de ${meta}</b> ${conPlan ? (meta === 1 ? 'día del plan' : 'días del plan') : meta === 1 ? 'sesión' : 'sesiones'} esta semana`}</p></div>
       ${c.racha > 1 ? `<div class="racha"><b>${c.racha}</b><small>semanas<br>seguidas</small></div>` : ''}</div>
     <div class="puntos-semana">${Array.from({ length: meta }, (_, i) => `<i class="${i < hechas ? 'on' : ''}"></i>`).join('')}</div>
     <a class="enlace" href="#progreso">Ver progreso ${ICONOS.sig}</a></section>`;

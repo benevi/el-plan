@@ -264,7 +264,7 @@ function vista([id]) {
   if (foco.id !== id) foco = { id, i: primerPendiente(s) };
   const cab = `<header class="cab-sesion">
       <a href="#hoy" class="boton-icono" aria-label="Volver a Hoy">${ICONOS.atras}</a>
-      <div><h1>${h(s.nombre)}</h1><p>${h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> series${abierta ? '' : ', hecha'}</p></div>
+      <div><h1>${h(s.nombre)}</h1><p>${h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> ${total === 1 ? 'serie' : 'series'}${abierta ? '' : ', hecha'}</p></div>
       ${abierta ? '<button type="button" class="boton boton--secundario" data-act="sesion.terminar">Terminar</button>' : ''}
     </header>
     <div class="avance" role="img" aria-label="${plural(hechas, 'serie', 'series', total)}"><i data-var="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
@@ -491,10 +491,18 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
     recien = `${idSesion}/${i}/${j}`;
   }, 'sesion');
   recien = '';
-  cerrarAlarma();
-  // Desmarcar una serie anterior no corta el descanso en marcha (M4): solo se quita si lo empezó esa serie.
-  if (desmarcada) { const cr = info(); if (cr && cr.tipo === 'descanso' && cr.meta && cr.meta.sesion === idSesion && cr.meta.e === i && cr.meta.s === j) parar(); }
-  else if (descansar) descanso(descansar, etiqueta, { sesion: idSesion, siguiente, e: i, s: j }); else parar();
+  // Desmarcar una serie anterior no corta el descanso en marcha ni cierra su alarma (M4): solo se quitan si los
+  // empezó esa serie. Se reconoce por sesión, posición y ejercicio («Cambiar por otro» deja la posición).
+  const ej = ((sesion(idSesion) || { ejercicios: [] }).ejercicios[i] || {}).id;
+  const deEsta = m => !!(m && m.sesion === idSesion && m.e === i && m.s === j && m.ej === ej);
+  if (desmarcada) {
+    const cr = info();
+    if (cr && cr.tipo === 'descanso' && deEsta(cr.meta)) parar();
+    if (deEsta(alarmaDe())) cerrarAlarma();
+  } else {
+    cerrarAlarma();
+    if (descansar) descanso(descansar, etiqueta, { sesion: idSesion, siguiente, e: i, s: j, ej }); else parar();
+  }
   if (avanza) window.scrollTo(0, 0);
   enfocarSiguiente();
   mantenerVisible();
@@ -614,6 +622,8 @@ acciones({
     const x = s.ejercicios[i], o = objetivoSeg(x);
     if (!o) return;
     cerrarAlarma();
+    // Con una cuenta en marcha la sesión ya está empezada: no se puede rehacer (IA o «Volver a ajustarla») debajo.
+    cambiar(S => { const s2 = S.sesiones[id]; if (s2) empezarSiHaceFalta(S, s2); }, 'sesion');
     const nombre = (ex(x.id) || { n: x.id }).n;
     cuenta({ lo: o.lo, hi: o.hi, lados: o.lados, u: o.u, nombre, etiqueta: `${nombre} · serie ${j + 1} de ${x.sets.length}`, meta: { sesion: id, e: i, s: j } });
   },
