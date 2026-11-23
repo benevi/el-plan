@@ -145,8 +145,11 @@ test('M16: medidas fuera de lo razonable o negativas no se guardan y se dice por
 
 // ── M17 ──
 test('M17: tras cargar una copia no dice «Aún no has guardado ninguna copia» ni «Llevas N sesiones sin guardar»', async () => {
-  await reiniciar(estadoBase(), 'perfil');
+  const antes = estadoBase();
+  for (let i = 0; i < 11; i++) antes.sesiones['p' + i] = sesionDemo('p' + i, { estado: 'hecha', fecha: `2026-09-${String(i + 1).padStart(2, '0')}`, terminada: `2026-09-${String(i + 1).padStart(2, '0')}T18:00:00.000Z`, cierre: { esfuerzo: 3, dolor: {}, comentario: '' } });
+  await reiniciar(antes, 'perfil');
   a.w.localStorage.removeItem('pipos4-copia');
+  a.w.localStorage.removeItem('pipos4-antes-de-importar');
   const otra = estadoBase();
   for (let i = 0; i < 12; i++) otra.sesiones['h' + i] = sesionDemo('h' + i, { estado: 'hecha', fecha: `2026-10-${String(i + 1).padStart(2, '0')}`, terminada: `2026-10-${String(i + 1).padStart(2, '0')}T18:00:00.000Z`, cierre: { esfuerzo: 3, dolor: {}, comentario: '' } });
   a.clic('[data-act="perfil.grupo"][data-v="ajustes"]'); await a.tic();
@@ -159,12 +162,22 @@ test('M17: tras cargar una copia no dice «Aún no has guardado ninguna copia» 
   entrada.onchange();
   await a.esperar(() => a.doc.querySelector('.hoja [data-r="1"]'));
   a.clic('.hoja [data-r="1"]');
-  await a.esperar(() => Object.keys(S().sesiones).length === 12);
+  await a.esperar(() => Object.keys(S().sesiones).some(k => k.startsWith('h')));
   await a.ir('progreso'); await a.ir('perfil'); await a.tic();
   assert.equal(Object.values(S().sesiones).filter(x => x.estado === 'hecha').length, 12);
   const v = a.vista().textContent;
   assert.doesNotMatch(v, /Aún no has guardado ninguna copia/);
   assert.doesNotMatch(v, /sin guardar una copia/);
+  // La fecha es la de la última sesión de la copia, no la de hoy (la copia puede ser vieja).
+  assert.match(v, /Última copia guardada: 12 oct/);
+  // «Volver a ellos»: esas 11 sesiones no estaban en la copia cargada; vuelve el recordatorio.
+  a.clic('[data-act="perfil.deshacerImportar"]');
+  await a.esperar(() => a.doc.querySelector('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]');
+  await a.esperar(() => Object.keys(S().sesiones).some(k => k.startsWith('p')));
+  await a.ir('progreso'); await a.ir('perfil'); await a.tic();
+  assert.match(a.vista().textContent, /Aún no has guardado ninguna copia/);
+  assert.match(a.vista().textContent, /Llevas 11 sesiones sin guardar una copia/);
 });
 
 // ── M18 ──
@@ -185,4 +198,70 @@ test('M18: embarazo, parto y cesárea no salen en el perfil de un hombre (salvo 
   const raro = estadoBase(); raro.perfil.datos.sexo = 'h'; raro.perfil.salud = { embarazo: 12 };
   await reiniciar(raro, 'perfil');
   assert.ok(a.vista().querySelector('[data-k="embarazo"]'), 'marcado, se ve para poder quitarlo');
+});
+
+// ── Revisión del PR #52 ──
+test('M4 (revisión): tras «Cambiar por otro» en esa posición, desmarcar no corta un descanso que era del ejercicio de antes', async () => {
+  const b = estadoBase({ sesiones: { s1: sesionDemo() } }); b.ajustes.modoSesion = 'lista';
+  await reiniciar(b, 'sesion/s1');
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  assert.ok(crono.activo());
+  a.estado.cambiar(S2 => { S2.sesiones.s1.ejercicios[0].id = 'press-inclinado-maquina'; }, 'sesion');
+  await a.espera(1050); // el mismo botón: fuera del doble toque de 1 s
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  assert.equal(S().sesiones.s1.ejercicios[0].sets[0].hecha, false);
+  assert.ok(crono.activo(), 'el descanso sigue');
+});
+
+test('M4 (revisión): desmarcar otra serie no cierra la alarma del descanso; desmarcar la suya, sí', async () => {
+  const b = estadoBase({ sesiones: { s1: sesionDemo() } }); b.ajustes.modoSesion = 'lista';
+  await reiniciar(b, 'sesion/s1');
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  await a.espera(260);
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="1"]'); await a.tic();
+  const meta = crono.info().meta;
+  crono.descanso(1, 'Serie 3 de 3', meta); // el mismo descanso, ya casi acabado
+  await a.esperar(() => crono.alarmaDe(), { max: 3000, que: 'la alarma' });
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="0"]'); await a.tic();
+  assert.ok(crono.alarmaDe(), 'cerró la alarma de otra serie');
+  await a.espera(260);
+  a.clic('[data-act="sesion.serie"][data-e="0"][data-s="1"]'); await a.tic();
+  assert.equal(crono.alarmaDe(), null);
+});
+
+test('una cuenta en marcha da la sesión por empezada (no se puede rehacer debajo)', async () => {
+  const s = sesionDemo();
+  s.ejercicios.push({ id: 'plancha', rol: 'principal', series: 1, reps: '30-40s', descanso: 0, kg: null, nota: '', motivo: '', sets: [{ kg: null, valor: '', hecha: false }], gusto: null, comentario: '' });
+  const b = estadoBase({ sesiones: { s1: s } }); b.ajustes.modoSesion = 'lista';
+  await reiniciar(b, 'sesion/s1');
+  a.clic('[data-act="sesion.cuenta"][data-e="2"]'); await a.tic();
+  assert.ok(crono.activo());
+  assert.equal(S().sesiones.s1.estado, 'en_curso');
+  crono.parar();
+});
+
+test('plurales con una sola serie y con una meta de 1 día', async () => {
+  const s = sesionDemo(); s.ejercicios = [s.ejercicios[0]]; s.ejercicios[0].series = 1; s.ejercicios[0].sets = [s.ejercicios[0].sets[0]];
+  await reiniciar(estadoBase({ sesiones: { s1: s, h1: sesionDemo('h1', { estado: 'hecha', fecha: '2026-11-20', terminada: '2026-11-20T18:00:00Z', cierre: { esfuerzo: 3, dolor: {}, comentario: '' } }) } }), 'sesion/s1');
+  assert.match(a.vista().querySelector('.cab-sesion').textContent, /0 de 1 serie(?!s)/);
+  const { tarjetaConstancia } = await import(modulo('js/areas/progreso/indice.js'));
+  assert.match(tarjetaConstancia(S(), { planificados: 1, hechosPlan: 0 }).replace(/<[^>]+>/g, ''), /0 de 1 día del plan esta semana/);
+});
+
+test('M16 (revisión): un muslo de 110 cm se guarda', async () => {
+  await reiniciar(estadoBase(), 'progreso');
+  a.clic('[data-act="progreso.medida"]'); await a.esperar(() => a.doc.querySelector('#m-muslo'));
+  a.doc.querySelector('#m-muslo').value = '110';
+  a.clic('[data-act="progreso.guardarMedida"]'); await a.tic();
+  assert.equal(S().medidas[0].muslo, 110);
+});
+
+test('M12 (revisión): tras «Que mande …» el foco va al texto que dice cuál manda', async () => {
+  const b = estadoBase(); b.perfil.objetivos = ['musculo', 'salud'];
+  await reiniciar(b, 'perfil');
+  a.clic('[data-act="perfil.grupo"][data-v="objetivos"]'); await a.tic();
+  const bt = a.vista().querySelector('[data-act="perfil.objetivoPrincipal"][data-v="salud"]');
+  bt.focus(); a.clic(bt); await a.tic();
+  assert.ok(a.doc.activeElement && a.doc.activeElement.matches('.objetivo-manda .ayuda'), `foco en ${a.doc.activeElement && a.doc.activeElement.tagName}`);
+  assert.match(a.doc.activeElement.textContent, /Manda Salud/);
 });

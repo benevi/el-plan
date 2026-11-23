@@ -75,8 +75,10 @@ async function empezar(page, persona) {
 }
 
 const tabla = {};
-async function mirar(page, nombre, { tactil = true } = {}) {
-  await page.waitForTimeout(40);
+// Una medida de la pantalla tal como está. mirar() la repite hasta que dos seguidas coinciden: con el equipo
+// cargado, una transición de color o un repintado a medias (el hover que deja el clic, la barra que reserva su
+// alto) daban un fallo que no existía. Un fallo de verdad sale igual en las dos medidas y sigue fallando.
+async function medir(page) {
   const r = await page.evaluate(medirEnPagina, 'body');
   const malos = Object.values(r.muestras).flatMap(x => x.detalle).filter(p => !p.ok);
   // Zonas táctiles de la sesión (≥ 48 px) y cifras de la sesión (≥ 28 px)
@@ -93,6 +95,14 @@ async function mirar(page, nombre, { tactil = true } = {}) {
     }
     return { pequenos, cifras, desborde: document.documentElement.scrollWidth - innerWidth };
   });
+  return { r, malos, otros };
+}
+async function mirar(page, nombre, { tactil = true } = {}) {
+  await page.waitForTimeout(40);
+  let m = await medir(page), huella = '';
+  const de = x => JSON.stringify([x.malos.map(p => [p.que, p.fg, p.bg]), x.otros]);
+  for (let i = 0; i < 10 && de(m) !== huella; i++) { huella = de(m); await page.waitForTimeout(80); m = await medir(page); }
+  const { r, malos, otros } = m;
   tabla[nombre] = { pares: r.resumen.pares, cumplen: r.resumen.cumplen, minimo: Math.min(...Object.values(r.muestras).map(x => x.minimo)), malos, ...otros };
   if (CAPTURAS) {
     fs.mkdirSync(DIR, { recursive: true });
