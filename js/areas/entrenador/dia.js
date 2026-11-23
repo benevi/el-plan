@@ -300,6 +300,7 @@ export function cardioDelDia(S, ctx, k = 0, extra = 0, excluir = []) {
   const min = regla.minutos + (ctx.energia <= 2 ? 0 : extra);
   return { id: e.id, rol: 'cardio', series: 1, reps: `${min} min`, descanso: 0, nota: notaCardio(S, ctx, e, min, regla, extra, orden) };
 }
+const EN_LUGAR = { calle: /^en la calle\b/i, casa: /^en casa\b/i, gym: /^en el gimnasio\b/i, piscina: /^en la piscina\b/i };
 export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   const por = { perder: 'buscas perder grasa', resistencia: 'buscas resistencia', salud: 'es bueno para tu corazón', natacion: 'te da fondo para nadar mejor' }[regla.objetivo] || 'toda sesión lleva cardio';
   const habla = +regla.rpe.slice(-1) <= 4 ? 'puedes hablar con frases completas' : 'puedes decir frases cortas';
@@ -313,7 +314,9 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   if (CARDIO_ULTIMO.includes(e.id)) partes.push('Si no llegas a notar un esfuerzo de 4 de 10, ve al ritmo más vivo que puedas sin dolor'); // S7, revisión del PR #48
   if (ctx.lugar === 'piscina') partes.push('Seguido; si paras en el borde, menos de 20 s y sin parar el reloj');
   if (ctx.lugar === 'piscina' && !S.perfil.nadar25) partes.push('Siempre donde hagas pie, con el agua por el pecho'); // C-PISC-2, S3
-  const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(Boolean);
+  // Las condiciones de la ficha que hablan de un lugar («En la calle, …») solo van en ese lugar.
+  const otroLugar = c => Object.entries(EN_LUGAR).some(([l, re]) => l !== ctx.lugar && re.test(c));
+  const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(c => c && !otroLugar(c));
   if (cond) partes.push(cond);
   if (S.perfil.lugares.includes('piscina') && ctx.lugar === 'gym') partes.push('Si os apetece, hacedlo en la piscina: nado suave o aquajogging');
   return partes.map(frase).join(' ');
@@ -428,10 +431,21 @@ const RE_RESPIRACION = /^respiraci[oó]n\b/i;
 const TUMBADO_TXT = /tumbad|boca (arriba|abajo)|en el suelo|de rodillas|a cuatro patas/i;
 export const RE_APROXIMACION = /^(series de (aproximaci[oó]n|prueba)|aproximaci[oó]n)\b/i;
 const TEXTOS_FICHA = new Set(Object.values(ZONAS).flatMap(Z => Object.values((Z && Z.tareas) || {}).flat().map(t => t && t.texto).filter(Boolean)));
-export const tareaLibreConocida = t => {
+// La respiración de la vuelta a la calma: de pie en la calle y en la piscina, sentado si no puede tumbarse por salud.
+export const respiracionDe = ctx => (ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : ctx.salud.sinTumbado ? 'Sentado, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.');
+// Una tarea sin id de la IA que la app conoce, con el nombre y el texto de la app (revisión del PR #49, G1): el
+// detalle de la IA podría pedir una postura que no vale hoy («túmbate en la esterilla» en la calle, «rodillas al
+// pecho» con la lumbar dolorida), así que nunca se queda. null si la app no la conoce (la aproximación va aparte).
+export function tareaLibreDeApp(t, ctx) {
   const n = String((t && t.nombre) || '').trim();
-  return RE_RESPIRACION.test(n) || RE_APROXIMACION.test(n) || !!RIESGO_LIBRE[n] || n === ESTIRA_SUAVE[0] || TEXTOS_FICHA.has(n);
-};
+  // Cualquier «Respiración …» pasa a ser la respiración de la app, con su nombre y su texto.
+  if (RE_RESPIRACION.test(n)) return { nombre: 'Respiración', detalle: respiracionDe(ctx) };
+  const libre = [...ESTIRA_LIBRE.piscina, ...ESTIRA_LIBRE.otro].find(([x]) => x === n);
+  if (libre) return { nombre: libre[0], detalle: libre[1] };
+  if (n === ESTIRA_SUAVE[0]) return { nombre: ESTIRA_SUAVE[0], detalle: ESTIRA_SUAVE[1] };
+  if (TEXTOS_FICHA.has(n)) return { nombre: n, detalle: 'Lento y sin dolor. Si el dolor sube o notas hormigueo, sáltalo.' };
+  return null;
+}
 // Aproximación del primer compuesto con carga (C-CAL-2): con kilos apuntados, porcentajes; sin historial, series de prueba.
 export function aproximacionDe(S, primero) {
   const conKg = conKgAntes(S, primero.id);
@@ -440,10 +454,11 @@ export function aproximacionDe(S, primero) {
     : { nombre: 'Series de prueba', detalle: `${primero.n}: 1 × 10 muy ligera y 1 × 5 algo más pesada, para elegir el peso de hoy.` };
 }
 // Lo que vale hoy en el calentamiento y la vuelta a la calma, para que la IA lo pida por id (C-EST-4, C-EST-2, C-CAL-2):
-// ids: movilidad, cardio y natación que pasan tareaOk, y las tareas con id de la ficha de cada zona activa que su
+// ids: movilidad, cardio, natación y core estabilizador que pasan tareaOk, y las tareas con id de la ficha de cada zona activa que su
 // banda deja; activacion: { zona: id } de su fase 1 (la que pone la app); sinId: los nombres sin id que la app sabe
-// comprobar. Como mucho 60 ids (el tope de una lista en el servidor): primero los de las zonas.
-export function tareasDelDia(S, ctx) {
+// comprobar. Como mucho 60 ids (el tope de una lista en el servidor): primero los de las zonas. { todas: true }: sin
+// el tope (el validador comprueba con la lista entera).
+export function tareasDelDia(S, ctx, { todas = false } = {}) {
   const ids = [], activacion = {};
   const poner = id => { if (id && !ids.includes(id)) ids.push(id); };
   zonasRehab(ctx).filter(z => ZONAS[z]).forEach(z => {
@@ -454,9 +469,11 @@ export function tareasDelDia(S, ctx) {
   });
   Object.entries(ctx.bandas).filter(([z]) => ZONAS[z]).forEach(([z, b]) => ['calentar', 'estirar'].forEach(tipo =>
     tareasFicha(z, tipo, (b.lesion || {}).detalle).filter(t => t.id && usoOk(t.uso, b.banda) && tareaOk(S, t.id, ctx)).forEach(t => poner(t.id))));
-  EJERCICIOS.filter(e => ['movilidad', 'cardio', 'natacion'].includes(e.m[0]) && e.niv <= ctx.nivel && tareaOk(S, e.id, ctx) && !(ctx.lugar === 'piscina' && noSabeNadar(S, e))).forEach(e => poner(e.id));
+  // Y el core estabilizador de dosis propia (dead bug, bird dog, plancha…): la activación del calentamiento y el core
+  // suave de la vuelta a la calma de un día suave (C-REP-2). Nada de fuerza con carga (revisión del PR #49, G2).
+  EJERCICIOS.filter(e => (['movilidad', 'cardio', 'natacion'].includes(e.m[0]) || (e.m[0] === 'core' && tipoEj(e) === 'propia')) && e.niv <= ctx.nivel && tareaOk(S, e.id, ctx) && !(ctx.lugar === 'piscina' && noSabeNadar(S, e))).forEach(e => poner(e.id));
   const sinId = ['Respiración', 'Series de aproximación', 'Series de prueba', ...libresDe(ctx.lugar).map(([n]) => n).filter(n => tareaSinIdOk(S, { nombre: n }, ctx))];
-  return { ids: ids.slice(0, 60), activacion, sinId };
+  return { ids: todas ? ids : ids.slice(0, 60), activacion, sinId };
 }
 // El ejercicio del catálogo que corresponde a un nombre de tarea (las tareas sin id de la IA o de la ficha).
 export const porNombre = n => { const k = normalizar(n).trim(); return k ? EJERCICIOS.find(e => normalizar(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizar(e.n).length >= 8 && k.includes(normalizar(e.n))) : null) : null; };
@@ -527,7 +544,7 @@ export function vueltaDe(S, ctx, elegidos = [], { total } = {}) {
   if (!est.length) est.push({ nombre: ESTIRA_SUAVE[0], detalle: ESTIRA_SUAVE[1], duracion: '1 min' });
   if (est.length < nEst) est[est.length - 1].duracion = `${1 + nEst - est.length} min`;
   out.push(...est);
-  out.push({ nombre: 'Respiración', detalle: ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : ctx.salud.sinTumbado ? 'Sentado, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.', duracion: `${resp} min` });
+  out.push({ nombre: 'Respiración', detalle: respiracionDe(ctx), duracion: `${resp} min` });
   return out;
 }
 

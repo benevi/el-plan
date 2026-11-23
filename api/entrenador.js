@@ -280,9 +280,11 @@ export default async function handler(req, res) {
   const catalogo = body.catalogo;
   const ids = [...new Set(catalogo.map(e => e.id))];
   if (!ids.length) return res.status(400).json({ error: 'no hay ejercicios que encajen con ese perfil' });
-  // Ids que valen en una tarea: los del catálogo y los de las pautas del día (tareas que la app comprueba).
+  // Ids que valen en una tarea: los de las pautas del día (las que la app comprueba) y, del catálogo, solo movilidad,
+  // cardio, natación y core estabilizador: un press de banca no es una tarea de calentamiento (revisión del PR #49, G2).
   const pautasDe = () => (body.modo === 'plan' ? Object.values((body.semana && body.semana.pautas) || {}) : [body.checkin && body.checkin.pautas]);
-  const idsTarea = new Set([...ids, ...pautasDe().flatMap(p => (p && Array.isArray(p.tareas) ? p.tareas : [])).filter(id => typeof id === 'string' && /^[\w-]{1,60}$/.test(id))]);
+  const idsSuaves = catalogo.filter(e => Array.isArray(e.m) && (['movilidad', 'cardio', 'natacion'].includes(e.m[0]) || (e.m[0] === 'core' && e.tipo === 'propia'))).map(e => e.id);
+  const idsTarea = new Set([...idsSuaves, ...pautasDe().flatMap(p => (p && Array.isArray(p.tareas) ? p.tareas : [])).filter(id => typeof id === 'string' && /^[\w-]{1,60}$/.test(id))]);
   const comun = { perfil: body.perfil, lesiones: body.lesiones || [], historial: body.historial || {}, analisis: body.analisis || {}, hoy: body.hoy, diaSemana: body.diaSemana, catalogo };
   const modo = body.modo === 'plan' ? 'plan' : 'sesion';
   if (modo === 'plan') {

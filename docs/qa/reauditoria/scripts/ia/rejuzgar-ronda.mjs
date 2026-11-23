@@ -2,7 +2,9 @@
 // informe) con el código ACTUAL de esta copia: juez + recorrido completo por la app (crearSesionHoy /
 // crearPlanSemana con la respuesta guardada como si viniera del servidor) y problemasSesion sobre lo guardado.
 // Además cuenta lo que la app tiene que corregir de la IA (tareas cambiadas, repeticiones sin su formato, roles
-// equivocados, cardio por debajo del mínimo…), que es lo que se quiere que baje de una ronda a otra.
+// equivocados, cardio por debajo del mínimo…), que es lo que se quiere que baje de una ronda a otra. Los ids
+// inventados no se ven aquí (el servidor ya los filtra antes de guardar la respuesta): se vigilan en el registro
+// de Vercel, campos «descartados» y «tareasSinId» de la línea «entrenador».
 // Sin llamadas reales.
 //
 //   node docs/qa/reauditoria/scripts/ia/rejuzgar-ronda.mjs <ronda.json> [--detalle]
@@ -26,7 +28,6 @@ const FAMILIAS = [
   ['cardioMinimo', /el cardio sube de/],
   ['tiempo', /para que quepa en|calentamiento de 4 minutos|con \d+ minutos quito/],
   ['dosis', /son demasiadas|es demasiado, pongo|a \d+-\d+ repeticiones/],
-  ['idInventado', /que no está en el catálogo/], // sin el enum del esquema (IA-6), lo que vigilar en la próxima ronda
 ];
 const familia = c => (FAMILIAS.find(([, re]) => re.test(c)) || ['otros'])[0];
 const cuenta = {};

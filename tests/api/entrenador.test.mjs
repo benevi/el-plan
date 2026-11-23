@@ -199,10 +199,11 @@ test('IA-6: sin enum, un ejercicio inventado se quita y una tarea con un id inve
   const { res } = await llamar({ cuerpo }, () => mensaje(respuesta));
   assert.equal(res.codigo, 200);
   assert.deepEqual(res.cuerpo.sesion.ejercicios.map(x => x.id), ['remo']);
-  assert.deepEqual(res.cuerpo.sesion.calentamiento.map(t => t.id), ['circulos-brazos', 'remo', '']);
+  // «remo» es del catálogo pero de fuerza: no es una tarea (revisión del PR #49, G2).
+  assert.deepEqual(res.cuerpo.sesion.calentamiento.map(t => t.id), ['circulos-brazos', '', '']);
   assert.deepEqual(res.cuerpo.sesion.vueltaCalma.map(t => t.id), ['']);
   const r = lineaRegistro()[0];
-  assert.deepEqual([r.descartados, r.tareasSinId], [1, 2]);
+  assert.deepEqual([r.descartados, r.tareasSinId], [1, 3]);
 });
 
 test('cifras de hoy: detrás de los datos, solo con números de las pautas', async () => {
