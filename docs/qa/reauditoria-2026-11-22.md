@@ -47,7 +47,7 @@ Los medios y bajos de cada enfoque están en su informe; casi todos van en los m
 | T5 | Cumple en Chromium | Paso desde la app real de `main`, modo avión con la sesión creada y marcha atrás de ida y vuelta. Sin comprobar en iOS |
 | T6 | Cumple | Choca con D-B en el número de series (S14) |
 | T7 | Cumple las pruebas | Falta freno al gasto y a los intentos de código (seguridad S1); la prueba del 413 usa la misma constante (COD-7) |
-| T8 | Sin repetir en la versión final | Las respuestas reales del 20-11 siguen aprobando con el juez, pero por el camino del móvil son 15/16 (IA-1). Hay que repetir los 20 casos tras los arreglos (≈ 3 $, con el OK de Víctor) |
+| T8 | Cumple (23-11) | Opus 5.5, 20 casos × 3 contra la vista previa: validador 100 %, rúbrica 100 % tras el PR #49. Ver `docs/qa/ia/2026-11-23-resumen.md` |
 | T9 | Cumple en la sesión, contraste y movimiento reducido | U2 (días de 42 px), U3 (texto ×2) y COD-5 (320×568 sin comprobar de verdad) |
 | T10 | Cumple | COD-8 y COD-9 |
 | T11 | No cumple del todo | Restaurar con la frase y copia ilegible sin ella: sí. «Menos de 1 minuto» solo si la primera subida funciona (D1, COD-3); frases débiles (seguridad S3) |
