@@ -582,7 +582,7 @@ export async function abrirCopia(persona, nombre, { frase = null, clave = null, 
   if (meta) {
     if (meta.persona !== persona) avisos.push(`Por dentro dice ser de ${meta.persona === 'victor' ? 'Víctor' : meta.persona === 'virginia' ? 'Virginia' : 'otra persona'}, no de quien elegiste.`);
     if (esperado) {
-      if (esperado.sesiones != null && meta.sesiones !== esperado.sesiones) avisos.push(`La lista decía ${+esperado.sesiones} sesiones y dentro hay ${+meta.sesiones}.`);
+      if (esperado.sesiones != null && meta.sesiones !== esperado.sesiones) avisos.push(`La lista decía ${+esperado.sesiones} ${+esperado.sesiones === 1 ? 'sesión' : 'sesiones'} y dentro hay ${+meta.sesiones}.`);
       if (esperado.ultima !== undefined && (esperado.ultima || null) !== (meta.ultima || null)) avisos.push('La fecha de la última sesión no coincide con la de la lista.');
       const t1 = Date.parse(esperado.fecha), t2 = Date.parse(meta.creada);
       if (!Number.isNaN(t1) && (Number.isNaN(t2) || t2 > t1 + 5 * 60e3 || t1 - t2 > 30 * 60e3)) avisos.push('La fecha de dentro no coincide con la de la subida.');

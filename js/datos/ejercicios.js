@@ -281,7 +281,7 @@ export const EJERCICIOS = [
 // ───────────── CARDIO ─────────────
 { id:'bici-estatica', n:'Bici estática', m:['cardio'], s:['cuadriceps'], l:['gym','casa'], mat:['maquina','bici'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-20 min',0], r:{},
   p:['Ajusta el sillín a la altura de la cadera estando de pie a su lado.','Con el pedal abajo, la rodilla debe quedar ligeramente doblada.','Pedalea a un ritmo en el que puedas hablar con algo de esfuerzo.'],
-  e:['Sillín muy bajo: carga la rodilla.'], v:'zaUWNvgelAU', c:'La mejor opción de cardio con la cadera lateral.' },
+  e:['Sillín muy bajo: carga la rodilla.'], v:'zaUWNvgelAU', c:'Si te duele la cadera por fuera, es la mejor opción de cardio.' },
 { id:'cinta-inclinada', n:'Caminar en cinta inclinada', m:['cardio'], s:['gluteo','gemelo'], l:['gym'], mat:['maquina'], niv:1, t:'tiempo', tipo:'propia', d:[1,'15-20 min',0], r:{cadera_lateral:1, tobillo_pie:1},
   p:['Pon una inclinación del 5 al 10 % y una velocidad de paso rápido.','Camina erguido sin agarrarte a las barras.','Mantén un ritmo en el que puedas hablar con algo de esfuerzo.'],
   e:['Agarrarse a la barra y echarse atrás.'], v:'9ccVxEvWtpA' },

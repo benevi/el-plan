@@ -35,7 +35,7 @@ function vista() {
       ? `<p class="tenue">El contenido original queda apartado en este móvil (${h(r.copia)}).</p>`
       : '<p class="tenue">No he podido apartar una copia del contenido original (no queda espacio).</p>')
       + '<button class="btn sec" data-act="rescate.descargarRoto">Descargar los datos ilegibles</button>' : ''}
-    ${e ? `<p class="nota">Copia interna${nombre ? ' de ' + h(nombre) : ''} del ${h(fecha(e.fecha))}: ${+e.sesiones} sesiones hechas.</p>
+    ${e ? `<p class="nota">Copia interna${nombre ? ' de ' + h(nombre) : ''} del ${h(fecha(e.fecha))}: ${+e.sesiones} ${+e.sesiones === 1 ? 'sesión hecha' : 'sesiones hechas'}.</p>
       <button class="btn grande" data-act="rescate.espejo">Recuperar la copia interna</button>` : ''}
     <button class="btn ${e ? 'sec' : 'grande'}" data-act="perfil.importar">Cargar copia</button>
     <p class="tenue">«Cargar copia» usa un archivo que guardaste antes desde Perfil → Ajustes → Guardar copia.</p>
