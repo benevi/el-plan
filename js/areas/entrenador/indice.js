@@ -17,6 +17,7 @@ import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar, noPuedoHoy,
   previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, SEÑALES_CORTAS, T2, DESDE, misSesiones, miaDe,
+  motivoCheckinCompleto, resumenUnToque,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -75,6 +76,9 @@ function hojaCheckin({ arriba = false } = {}) {
   if (pregunta) return hojaPregunta(pregunta);
   // Si la mía elegida ya no existe (borrada en otra pestaña…), se vuelve a lo de antes.
   if (ci.mia && !miaDe(S, ci.mia)) elegirMia(S, null);
+  // Check-in de un toque (M21, decisión de Víctor del 23-11-2026): el completo solo con «Algo ha cambiado» o
+  // cuando hace falta (motivoCheckinCompleto).
+  if (!ci.completo && !motivoCheckinCompleto(S, ci)) return hojaUnToque(S, top);
   const pv = previaCheckin(ci);
   const dia = pv.dia;
   const mia = miaDe(S, ci.mia), mias = misSesiones(S);
@@ -91,10 +95,7 @@ function hojaCheckin({ arriba = false } = {}) {
     <div class="grupo"><p class="grupo-et" id="ci-g-energia">Energía: <b>${ENERGIA[ci.energia]}</b></p>${segmento('ci-g-energia', [1, 2, 3, 4, 5].map(n => [n, String(n)]), ci.energia, v => `data-act="entrenador.ci" data-k="energia" data-v="${+v}" aria-label="${+v}: ${ENERGIA[v]}"`)}</div>
     ${zonas.map(z => selectorDolor(z, !deLesion.includes(z))).join('')}
     <div class="grupo"><p class="grupo-et" id="ci-g-mas">¿Te duele algo más?</p><div class="chips" role="group" aria-labelledby="ci-g-mas">${otras.map(z => `<button type="button" class="chip" data-act="entrenador.ciZona" data-v="${z}">${h(ZONAS[z].corta)}</button>`).join('')}</div></div>
-    <div class="grupo alarma-ci"><p class="grupo-et">Señales de alarma</p>
-      <ul class="señales-cortas">${SEÑALES_CORTAS.map(t => `<li>${h(t)}</li>`).join('')}</ul>
-      <details class="tecnica"><summary>Ver la lista completa</summary><ul class="tecnica-texto">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>
-      <div class="chips">${casilla('entrenador.ciAlarma', ci.alarma, '<b>Hoy noto alguna de estas señales</b> · si la marcas, hoy no se entrena', 'casilla--alarma')}</div></div>
+    ${bloqueAlarma()}
     ${mia ? '' : `<div class="campo"><label for="ci-peticion">Algo que pedir <small>opcional</small></label><input id="ci-peticion" data-no-foco="1" value="${h(ci.peticion)}" placeholder="hoy solo tren superior, la prensa está ocupada…" autocomplete="off" maxlength="2000"></div>`}
     ${htmlPrevia(pv)}
     <div class="ci-accion"><button type="button" class="boton boton--ancho" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : mia ? `Preparar «${h(mia.nombre)}»` : 'Preparar mi sesión'}</button></div>`, { clase: 'checkin checkin-pantalla' });
@@ -108,6 +109,25 @@ function hojaCheckin({ arriba = false } = {}) {
   // Al terminar de escribir solo se repinta la previa: repintar la hoja entera quitaba de debajo del dedo el
   // botón «Preparar mi sesión» y el toque se perdía (PR 12).
   pet.addEventListener('change', () => { const v = $('.hoja.checkin .previa'); if (v) v.outerHTML = htmlPrevia(previaCheckin(ci)); });
+}
+// Señales de alarma, siempre a la vista en los dos pasos (C-ALAR-3).
+const bloqueAlarma = () => `<div class="grupo alarma-ci"><p class="grupo-et">Señales de alarma</p>
+      <ul class="señales-cortas">${SEÑALES_CORTAS.map(t => `<li>${h(t)}</li>`).join('')}</ul>
+      <details class="tecnica"><summary>Ver la lista completa</summary><ul class="tecnica-texto">${SEÑALES.map(t => `<li>${h(t)}</li>`).join('')}</ul></details>
+      <div class="chips">${casilla('entrenador.ciAlarma', ci.alarma, '<b>Hoy noto alguna de estas señales</b> · si la marcas, hoy no se entrena', 'casilla--alarma')}</div></div>`;
+// El paso de un toque: qué se va a hacer, la alarma y dos botones.
+function hojaUnToque(S, top = 0) {
+  const r = resumenUnToque(S, ci);
+  const panel = abrirHoja(`<h2>Antes de empezar</h2>
+    ${enLinea() ? '' : `<p class="red ci-red" role="status">${ICONOS.sinred}Sin conexión: la prepara la app con sus reglas</p>`}
+    <p class="ci-intro">${h(r.texto)}${r.dolor ? ` ${h(r.dolor)}` : ''}</p>
+    ${bloqueAlarma()}
+    <div class="ci-accion">
+      <button type="button" class="boton boton--ancho" data-act="entrenador.crearHoy">${ci.alarma ? 'Hoy no entreno' : 'Todo bien, empezar'}</button>
+      ${ci.alarma ? '' : '<button type="button" class="boton boton--secundario boton--ancho" data-act="entrenador.ciCompleto">Algo ha cambiado</button>'}
+    </div>`, { clase: 'checkin checkin-pantalla checkin-toque' });
+  cabeceraPantalla(panel);
+  const hoja = $('.hoja.checkin'); if (hoja) hoja.scrollTop = top;
 }
 // Dolor de hoy por zona: selector ± del sistema (un toque, sin teclado del móvil). El deslizador nativo se queda
 // como ÚNICO control accesible (flechas, Re Pág/Av Pág, Inicio y Fin) sin verse: el valor grande es su eco y los
@@ -486,6 +506,8 @@ acciones({
     return ponerDolor(z, (+ci.dolorHoy[z] || 0) + +el.dataset.v);
   },
   'entrenador.ciAlarma': el => { ci.alarma = el.checked; hojaCheckin(); },
+  // «Algo ha cambiado»: del paso de un toque al check-in completo (M21).
+  'entrenador.ciCompleto': () => { ci.completo = true; hojaCheckin({ arriba: true }); },
   'entrenador.ciRespAlarma': el => {
     const p = preguntaAntes(estado(), ci);
     if (el.dataset.v === 'si') { ci.alarmaRespuesta = 'si'; ci.alarmaFrase = p && p.frase; crearConAlarma(); return; }

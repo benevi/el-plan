@@ -24,6 +24,9 @@ const cambio = (sel, v) => { const el = a.doc.querySelector(sel); if (el.type ==
 const abrirCheckin = async () => {
   const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.doc.querySelector('#vista').append(b);
   a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.crearHoy"]'));
+  // Check-in de un toque (M21): para tocar lugar, tiempo, energía o dolor, «Algo ha cambiado».
+  const cmp = a.doc.querySelector('[data-act="entrenador.ciCompleto"]');
+  if (cmp) { a.clic(cmp); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); }
 };
 const conLesion = (zona, dolor, extra = {}) => { const b = estadoBase(extra); b.perfil.lesiones.push({ id: 'l1', zona, dolor, desde: '2025-01-01', tipo: 'recurrente', nota: '', activa: true }); return b; };
 

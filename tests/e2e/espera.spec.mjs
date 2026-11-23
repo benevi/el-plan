@@ -67,7 +67,8 @@ async function checkin(p, peticion = '') {
   // Se crea y se pulsa en el mismo paso: un repintado de Hoy podría quitar el botón entre medias.
   await p.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; document.querySelector('#vista').append(b); b.click(); });
   await expect(p.locator('.hoja.checkin')).toBeVisible();
-  if (peticion) await p.fill('#ci-peticion', peticion);
+  // Check-in de un toque (M21): la petición está en el completo, tras «Algo ha cambiado».
+  if (peticion) { await p.click('[data-act="entrenador.ciCompleto"]'); await p.fill('#ci-peticion', peticion); }
   await p.click('[data-act="entrenador.crearHoy"]');
 }
 const sesionGuardada = p => p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('pipos4')).sesiones));

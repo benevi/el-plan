@@ -193,6 +193,11 @@ for (const persona of ['victor', 'virginia']) {
     expect(caja.height).toBeGreaterThanOrEqual(840);
     await expect(page.locator('.checkin-pantalla .hoja-cab [data-cerrar-hoja]')).toHaveAttribute('aria-label', 'Volver a Hoy');
     await mirar(page, 'check-in-antes-de-empezar', persona);
+    // Check-in de un toque (M21, C-CHECK-1): la casilla de alarma a la vista, «Todo bien, empezar» y «Algo ha cambiado».
+    await expect(page.locator('.hoja.checkin-toque [data-cambio="entrenador.ciAlarma"]')).toBeVisible();
+    await expect(page.locator('.hoja [data-act="entrenador.crearHoy"]')).toHaveText('Todo bien, empezar');
+    await page.click('.hoja [data-act="entrenador.ciCompleto"]');
+    await expect(page.locator('.hoja [data-act="entrenador.ci"][data-k="energia"]').first()).toBeVisible();
 
     // En su sitio: bajar, tocar Energía 4 y Tiempo 45; no vuelve arriba
     await hoja.evaluate(h => { h.scrollTop = 260; });

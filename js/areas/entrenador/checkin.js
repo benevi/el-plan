@@ -247,6 +247,31 @@ export function motivoIA(S, ci, dia) {
   return r.length ? { usar: true, motivo: `El entrenador IA la revisa porque ${lista(r)}.` } : { usar: false, motivo: 'Ajustada por la app con tu check-in (sin gastar IA).' };
 }
 
+// ── Check-in de un toque (M21; decisión de Víctor del 23-11-2026) ──
+// Antes de entrenar sale un paso mínimo: la casilla de señales de alarma siempre a la vista (C-ALAR-3) y «Todo
+// bien, empezar», que prepara la sesión con lo que ya hay (plan, perfil y el dolor con que se rellena el
+// check-in, C-DOLOR-0). El check-in completo se abre con «Algo ha cambiado», o directamente cuando hace falta:
+// una de «Mis sesiones» elegida, una petición pendiente, un reintento, una ficha con dolor 7 o más o por revisar
+// (C-DOLOR-0: «obliga a hacer el check-in») o un dolor de hoy de 7 o más.
+// Devuelve el motivo por el que va el completo ('' si basta el de un toque).
+export function motivoCheckinCompleto(S, ci) {
+  if (ci.mia || ci.ocuparDia) return 'mia';
+  if (ci.reintento) return 'reintento';
+  if (String(ci.peticion || '').trim()) return 'peticion';
+  const activas = S.perfil.lesiones.filter(l => l.activa);
+  if (activas.some(l => l.dolorRevisar || +l.dolor >= 7)) return 'ficha';
+  if (Object.values(ci.dolorHoy || {}).some(v => +v >= 7)) return 'dolor';
+  return '';
+}
+// Lo que se usará si se empieza con un toque, en una frase: el día (o la sesión de las reglas), dónde, cuánto y
+// con qué dolor, para que se vea qué se da por bueno.
+export function resumenUnToque(S, ci) {
+  const pv = previaCheckin(ci);
+  const dolor = Object.entries(ci.dolorHoy || {}).filter(([z]) => ZONAS[z]).map(([z, v]) => `${nombreZona(z)} ${+v}/10`);
+  const que = pv.dia ? `Toca ${pv.dia.nombre}` : 'Hoy no hay día en tu plan: te preparo una sesión con lo que te falta esta semana';
+  return { pv, texto: frase(`${que}, en ${minus(LUGARES[ci.lugar] || ci.lugar)}, unos ${+pv.minutos} min`), dolor: dolor.length ? frase(`Con tu dolor de siempre: ${lista(dolor)}`) : '' };
+}
+
 // Vista previa del check-in (para enseñar qué cambia antes de crear la sesión).
 export function previaCheckin(ci) {
   const S = estado();

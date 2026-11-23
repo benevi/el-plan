@@ -18,6 +18,9 @@ async function reiniciar(datos) {
 const abrir = async () => {
   const b = a.doc.createElement('button'); b.dataset.act = 'entrenador.prepararHoy'; a.doc.querySelector('#vista').append(b);
   a.clic(b); await a.esperar(() => a.doc.querySelector('.hoja'));
+  // Check-in de un toque (M21): para tocar lugar, tiempo, energía o dolor, «Algo ha cambiado».
+  const cmp = a.doc.querySelector('[data-act="entrenador.ciCompleto"]');
+  if (cmp) { a.clic(cmp); await a.esperar(() => a.doc.querySelector('.hoja.checkin [data-act="entrenador.ci"]')); }
 };
 
 test('C-ALAR-3, C-DOLOR-0: la casilla de alarma está siempre en el check-in y la ficha a 9 entra como 6', async () => {
