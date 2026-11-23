@@ -319,13 +319,13 @@ No hay progresión de carga en lo que implica la zona mientras sea nueva; sí de
 - en piscina, `nado-continuo`, `aquajogging` o `caminar-agua` como bloque continuo;
 - por **distancia** en piscina (`crol`, `espalda`, `series-50-crol`): los minutos estimados con C-PISC-4, **solo** como añadido: la sesión de piscina necesita igualmente el bloque continuo (C-PISC-1).
 
-**No cuentan**: el calentamiento (salvo en D2), la movilidad, la fuerza en circuito, `paseo-granjero` y los cardios de 30 s sueltos (`rodillas-altas-agua`, `jumping-jacks-sin-salto` 3 × 30-45 s). En casa y en la calle, los cardios cortos (`step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `marcha-estatica`, `cardio-sentado`) cuentan solo encadenados en un **bloque continuo** de 1-3 min por ejercicio, sin pausa, hasta sumar los minutos.
+**No cuentan**: el calentamiento (salvo en D2), la movilidad, la fuerza en circuito, `paseo-granjero` y los cardios de 30 s sueltos (`rodillas-altas-agua`, `jumping-jacks-sin-salto` 3 × 30-45 s). En casa y en la calle, los cardios cortos (`step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `marcha-estatica`, `cardio-sentado`, `marcha-sentada`) cuentan solo encadenados en un **bloque continuo** de 1-3 min por ejercicio, sin pausa, hasta sumar los minutos.
 
 | Lugar | Cardio continuo | Bloque encadenado |
 |---|---|---|
 | Gimnasio | `bici-estatica`, `eliptica`, `cinta-inclinada`, `remo-ergometro` | — |
-| Casa | `bici-estatica` si tiene bici (material nuevo, sección 18) | `marcha-estatica`, `step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `cardio-sentado` |
-| Calle | `marcha-rapida`, `carrera-suave` (nivel ≥ 2) | `comba`, `cardio-sentado` (en un banco) |
+| Casa | `bici-estatica` si tiene bici (material nuevo, sección 18) | `marcha-estatica`, `step-bajo`, `jumping-jacks-sin-salto`, `boxeo-sombra`, `comba`, `cardio-sentado`, `marcha-sentada` |
+| Calle | `marcha-rapida`, `carrera-suave` (nivel ≥ 2) | `comba`, `cardio-sentado` y `marcha-sentada` (en un banco) |
 | Piscina | `nado-continuo`, `aquajogging`, `caminar-agua` | — |
 
 ### 4.4 Cardio con lesión
@@ -349,6 +349,9 @@ ZONAS[z].cardio = {
 | Codo / muñeca | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`, `nado-continuo` (B1) | Sin agarrar fuerte el manillar |
 | Cervical | `bici-estatica`, `eliptica`, `cinta-inclinada` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida; sin crol en B2 |
 | Espalda alta (dorsal) [pendiente, sección 12.9] | `bici-estatica`, `cinta-inclinada`, `eliptica` | `marcha-estatica`, `step-bajo` | `marcha-rapida` | `aquajogging`; `nado-continuo` de espalda | Bici erguida con el manillar alto; cinta sin agarrarse; elíptica sin tirar de las asas; sin crol ni remo en B2 |
+
+**C-CARDIO-6 · pierna y brazo a la vez [aprobado por Víctor el 23-11-2026] (S7)** Cardio siempre (T1 al 100 %): con una zona de pierna (cadera lateral, rodilla o tobillo/pie) y otra de brazo (hombro, codo o muñeca) en B2, o en el día de dolor alto con una de ellas activa (C-DOLOR-4.3), ningún cardio de casa o calle de la tabla vale (todos tienen r en una de las dos). Para eso está **`marcha-sentada`** (casa y calle, en un banco): sentado y erguido, levantando los pies alternos a ritmo vivo, con las manos en los muslos. No apoya peso en las piernas ni mueve los brazos, así que no lleva r en ninguna zona de pierna ni de brazo; lleva r=1 en la lumbar (estar sentado y erguido mucho rato puede subir un dolor lumbar). Es la última opción del lugar: si cualquier otra vale, va la otra. Con la pierna dolorida, el pie apenas despega y el ritmo lo marca la otra.
+- **Caso sin cardio posible** (comprobado con las 660 combinaciones de 1 a 3 zonas en B2 y en el día de dolor alto, en casa sin bici y en la calle): cadera lateral o tobillo/pie, **más** hombro o codo, **más** lumbar, las tres a la vez. Lo que no carga esa pierna ni ese brazo (`marcha-sentada`) carga la lumbar, y lo que no carga la lumbar carga la pierna o el brazo. Ese día no hay cardio: en el día de dolor alto el bloque pasa a movilidad y respiración (C-DOLOR-4.5) y la explicación lo dice; con B2, la sesión va sin cardio y lo dice («hoy no hay ningún cardio posible en este lugar con tu dolor»). En el gimnasio queda la bici estática y en la piscina el agua.
 
 ---
 
@@ -1295,6 +1298,16 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 **Aprobada el 21-11-2026:**
 
 13. **Zona nueva «Espalda alta (dorsal)»** (sección 12.9): qué evitar, rehabilitación por fases, techo 3 (también en crónica, como lumbar y cervical) y cuándo consultar: **aprobada**.
+
+**Aprobadas por Víctor el 23-11-2026** (decisiones pendientes de la verificación final de la re-auditoría del 22-11-2026):
+
+14. **S7 · Cardio siempre (T1 al 100 %)**: cardio sentado sin carga de piernas ni brazos para casa y calle (`marcha-sentada`, C-CARDIO-6 · pierna y brazo a la vez), con el único caso sin cardio posible dicho: **aprobada**.
+15. **S18 · Superserie del último recurso**: 90-120 s de descanso entre parejas, nunca por debajo de C-PAUSA-1 (C-TIEMPO-2 paso 6 y el ejemplo de C-TIEMPO-4): **aprobada**.
+16. **S16 · Calle sin nada tumbado**: la regla de C-EST-4 pasa de los estiramientos a todos los ejercicios, con ejercicios de pie o con apoyo en banco para que la calle siga teniendo fuerza: **aprobada**.
+17. **S3 · Aquajogging**: para quien no nada 2 × 25 m, solo donde hace pie; en lo hondo, solo si sabe nadar y con cinturón de flotación (C-PISC-2): **aprobado tal como está**.
+18. **T3b · Texto de «Algo va mal» sin lesiones** (§ 2.5): **aprobado tal como está**.
+19. **S8 · Palabras de alarma**: la lista de C-ALAR-4 es la del código, con «se me nubló la vista» y «calambre en el brazo izquierdo»: **aprobada**.
+20. **S4 · Equilibrio con 60 años o más**: queda siempre, también si el ajuste de tiempo quita la rehabilitación de tobillo que lo traía (C-EDAD-1): **aprobada**.
 
 ---
 

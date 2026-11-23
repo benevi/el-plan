@@ -253,11 +253,14 @@ export function intervalosPermitidos(S, salud, bandas) {
 // Qué ejercicios cuentan como cardio y en qué orden se prefieren, por lugar (C-CARDIO-5).
 export const CARDIO_LUGAR = {
   gym: ['bici-estatica', 'eliptica', 'cinta-inclinada', 'remo-ergometro', 'cardio-sentado'],
-  casa: ['marcha-estatica', 'boxeo-sombra', 'jumping-jacks-sin-salto', 'step-bajo', 'cardio-sentado', 'comba', 'bici-estatica'],
-  calle: ['marcha-rapida', 'carrera-suave', 'marcha-estatica', 'cardio-sentado', 'comba'],
+  // marcha-sentada (S7, decisión del 23-11-2026): la última de casa y calle, para cuando duelen una pierna y un brazo.
+  casa: ['marcha-estatica', 'boxeo-sombra', 'jumping-jacks-sin-salto', 'step-bajo', 'cardio-sentado', 'comba', 'bici-estatica', 'marcha-sentada'],
+  calle: ['marcha-rapida', 'carrera-suave', 'marcha-estatica', 'cardio-sentado', 'comba', 'marcha-sentada'],
   piscina: ['nado-continuo', 'aquajogging', 'caminar-agua'],
 };
-const ENCADENADO = ['marcha-estatica', 'step-bajo', 'jumping-jacks-sin-salto', 'boxeo-sombra', 'comba', 'cardio-sentado'];
+const ENCADENADO = ['marcha-estatica', 'step-bajo', 'jumping-jacks-sin-salto', 'boxeo-sombra', 'comba', 'cardio-sentado', 'marcha-sentada'];
+// La marcha sentada solo va cuando no vale otro cardio (S7): no se ofrece para alternar con uno mejor.
+export const CARDIO_ULTIMO = ['marcha-sentada'];
 // Quien no sabe nadar 2 × 25 m seguidos (C-PISC-2): por tiempo, con tabla y donde haga pie, sea cual sea su nivel
 // de fuerza (el nivel no es de natación; lo prudente, C-PRIN-2): sin nado continuo, crol, espalda ni largos sin
 // tabla. Las patadas con tabla sí (es la técnica de su fila de C-PISC-2).
@@ -282,8 +285,10 @@ export function opcionesCardio(S, ctx, { sinRiesgo = false } = {}) {
 // El ejercicio de cardio del día, con su porqué.
 export function cardioDelDia(S, ctx, k = 0, extra = 0, excluir = []) {
   const regla = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, bandas: ctx.bandas });
-  const opciones = opcionesCardio(S, ctx).filter(e => !excluir.includes(e.id)); // no dos veces el mismo (rehabilitación y cardio)
-  if (!opciones.length) return null;
+  const todasOp = opcionesCardio(S, ctx).filter(e => !excluir.includes(e.id)); // no dos veces el mismo (rehabilitación y cardio)
+  if (!todasOp.length) return null;
+  // La marcha sentada, solo si no vale ningún otro (S7).
+  const opciones = todasOp.some(e => !CARDIO_ULTIMO.includes(e.id)) ? todasOp.filter(e => !CARDIO_ULTIMO.includes(e.id)) : todasOp;
   const an = ctx.an || {};
   const orden = opciones.map((e, i) => ({ e, p: -i + preferencia(an, e.id) })).sort((a, b) => b.p - a.p).map(x => x.e);
   // Con una zona activa manda el orden de su ficha (C-CARDIO-6); en la piscina, el bloque continuo de siempre.
@@ -299,7 +304,7 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   const partes = [`${min} min${extra && ctx.energia > 2 ? ` (+${extra} porque tu peso no ha bajado en 4 semanas)` : ''} porque ${por}: esfuerzo ${regla.rpe} de 10 (${habla})`];
   if (regla.intervalos) partes.push('Si te ves bien: 3 min suaves y 6-8 veces 1 min fuerte (7 de 10) con 1-2 min suaves; como mucho 2 días por semana y no seguidos');
   if (ENCADENADO.includes(e.id) && ctx.lugar !== 'gym') {
-    const otros = opciones.filter(o => ENCADENADO.includes(o.id) && o.id !== e.id).slice(0, 2).map(o => minus(o.n));
+    const otros = opciones.filter(o => ENCADENADO.includes(o.id) && o.id !== e.id && !CARDIO_ULTIMO.includes(o.id)).slice(0, 2).map(o => minus(o.n));
     partes.push(`En bloque continuo: 1-3 min de cada uno sin parar${otros.length ? ` (alterna con ${lista(otros)})` : ''} hasta sumar los minutos`);
   }
   if (ctx.lugar === 'piscina') partes.push('Seguido; si paras en el borde, menos de 20 s y sin parar el reloj');

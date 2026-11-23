@@ -593,6 +593,13 @@ export const EJERCICIOS = [
 { id:'cardio-sentado', n:'Cardio sentado (puñetazos y remo sin peso)', m:['cardio'], s:['hombro','core'], l:['casa','calle','gym'], mat:['peso corporal','banda'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-15 min',0], r:{hombro:1, codo:1},
   p:['Siéntate en el borde de una silla o un banco, espalda recta y pies apoyados.','Alterna 1 minuto de puñetazos al frente con 1 minuto de remo sin peso (o con banda).','Mueve los brazos con ritmo hasta notar que respiras más rápido.','Ritmo en el que puedas hablar con frases cortas.'],
   e:['Encorvarse hacia delante.','Bloquear los codos de golpe en cada puñetazo.'], c:'Cardio que no carga las piernas: útil con la rodilla, el tobillo o la cadera doloridos.' },
+// S7 (decisión de Víctor del 23-11-2026, docs/criterio.md C-CARDIO-6): cardio sentado que no apoya peso en las piernas
+// ni mueve los brazos, para cuando duelen a la vez una pierna y un brazo (B2 o día de dolor alto). r lumbar 1: estar
+// sentado y erguido mucho rato puede subir un dolor lumbar.
+{ id:'marcha-sentada', n:'Marcha sentada', m:['cardio'], s:['core'], l:['casa','calle'], mat:['peso corporal'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-15 min',0], r:{lumbar:1},
+  p:['Siéntate en el borde de una silla firme y sin ruedas (en la calle, en un banco), con la cadera un poco más alta que las rodillas: si la silla es baja, ponte un cojín.','Espalda erguida sin apoyarte en el respaldo, pies apoyados a la anchura de la cadera y manos sobre los muslos: los brazos no trabajan.','Levanta un pie unos centímetros del suelo, bájalo con suavidad y levanta el otro, como si caminaras rápido sin moverte de la silla.','Ve subiendo el ritmo hasta respirar más rápido pero poder hablar con frases cortas.'],
+  e:['Encorvarse o echarse atrás contra el respaldo.','Dejar caer el pie de golpe: apóyalo suave.','Subir la rodilla más de lo cómodo o hasta que duela: con la pierna dolorida, que el pie apenas despegue y marca el ritmo con la otra.'],
+  c:'Cardio suave para cuando te duelen a la vez una pierna y un brazo: no apoya peso en las piernas ni carga los brazos. Si puedes, la bici estática o el agua dan más.' },
 { id:'nado-continuo', n:'Nado continuo', m:['natacion'], s:['espalda','hombro','core'], l:['piscina'], mat:['agua'], niv:1, t:'tiempo', tipo:'propia', d:[1,'10-20 min',0], r:{hombro:1, cervical:1, dorsal:1},
   p:['Nada sin parar al estilo que te resulte más cómodo (crol, espalda o braza suave).','Ritmo en el que podrías decir frases cortas al parar.','Si te cansas, para en el borde menos de 20 segundos sin parar el reloj.'],
   e:['Empezar demasiado rápido y parar a los pocos largos.','Contener la respiración.'], c:'El bloque de cardio de la piscina.' },

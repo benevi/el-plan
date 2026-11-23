@@ -6,7 +6,7 @@
 // «solo suave» de los datos de salud (C-SALUD-0) con otra primera línea.
 
 import { ex, ZONAS } from '../../reglas/catalogo.js';
-import { contextoDia, opcionesCardio, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab, tareasFicha, tareaOk, tareaSinIdOk, libresDe, ESTIRA_SUAVE } from './dia.js';
+import { contextoDia, opcionesCardio, CARDIO_ULTIMO, permitidoBase, repartir, minus, lista, frase, nombreZona, techoDolor, fasesRehab, tareasFicha, tareaOk, tareaSinIdOk, libresDe, ESTIRA_SUAVE } from './dia.js';
 import { T6 } from './alarma.js';
 
 // Minutos → [bloque de cardio suave, de ellos el tramo inicial más suave, movilidad, estiramientos y respiración].
@@ -38,7 +38,7 @@ export function diaDolorAlto(S, ci, { motivo } = {}) {
 
   // Cardio del bloque: sin impacto y sin r en ninguna zona activa (C-CARDIO-6), con la prueba de 2 minutos.
   const opciones = opcionesCardio(S, ctx, { sinRiesgo: true }).filter(e => !['comba', 'carrera-suave', 'jumping-jacks-sin-salto', 'step-bajo'].includes(e.id));
-  const [c1, c2] = opciones;
+  const c1 = opciones[0], c2 = opciones.slice(1).find(e => !CARDIO_ULTIMO.includes(e.id)); // la marcha sentada no se ofrece para alternar (S7)
   const ejercicios = [];
   const calentamiento = [];
   const explicacion = [motivo || T6(zMax, dMax, ctx.minutos)];
