@@ -311,3 +311,51 @@ test('juez de plan (C-REP-2, C-REP-4): un cuerpo completo sin dominante de cader
   assert.equal(j.aprueba, false);
   assert.ok(j.seguridad.some(t => /cadera/.test(t) && /C-REP-4/.test(t)), j.seguridad.join(' | '));
 });
+
+// Ronda real del 23-11 (CR-25): «sin intervalos por tu tensión» no son intervalos; «6 × (1 min a RPE 7…)» sí.
+test('juez: «sin intervalos» en la nota del cardio no cuenta como intervalos (CR-25)', async () => {
+  const { conIntervalos } = await import('./casos.mjs');
+  for (const t of ['Cardio continuo a RPE 4-5, sin intervalos por tu tensión.', 'Continuo, sin cambios bruscos de ritmo. Nada de intervalos hoy.', 'Hoy no hay intervalos: ritmo cómodo.', 'Sin intervalos ni cuestas.'])
+    assert.equal(conIntervalos(t), false, t);
+  for (const t of ['3 min suaves + 6 × (1 min a RPE 7 + 2 min a RPE 3)', 'Intervalos en la bici: 1 min fuerte, 2 suave.', 'Sin cuestas; haz intervalos de 1 min.',
+    'Sin pausa entre intervalos de 1 min.', 'Sin descanso entre intervalos.', 'Sin parar intervalos de 30 s.']) // revisión del PR #49, M1
+    assert.equal(conIntervalos(t), true, t);
+  const p = await preparar(CASOS.find(c => c.id === 'CR-25'));
+  const r = mutar(buena(p), x => { x.ejercicios.find(y => y.rol === 'cardio').nota = 'Cardio continuo para perder grasa a RPE 4-5, sin intervalos por tu tensión: puedes hablar con frases cortas.'; });
+  assert.deepEqual(juzgar(p, r).seguridad, []);
+  const mala = mutar(buena(p), x => { x.ejercicios.find(y => y.rol === 'cardio').nota = '3 min suaves y 6 × (1 min a RPE 7 + 2 min a RPE 3).'; });
+  assert.ok(juzgar(p, mala).seguridad.includes('intervalos en el cardio'));
+});
+
+// Ronda real del 23-11: formato de «reps» (d), lo que no va de principal (np) y las tareas que la app comprueba.
+test('el catálogo dice la dosis de referencia y lo que no puede ser principal; las pautas, las tareas que valen hoy', async () => {
+  const { cat: c } = await import('../ayuda/node.mjs');
+  const e = await import('../../js/areas/entrenador/dia.js');
+  const p29 = await preparar(CASOS.find(x => x.id === 'CR-29'));
+  const de = (b, id) => b.catalogo.find(x => x.id === id);
+  assert.equal(de(p29.cuerpo, 'tobillo-banda-4-direcciones').d, '15 c/dirección');
+  assert.equal(de(p29.cuerpo, 'dead-bug').d, '10 c/lado');
+  assert.equal(de(p29.cuerpo, 'tobillo-banda-4-direcciones').np, 1, 'solo rehabilitación');
+  assert.ok(p29.cuerpo.catalogo.filter(x => x.m[0] === 'cardio').every(x => !('d' in x)), 'el cardio va por minutos');
+  const p07 = await preparar(CASOS.find(x => x.id === 'CR-07'));
+  for (const id of ['retraccion-escapular-isometrica', 'rotacion-hombro-agua', 'caminar-agua', 'aquajogging']) if (de(p07.cuerpo, id)) assert.equal(de(p07.cuerpo, id).np, 1, id);
+  // Lo que no lleva «np» es justo lo que el validador deja como principal ese día.
+  for (const pr of [p07, p29, await preparar(CASOS.find(x => x.id === 'CR-09'))]) {
+    const ctx = e.contextoDia(pr.S, { lugar: pr.caso.ci.lugar, dolorHoy: pr.caso.ci.dolorHoy || {} });
+    pr.cuerpo.catalogo.forEach(x => assert.equal(!x.np, e.valePrincipal(pr.S, c.ex(x.id), ctx), `${pr.caso.id} ${x.id}`));
+    // Las tareas por id pasan tareaOk; la activación de cada zona está entre ellas.
+    const pa = pr.cuerpo.checkin.pautas;
+    assert.ok(pa.tareas.length > 5 && pa.tareas.length <= 60);
+    pa.tareas.forEach(id => assert.ok(e.tareaOk(pr.S, id, ctx), `${pr.caso.id} tarea ${id}`));
+    Object.values(pa.activacion || {}).forEach(id => assert.ok(pa.tareas.includes(id)));
+    assert.deepEqual(pa.tareasSinId.slice(0, 3), ['Respiración', 'Series de aproximación', 'Series de prueba']);
+    assert.equal(pa.minPrincipales, 3);
+  }
+  assert.deepEqual(p29.cuerpo.checkin.pautas.activacion, { tobillo_pie: 'tobillo-banda-4-direcciones' });
+  const p05 = await preparar(CASOS.find(x => x.id === 'CR-05'));
+  assert.deepEqual(p05.cuerpo.checkin.pautas.activacion, { rodilla: 'extension-rodilla-isometrica', hombro: 'rotacion-externa-isometrica' });
+  // El plan lleva lo mismo en las pautas de cada lugar, y el saneado del servidor no quita nada de esto.
+  const p11 = await preparar(CASOS.find(x => x.id === 'CR-11'));
+  assert.ok(Object.values(p11.cuerpo.semana.pautas).every(pa => pa.tareas.length && pa.tareasSinId.length));
+  for (const pr of [p05, p07, p11, p29]) assert.deepEqual(sanear(copia(pr.cuerpo)).cuerpo, { ...pr.cuerpo }, pr.caso.id);
+});

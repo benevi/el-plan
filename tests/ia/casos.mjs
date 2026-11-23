@@ -25,7 +25,12 @@ function historia(S, ejs = [['press-pecho-maquina', 40], ['jalon-pecho', 45], ['
 
 // Comprobaciones «NUNCA» que no son una lista de ids. Reciben la sesión cruda (forma de la IA, con «vuelta»)
 // y { S, ctx, cardioMin } y devuelven un texto si fallan.
-const intervalos = s => (s.ejercicios || []).some(x => x.rol === 'cardio' && /interval|× ?\(?1 min|rpe ?7/i.test(`${x.reps} ${x.nota}`)) ? 'intervalos en el cardio' : null;
+// Lo que dice que NO hay intervalos («sin intervalos», «nada de intervalos», «no hay intervalos», «ni intervalos») no
+// cuenta: en la ronda real del 23-11 el juez suspendía CR-25 por una nota que decía «sin intervalos por tu tensión».
+// Entre la negación e «intervalos» solo un artículo o determinante («sin pausa entre intervalos» sí son intervalos).
+const SIN_INTERVALOS = /\b(sin|ni|nada de|no hay|no hagas|no haces|evita|nunca)\s+(los\s+|ningún\s+|tipo de\s+)?intervalos?\b/giu;
+export const conIntervalos = t => /interval|× ?\(?1 min|rpe ?7/i.test(String(t || '').replace(SIN_INTERVALOS, ' '));
+const intervalos = s => (s.ejercicios || []).some(x => x.rol === 'cardio' && conIntervalos(`${x.reps} ${x.nota}`)) ? 'intervalos en el cardio' : null;
 const kgMasDe = (id, max) => s => (s.ejercicios || []).some(x => x.id === id && x.kg != null && +x.kg > max) ? `${id} con más de ${max} kg` : null;
 
 // modo: 'sesion' | 'plan'. espera: 'ia' (se llama) | 'sinIA' (no se llama: dolor ≥ 7 o alarma).

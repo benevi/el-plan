@@ -11,7 +11,7 @@ import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizar
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, DIAS } from '../../datos/constantes.js';
-import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn } from './dia.js';
+import { porQueEjercicio, porQueRehab, resumenDia, lista, minutosSesion, nombreZona, bandasHoy, contextoDia, reglaCardio, minutosCalentamiento, minutosVuelta, minus, permitidoEn, valePrincipal, tareasDelDia } from './dia.js';
 import { planReglas, planDeLaSemana, diaElegido, estadoDias } from './plan.js';
 import { ajustarAlCheckin, motivoIA } from './checkin.js';
 import { validarSesion, esUltimoRecurso } from './validar.js';
@@ -24,7 +24,10 @@ import { miaDe, ejerciciosMia } from './mias.js';
 // (C-SALUD-0). Las zonas van con su banda, techo y fase ya calculados (los mismos que usa el validador).
 function peticionBase(S, lugares, dolorHoy = {}, { plan = false } = {}) {
   // El catálogo con la misma regla que el validador (COD-1): lugar, material, rechazos, dolor de hoy y salud.
-  const catalogo = catalogoParaIA(S, lugares, dolorHoy, { permitidoEn: l => permitidoEn(S, l, dolorHoy, { futuro: plan }) });
+  const catalogo = catalogoParaIA(S, lugares, dolorHoy, {
+    permitidoEn: l => permitidoEn(S, l, dolorHoy, { futuro: plan }),
+    principalEn: l => { const c = contextoDia(S, { lugar: l, dolorHoy, futuro: plan }); return e => valePrincipal(S, e, c); },
+  });
   const ids = catalogo.map(e => e.id);
   return {
     perfil: { ...perfilParaIA(S), salud: etiquetasSalud(S) }, lesiones: lesionesParaIA(S, dolorHoy, bandasHoy(S, dolorHoy, { plan }), new Set(ids)), catalogo,
@@ -33,20 +36,26 @@ function peticionBase(S, lugares, dolorHoy = {}, { plan = false } = {}) {
   };
 }
 // Lo que las reglas ya fijan para un día y la IA tiene que respetar: cardio mínimo (C-CARDIO-1, C-CARDIO-4),
-// minutos de calentamiento y vuelta (C-CAL-1, C-VUELTA-1), tiempo máximo (C-TIEMPO-1), principales con poca
-// energía (C-ENERGIA-1), edad (C-EDAD-1) y salud (C-SALUD-0). Son números: el validador los vuelve a comprobar.
+// minutos de calentamiento y vuelta (C-CAL-1, C-VUELTA-1), tiempo máximo (C-TIEMPO-1), principales mínimos y con
+// poca energía (C-TIEMPO-2, C-ENERGIA-1), edad (C-EDAD-1) y salud (C-SALUD-0). Son números: el validador los vuelve a
+// comprobar. Y las tareas de calentamiento y vuelta que la app puede comprobar hoy (C-EST-4): «tareas» (ids),
+// «activacion» (la de su fase 1 por zona) y «tareasSinId» (nombres que valen sin id); en la ronda real del 23-11 la
+// IA mandaba sin id la activación y la app tenía que cambiarla.
 export function pautasDia(S, { lugar, minutos, dolorHoy = {}, energia = 3, futuro = false }) {
   const ctx = contextoDia(S, { lugar, minutos, dolorHoy, energia, futuro });
   const c = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, bandas: ctx.bandas });
   const sal = ctx.salud, mayor = ctx.edad != null && ctx.edad >= 60;
+  const tareas = tareasDelDia(S, ctx);
   return {
     cardio: { minimo: c.minutos, maximo: c.max, rpe: c.rpe, intervalos: !!c.intervalos },
     calentamientoMin: minutosCalentamiento(S, ctx), vueltaMin: minutosVuelta(S, ctx),
     minutosMax: Math.floor(ctx.minutos * 1.1),
+    minPrincipales: ctx.energia === 1 ? 1 : 3,
     maxPrincipales: ctx.energia === 1 ? 3 : ctx.energia === 2 ? 4 : undefined,
     margenMin: Math.max(sal.margenMin || 0, mayor ? 2 : 0) || undefined,
     rpeMax: sal.rpeMax || undefined, isometricoMaxSeg: sal.isoMax || undefined, descansoMinSeg: sal.descansoMin || undefined,
     equilibrio: sal.equilibrio || mayor || undefined,
+    tareas: tareas.ids, activacion: Object.keys(tareas.activacion).length ? tareas.activacion : undefined, tareasSinId: tareas.sinId,
   };
 }
 

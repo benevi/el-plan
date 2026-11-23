@@ -59,8 +59,9 @@ function coste(uso) {
   if (!uso) return 0;
   const partes = Array.isArray(uso.iteraciones) && uso.iteraciones.length ? uso.iteraciones : [{ modelo: uso.modelo, entrada: uso.entrada, salida: uso.salida }];
   const total = partes.reduce((t, p) => { const [e, s] = PRECIOS[p.modelo] || PRECIOS['claude-opus-5-5']; return t + ((p.entrada || 0) * e + (p.salida || 0) * s) / 1e6; }, 0);
-  const [, , c] = PRECIOS[uso.modelo] || PRECIOS['claude-opus-5-5'];
-  return total + (uso.cacheLeida || 0) * c / 1e6;
+  const [e, , c] = PRECIOS[uso.modelo] || PRECIOS['claude-opus-5-5'];
+  // La caché escrita (5 min) cuesta un 25 % más que la entrada normal; la leída, el precio de lectura.
+  return total + (uso.cacheLeida || 0) * c / 1e6 + (uso.cacheEscrita || 0) * e * 1.25 / 1e6;
 }
 
 let galleta = '';
@@ -130,7 +131,7 @@ function informe(filas, { url, configs, opciones: o, inicio }) {
     const r = resumen(filas.filter(f => f.config === c || (f.modo === 'plan' && c === configs[0]) || (f.sinIA && c === configs[0])));
     L.push(`| ${c} | ${r.val}/${r.n} (${r.pctVal} %) | ${r.rub}/${r.n} (${r.pctRub} %) | ${r.t8 ? 'cumple' : '**no cumple**'} | ${ms(r.mediana)} | ${ms(r.max)} | ${r.entrada} | ${r.salida} | ${dolares(r.coste)} | ${r.llamadas ? dolares(r.coste / r.llamadas) : '—'} | ${r.fallbacks} |`);
   }
-  L.push('', 'Coste aproximado con los precios de lista por millón de tokens (Opus 5.5: $4 entrada, $20 salida; Sonnet 5.5: $2 y $10), sin contar la caché escrita.', '');
+  L.push('', 'Coste aproximado con los precios de lista por millón de tokens (Opus 5.5: $4 entrada, $20 salida; Sonnet 5.5: $2 y $10), con la caché leída a su precio de lectura y la escrita a 1,25 veces la entrada.', '');
   L.push('## Caso a caso', '');
   L.push('| Caso | Configuración | Resultado | Validador | Seguridad | Rúbrica | Tiempo | Tokens (entrada/salida) | Coste |');
   L.push('|---|---|---|---|---|---|---|---|---|');

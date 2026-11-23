@@ -300,6 +300,7 @@ export function cardioDelDia(S, ctx, k = 0, extra = 0, excluir = []) {
   const min = regla.minutos + (ctx.energia <= 2 ? 0 : extra);
   return { id: e.id, rol: 'cardio', series: 1, reps: `${min} min`, descanso: 0, nota: notaCardio(S, ctx, e, min, regla, extra, orden) };
 }
+const EN_LUGAR = { calle: /^en la calle\b/i, casa: /^en casa\b/i, gym: /^en el gimnasio\b/i, piscina: /^en la piscina\b/i };
 export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   const por = { perder: 'buscas perder grasa', resistencia: 'buscas resistencia', salud: 'es bueno para tu corazón', natacion: 'te da fondo para nadar mejor' }[regla.objetivo] || 'toda sesión lleva cardio';
   const habla = +regla.rpe.slice(-1) <= 4 ? 'puedes hablar con frases completas' : 'puedes decir frases cortas';
@@ -313,7 +314,9 @@ export function notaCardio(S, ctx, e, min, regla, extra = 0, opciones = []) {
   if (CARDIO_ULTIMO.includes(e.id)) partes.push('Si no llegas a notar un esfuerzo de 4 de 10, ve al ritmo más vivo que puedas sin dolor'); // S7, revisión del PR #48
   if (ctx.lugar === 'piscina') partes.push('Seguido; si paras en el borde, menos de 20 s y sin parar el reloj');
   if (ctx.lugar === 'piscina' && !S.perfil.nadar25) partes.push('Siempre donde hagas pie, con el agua por el pecho'); // C-PISC-2, S3
-  const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(Boolean);
+  // Las condiciones de la ficha que hablan de un lugar («En la calle, …») solo van en ese lugar.
+  const otroLugar = c => Object.entries(EN_LUGAR).some(([l, re]) => l !== ctx.lugar && re.test(c));
+  const cond = Object.keys(ctx.bandas).map(z => (((ZONAS[z] || {}).cardio || {}).condiciones || {})[e.id]).find(c => c && !otroLugar(c));
   if (cond) partes.push(cond);
   if (S.perfil.lugares.includes('piscina') && ctx.lugar === 'gym') partes.push('Si os apetece, hacedlo en la piscina: nado suave o aquajogging');
   return partes.map(frase).join(' ');
@@ -414,9 +417,63 @@ export const tareaOk = (S, id, ctx) => { const e = ex(id); return !!e && permiti
 export function tareaSinIdOk(S, t, ctx) {
   const e = porNombre(t.nombre);
   if (e) return tareaOk(S, e.id, ctx);
+  // Respiración: tumbado no en la calle, en la piscina ni sin poder tumbarse por salud (C-EST-4, C-SALUD-0).
+  if (RE_RESPIRACION.test(String(t.nombre || '').trim()) && TUMBADO_TXT.test(String(t.detalle || '')) && (ctx.lugar === 'calle' || ctx.lugar === 'piscina' || ctx.salud.sinTumbado)) return false;
   const r = RIESGO_LIBRE[t.nombre];
   if (r && riesgoHoy({ id: '', r }, ctx.niveles, ctx.bandas) === 'evitar') return false;
   return !fichaLaQuita(ctx, t);
+}
+// Tareas sin id que la app escribe ella misma y sabe comprobar (C-CAL-2, C-VUELTA-1, C-EST-2): la respiración, las
+// series de aproximación o de prueba del primer compuesto, los estiramientos libres de pie o en el borde y los textos
+// de la ficha de cada zona. La IA puede mandarlas sin id; cualquier otra sin id solo vale si su nombre es el de un
+// ejercicio (porNombre).
+const RE_RESPIRACION = /^respiraci[oó]n\b/i;
+const TUMBADO_TXT = /tumbad|boca (arriba|abajo)|en el suelo|de rodillas|a cuatro patas/i;
+export const RE_APROXIMACION = /^(series de (aproximaci[oó]n|prueba)|aproximaci[oó]n)\b/i;
+const TEXTOS_FICHA = new Set(Object.values(ZONAS).flatMap(Z => Object.values((Z && Z.tareas) || {}).flat().map(t => t && t.texto).filter(Boolean)));
+// La respiración de la vuelta a la calma: de pie en la calle y en la piscina, sentado si no puede tumbarse por salud.
+export const respiracionDe = ctx => (ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : ctx.salud.sinTumbado ? 'Sentado, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.');
+// Una tarea sin id de la IA que la app conoce, con el nombre y el texto de la app (revisión del PR #49, G1): el
+// detalle de la IA podría pedir una postura que no vale hoy («túmbate en la esterilla» en la calle, «rodillas al
+// pecho» con la lumbar dolorida), así que nunca se queda. null si la app no la conoce (la aproximación va aparte).
+export function tareaLibreDeApp(t, ctx) {
+  const n = String((t && t.nombre) || '').trim();
+  // Cualquier «Respiración …» pasa a ser la respiración de la app, con su nombre y su texto.
+  if (RE_RESPIRACION.test(n)) return { nombre: 'Respiración', detalle: respiracionDe(ctx) };
+  const libre = [...ESTIRA_LIBRE.piscina, ...ESTIRA_LIBRE.otro].find(([x]) => x === n);
+  if (libre) return { nombre: libre[0], detalle: libre[1] };
+  if (n === ESTIRA_SUAVE[0]) return { nombre: ESTIRA_SUAVE[0], detalle: ESTIRA_SUAVE[1] };
+  if (TEXTOS_FICHA.has(n)) return { nombre: n, detalle: 'Lento y sin dolor. Si el dolor sube o notas hormigueo, sáltalo.' };
+  return null;
+}
+// Aproximación del primer compuesto con carga (C-CAL-2): con kilos apuntados, porcentajes; sin historial, series de prueba.
+export function aproximacionDe(S, primero) {
+  const conKg = conKgAntes(S, primero.id);
+  return conKg
+    ? { nombre: 'Series de aproximación', detalle: `${primero.n}: 1 × 8 al 50 % y 1 × 4 al 70 %${tiene(S, 'fuerza') ? ' y 1 × 2 al 85 %' : ''} de tu peso de trabajo.` }
+    : { nombre: 'Series de prueba', detalle: `${primero.n}: 1 × 10 muy ligera y 1 × 5 algo más pesada, para elegir el peso de hoy.` };
+}
+// Lo que vale hoy en el calentamiento y la vuelta a la calma, para que la IA lo pida por id (C-EST-4, C-EST-2, C-CAL-2):
+// ids: movilidad, cardio, natación y core estabilizador que pasan tareaOk, y las tareas con id de la ficha de cada zona activa que su
+// banda deja; activacion: { zona: id } de su fase 1 (la que pone la app); sinId: los nombres sin id que la app sabe
+// comprobar. Como mucho 60 ids (el tope de una lista en el servidor): primero los de las zonas. { todas: true }: sin
+// el tope (el validador comprueba con la lista entera).
+export function tareasDelDia(S, ctx, { todas = false } = {}) {
+  const ids = [], activacion = {};
+  const poner = id => { if (id && !ids.includes(id)) ids.push(id); };
+  zonasRehab(ctx).filter(z => ZONAS[z]).forEach(z => {
+    const t = tareasFicha(z, 'calentar', detalleDe0(ctx, z)).find(t => t.id && t.uso === 'activacion' && usoOk(t.uso, ctx.bandas[z].banda) && tareaOk(S, t.id, ctx));
+    // Sin activación en su ficha, un ejercicio de su fase 1 que valga hoy (C-CAL-2).
+    const id = t ? t.id : (EJERCICIOS.find(e => fasesRehab(e, z, detalleDe0(ctx, z)).includes(1) && tareaOk(S, e.id, ctx)) || {}).id;
+    if (id) { activacion[z] = id; poner(id); }
+  });
+  Object.entries(ctx.bandas).filter(([z]) => ZONAS[z]).forEach(([z, b]) => ['calentar', 'estirar'].forEach(tipo =>
+    tareasFicha(z, tipo, (b.lesion || {}).detalle).filter(t => t.id && usoOk(t.uso, b.banda) && tareaOk(S, t.id, ctx)).forEach(t => poner(t.id))));
+  // Y el core estabilizador de dosis propia (dead bug, bird dog, plancha…): la activación del calentamiento y el core
+  // suave de la vuelta a la calma de un día suave (C-REP-2). Nada de fuerza con carga (revisión del PR #49, G2).
+  EJERCICIOS.filter(e => (['movilidad', 'cardio', 'natacion'].includes(e.m[0]) || (e.m[0] === 'core' && tipoEj(e) === 'propia')) && e.niv <= ctx.nivel && tareaOk(S, e.id, ctx) && !(ctx.lugar === 'piscina' && noSabeNadar(S, e))).forEach(e => poner(e.id));
+  const sinId = ['Respiración', 'Series de aproximación', 'Series de prueba', ...libresDe(ctx.lugar).map(([n]) => n).filter(n => tareaSinIdOk(S, { nombre: n }, ctx))];
+  return { ids: todas ? ids : ids.slice(0, 60), activacion, sinId };
 }
 // El ejercicio del catálogo que corresponde a un nombre de tarea (las tareas sin id de la IA o de la ficha).
 export const porNombre = n => { const k = normalizar(n).trim(); return k ? EJERCICIOS.find(e => normalizar(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizar(e.n).length >= 8 && k.includes(normalizar(e.n))) : null) : null; };
@@ -458,11 +515,7 @@ export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
     }
     if (act) { out.push({ ...(act.id ? { id: act.id } : {}), nombre: act.nombre, detalle: `Activación para tu ${nombreZona(z)}, sin dolor.`, duracion: '1 min' }); queda -= 1; }
     const primero = elegidos.find(e => tipoEj(e) === 'compuesto');
-    if (primero && queda > 0) {
-      const conKg = conKgAntes(S, primero.id);
-      const detalle = conKg ? `${primero.n}: 1 × 8 al 50 % y 1 × 4 al 70 %${tiene(S, 'fuerza') ? ' y 1 × 2 al 85 %' : ''} de tu peso de trabajo.` : `${primero.n}: 1 × 10 muy ligera y 1 × 5 algo más pesada, para elegir el peso de hoy.`;
-      out.push({ nombre: conKg ? 'Series de aproximación' : 'Series de prueba', detalle, duracion: `${queda} min` });
-    } else if (queda > 0) out[0].duracion = `${minDe(out[0].duracion) + queda} min`;
+    if (primero && queda > 0) out.push({ ...aproximacionDe(S, primero), duracion: `${queda} min` }); else if (queda > 0) out[0].duracion = `${minDe(out[0].duracion) + queda} min`;
   }
   return out;
 }
@@ -491,7 +544,7 @@ export function vueltaDe(S, ctx, elegidos = [], { total } = {}) {
   if (!est.length) est.push({ nombre: ESTIRA_SUAVE[0], detalle: ESTIRA_SUAVE[1], duracion: '1 min' });
   if (est.length < nEst) est[est.length - 1].duracion = `${1 + nEst - est.length} min`;
   out.push(...est);
-  out.push({ nombre: 'Respiración', detalle: ctx.lugar === 'calle' || ctx.lugar === 'piscina' ? 'De pie, 6 respiraciones lentas soltando el aire en 6 segundos.' : ctx.salud.sinTumbado ? 'Sentado, 6 respiraciones lentas soltando el aire en 6 segundos.' : 'Tumbado, 6 respiraciones lentas soltando el aire en 6 segundos.', duracion: `${resp} min` });
+  out.push({ nombre: 'Respiración', detalle: respiracionDe(ctx), duracion: `${resp} min` });
   return out;
 }
 
