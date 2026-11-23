@@ -428,7 +428,7 @@ No sube la carga si el dolor subió en la última sesión (C-DOLOR-7).
 | 11-15 | 60 s | 45 s |
 | > 15 | 45 s | 30 s |
 
-Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superseries de antagonistas (C-TIEMPO-3), con el descanso de la tabla entre parejas.
+Hoy salen 6-8 repeticiones con 45 s (fuerza + perder grasa). Excepción: superseries de antagonistas (C-TIEMPO-3), con el descanso de la tabla entre parejas; en la superserie del último recurso (C-TIEMPO-2 paso 6), 90-120 s entre parejas, nunca por debajo de la tabla [aprobado por Víctor el 23-11-2026] (S18).
 
 **C-RIR-1 [Criterio] [PR 8, PR 10]** Margen mínimo:
 - compuestos libres (barra o mancuernas pesadas): 1;
@@ -1091,7 +1091,7 @@ Ejemplos:
 
 **Último recurso** [Decisión 8]:
 
-6. **2 ejercicios principales** en superserie de 2 series.
+6. **2 ejercicios principales** en superserie de 2 series: una serie de cada uno seguidas, sin descanso entre los dos, y **90-120 s entre parejas**, nunca por debajo de C-PAUSA-1 de ninguno de los dos [aprobado por Víctor el 23-11-2026] (S18).
 7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos».
 
 **Nunca** se quita el cardio mínimo ni el calentamiento y la vuelta enteros. El validador acepta menos de 3 principales **solo** con el motivo «último recurso» anotado.
@@ -1099,7 +1099,7 @@ Ejemplos:
 **C-TIEMPO-3 [Criterio] [PR 8]** Con 30 minutos, el principal va en superseries de antagonistas (empuje-tirón, rodilla-cadera), con el descanso de C-PAUSA-1 entre parejas.
 
 **C-TIEMPO-4 [Criterio] [PR 8]** Cálculos de comprobación:
-- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5; quedan 5,5 (límite 33). Paso 5: calentamiento 4. Paso 6: superserie de 2 principales × 2 series con 60 s ≈ 5,8. Total ≈ 32,3: cabe con 2 principales.
+- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5; quedan 5,5 (límite 33). Paso 5: calentamiento 4 (26,5). Paso 6: superserie de 2 principales × 2 series con 90 s entre parejas (S18) ≈ 2 × (1,4 + 1,5) + 1 = 6,8. Total ≈ 33,3: no cabe por 0,3 min. Paso 7: cardio y rehabilitación, con el aviso («… Si quieres fuerza, elige 45 minutos»). (Antes de la decisión S18 del 23-11-2026 el ejemplo contaba 60 s entre parejas y cabía con 2 principales; con 60 s se incumplía C-PAUSA-1.)
 - **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso.
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 17,8 (límite 49,5). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9). Total ≈ 48,6: cabe.
 

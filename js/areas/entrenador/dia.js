@@ -558,9 +558,11 @@ const RE_NOTA_DOSIS = /(Básico del día para [^:]+: )\d+ × .+? con \d+ s( porq
 const RE_EXPL_DOSIS = /(el primer básico va a )\d+ × .+? con \d+ s( de descanso)/;
 export function sincronizarDosis(d) {
   const ejs = (d && d.ejercicios) || [];
-  ejs.forEach(x => { if (x && typeof x.nota === 'string' && RE_NOTA_DOSIS.test(x.nota)) x.nota = x.nota.replace(RE_NOTA_DOSIS, `$1${+x.series} × ${x.reps} con ${+x.descanso} s$2`); });
+  // El primero de una superserie no descansa: su dosis dice el descanso de la pareja (el del segundo, S18).
+  const desc = (x, i) => (x.superserie && ejs[i + 1] ? +ejs[i + 1].descanso : +x.descanso);
+  ejs.forEach((x, i) => { if (x && typeof x.nota === 'string' && RE_NOTA_DOSIS.test(x.nota)) x.nota = x.nota.replace(RE_NOTA_DOSIS, `$1${+x.series} × ${x.reps} con ${desc(x, i)} s$2`); });
   const p = ejs.find(x => x && x.rol === 'principal' && ex(x.id) && ex(x.id).t === 'reps');
-  if (p && Array.isArray(d.explicacion)) d.explicacion = d.explicacion.map(t => (typeof t === 'string' ? t.replace(RE_EXPL_DOSIS, `$1${+p.series} × ${p.reps} con ${+p.descanso} s$2`) : t));
+  if (p && Array.isArray(d.explicacion)) d.explicacion = d.explicacion.map(t => (typeof t === 'string' ? t.replace(RE_EXPL_DOSIS, `$1${+p.series} × ${p.reps} con ${desc(p, ejs.indexOf(p))} s$2`) : t));
   return d;
 }
 export function porQueRehab(S, e, z, dolorHoy) {

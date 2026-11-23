@@ -434,7 +434,8 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       const desc = Math.round(+x.descanso);
       x.descanso = desc >= 0 && desc <= 300 ? desc : x.rol === 'principal' ? dosis(S, e, i, lugar).descanso : e.d[2];
       const pm = x.rol === 'principal' ? Math.max(pausaMinima(tipo, (rango(x.reps) || {}).lo), ctx.salud.descansoMin || 0) : 0;
-      if (x.descanso < pm) x.descanso = pm;
+      // El primero de una superserie va sin descanso: se descansa tras la pareja, con el segundo (C-TIEMPO-2 paso 6, S18).
+      if (x.descanso < pm && !x.superserie) x.descanso = pm;
     }
     // Kilos: nulos sin historial (C-PROG-1); con historial, el tope de la progresión (C-PROG-5, PR 10).
     if (x.kg != null && +x.kg > 0) {
@@ -573,7 +574,8 @@ function ajustarTiempo(S, s, ctx, cambios) {
   if (dos.length === 2) {
     dos.forEach(x => { x.series = 2; delete x.superserie; });
     dos[0].superserie = true; dos[0].descanso = 0;
-    dos[1].descanso = 60; // entre parejas, como en el cálculo de C-TIEMPO-4
+    // Entre parejas, 90-120 s y nunca por debajo de C-PAUSA-1 de ninguno de los dos (S18, decisión de Víctor del 23-11-2026).
+    dos[1].descanso = Math.min(120, Math.max(90, ...dos.map(pausa)));
     dos[0].nota = `En superserie con ${nombre(ex(dos[1].id))}: una serie de cada uno seguidas y descansa ${dos[1].descanso} s. ${dos[0].nota || ''}`.slice(0, 300);
     s.ejercicios.splice(s.ejercicios.indexOf(dos[1]), 1);
     s.ejercicios.splice(s.ejercicios.indexOf(dos[0]) + 1, 0, dos[1]);

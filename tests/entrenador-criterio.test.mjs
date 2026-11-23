@@ -305,12 +305,14 @@ test('C-PRIN-4, C-VUELTA-1: vuelta de la IA sin estiramientos ni calentamiento: 
 
 // ── Tiempo (C-TIEMPO-1 a 4) ──
 
-test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cabe con 2 principales en superserie', () => {
+// Con los 90 s entre parejas de la superserie (S18, decisión de Víctor del 23-11-2026) ya no cabe (≈ 33,3 de 33):
+// paso 7, cardio y rehabilitación con el aviso (tests/decisiones-victor.test.mjs).
+test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cardio y rehabilitación (la superserie con 90 s no cabe)', () => {
   const { S, s, c } = sesionReglas({ objetivos: ['perder'], lesiones: [L('rodilla', 3)] }, { minutos: 30, dolorHoy: { rodilla: 5 } });
   assert.ok(cardioMin(s) >= 15);
   assert.ok(s.ejercicios.some(x => x.rol === 'rehab'));
   assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
-  assert.ok(prin(s).length >= 2);
+  assert.equal(prin(s).length, 0);
   sinProblemas(S, s, c);
 });
 

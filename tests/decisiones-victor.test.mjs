@@ -65,29 +65,38 @@ test('S7, C-DOLOR-4: con un brazo a 8/10 y una pierna lesionada en la calle tamb
 });
 
 // ── S18 · Superserie del último recurso: 90-120 s entre parejas (C-PAUSA-1, C-TIEMPO-2 paso 6, C-TIEMPO-4) ──
-for (const [nombre, perfil, les, dolorHoy, lugar] of [
-  ['perder grasa, 30 min, rodilla B2 (C-TIEMPO-4)', { objetivos: ['perder'], nivel: 1 }, [L('rodilla', 3)], { rodilla: 5 }, 'gym'],
-  ['perder grasa, calle, hombro 4', { objetivos: ['perder'], nivel: 3, datos: { nacimiento: '1956-05-01' } }, [L('hombro', 4, { desde: undefined })], {}, 'calle'],
-  ['resistencia y músculo, casa, espalda alta 4', { objetivos: ['resistencia', 'musculo'], nivel: 1 }, [L('dorsal', 1, { desde: '2026-09-20' })], { dorsal: 4 }, 'casa'],
+for (const [nombre, perfil, les, dolorHoy, lugar, energia] of [
+  ['fuerza, casa, codo 0', { objetivos: ['fuerza'], nivel: 1, materialCasa: [] }, [L('codo', 0)], { codo: 0 }, 'casa', 3],
+  ['fuerza, casa, codo 0, energía 5', { objetivos: ['fuerza'], nivel: 1, materialCasa: [] }, [L('codo', 0)], { codo: 0 }, 'casa', 5],
+  ['salud, casa, muñeca 5', { objetivos: ['salud'], nivel: 1, materialCasa: [] }, [L('muñeca', 5)], { muñeca: 5 }, 'casa', 3],
+  ['resistencia, calle, cervical 5', { objetivos: ['resistencia'], nivel: 2, materialCasa: [] }, [L('cervical', 5)], { cervical: 5 }, 'calle', 2],
 ]) {
-  test(`S18, C-PAUSA-1: superserie del último recurso (${nombre}): descanso entre parejas de 90-120 s y nunca por debajo de C-PAUSA-1`, () => {
+  test(`S18, C-PAUSA-1: superserie del último recurso (${nombre}): 90-120 s tras la pareja, nunca por debajo de C-PAUSA-1, y el primero sin descanso`, () => {
     const S = nuevoS({ lugares: [lugar], ...perfil });
     S.perfil.lesiones.push(...les);
-    const c = ci({ lugar, minutos: 30, dolorHoy });
+    const c = ci({ lugar, minutos: 30, dolorHoy, energia });
     const s = sesionHoy(S, null, c);
     const i = s.ejercicios.findIndex(x => x.superserie);
-    if (i < 0) { assert.ok(s.explicacion.some(t => /no caben tu cardio/.test(t)), 'sin superserie, el aviso del paso 7'); return; }
-    const segundo = s.ejercicios[i + 1];
+    assert.ok(i >= 0, s.ejercicios.map(x => x.id).join());
+    const [primero, segundo] = [s.ejercicios[i], s.ejercicios[i + 1]];
+    assert.equal(primero.descanso, 0, 'el primero de la pareja va sin descanso');
     assert.ok(segundo.descanso >= 90 && segundo.descanso <= 120, `${segundo.descanso} s`);
-    for (const x of [s.ejercicios[i], segundo]) {
-      const e = cat.ex(x.id);
-      assert.ok(segundo.descanso >= dia.pausaMinima(dia.tipoEj(e), +String(x.reps).match(/\d+/)[0]), `${x.id} ${x.reps}`);
-    }
-    assert.match(s.ejercicios[i].nota, new RegExp(`descansa ${segundo.descanso} s`));
+    for (const x of [primero, segundo]) assert.ok(segundo.descanso >= dia.pausaMinima(dia.tipoEj(cat.ex(x.id)), +String(x.reps).match(/\d+/)[0]), `${x.id} ${x.reps}`);
+    assert.match(primero.nota, new RegExp(`descansa ${segundo.descanso} s`));
+    assert.doesNotMatch(primero.nota, / con 0 s/);
     assert.ok(ent.tiempoSesion(s) <= 33, `${ent.tiempoSesion(s)} min`);
     assert.deepEqual(ent.problemasSesion(S, s, c), []);
   });
 }
+test('S18, C-TIEMPO-4: perder grasa, 30 min, rodilla B2: con 90 s la superserie no cabe (≈ 33,3 de 33) y va el paso 7 con su aviso', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 1, lugares: ['gym'] });
+  S.perfil.lesiones.push(L('rodilla', 3));
+  const c = ci({ minutos: 30, dolorHoy: { rodilla: 5 } });
+  const s = sesionHoy(S, null, c);
+  assert.equal(s.ejercicios.filter(x => x.rol === 'principal').length, 0);
+  assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos, el trabajo de tu rodilla y fuerza\. Hoy: cardio y rehabilitación\. Si quieres fuerza, elige 45 minutos\.$/.test(t)), s.explicacion.join(' | '));
+  assert.deepEqual(ent.problemasSesion(S, s, c), []);
+});
 test('S18: el ejemplo de C-TIEMPO-4 ya no cuenta la superserie con 60 s', () => {
   const sec = criterio.slice(criterio.indexOf('**C-TIEMPO-4'), criterio.indexOf('## 16.'));
   assert.doesNotMatch(sec, /superserie[^.]*con 60 s/);
