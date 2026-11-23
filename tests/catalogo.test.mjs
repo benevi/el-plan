@@ -13,9 +13,10 @@ const CARDIO_PR8 = ['marcha-estatica', 'cardio-sentado', 'nado-continuo', 'serie
 const existeOPendiente = id => !!ex(id);
 
 // 159 + 19 nuevos del PR 9 + 4 de cardio del PR 8 (docs/criterio.md, sección 18) + 4 de la espalda alta (sección 12.9)
-// + 1 de cardio sentado para pierna y brazo a la vez (S7, decisión de Víctor del 23-11-2026, C-CARDIO-6).
-test('el catálogo tiene 187 ejercicios', () => {
-  assert.equal(EJERCICIOS.length, 187);
+// + 1 de cardio sentado para pierna y brazo a la vez (S7) + 5 de pie o con apoyo para la calle (S16), decisiones de Víctor
+// del 23-11-2026 (C-CARDIO-6, C-EST-4).
+test('el catálogo tiene 192 ejercicios', () => {
+  assert.equal(EJERCICIOS.length, 192);
 });
 
 test('ids y nombres únicos; ids en minúsculas con guiones', () => {
