@@ -120,13 +120,17 @@ test('una mía sin ningún ejercicio del catálogo no crea sesión y lo dice', a
   assert.equal(Object.keys(a.estado.estado().sesiones).length, 0);
 });
 
-test('Perfil › Mi entreno no revienta con entradas raras en misSesiones', async () => {
+test('Hoy › Mis sesiones no revienta con entradas raras en misSesiones', async () => {
   await reiniciar(base());
   a.estado.cambiar(S => { S.misSesiones = [null, { id: 'x', nombre: 5 }, { id: 'y', nombre: 'Sin lista', ejercicios: 'no' }, MIA]; }, 'misSesiones');
+  await a.ir('perfil'); await a.ir('hoy');
+  const t = a.doc.querySelector('.mis-sesiones-hoy').textContent;
+  assert.match(t, /Abdos/);
+  assert.equal(a.doc.querySelectorAll('.mis-sesiones-hoy [data-act="entrenador.prepararMia"]').length, 1);
+  assert.equal(a.pantallaRota(), false);
+  // Perfil ya no tiene «Mis sesiones» (un solo sitio, decisión de Víctor del 24-11-2026)
   await a.ir('perfil');
   a.clic('[data-act="perfil.grupo"][data-v="entreno"]'); await a.tic();
-  const t = a.doc.querySelector('.mis-sesiones').textContent;
-  assert.match(t, /Abdos/);
-  assert.match(t, /1 de 30/);
-  assert.equal(a.pantallaRota(), false);
+  assert.equal(a.doc.querySelector('.mis-sesiones'), null);
+  assert.doesNotMatch(a.vista().textContent, /Mis sesiones/);
 });

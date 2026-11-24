@@ -4,7 +4,7 @@
 // dolor, cardio, rehabilitación, calentamiento y vuelta a la calma. Reglas: docs/criterio.md (ids C-…).
 
 import { analizarEjercicios, preferencia } from '../../reglas/contexto.js';
-import { cargaMuscular, rango, sesionesHechas } from '../../reglas/progresion.js';
+import { cargaMuscular, rango, hechasConSueltos } from '../../reglas/progresion.js';
 import { ex, riesgo, hayMaterial, EJERCICIOS, ZONAS, fasesDe, dosisRehab, notaRehab, riesgoDetalle, techoDolor as techoZona, bandasZonas, nivelesDe, riesgoHoy, faseLesion, alternativas, detalleDe } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS, OBJETIVOS } from '../../datos/constantes.js';
 import { semanaISO } from '../../nucleo/modelo.js';
@@ -497,7 +497,7 @@ export function tareasDelDia(S, ctx, { todas = false } = {}) {
 // El ejercicio del catálogo que corresponde a un nombre de tarea (las tareas sin id de la IA o de la ficha).
 export const porNombre = n => { const k = normalizar(n).trim(); return k ? EJERCICIOS.find(e => normalizar(e.n) === k) || (k.length >= 8 ? EJERCICIOS.find(e => normalizar(e.n).length >= 8 && k.includes(normalizar(e.n))) : null) : null; };
 const normalizar = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const conKgAntes = (S, id) => sesionesHechas(S).some(s => (s.ejercicios || []).some(y => y.id === id && (y.sets || []).some(z => z.hecha && +z.kg > 0)));
+const conKgAntes = (S, id) => hechasConSueltos(S).some(s => (s.ejercicios || []).some(y => y.id === id && (y.sets || []).some(z => z.hecha && +z.kg > 0)));
 // elegidos: ejercicios principales (del catálogo). total: minutos (si no, los de C-CAL-1).
 export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
   const T = Math.max(2, Math.round(total || minutosCalentamiento(S, ctx)));

@@ -67,7 +67,7 @@ async function sembrar(page, persona, { semanas = 52 } = {}) {
 }
 
 // Las pantallas largas (Progreso con datos, Perfil, el editor) se capturan enteras; las hojas, lo que se ve.
-const ENTERAS = /^(progreso-un-ano|progreso-primera-semana|perfil-(objetivos|lesiones|salud|entreno|datos|copias|ajustes|mis-sesiones)|editor-(mia|nueva|editar))/;
+const ENTERAS = /^(progreso-un-ano|progreso-primera-semana|perfil-(objetivos|lesiones|salud|entreno|datos|copias|ajustes)|hoy-mis-sesiones|editor-(mia|nueva|editar))/;
 async function capturar(page, nombre) {
   if (!CAPTURAS) return;
   fs.mkdirSync(DIR, { recursive: true });
@@ -99,11 +99,12 @@ test('editor de Mis sesiones: crear una de abdominales y flexiones, editarla, re
   await page.click('[data-act="perfil.lugar"][data-v="gym"]');
   if (await page.locator('[data-act="perfil.lugar"][data-v="piscina"][aria-pressed="true"]').count()) await page.click('[data-act="perfil.lugar"][data-v="piscina"]');
 
-  // Perfil › Mi entreno › Mis sesiones › Crear sesión
-  await page.click('[data-act="perfil.crearMia"]');
+  // Hoy › Mis sesiones › Crear una sesión (desde el 24-11-2026, solo en Hoy)
+  await page.goto('/#hoy');
+  await page.click('.mis-sesiones-hoy [data-act="hoy.crearMia"]');
   await expect(page).toHaveURL(/#mia\/nueva$/);
   await expect(page.locator('#vista h1')).toHaveText('Nueva sesión');
-  await expect(page.locator('#nav a[aria-current="page"]')).toHaveAttribute('href', '#perfil');
+  await expect(page.locator('#nav a[aria-current="page"]')).toHaveAttribute('href', '#hoy');
   // Guardar sin nada: dice qué falta, junto al campo
   await page.click('[data-act="mia.guardar"]');
   await expect(page.locator('#mia-nombre-error')).toContainText('Ponle un nombre');
@@ -159,10 +160,9 @@ test('editor de Mis sesiones: crear una de abdominales y flexiones, editarla, re
   await page.click('#mia-crunch-desc ~ .selector-pasos [data-paso="1"]');
   await expect(page.locator('#mia-crunch-desc')).toHaveAttribute('aria-valuenow', String(antes + 15));
   await page.click('[data-act="mia.guardar"]');
-  await expect(page).toHaveURL(/#perfil$/);
+  await expect(page).toHaveURL(/#hoy$/);
   await expect(page.locator('#aviso')).toContainText('Guardada en tus sesiones: «Abdominales y flexiones»');
-  await expect(page.locator('.mis-sesiones')).toContainText('Abdominales y flexiones');
-  await expect(page.locator('.mis-sesiones')).toContainText('1 de 30');
+  await expect(page.locator('.mis-sesiones-hoy')).toContainText('Abdominales y flexiones');
   await expect.poll(async () => ((await leer(page)).misSesiones || []).length).toBe(1);
   let [mia] = (await leer(page)).misSesiones;
   expect(mia.ejercicios.map(x => x.id)).toEqual(['flexiones', 'crunch', 'plancha']);
@@ -172,7 +172,7 @@ test('editor de Mis sesiones: crear una de abdominales y flexiones, editarla, re
   expect(Object.keys(mia.ejercicios[0]).sort()).toEqual(['descanso', 'id', 'reps', 'rol', 'series']);
 
   // Editar: quitar la plancha, cambiar el nombre y guardar (mismo id)
-  await page.click(`[data-act="perfil.editarMia"][data-id="${mia.id}"]`);
+  await page.click(`[data-act="hoy.editarMia"][data-v="${mia.id}"]`);
   await expect(page.locator('#vista h1')).toHaveText('Editar sesión');
   await page.click('[data-act="mia.quitar"][data-id="plancha"]');
   await expect(page.locator('.mia-ej')).toHaveCount(2);
@@ -204,14 +204,14 @@ test('editor de Mis sesiones: crear una de abdominales y flexiones, editarla, re
   await page.click('[data-act="mia.volver"]');
   await expect(page.locator('.hoja')).toContainText('¿Salir sin guardar los cambios de esta sesión?');
   await page.click('.hoja [data-r="1"]');
-  await expect(page).toHaveURL(/#perfil$/);
-  await expect(page.locator('[data-act="perfil.grupo"][data-v="entreno"]')).toHaveAttribute('aria-current', 'true');
+  await expect(page).toHaveURL(/#hoy$/);
+  await expect(page.locator('.mis-sesiones-hoy')).toContainText('Abdos y flexiones');
 
   // Hacerla otro día: el check-in la trae, sin IA, con calentamiento, cardio y estiramientos.
   await page.clock.setFixedTime(MAÑANA);
   await page.goto('/#hoy');
   await page.reload();
-  await page.click('[data-act="entrenador.prepararMia"]');
+  await page.click(`[data-act="entrenador.prepararMia"][data-v="${mia.id}"]`);
   await expect(page.locator('.hoja.checkin')).toContainText('Haces Abdos y flexiones');
   await page.click('[data-act="entrenador.crearHoy"]');
   await expect(page).toHaveURL(/#sesion\//);
@@ -283,11 +283,11 @@ test('zonas táctiles de 44 px o más en Perfil, Ejercicios, Progreso y el edito
     .map(el => `${el.dataset.act || el.tagName} ${el.dataset.v || el.dataset.id || ''} ${Math.round(el.getBoundingClientRect().width)}×${Math.round(el.getBoundingClientRect().height)}`));
   for (const [w, hgt] of [[390, 844], [320, 568]]) {
     await page.setViewportSize({ width: w, height: hgt });
-    for (const r of ['#perfil', '#ejercicios', '#progreso']) { await page.goto('/' + r); expect(await pequeñas(), `${r} a ${w} px`).toEqual([]); }
+    for (const r of ['#hoy', '#perfil', '#ejercicios', '#progreso']) { await page.goto('/' + r); expect(await pequeñas(), `${r} a ${w} px`).toEqual([]); }
     await page.goto('/#perfil');
     for (const g of ['objetivos', 'entreno', 'datos', 'ajustes']) { await page.click(`[data-act="perfil.grupo"][data-v="${g}"]`); expect(await pequeñas(), `perfil ${g} a ${w} px`).toEqual([]); }
-    await page.click('[data-act="perfil.grupo"][data-v="entreno"]');
-    await page.click('[data-act="perfil.crearMia"]');
+    await page.goto('/#hoy');
+    await page.click('.mis-sesiones-hoy [data-act="hoy.crearMia"]');
     await page.click('[data-act="mia.buscar"]');
     await page.locator('[data-act="mia.anadir"]').first().click();
     expect(await pequeñas(), `buscador a ${w} px`).toEqual([]);
@@ -297,7 +297,7 @@ test('zonas táctiles de 44 px o más en Perfil, Ejercicios, Progreso y el edito
     await page.click('[data-act="mia.volver"]');
     expect(await pequeñas(), `confirmación a ${w} px`).toEqual([]);
     await page.click('.hoja [data-r="1"]');
-    await expect(page).toHaveURL(/#perfil$/);
+    await expect(page).toHaveURL(/#hoy$/);
   }
   expect(errores).toEqual([]);
 });
@@ -352,8 +352,8 @@ for (const persona of ['victor', 'virginia']) {
     await page.locator('[data-act="perfil.lesion"]').last().click();
     await mirar('perfil-lesion');
     await escape(page);
-    await page.click('[data-act="perfil.grupo"][data-v="entreno"]');
-    await page.click('[data-act="perfil.crearMia"]');
+    await page.goto('/#hoy');
+    await page.click('.mis-sesiones-hoy [data-act="hoy.crearMia"]');
     await page.click('[data-act="mia.buscar"]');
     for (const id of ['flexiones', 'plancha']) {
       await page.fill('#mia-buscar', id === 'plancha' ? 'plancha frontal' : id);
@@ -365,8 +365,8 @@ for (const persona of ['victor', 'virginia']) {
     await page.fill('#mia-nombre', 'Core en casa');
     await mirar('editor-mia');
     await page.click('[data-act="mia.guardar"]');
-    await expect(page).toHaveURL(/#perfil$/);
-    await mirar('perfil-mis-sesiones');
+    await expect(page).toHaveURL(/#hoy$/);
+    await mirar('hoy-mis-sesiones');
     await page.goto('/#ejercicios');
     await mirar('ejercicios');
     await page.click('[data-act="ejercicios.filtro"][data-k="lugar"][data-v="piscina"]');

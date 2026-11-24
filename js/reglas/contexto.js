@@ -3,9 +3,9 @@
 // (nada peligroso llega al catálogo) y corrigen después (kilos acotados, ver progresion.acotarKg).
 
 import { ex, disponibles, zonasRiesgo, ZONAS, rehabPorFase, techoDolor, bandasZonas, nivelesDe } from './catalogo.js';
-import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
+import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hechasConSueltos, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
 import { es } from '../nucleo/ui.js';
-import { semanaISO } from '../nucleo/modelo.js';
+import { semanaISO, esSuelta } from '../nucleo/modelo.js';
 import { OBJETIVOS, NIVELES, MUSCULOS, LUGARES } from '../datos/constantes.js';
 
 const DIA = 864e5;
@@ -236,7 +236,7 @@ export function mejoraPct(regs, e) {
 // Por ejercicio: cómo va (progresa, estancado, molesta), si gusta y lo que se ha comentado.
 export function analizarEjercicios(S) {
   const porId = {};
-  const hechas = sesionesHechas(S);
+  const hechas = hechasConSueltos(S); // con los sueltos: sus comentarios y su progreso también cuentan (C-SUELTO-4)
   hechas.forEach(s => (s.ejercicios || []).forEach(x => {
     if (!x.id || !x.comentario) return;
     (porId[x.id] = porId[x.id] || { comentarios: [] }).comentarios.push({ fecha: s.fecha, texto: x.comentario });
@@ -364,7 +364,9 @@ export function medidorNivel(S) {
   const ultima = hechas.length ? new Date(hechas[hechas.length - 1].terminada || hechas[hechas.length - 1].fecha) : null;
   const diasSinEntrenar = ultima ? Math.floor((ahora - ultima) / DIA) : null;
   const semanasSinEntrenar = diasSinEntrenar == null ? null : Math.floor(diasSinEntrenar / 7);
-  const an = Object.values(analizarEjercicios(S));
+  // Los ejercicios sueltos no cuentan para el nivel (C-SUELTO-1): las mejoras, solo de las sesiones.
+  const soloSesiones = { ...S, sesiones: Object.fromEntries(Object.entries(S.sesiones || {}).filter(([, x]) => !esSuelta(x))) };
+  const an = Object.values(analizarEjercicios(soloSesiones));
   const mejoran = an.filter(a => a.mejora >= 10 && a.veces >= 3).length;
   const mejoranMucho = an.filter(a => a.mejora >= 25 && a.veces >= 4).length;
   // Ninguna zona en B2-B3 (dolor ≥ 4) en las últimas 8 semanas.

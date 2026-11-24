@@ -1,6 +1,7 @@
 // Área EJERCICIOS (diseño aprobado, DIS 4): el catálogo con buscador y filtros (lugar, músculo y valoración),
 // la ficha técnica de cada ejercicio (hoja inferior) y lo que opina la persona de él (me gusta / no me gusta /
-// no lo quiero), que el entrenador lee al elegir. Desde la ficha se puede añadir a una de «Mis sesiones».
+// no lo quiero), que el entrenador lee al elegir. Desde la ficha se puede añadir a una de «Mis sesiones» o
+// hacerlo ahora como ejercicio suelto (C-SUELTO-1 a 5): si la app no lo deja hoy, lo dice y por qué.
 
 import { rutas, pestaña, acciones, pintar, ir, rutaActual } from '../../nucleo/router.js';
 import { estado, cambiar } from '../../nucleo/estado.js';
@@ -8,7 +9,8 @@ import { h, ICONOS, abrirHoja, cerrarHoja, aviso, $, fechaCorta } from '../../nu
 import { ex, nivelesZona, riesgo, zonasRiesgo, ZONAS } from '../../reglas/catalogo.js';
 import { registros, resumen } from '../../reglas/progresion.js';
 import { MUSCULOS, NIVELES, GUSTOS, LUGARES } from '../../datos/constantes.js';
-import { misSesiones, miaDe, añadirAMia, MAX_MIAS } from '../entrenador/entrenador.js';
+import { misSesiones, miaDe, añadirAMia, MAX_MIAS, evaluarSuelto, empezarSuelto, sueltoAbierto, sueltosAMedias } from '../entrenador/entrenador.js';
+import { trabajoHecho } from '../../nucleo/modelo.js';
 import { chip, listaY, devolverFoco, ICONOS16 } from '../perfil/controles.js';
 import { filtroVacio, filtrarEjercicios, filaFiltro, datosEjercicio, marcarEnFila } from './buscador.js';
 import { nuevaConEjercicio } from '../perfil/editor.js';
@@ -26,8 +28,22 @@ export function botonesGusto(id, act = 'ejercicios.gusto') {
 // Orden de la valoración en la ficha: de mejor a peor.
 const ORDEN_GUSTO = ['gusta', 'nogusta', 'rechazo'];
 
-// Ficha técnica en hoja inferior: músculos y nivel, aviso por lesión, vídeo, pasos, errores típicos, consejo,
-// tus últimas veces, tu valoración y «Añadir a una de mis sesiones».
+// «Hacerlo ahora» (ejercicio suelto): el botón, o por qué hoy no se puede (C-SUELTO-2). Si ya hay uno de este
+// ejercicio a medias, «Seguir con él». Desde una sesión en marcha no se ofrece: se saldría de ella.
+function bloqueSuelto(S, id) {
+  if (rutaActual().ruta === 'sesion') return '';
+  const ev = evaluarSuelto(S, id);
+  if (ev.bloqueo) {
+    return `<div class="aviso aviso-linea aviso--error ficha-suelto-no" role="note">${ICONOS.error}<div class="aviso-texto"><b>Hoy no puedes hacerlo suelto</b><p>${h(ev.bloqueo.texto)}</p></div></div>`;
+  }
+  const abierto = sueltoAbierto(S, id), seguir = !!abierto && trabajoHecho(abierto);
+  const nota = ev.avisos.filter(t => !/^Con cuidado/.test(t)); // «con cuidado» ya lo dice el aviso de riesgo de la ficha
+  return `<div class="ficha-suelto"><button type="button" class="boton boton--ancho" data-act="ejercicios.suelto" data-id="${h(id)}">${ICONOS.play}<span>${seguir ? 'Seguir con él' : 'Hacerlo ahora'}</span></button>
+    <p class="ayuda">${seguir ? 'Lo tienes a medias: sigue donde lo dejaste.' : 'Solo este ejercicio, sin calentamiento: con las series y los kilos que te propone la app, y el cronómetro de descanso.'}${nota.length ? ' ' + h(nota.join(' ')) : ''}</p></div>`;
+}
+
+// Ficha técnica en hoja inferior: músculos y nivel, aviso por lesión, «Hacerlo ahora», vídeo, pasos, errores
+// típicos, consejo, tus últimas veces, tu valoración y «Añadir a una de mis sesiones».
 export function abrirFicha(id) {
   const e = ex(id); if (!e) return;
   const S = estado();
@@ -40,6 +56,7 @@ export function abrirFicha(id) {
     <div class="ficha">
       <p class="ficha-datos">${h(musculos)}</p>
       ${rg !== 'ok' ? `<div class="aviso aviso-linea aviso--${rg === 'evitar' ? 'error' : 'aviso'} ficha-riesgo" role="note">${rg === 'evitar' ? ICONOS.error : ICONOS.alerta}<div class="aviso-texto"><b>${rg === 'evitar' ? 'Evítalo por ahora' : 'Con cuidado'}</b><p>Carga tu ${h(listaY(zonas.map(z => ZONAS[z].corta.toLowerCase())))}.</p></div></div>` : ''}
+      ${bloqueSuelto(S, id)}
       ${e.v ? `<a class="video-ficha" href="https://www.youtube.com/watch?v=${encodeURIComponent(e.v)}" target="_blank" rel="noopener" aria-label="Ver el vídeo de ${h(e.n)} (se abre en YouTube)"><img src="${miniatura(e)}" alt="" loading="lazy" data-quitar-si-falla><span>${ICONOS.play} Ver vídeo</span></a>` : ''}
       <h3>Cómo se hace</h3><ol>${e.p.map(p => `<li>${h(p)}</li>`).join('')}</ol>
       ${e.e && e.e.length ? `<h3>Errores típicos</h3><ul>${e.e.map(x => `<li>${h(x)}</li>`).join('')}</ul>` : ''}
@@ -58,7 +75,7 @@ function hojaAMia(id) {
   // Desde la sesión en marcha no se sale de ella: solo se puede añadir a una guardada.
   const enSesion = rutaActual().ruta === 'sesion';
   abrirHoja(`<h2>Añadir «${h(e.n)}»</h2>
-    <p class="hoja-texto">Se añade al final con las series, repeticiones y descanso que te propone la app. Luego puedes cambiarlos en Perfil › Mi entreno › Mis sesiones.</p>
+    <p class="hoja-texto">Se añade al final con las series, repeticiones y descanso que te propone la app. Luego puedes cambiarlos en Hoy › Mis sesiones.</p>
     ${mias.length ? `<ul class="lista lista-mias" aria-label="Mis sesiones">${mias.map(m => {
       const ya = m.ejercicios.some(x => x && x.id === id);
       return `<li><button type="button" class="fila" data-act="ejercicios.aMiaOk" data-id="${h(id)}" data-mia="${h(m.id)}"${ya ? ' aria-disabled="true"' : ''}>
@@ -83,9 +100,21 @@ function resultados(S) {
     : `<section class="tarjeta vacio"><h2 class="tarjeta-nombre">Ningún ejercicio con esos filtros</h2><p>Prueba con otra palabra o quita los filtros.</p><button type="button" class="boton boton--secundario" data-act="ejercicios.limpiar">Quitar filtros</button></section>`}`;
 }
 
+// Ejercicios sueltos a medias (C-SUELTO-1): no estorban a la sesión de hoy, pero se ven aquí para seguir o cerrarlos.
+function aMedias(S) {
+  const l = sueltosAMedias(S).slice(0, 3);
+  if (!l.length) return '';
+  return `<section class="tarjeta sueltos-medias" aria-labelledby="t-medias"><h2 class="tarjeta-nombre" id="t-medias">A medias</h2>
+    <ul class="lista">${l.map(s => { const x = s.ejercicios[0] || { sets: [] }; const n = x.sets.filter(z => z.hecha).length;
+    // Con una señal de alarma o dolor ≥ 7 hoy no se sigue (C-SUELTO-2): se dice por qué y solo se puede cerrar.
+    const b = x.id ? evaluarSuelto(S, x.id).bloqueo : null, parado = !!b && ['alarma', 'dolorAlto'].includes(b.motivo);
+    return `<li><a class="fila" href="#sesion/${h(s.id)}"><span class="crece"><b>${h(s.nombre)}</b><span>${h(fechaCorta(s.fecha))}, ${n} de ${x.sets.length} ${x.sets.length === 1 ? 'serie' : 'series'}${parado ? `. Hoy no sigas: ${h(b.motivo === 'alarma' ? 'has marcado una señal de alarma' : 'tienes dolor de 7 o más')}` : ''}</span></span><span class="fila-accion">${parado ? 'Cerrar' : 'Seguir'}${ICONOS.sig}</span></a></li>`; }).join('')}</ul></section>`;
+}
+
 function vista() {
   const S = estado();
   return `<h1 class="titulo-pantalla">Ejercicios</h1>
+    ${aMedias(S)}
     <div class="buscar"><label class="solo-lector" for="ej-buscar">Buscar ejercicio</label>${ICONOS16.buscar}<input id="ej-buscar" type="search" value="${h(filtro.texto)}" placeholder="press, plancha, crol…" autocomplete="off" enterkeyhint="search"></div>
     <div class="filtros">${filaFiltro(S, filtro, 'lugar', 'ejercicios.filtro')}${filaFiltro(S, filtro, 'musculo', 'ejercicios.filtro')}${filaFiltro(S, filtro, 'gusto', 'ejercicios.filtro')}</div>
     <div id="ej-resultados">${resultados(S)}</div>`;
@@ -104,6 +133,13 @@ acciones({
   'ejercicios.filtro': el => { filtro[el.dataset.k] = el.dataset.v; marcarEnFila(el); repintarResultados(); },
   'ejercicios.limpiar': () => { Object.assign(filtro, filtroVacio()); pintar(); const b = $('#ej-buscar'); if (b) b.focus(); },
   'ejercicios.aMia': el => hojaAMia(el.dataset.id),
+  'ejercicios.suelto': el => {
+    const r = empezarSuelto(el.dataset.id);
+    // Lo que cambió mientras la ficha estaba abierta (p. ej. una alarma en otra pestaña): se dice y se repinta.
+    if (r.bloqueo) { aviso(r.bloqueo.texto, 'error'); abrirFicha(el.dataset.id); return; }
+    cerrarHoja();
+    ir('sesion/' + r.sesion.id);
+  },
   'ejercicios.aMiaOk': el => {
     if (el.getAttribute('aria-disabled') === 'true') { aviso('Esa sesión ya tiene este ejercicio.', 'info'); return; }
     const m = miaDe(estado(), el.dataset.mia);

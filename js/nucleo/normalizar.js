@@ -253,8 +253,10 @@ function sesion(s, clave) {
     ...origenSesion(s.origen),
   };
 }
-// Marca de origen: hecha desde una de «Mis sesiones» (misma forma que origenSesion de modelo.js).
-const origenSesion = o => (esObjeto(o) && o.tipo === 'mia' && idValido(o.id) ? { origen: { tipo: 'mia', id: o.id } } : {});
+// Marca de origen: hecha desde una de «Mis sesiones», o un ejercicio suelto (C-SUELTO-1) (misma forma que
+// origenSesion de modelo.js).
+const origenSesion = o => (esObjeto(o) && o.tipo === 'suelto' ? { origen: { tipo: 'suelto' } }
+  : esObjeto(o) && o.tipo === 'mia' && idValido(o.id) ? { origen: { tipo: 'mia', id: o.id } } : {});
 // Nota «La ha hecho la app porque…» (PR 12; misma forma que iaFalloSesion e iaFalloPlan de modelo.js).
 function iaFalloSesion(f) {
   if (!esObjeto(f)) return {};
@@ -293,7 +295,8 @@ function plan(p, sesiones) {
   if (esObjeto(p.hechos)) {
     for (const [k, v] of Object.entries(p.hechos)) {
       const ds = numero(k, 1, 7, null, { entero: true });
-      if (ds != null && String(ds) === k && idValido(v) && sesiones[v]) hechos[ds] = v;
+      // Un ejercicio suelto nunca ocupa un día del plan (C-SUELTO-1).
+      if (ds != null && String(ds) === k && idValido(v) && sesiones[v] && !(sesiones[v].origen && sesiones[v].origen.tipo === 'suelto')) hechos[ds] = v;
     }
   }
   const out = {

@@ -4,7 +4,8 @@
 // - Avisos de consulta no urgente (C-ALAR-2, C-DOLOR-5).
 // Los textos T1-T8 se usan tal cual: cambiarlos requiere la aprobación del dueño.
 
-import { sesionesHechas } from '../../reglas/progresion.js';
+import { hechasConSueltos } from '../../reglas/progresion.js';
+import { esSuelta } from '../../nucleo/modelo.js';
 import { ZONAS } from '../../reglas/catalogo.js';
 
 const corta = z => String((ZONAS[z] || {}).corta || String(z).replace(/_/g, ' ')).toLowerCase();
@@ -124,7 +125,7 @@ export function textosLibres(S, ci = {}) {
   // Notas del perfil y de las lesiones activas (C-ALAR-4: «notas nuevas»; lo respondido no se vuelve a preguntar).
   if (S.perfil && S.perfil.notas) out.push({ de: 'notas', texto: String(S.perfil.notas) });
   ((S.perfil || {}).lesiones || []).filter(l => l.activa && l.nota).forEach(l => out.push({ de: 'lesion', texto: String(l.nota) }));
-  const ult = sesionesHechas(S).slice(-1)[0];
+  const ult = hechasConSueltos(S).slice(-1)[0]; // también un ejercicio suelto: sus comentarios se leen igual
   if (ult) {
     if (ult.cierre && ult.cierre.comentario) out.push({ de: 'sesion', sesion: ult.id, texto: ult.cierre.comentario });
     (ult.ejercicios || []).forEach(x => { if (x.comentario) out.push({ de: 'sesion', sesion: ult.id, texto: x.comentario }); });
@@ -150,7 +151,7 @@ export const preguntaAlarma = (frase, de = 'sesion') => `${{ peticion: 'En lo qu
 export function avisosConsulta(S, dolorHoy = {}, { nueva = () => false } = {}) {
   const out = [];
   const hoy = new Date();
-  const checkins = Object.values(S.sesiones || {}).filter(s => s.checkin && s.checkin.dolor && s.fecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const checkins = Object.values(S.sesiones || {}).filter(s => s.checkin && s.checkin.dolor && s.fecha && !esSuelta(s)).sort((a, b) => a.fecha.localeCompare(b.fecha));
   Object.entries(dolorHoy || {}).forEach(([z, v]) => {
     if (!(+v >= 7)) return;
     if (nueva(z)) { out.push(T4(z, `${+v}/10 siendo una lesión reciente`)); return; }

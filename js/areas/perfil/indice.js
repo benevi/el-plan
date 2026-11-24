@@ -11,7 +11,6 @@ import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS,
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { medidorNivel } from '../../reglas/contexto.js';
 import { tarjetaAnalisis } from '../entrenador/indice.js';
-import { misSesiones, MAX_MIAS } from '../entrenador/entrenador.js';
 import { versionApp, modoSinConexion, alCambiarModo, reintentarSinConexion } from '../../nucleo/version.js';
 import { grupoCopias, avisoNube, siVisible } from './nube.js';
 import { grupoSalud } from './salud.js';
@@ -122,24 +121,10 @@ function grupoEntreno(S) {
     ${p.lugares.includes('casa') ? `<p class="grupo-et bloque-mini" id="p-mat-et">Material que tienes ahora en casa</p><div class="chips" role="group" aria-labelledby="p-mat-et">${MATERIAL_CASA.map(m => chip('perfil.material', m, p.materialCasa.includes(m), MATERIAL[m])).join('')}</div>` : ''}
     <div class="bloque-mini">${interruptor('perfil.acompañado', p.acompañado, 'Entreno a la vez que otra persona')}
     ${p.lugares.includes('piscina') ? interruptor('perfil.nadar25', p.nadar25, 'Sé nadar 2 × 25 m seguidos') : ''}</div>`)}
-  ${tarjetaMias(S)}
   ${tarjeta('Ejercicios que has valorado', gustos.length ? `<ul class="lista">${gustos.map(([id, g]) => `<li><div class="fila fila--quieta"><span class="crece"><b>${h(ex(id).n)}</b><span>${h(GUSTOS[g] ? GUSTOS[g].nombre : '')}</span></span><button type="button" class="boton boton--texto" data-act="perfil.quitarGusto" data-id="${h(id)}" aria-label="Quitar la valoración de ${h(ex(id).n)}">Quitar</button></div></li>`).join('')}</ul>`
     : '<p>Valora los ejercicios en su ficha o durante la sesión (me gusta, no me gusta, no lo quiero) y el entrenador lo tendrá en cuenta.</p>')}
   ${tarjeta('Entrenador IA', `${segmento('Uso del entrenador IA', 'perfil.usoIA', Object.entries(USO_IA).map(([k, [n]]) => [k, n]), p.usoIA || 'auto', { ancho: true })}
     <p class="ayuda">${h(USO_IA[p.usoIA || 'auto'][1])}</p>`)}`;
-}
-
-// «Mis sesiones»: las guardadas para repetir (se eligen en «Antes de empezar»). Se crean y se editan aquí.
-function tarjetaMias(S) {
-  const mias = misSesiones(S);
-  return `<section class="tarjeta perfil-sec mis-sesiones" aria-labelledby="p-mias"><div class="bloque-fila"><h2 id="p-mias">Mis sesiones</h2><span class="texto-2 pequeno">${+mias.length} de ${+MAX_MIAS}</span></div>
-    ${mias.length ? `<ul class="lista">${mias.map(m => `<li><button type="button" class="fila" data-act="perfil.editarMia" data-id="${h(m.id)}">
-      <span class="crece"><b>${h(m.nombre)}</b><span>${cuenta(m.ejercicios.length, 'ejercicio', 'ejercicios')}, ${h(minus(LUGARES[m.lugar] || ''))}${m.minutos ? `, unos ${+m.minutos} min` : ''}</span></span>
-      <span class="fila-accion">${ICONOS.editar}<span>Editar<span class="solo-lector"> «${h(m.nombre)}»</span></span></span></button></li>`).join('')}</ul>
-      <p class="ayuda">Para hacer una, elígela en «Antes de empezar».</p>`
-    : '<p>Al preparar o terminar una sesión, toca «Guardar como mía» y podrás repetirla otro día desde «Antes de empezar». También puedes crear una con los ejercicios que quieras.</p>'}
-    ${mias.length < MAX_MIAS ? `<button type="button" class="boton boton--secundario" data-act="perfil.crearMia">${ICONOS.mas}<span>Crear sesión</span></button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS}: para crear otra, borra alguna.</p>`}
-  </section>`;
 }
 
 function grupoDatos(S) {
@@ -372,8 +357,6 @@ acciones({
     if (a4) a4.hidden = !(el.selectedOptions[0] && el.selectedOptions[0].dataset.irradia);
   },
   'perfil.lesionZona': el => document.querySelectorAll('[data-detalle]').forEach(c => { c.hidden = c.dataset.detalle !== el.value; }),
-  'perfil.crearMia': () => ir('mia/nueva'),
-  'perfil.editarMia': el => ir('mia/' + el.dataset.id),
   'perfil.lesion': el => hojaLesion(el.dataset.id ? estado().perfil.lesiones.find(l => l.id === el.dataset.id) : null),
   'perfil.guardarLesion': el => {
     const datos = { tipo: ($('#l-tipo .chip[aria-pressed="true"]') || { dataset: { v: 'lesion' } }).dataset.v, zona: $('#l-zona').value, dolor: +$('#l-dolor').getAttribute('aria-valuenow'), desde: $('#l-desde').value, nota: $('#l-nota').value.trim(), activa: $('#l-activa') ? $('#l-activa').checked : true };
