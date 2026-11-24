@@ -737,7 +737,7 @@ export function montarDia(S, op) {
   explicacion.unshift(resumenDia(S, { plantilla, lugar, elegidos, rehab, cardio, an, carga, extraCardio: op.extraCardio || 0, dolorHoy: ctx.dolorHoy }));
   const dia = { fuente: 'reglas', lugar, minutos, nombre: plantilla.nombre, foco: [...new Set(elegidos.map(e => MUSCULOS[e.m[0]]))].slice(0, 4).join(', '), tipo, explicacion, calentamiento, ejercicios, vuelta };
   // Validador único también al montar los días (C-PRIN-3).
-  const v = validarSesion(S, dia, { lugar, minutos, dolorHoy: ctx.dolorHoy, energia: ctx.energia, futuro: ctx.futuro, origen: 'reglas', k, tipo });
+  const v = validarSesion(S, dia, { lugar, minutos, dolorHoy: ctx.dolorHoy, energia: ctx.energia, futuro: ctx.futuro, origen: 'reglas', k, tipo, usados }); // usados: C-TIEMPO-5 rota en el plan
   v.sesion.explicacion = [...v.sesion.explicacion, ...v.cambios.map(c => 'Ajustado por la app: ' + c)];
   return v.sesion;
 }

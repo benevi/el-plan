@@ -136,3 +136,91 @@ test('C-CARDIO-4: la negación de «a tope»/«sprint» va justo delante; «sin 
     assert.notEqual(notaFinal(nota), nota, `«${si}» debería detectarse`);
   }
 });
+
+// ── Revisión del PR #54 ──
+const Tl = n => ({ id: '', nombre: n, detalle: '', duracion: '2 min' });
+const P = (id, o = {}) => ({ id, rol: 'principal', series: 3, reps: '8-12', descanso: 90, ...o });
+const CARDIO15 = { id: 'bici-estatica', rol: 'cardio', series: 1, reps: '15 min', descanso: 0, nota: '' };
+
+test('C-TIEMPO-5, C-SALUD-0 (revisión del PR #54): con hipertensión el principal añadido descansa ≥ 60 s y validar dos veces no cambia nada', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('rodilla', 3)], salud: { hipertension: 'controlada' } });
+  const c = { lugar: 'gym', minutos: 30, energia: 3, dolorHoy: { rodilla: 5 } };
+  let vistos = 0;
+  for (let d = 20; d <= 90; d += 5) {
+    const v = ent.validarSesion(S, { explicacion: [], ejercicios: [{ id: 'sentadilla-isometrica', rol: 'rehab', series: 4, reps: '30-45s', descanso: d }, P('press-pecho-maquina'), P('jalon-pecho'), CARDIO15],
+      calentamiento: [Tl('Bici'), Tl('Movilidad')], vuelta: [Tl('Estiramiento de pecho'), Tl('Respiración')] }, { ...c, origen: 'ia' });
+    const s = v.sesion;
+    assert.ok(dia.tiempoSesionExacto(s) <= 30 + 1e-9, `${d}: ${dia.tiempoSesionExacto(s)}`);
+    prin(s).forEach(x => assert.ok(x.descanso >= 60, `${d}: ${x.id} descansa ${x.descanso} s`));
+    if (prin(s).length) vistos++;
+    const w = ent.validarSesion(S, s, c).sesion;
+    assert.deepEqual(w.ejercicios.map(x => [x.id, x.series, x.reps, x.descanso]), s.ejercicios.map(x => [x.id, x.series, x.reps, x.descanso]), `${d}: no es idempotente`);
+    assert.deepEqual(ent.problemasSesion(S, s, c), []);
+  }
+  assert.ok(vistos > 0, 'ningún caso con principal');
+});
+
+test('C-TIEMPO-2 paso 1, C-SALUD-0 (revisión del PR #54): los descansos de los accesorios no bajan de 60 s con hipertensión', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, salud: { hipertension: 'controlada' } });
+  const v = ent.validarSesion(S, { explicacion: [], ejercicios: [P('press-pecho-maquina'), P('jalon-pecho'), P('prensa-piernas'),
+    P('elevaciones-laterales', { reps: '12-15', descanso: 90 }), P('curl-biceps-mancuerna', { reps: '12-15', descanso: 90 }), { ...CARDIO15, reps: '20 min' }],
+  calentamiento: [Tl('Bici'), Tl('Movilidad')], vuelta: [Tl('Estiramiento de pecho'), Tl('Respiración')] }, { lugar: 'gym', minutos: 45, energia: 3 });
+  prin(v.sesion).forEach(x => assert.ok(x.descanso >= 60, `${x.id} descansa ${x.descanso} s`));
+});
+
+test('C-TIEMPO-5 (revisión del PR #54): el principal que propone la IA se queda si cabe y no carga la zona', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('hombro', 3)] });
+  for (const id of ['extension-cuadriceps', 'gluteo-maquina', 'curl-femoral-maquina']) {
+    if (!cat.ex(id)) continue;
+    const v = ent.validarSesion(S, { explicacion: ['Por tiempo (último recurso): con 30 minutos caben tu cardio, lo de tu hombro y 1 ejercicio principal que no carga tu hombro.'],
+      ejercicios: [{ id: 'separacion-banda', rol: 'rehab', series: 2, reps: '15', descanso: 30 }, P(id, { series: 2, reps: '10-12' }), CARDIO15],
+      calentamiento: [Tl('Bici'), Tl('Movilidad')], vuelta: [Tl('Estiramiento de cuádriceps'), Tl('Respiración')] }, { lugar: 'gym', minutos: 30, dolorHoy: { hombro: 5 }, origen: 'ia' });
+    assert.deepEqual(prin(v.sesion).map(x => x.id), [id]);
+    assert.ok(dia.tiempoSesionExacto(v.sesion) <= 30);
+    assert.ok(v.valida);
+  }
+});
+
+test('C-TIEMPO-5, C-EST-1, C-CAL-2 (revisión del PR #54): calentamiento y vuelta van con el principal añadido', () => {
+  const SUP = ['pecho', 'espalda', 'hombro', 'biceps', 'triceps'];
+  let n = 0;
+  for (const z of ['rodilla', 'cadera_lateral', 'lumbar']) {
+    const { s } = sesion({ objetivos: ['perder'], nivel: 2, lesiones: [L(z, 3)] }, { dolorHoy: { [z]: 5 } });
+    const p = prin(s)[0];
+    if (!p || !s.explicacion.some(t => TXT_A.test(t))) continue;
+    n++;
+    const e = cat.ex(p.id);
+    const esperado = dia.vueltaDe(nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L(z, 3)] }), dia.contextoDia(nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L(z, 3)] }), { lugar: 'gym', minutos: 30, dolorHoy: { [z]: 5 } }), [e], { total: 3 });
+    assert.deepEqual(s.vuelta.map(t => t.nombre), esperado.map(t => t.nombre), `${z}: ${p.id}`);
+    const sup = SUP.includes(e.m[0]);
+    assert.ok(s.calentamiento.length >= 2 && s.vuelta.length >= 2, z);
+    assert.ok(sup || !s.vuelta.every(t => !t.id || /pectoral|hombro/.test(t.id) || !cat.ex(t.id)), `${z}: la vuelta no estira lo trabajado (${e.m[0]})`);
+    assert.ok(dia.tiempoSesionExacto(s) <= 30);
+  }
+  assert.ok(n > 0);
+});
+
+test('C-TIEMPO-5 (revisión del PR #54): en el plan, el principal añadido rota entre días del mismo tipo', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('rodilla', 5)] });
+  S.perfil.disponibilidad.minutos = 30;
+  const p = ent.planReglas(S, { dias: [1, 3, 5, 6], minutos: 30, lugares: ['gym'] });
+  const porTipo = {};
+  p.dias.forEach(d => { const x = prin(d); if (x.length === 1 && d.explicacion.some(t => TXT_A.test(t))) (porTipo[d.tipo] = porTipo[d.tipo] || []).push(x[0].id); });
+  const repetidos = Object.entries(porTipo).filter(([, ids]) => ids.length > 1 && new Set(ids).size < ids.length);
+  assert.ok(Object.values(porTipo).some(ids => ids.length > 1), JSON.stringify(porTipo));
+  assert.deepEqual(repetidos, []);
+});
+
+test('C-TIEMPO-5, C-IA-3 (revisión del PR #54): «Ajustado por la app» dice qué principal entra o se recorta', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('hombro', 3)] });
+  const c = { lugar: 'gym', minutos: 30, dolorHoy: { hombro: 5 }, origen: 'ia' };
+  const base = { calentamiento: [Tl('Bici'), Tl('Movilidad')], vuelta: [Tl('Estiramiento de cuádriceps'), Tl('Respiración')] };
+  // La app lo añade: la IA no manda ninguno.
+  const v = ent.validarSesion(S, { ...base, explicacion: [], ejercicios: [{ id: 'separacion-banda', rol: 'rehab', series: 2, reps: '15', descanso: 30 }, CARDIO15] }, c);
+  const p = prin(v.sesion)[0];
+  assert.ok(v.cambios.some(t => t === `añado ${cat.ex(p.id).n.toLowerCase()} (${p.series} series, descanso ${p.descanso} s): es lo que cabe en 30 minutos sin cargar tu hombro` || new RegExp(`^añado .+ \\(${p.series} series, descanso ${p.descanso} s\\): es lo que cabe en 30 minutos sin cargar tu hombro$`).test(t)), v.cambios.join(' | '));
+  // La IA manda uno a 4 series: se queda recortado y se dice.
+  const w = ent.validarSesion(S, { ...base, explicacion: [], ejercicios: [{ id: 'separacion-banda', rol: 'rehab', series: 2, reps: '15', descanso: 30 }, P('extension-cuadriceps', { series: 4, reps: '10-12' }), CARDIO15] }, c);
+  assert.deepEqual(prin(w.sesion).map(x => [x.id, x.series]), [['extension-cuadriceps', 2]]);
+  assert.ok(w.cambios.some(t => /^dejo .+ a 2 series con \d+ s de descanso: es lo que cabe en 30 minutos sin cargar tu hombro$/.test(t)), w.cambios.join(' | '));
+});
