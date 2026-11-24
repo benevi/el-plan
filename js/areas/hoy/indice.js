@@ -4,17 +4,20 @@
 // - Con plan: la tira de la semana arriba, lo que toca hoy (o el descanso y lo siguiente), la sesión en
 //   marcha o hecha, la constancia y la semana.
 // - Siempre: una sesión sin cerrar de un día anterior (R20) y el aviso «Sin conexión».
+// - «Mis sesiones» (decisión de Víctor del 24-11-2026): crear una, o elegir una para hacerla (por el check-in, sin
+//   IA: C-MIA-1, C-MIA-2), editarla y crear otra. No sale con una sesión de hoy en marcha (se terminaría tapando)
+//   ni en un día sin entrenar por precaución.
 // La acción principal va en una barra fija abajo, encima de las pestañas: nunca tapa la tira de la semana,
 // que va arriba, debajo del saludo.
 
 import { rutas, pestaña, acciones, ir, pintar, rutaActual } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
-import { h, ICONOS, fechaLarga, confirmar, aviso, hayHojaAbierta, $ } from '../../nucleo/ui.js';
-import { sesionDeHoy, diaSemana, trabajoHecho } from '../../nucleo/modelo.js';
+import { h, ICONOS, fechaLarga, confirmar, aviso, hayHojaAbierta, abrirHoja, $ } from '../../nucleo/ui.js';
+import { sesionDeHoy, diaSemana, trabajoHecho, esSuelta } from '../../nucleo/modelo.js';
 import { enLinea } from '../../nucleo/api.js';
 import { PERSONAS, LUGARES, DIAS, DIAS_CORTOS } from '../../datos/constantes.js';
 import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo, minutosDe, plural, focoTexto } from '../entrenador/indice.js';
-import { siguientePendiente, sinEntrenarHoy, T2, misSesiones } from '../entrenador/entrenador.js';
+import { siguientePendiente, sinEntrenarHoy, T2, misSesiones, MAX_MIAS } from '../entrenador/entrenador.js';
 import { info as cronometro, parar as pararCronometro } from '../sesion/temporizador.js';
 import * as progreso from '../progreso/indice.js';
 import { minusNombre } from '../entrenador/dia.js';
@@ -58,7 +61,8 @@ function tiraSemana(S) {
 // su día; descartarla la borra tras confirmarlo.
 export function sesionSinCerrar(S) {
   const hoy = hoyISO();
-  return Object.values(S.sesiones || {}).filter(s => s && s.fecha < hoy && s.estado !== 'hecha' && s.fuente !== 'anterior' && trabajoHecho(s))
+  // Un ejercicio suelto a medias no es una sesión sin cerrar: se ve en Ejercicios (C-SUELTO-1).
+  return Object.values(S.sesiones || {}).filter(s => s && s.fecha < hoy && s.estado !== 'hecha' && s.fuente !== 'anterior' && !esSuelta(s) && trabajoHecho(s))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || String(b.creada).localeCompare(String(a.creada)))[0] || null;
 }
 function cuandoFue(fecha) {
@@ -143,14 +147,40 @@ function deHoy(S) {
     <button type="button" class="boton boton--secundario boton--ancho" data-act="entrenador.prepararHoy">Entrenar igualmente</button>`) };
 }
 
+// ── Mis sesiones ──
+const MIAS_EN_HOY = 3;
+const filaMia = m => `<li class="fila-mia"><button type="button" class="fila" data-act="entrenador.prepararMia" data-v="${h(m.id)}">
+    <span class="crece"><b>${h(m.nombre)}</b><span>${plural(m.ejercicios.length, 'ejercicio', 'ejercicios')}, ${h(minus(LUGARES[m.lugar] || ''))}${m.minutos ? `, unos ${+m.minutos} min` : ''}</span></span>
+    <span class="fila-accion">Hacerla${ICONOS.sig}</span></button>
+  <button type="button" class="boton-icono boton-icono--sin-borde" data-act="hoy.editarMia" data-v="${h(m.id)}" aria-label="Editar «${h(m.nombre)}»">${ICONOS.editar}</button></li>`;
+function tarjetaMias(S) {
+  const s = sesionDeHoy(S);
+  if (sinEntrenarHoy(S) || (s && s.estado === 'en_curso')) return '';
+  const mias = misSesiones(S);
+  if (!mias.length) {
+    return `<section class="tarjeta mis-sesiones-hoy" aria-labelledby="t-mias"><h2 id="t-mias">Mis sesiones</h2>
+      <p class="datos">Elige tú los ejercicios y hazla cuando quieras. La app le añade calentamiento, cardio y estiramientos, y la ajusta a cómo estés ese día.</p>
+      <button type="button" class="boton boton--secundario boton--ancho" data-act="hoy.crearMia">${ICONOS.mas}<span>Crear una sesión</span></button></section>`;
+  }
+  const mas = mias.length > MIAS_EN_HOY;
+  return `<section class="tarjeta mis-sesiones-hoy" aria-labelledby="t-mias"><h2 id="t-mias">Mis sesiones</h2>
+    <ul class="lista lista-mias-hoy">${mias.slice(0, MIAS_EN_HOY).map(filaMia).join('')}</ul>
+    <div class="mias-pie">${mas ? `<button type="button" class="boton boton--texto" data-act="hoy.todasMias">Ver las ${+mias.length}</button>` : ''}
+      ${mias.length < MAX_MIAS ? `<button type="button" class="boton boton--texto" data-act="hoy.crearMia">${ICONOS.mas}<span>Crear otra</span></button>` : ''}</div></section>`;
+}
+function hojaMias() {
+  const mias = misSesiones(estado());
+  abrirHoja(`<h2>Mis sesiones</h2>
+    <ul class="lista lista-mias-hoy">${mias.map(filaMia).join('')}</ul>
+    ${mias.length < MAX_MIAS ? `<button type="button" class="boton boton--secundario boton--ancho" data-act="hoy.crearMia">${ICONOS.mas}<span>Crear otra</span></button>` : `<p class="ayuda">Ya tienes ${MAX_MIAS}: para crear otra, borra alguna (en Editar).</p>`}`, { clase: 'hoja-pf' });
+}
+
 function sinPlan(S, principal) {
   const d = S.perfil.disponibilidad;
-  const mias = misSesiones(S).length && !sesionDeHoy(S) && !sinEntrenarHoy(S);
   const montar = `<button type="button" class="boton ${principal ? '' : 'boton--secundario'} boton--ancho" data-act="entrenador.plan">Montar mi semana</button>`;
   return {
     tarjeta: tarjeta('Esta semana', '¿Qué días puedes entrenar?', `<p class="datos">Dímelo y te monto la semana: calentamiento, ejercicios, rehabilitación y estiramientos de cada día. Cada día lo ajusto a cómo estés.</p>
       ${d.diasSemana.length ? `<p class="datos pequeno">La última vez: ${h(listaDias(d.diasSemana))}.</p>` : ''}
-      ${mias ? '<button type="button" class="boton boton--secundario boton--ancho" data-act="entrenador.prepararMia">Hacer una de mis sesiones</button>' : ''}
       ${principal ? '' : montar}`, 'sin-plan'),
     accion: principal ? montar : '',
   };
@@ -169,14 +199,14 @@ function vista() {
     accion = '<a class="boton boton--ancho" href="#perfil">Completar mi perfil</a>';
   } else if (plan) {
     const t = deHoy(S);
-    cuerpo = `${t.tarjeta}${constancia}${tarjetaPlan(S)}`;
+    cuerpo = `${t.tarjeta}${tarjetaMias(S)}${constancia}${tarjetaPlan(S)}`;
     accion = t.accion || '';
   } else {
     // Sin plan: la sesión de hoy (si ya hay una) manda; si no, montar la semana es lo principal.
     const t = sesionDeHoy(S) || sinEntrenarHoy(S) ? deHoy(S) : null;
     // Con la tarjeta de hoy (sesión o precaución T2), «Montar mi semana» pasa a secundaria.
     const sp = sinPlan(S, !t);
-    cuerpo = `${t ? t.tarjeta : ''}${sp.tarjeta}${constancia}`;
+    cuerpo = `${t ? t.tarjeta : ''}${sp.tarjeta}${tarjetaMias(S)}${constancia}`;
     accion = (t && t.accion) || sp.accion;
   }
   return `
@@ -219,4 +249,7 @@ pestaña({ ruta: 'hoy', nombre: 'Hoy', icono: ICONOS.hoy, orden: 10 });
 acciones({
   'hoy.cerrarAnterior': el => cerrarAnterior(el.dataset.v),
   'hoy.descartarAnterior': el => descartarAnterior(el.dataset.v),
+  'hoy.crearMia': () => ir('mia/nueva'),
+  'hoy.editarMia': el => ir('mia/' + el.dataset.v),
+  'hoy.todasMias': () => hojaMias(),
 });

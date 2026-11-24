@@ -6,9 +6,9 @@
 import { estado, cambiar, uid, hoyISO } from '../../nucleo/estado.js';
 import { enLinea } from '../../nucleo/api.js';
 import { es } from '../../nucleo/ui.js';
-import { diaSemana } from '../../nucleo/modelo.js';
+import { diaSemana, esSuelta } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
-import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
+import { sugerir, cargaMuscular, hechasConSueltos, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
@@ -244,7 +244,8 @@ export function motivoIA(S, ci, dia) {
   if (!dia) r.push('hoy no hay día planificado');
   const p = planDeLaSemana(S);
   const desde = p ? p.creado : '';
-  const nuevos = sesionesHechas(S).filter(s => (s.terminada || '') > desde).some(s => (s.cierre && s.cierre.comentario) || (s.ejercicios || []).some(x => x.comentario && leerComentario(x.comentario).length));
+  // También los comentarios de un ejercicio suelto (C-SUELTO-4).
+  const nuevos = hechasConSueltos(S).filter(s => (s.terminada || '') > desde).some(s => (s.cierre && s.cierre.comentario) || (s.ejercicios || []).some(x => x.comentario && leerComentario(x.comentario).length));
   if (nuevos) r.push('hay comentarios tuyos que leer');
   return r.length ? { usar: true, motivo: `El entrenador IA la revisa porque ${lista(r)}.` } : { usar: false, motivo: 'Ajustada por la app con tu check-in (sin gastar IA).' };
 }
@@ -270,7 +271,7 @@ export function motivoCheckinCompleto(S, ci) {
 // Dolor de una zona en un check-in de hace 3 días o menos (C-DOLOR-0): el más reciente, o null si no hay.
 export function dolorReciente(S, zona, ahora = Date.now()) {
   const limite = ahora - 3 * 864e5;
-  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[zona] != null && new Date(s.creada || s.fecha) >= limite)
+  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[zona] != null && !esSuelta(s) && new Date(s.creada || s.fecha) >= limite)
     .sort((a, b) => String(b.creada).localeCompare(String(a.creada)))[0];
   return ult ? +ult.checkin.dolor[zona] : null;
 }

@@ -25,7 +25,7 @@
 //     Tras quitar la fuerza, 1 principal que no cargue la zona si quedan 4 min o más (C-TIEMPO-5, decisión A del 24-11-2026).
 
 import { ex, hayMaterial, puntosTipo } from '../../reglas/catalogo.js';
-import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga, topeSeries } from '../../reglas/progresion.js';
+import { rango, acotarKg, hechasConSueltos, cargaMuscular, semanaDescarga, topeSeries } from '../../reglas/progresion.js';
 import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales, permitidoBase,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, faseDeBanda, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
@@ -73,7 +73,7 @@ function notaPrecaucion(S, x, zp, ctx) {
 // C-DOSIS-4 · Con precaución (r=1 en una zona B0-B1, dolor 0-3): ≥ 10 repeticiones (12 en aislamiento), 3 de
 // margen, bajada de 3 s y el techo en la nota. También en lo que se añade después (la rehabilitación que vuelve
 // tras el ajuste de tiempo).
-function conPrecaucion(S, x, ctx, cambios = []) {
+export function conPrecaucion(S, x, ctx, cambios = []) {
   const e = ex(x.id); if (!e) return;
   const zp = zonasPrecaucion(e, ctx);
   const rp = rango(x.reps);
@@ -139,7 +139,7 @@ export function normalizarReps(e, reps) {
 const maxSeries = (e, lugar, rol, nivel) => (e.t === 'distancia' && lugar === 'piscina' ? 10 : rol === 'principal' ? Math.min(6, topeSeries(nivel)) : 6);
 
 // Ids con kilos apuntados alguna vez (para C-PROG-1).
-const idsConKg = S => new Set(sesionesHechas(S).flatMap(s => (s.ejercicios || []).filter(y => (y.sets || []).some(z => z.hecha && +z.kg > 0)).map(y => y.id)));
+const idsConKg = S => new Set(hechasConSueltos(S).flatMap(s => (s.ejercicios || []).filter(y => (y.sets || []).some(z => z.hecha && +z.kg > 0)).map(y => y.id)));
 
 // ── Día de dolor alto: lo que NUNCA sale (C-DOLOR-4, comprobación automática) ──
 function problemasDolorAlto(S, s, ctx) {

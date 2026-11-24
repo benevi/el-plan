@@ -18,6 +18,7 @@
 // - alarma.js   señales de alarma, palabras de alarma en textos libres y textos fijos T1-T8.
 // - salud.js    datos de salud del perfil (D4) y sus restricciones.
 // - mias.js     «Mis sesiones»: guardar una sesión para repetirla (el check-in la ajusta a hoy, sin IA).
+// - suelto.js   ejercicio suelto desde su ficha: seguridad, propuesta y la sesión de un solo ejercicio (C-SUELTO-*).
 
 export { dosis, reglaCardio, montarDia, tiempoEj, tiempoSesion, bandasHoy, soloRehab, limiteDolor, alternativasHoy, ejercicioCambiado, contextoDia } from './dia.js';
 export { validarSesion, problemasSesion, normalizarReps } from './validar.js';
@@ -29,3 +30,4 @@ export { ajustarAlCheckin, motivoIA, previaCheckin, dolorNuevoSinLesion, guardar
 export { crearSesionHoy, crearPlanSemana, preguntaAntes, sinEntrenarHoy, pararPorAlarma, DESDE, fraseIAOk } from './ia.js';
 export { misSesiones, miaDe, guardarMia, renombrarMia, borrarMia, motivoNoGuardar, MAX_MIAS, LARGO_NOMBRE_MIA,
   ejerciciosMia, propuestaMia, topeSeriesMia, guardarEdicionMia, motivoNoGuardarEdicion, añadirAMia, MAX_EJERCICIOS_MIA, DESCANSO_MAX_MIA } from './mias.js';
+export { evaluarSuelto, propuestaSuelto, empezarSuelto, sueltoAbierto, sueltosAMedias, dolorParaSuelto } from './suelto.js';

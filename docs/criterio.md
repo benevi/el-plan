@@ -30,6 +30,7 @@ Lo escribe el preparador físico (fuerza y acondicionamiento, con formación de 
 19. [Casos de referencia](#19-casos-de-referencia)
 20. [Decisiones para el dueño](#20-decisiones-para-el-dueño)
 21. [Sesiones guardadas («Mis sesiones»)](#21-sesiones-guardadas-mis-sesiones)
+22. [Ejercicio suelto](#22-ejercicio-suelto)
 
 ---
 
@@ -1344,11 +1345,16 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 21. **A · 1 principal en las sesiones cortas con una zona dolorida** (C-TIEMPO-5, C-TIEMPO-2 paso 7 y el ejemplo de C-TIEMPO-4): si tras el calentamiento, el cardio, la rehabilitación y la vuelta a la calma quedan 4 minutos o más, 1 ejercicio principal que no cargue la zona, con todas las barandillas y sin pasar nunca de los minutos pedidos; si no cabe o no hay ninguno seguro, la sesión se queda como estaba: **aprobada (opción A)**.
 22. **Sesión corta con rehabilitación obligatoria de zonas en B2 que no cabe** (C-TIEMPO-2 paso 8): la rehabilitación de las zonas en B2 no se quita nunca; si con ella y los mínimos no cabe, la sesión pasa de lo pedido y el aviso dice cuánto dura y sugiere 15 minutos más. Con 30 minutos y 2-3 zonas a 5/10 pasa en 398 de 864 combinaciones del barrido de la revisión (849 de 864 con cardiopatía, que además exige 10 + 10 de calentamiento y vuelta; como mucho unos 3,5 min de más). Alternativas descartadas: recortar el cardio por debajo de su mínimo o rotar las zonas entre sesiones: **aprobada (pasar de lo pedido con aviso)**.
 
+**Decididas por Víctor el 24-11-2026** («No sé cómo hacer las sesiones personalizadas. Tampoco se pueden hacer ejercicios sueltos sin que tengan que estar dentro de una sesión»):
+
+23. **«Mis sesiones» en Hoy** (sección 21): un acceso fijo en Hoy para crear una, elegirla y empezarla (por el check-in de siempre, con C-MIA-1 y C-MIA-2), editarla y crear otra. Sale de Perfil para que no esté en dos sitios: **aprobada**.
+24. **Ejercicio suelto** (sección 22, C-SUELTO-1 a C-SUELTO-5): desde la ficha de un ejercicio, «Hacerlo ahora», sin calentamiento ni vuelta a la calma, con la propuesta de la progresión y el cronómetro; cuenta para el progreso de ese ejercicio y **no como sesión** (ni del plan ni para la constancia); no se puede si carga una zona en B2 o más, con dolor ≥ 7 o con una señal de alarma: **aprobada**.
+
 ---
 
 ## 21. Sesiones guardadas («Mis sesiones»)
 
-La persona puede guardar una sesión (p. ej. «solo abdominales y flexiones») y repetirla otro día desde el check-in. Se prepara **sin IA** y pasa por el validador único con el contexto del día (`ctx.mia` en `js/areas/entrenador/validar.js`). Fuera de estas dos excepciones, el resto del documento se aplica igual.
+La persona puede guardar una sesión (p. ej. «solo abdominales y flexiones») o crearla con los ejercicios que quiera, y repetirla otro día. Desde el 24-11-2026 (decisión 23) se crean, se eligen y se editan en **Hoy › Mis sesiones**; elegirla abre el check-in con ella. Se prepara **sin IA** y pasa por el validador único con el contexto del día (`ctx.mia` en `js/areas/entrenador/validar.js`). Fuera de estas dos excepciones, el resto del documento se aplica igual.
 
 **C-MIA-1 [Excepción del dueño] [aprobada por Víctor el 20-11-2026] [PR 34]** Una sesión guardada se respeta tal cual:
 - **No se rellena** hasta 3 principales (C-DOSIS-4 en su parte de mínimo) ni se quitan principales por energía (C-ENERGIA-1) o por tiempo (C-TIEMPO-2): si dura más de lo marcado, se dice y se deja entera. La energía sí quita una serie y deja el cardio suave.
@@ -1360,3 +1366,34 @@ La persona puede guardar una sesión (p. ej. «solo abdominales y flexiones») y
 **C-MIA-2 [Excepción del dueño] [aprobada por Víctor el 20-11-2026] [PR 34]** Si un principal de la sesión guardada es de **nivel superior** al de la persona, **se mantiene** con una nota de técnica («prioriza la técnica, sin llegar al fallo; si no sale limpio, usa una variante más fácil») en vez de cambiarlo: C-DOSIS-10 no se aplica a las sesiones guardadas. El dolor y las lesiones mandan igual (C-DOLOR-*).
 
 Las dos excepciones son **solo** para las sesiones guardadas: el plan, las reglas y la IA siguen con C-DOSIS-4, C-DOSIS-10, C-ENERGIA-1 y C-TIEMPO-2.
+
+---
+
+## 22. Ejercicio suelto
+
+Decisión de Víctor del 24-11-2026 (sección 20, decisión 24). Desde la ficha de un ejercicio (pestaña Ejercicios), **«Hacerlo ahora»**: un solo ejercicio, fuera de cualquier sesión. Lo implementan `js/areas/entrenador/suelto.js` y la pantalla de sesión (`js/areas/sesion/indice.js`). Fuera de estas reglas, el resto del documento se aplica igual.
+
+**C-SUELTO-1 [Excepción del dueño] [aprobada por Víctor el 24-11-2026]** Qué es y qué no es:
+- Un ejercicio, **sin calentamiento ni vuelta a la calma** y sin cardio obligatorio: C-CAL-2, C-VUELTA-1, D3 y el número mínimo de principales (C-DOSIS-4) **no se aplican**, porque no es una sesión. La pantalla lo dice («Ejercicio suelto: sin calentamiento ni estiramientos») y, si lleva kilos, propone una o dos series ligeras de aproximación.
+- **No es una sesión**: no es la sesión de hoy, no ocupa ni marca días del plan, no cuenta para la constancia (semanal ni general), ni para el nivel (C-NIVEL-1/2), ni para la descarga (C-DESCARGA-1). Uno a medias no estorba a la sesión de hoy (ni la para ni se borra al prepararla) y se puede seguir desde la ficha o desde «A medias» en Ejercicios.
+- En los datos es una sesión con `origen: { tipo: 'suelto' }` y un solo ejercicio (`js/nucleo/modelo.js`, `esSuelta`), así la leen igual las copias, el normalizador y el progreso.
+
+**C-SUELTO-2 [Objetivo] [aprobada por Víctor el 24-11-2026]** **Cuándo no se puede** (la ficha dice por qué y no ofrece el botón). Sin check-in, el dolor de cada zona es el último apuntado en los 3 últimos días (check-ins, cierres y el «dolor durante» de «Algo va mal», también en una sesión aún abierta; dentro de una misma sesión, el dolor del cierre manda sobre su «Algo va mal» en esa zona, por ser posterior; entre sesiones del mismo día, el más alto) y, si no hay, el de la ficha de la lesión activa (una lesión traída de la app anterior, como mucho 6: decisión 11). Con eso se calculan las bandas de siempre (C-DOLOR-1, C-LES-2, C-LES-3):
+1. **Señal de alarma** confirmada hoy (C-ALAR-1).
+2. **Dolor ≥ 7** en cualquier zona (C-DOLOR-4): ese día solo la sesión suave del check-in. Si sale de la ficha, se dice que se puede cambiar en Perfil › Lesiones.
+3. **Datos de salud**: «solo suave» (salvo movilidad) o un ejercicio que excluyen (C-SALUD-0).
+4. El ejercicio **carga una zona en B2 o más** (r=1 con dolor 4-6, o con una lesión reciente que duele, C-LES-2), o es de los que la ficha dice **evitar** (r=2) con esa zona activa (C-DOLOR-1: r=2 fuera en todas las bandas).
+5. **Natación por distancia sin saber nadar 2 × 25 m** (C-PISC-2).
+6. Un ejercicio **parado hoy por dolor** con «Algo va mal» (C-DOLOR-6: hoy no se repite), aunque la sesión se cerrara después con menos dolor.
+
+Un suelto a medias sigue estas reglas: con una señal de alarma o dolor ≥ 7 no se continúa (solo terminar con lo hecho o descartarlo), y al confirmar una alarma los sueltos abiertos se cierran como con «Algo va mal» (lo hecho se guarda marcado como parada por alarma; sin nada hecho, se borran).
+
+**C-SUELTO-3 [Excepción del dueño] [aprobada por Víctor el 24-11-2026]** **Cuándo sí, con aviso**:
+- r=1 en una zona en B0-B1: con la dosis y la nota «con precaución» (C-DOSIS-4) y el «Algo va mal» de la sesión (C-DOLOR-6).
+- **Nivel superior** al de la persona: se mantiene con la nota de técnica (como C-MIA-2; C-DOSIS-10 no se aplica, lo ha elegido ella).
+- En **«No lo quiero»**: se puede igualmente, porque lo ha elegido ella; la app sigue sin proponerlo en el plan.
+- **Propuesta**: la dosis de las reglas como primer ejercicio (C-DOSIS-2 a 6) con el tope de series de D-B y la progresión de siempre con lo apuntado (C-PROG-1 a 9, C-REC-2, C-DOLOR-7, C-PARON-1, C-DESCARGA-1). Sin historial, kilos vacíos (C-PROG-1).
+
+**C-SUELTO-4 [Objetivo] [aprobada por Víctor el 24-11-2026]** **Cuenta para el progreso de ese ejercicio**: sus series entran en «Tus últimas veces», en la fuerza de Progreso, en los kilos que propone la próxima vez (en una sesión o suelto), en la recuperación de cada músculo (C-REC-1, C-REC-2) y en el análisis por ejercicio que se manda a la IA (comentarios incluidos). Las palabras de alarma de sus comentarios se leen igual (C-ALAR-4). La lista de sesiones de los últimos 14 días que se manda a la IA no lo incluye (no es una sesión).
+
+**C-SUELTO-5 [Objetivo] [aprobada por Víctor el 24-11-2026]** **Cronómetro y dolor**: el mismo de la sesión (descanso con alarma visual y vibración, ejercicios por tiempo). El dolor de partida de «Algo va mal» y de la regla de las 24 horas es el de C-SUELTO-2; al terminar se apunta solo el dolor de después (el de partida no lo dijo la persona y no se guarda como dato nuevo), y no cuenta como check-in para rellenar el siguiente (C-DOLOR-0).

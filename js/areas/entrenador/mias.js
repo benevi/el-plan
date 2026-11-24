@@ -50,7 +50,7 @@ export function motivoNoGuardar(S, s, nombre) {
   if (s.tipo === 'dolorAlto') return 'Es la sesión suave de un día de dolor alto: no se guarda, la app la monta cada vez con tu dolor de ese día.';
   if (!(s.ejercicios || []).some(x => x && ex(x.id))) return 'Esta sesión no tiene ejercicios que guardar.';
   if (!n) return 'Ponle un nombre.';
-  if (misSesiones(S).length >= MAX_MIAS) return `Ya tienes ${MAX_MIAS} sesiones guardadas: borra alguna en Perfil › Mi entreno.`;
+  if (misSesiones(S).length >= MAX_MIAS) return `Ya tienes ${MAX_MIAS} sesiones guardadas: borra alguna en Hoy › Mis sesiones (Editar).`;
   if (misSesiones(S).some(m => m.nombre.toLowerCase() === n.toLowerCase())) return `Ya tienes una sesión que se llama «${n}».`;
   return null;
 }

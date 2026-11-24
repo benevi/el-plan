@@ -1,5 +1,5 @@
 // PR 16 en pantalla (jsdom): Perfil (partes sin salirse, aria-current, grupos de radio, aria-pressed, textos),
-// el editor de «Mis sesiones» (crear, errores junto al campo, añadir con el buscador, subir y bajar, quitar,
+// el editor de «Mis sesiones» desde Hoy (24-11-2026) (crear, errores junto al campo, añadir con el buscador, subir y bajar, quitar,
 // editar, borrar con confirmación), Ejercicios (filtros y «Añadir a una de mis sesiones») y Progreso (vacío,
 // vasos con el denominador del plan y «Ver como tabla»).
 import { test, after } from 'node:test';
@@ -89,9 +89,9 @@ test('Ajustes: ayuda del código sin jerga y versión visible; el aviso de datos
 test('editor de Mis sesiones: crear, errores junto al campo, añadir, subir, bajar, quitar y guardar', async () => {
   const b = estadoBase(); b.perfil.lugares = ['casa']; b.perfil.nivel = 2;
   await reiniciar(b);
-  await grupo('entreno');
-  assert.match($('.mis-sesiones').textContent, /0 de 30/);
-  a.clic('[data-act="perfil.crearMia"]'); await a.esperar(() => a.w.location.hash === '#mia/nueva');
+  await a.ir('hoy');
+  assert.match($('.mis-sesiones-hoy').textContent, /Crear una sesión/);
+  a.clic('[data-act="hoy.crearMia"]'); await a.esperar(() => a.w.location.hash === '#mia/nueva');
   await a.tic();
   assert.equal($('#vista h1').textContent, 'Nueva sesión');
   assert.equal($('[data-act="mia.lugar"][aria-checked="true"]').dataset.v, 'casa');
@@ -140,16 +140,15 @@ test('editor de Mis sesiones: crear, errores junto al campo, añadir, subir, baj
   tecla(spin(), 'ArrowUp'); await a.tic();
   assert.equal(spin().getAttribute('aria-valuenow'), '4');
   assert.ok(antes <= 4);
-  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#hoy');
   const [m] = a.estado.estado().misSesiones;
   assert.equal(m.nombre, 'Abdos');
   assert.equal(m.lugar, 'casa');
   assert.deepEqual(m.ejercicios.map(x => [x.id, x.series]), [['flexiones', 4], ['crunch', m.ejercicios[1].series]]);
   await a.tic();
-  assert.equal($('[data-act="perfil.grupo"][data-v="entreno"]').getAttribute('aria-current'), 'true');
-  assert.match($('.mis-sesiones').textContent, /Abdos/);
-  assert.match($('.mis-sesiones').textContent, /1 de 30/);
-  assert.match($('[data-act="perfil.editarMia"]').textContent, /Editar «Abdos»/);
+  assert.match($('.mis-sesiones-hoy').textContent, /Abdos/);
+  assert.equal($('[data-act="hoy.editarMia"]').getAttribute('aria-label'), 'Editar «Abdos»');
+  assert.ok($('[data-act="entrenador.prepararMia"][data-v="' + m.id + '"]'));
 });
 
 test('editor: editar conserva el id; borrar pide confirmación nombrándola', async () => {
@@ -157,24 +156,24 @@ test('editor: editar conserva el id; borrar pide confirmación nombrándola', as
   b.misSesiones = [{ id: 'm1', nombre: 'Abdos', lugar: 'casa', minutos: 30, creada: '2026-11-01T10:00:00.000Z', ejercicios: [
     { id: 'flexiones-rodillas', rol: 'principal', series: 3, reps: '8-12', descanso: 60 }, { id: 'dead-bug', rol: 'principal', series: 3, reps: '10 c/lado', descanso: 45 }] }];
   await reiniciar(b);
-  await grupo('entreno');
-  a.clic('[data-act="perfil.editarMia"][data-id="m1"]'); await a.esperar(() => a.w.location.hash === '#mia/m1');
+  await a.ir('hoy');
+  a.clic('[data-act="hoy.editarMia"][data-v="m1"]'); await a.esperar(() => a.w.location.hash === '#mia/m1');
   await a.tic();
   assert.equal($('#vista h1').textContent, 'Editar sesión');
   assert.equal($('#mia-nombre').value, 'Abdos');
   // «10 c/lado»: la escala conserva el lado
   assert.match($('[id="mia-dead-bug-reps"]').getAttribute('aria-valuetext'), /10 repeticiones por lado/);
   $('#mia-nombre').value = 'Core en casa'; $('#mia-nombre').dispatchEvent(new a.w.Event('input', { bubbles: true }));
-  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#hoy');
   assert.equal(a.estado.estado().misSesiones[0].id, 'm1');
   assert.equal(a.estado.estado().misSesiones[0].nombre, 'Core en casa');
   await a.tic();
-  a.clic('[data-act="perfil.editarMia"][data-id="m1"]'); await a.esperar(() => a.w.location.hash === '#mia/m1');
+  a.clic('[data-act="hoy.editarMia"][data-v="m1"]'); await a.esperar(() => a.w.location.hash === '#mia/m1');
   await a.tic();
   a.clic('[data-act="mia.borrar"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
   assert.match($('.hoja').textContent, /¿Borrar «Core en casa» de tus sesiones\?/);
   assert.equal($('.hoja [data-r="1"]').textContent, 'Borrar «Core en casa»');
-  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#hoy');
   assert.equal((a.estado.estado().misSesiones || []).length, 0);
 });
 
@@ -210,7 +209,7 @@ test('Ejercicios: filtros con aria-pressed sin perder el foco, búsqueda y «Añ
   assert.deepEqual($$('.mia-ej').map(x => x.dataset.ej), ['plancha']);
   // El ejercicio de la ficha ya cuenta como un cambio: salir pregunta
   a.clic('[data-act="mia.volver"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
-  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#hoy');
 });
 
 test('Progreso: vacío con sus dos acciones; con datos, vasos con el denominador del plan y «Ver como tabla»', async () => {
@@ -284,7 +283,7 @@ test('borrador: se rehace si la guardada cambia por otro lado; se descarta al sa
   ent.añadirAMia('mc', 'plancha');
   await a.tic();
   assert.deepEqual($$('.mia-ej').map(x => x.dataset.ej), ['crunch', 'flexiones', 'plancha']);
-  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#perfil'); await a.tic();
+  a.clic('[data-act="mia.guardar"]'); await a.esperar(() => a.w.location.hash === '#hoy'); await a.tic();
   assert.deepEqual(a.estado.estado().misSesiones[0].ejercicios.map(x => x.id), ['crunch', 'flexiones', 'plancha']);
   // Una nueva a medias y se sale por la ruta (botón atrás): se descarta y se avisa
   await a.ir('mia/nueva');
@@ -305,7 +304,7 @@ test('borrador: se rehace si la guardada cambia por otro lado; se descarta al sa
   a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#progreso');
   // Sin cambios, «‹ Mis sesiones» no pregunta
   await a.ir('mia/nueva');
-  a.clic('[data-act="mia.volver"]'); await a.esperar(() => a.w.location.hash === '#perfil');
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => a.w.location.hash === '#hoy');
 });
 
 test('editor: «Borrar» con el nombre guardado, insignia de nivel y el selector mantiene su texto sin repintar', async () => {
@@ -319,7 +318,8 @@ test('editor: «Borrar» con el nombre guardado, insignia de nivel y el selector
   assert.doesNotMatch($('.mia-ej[data-ej="crunch"]').textContent, /Más difícil/);
   // Selector de una hoja (no se repinta): tras +, el lector oye «4 de 10»
   a.clic('[data-act="mia.volver"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
-  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#perfil'); await a.tic();
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => a.w.location.hash === '#hoy'); await a.tic();
+  await a.ir('perfil');
   a.clic('[data-act="perfil.grupo"][data-v="lesiones"]'); await a.tic();
   a.clic('[data-act="perfil.lesion"]'); await a.esperar(() => $('#l-dolor'));
   a.clic($('#l-dolor').closest('[data-selector]').querySelector('[data-paso="1"]'));

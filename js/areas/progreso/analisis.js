@@ -3,7 +3,7 @@
 // Nada de puntos ni logros inventados: cada número sale de un dato guardado y se explica cómo se calcula.
 
 import { plural } from '../../nucleo/ui.js';
-import { sesionesHechas, registros, rango, valor, tendenciaDolor } from '../../reglas/progresion.js';
+import { sesionesHechas, hechasConSueltos, registros, rango, valor, tendenciaDolor } from '../../reglas/progresion.js';
 import { semanasCalendario, cumplimiento, objetivoSemanal, tendenciaPeso, tendenciaCintura } from '../../reglas/contexto.js';
 import { ex, ZONAS } from '../../reglas/catalogo.js';
 
@@ -49,7 +49,7 @@ function mejorDia(reg, u) {
 }
 export function fuerza(S, semanas = 12) {
   const desde = Date.now() - semanas * 7 * DIA;
-  const ids = [...new Set(sesionesHechas(S).flatMap(s => (s.ejercicios || []).map(x => x.id)))].filter(id => ex(id) && ex(id).t === 'reps');
+  const ids = [...new Set(hechasConSueltos(S).flatMap(s => (s.ejercicios || []).map(x => x.id)))].filter(id => ex(id) && ex(id).t === 'reps');
   const filas = ids.map(id => {
     const u = '';
     const regs = registros(S, id).filter(r => r.sets.some(z => z.kg));
@@ -121,7 +121,7 @@ export function salud(S) {
   const imc = altura && peso ? r1(peso.v / (altura / 100) ** 2) : null;
   // Cardio de los últimos 7 días.
   const hace7 = Date.now() - 7 * DIA;
-  const cardio = Math.round(sesionesHechas(S).filter(s => fechaDe(s) >= hace7).reduce((a, s) => a + minutosCardio(s), 0));
+  const cardio = Math.round(hechasConSueltos(S).filter(s => fechaDe(s) >= hace7).reduce((a, s) => a + minutosCardio(s), 0));
   return {
     altura, ich, ichNivel, imc,
     peso: peso && { ...peso, tendencia: tendenciaDe(S, 'peso') },

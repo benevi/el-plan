@@ -592,9 +592,9 @@ for (const persona of ['victor', 'virginia']) {
       await irAlDia(page, 1);
       // Martes no toca: descanso, con «Entrenar igualmente».
       await expect(page.locator('.hoy-tarjeta h2')).toHaveText('Descanso');
-      await page.click('#nav a[href="#perfil"]');
-      await page.click('[data-act="perfil.grupo"][data-v="entreno"]');
-      await page.click('[data-act="perfil.crearMia"]');
+      // Hoy › Mis sesiones › Crear una sesión (decisión de Víctor del 24-11-2026: solo en Hoy).
+      await expect(page.locator('.mis-sesiones-hoy')).toContainText('Elige tú los ejercicios');
+      await page.click('.mis-sesiones-hoy [data-act="hoy.crearMia"]');
       await expect(page).toHaveURL(/#mia\/nueva$/);
       await expect(page.locator('#vista h1')).toHaveText('Nueva sesión');
       await page.fill('#mia-nombre', 'Abdominales y flexiones');
@@ -613,19 +613,20 @@ for (const persona of ['victor', 'virginia']) {
       await expect(page.locator('.mia-ej-nombre')).toHaveText(['Crunch abdominal', 'Flexiones', 'Plancha frontal']);
       await expect(page.locator('#mia-plancha-reps-et')).toHaveText('Tiempo');
       await page.click('[data-act="mia.guardar"]');
-      await expect(page).toHaveURL(/#perfil$/);
+      await expect(page).toHaveURL(/#hoy$/);
       await expect(page.locator('#aviso')).toContainText('Guardada en tus sesiones: «Abdominales y flexiones»');
-      await expect(page.locator('.mis-sesiones')).toContainText('Abdominales y flexiones');
-      await expect(page.locator('.mis-sesiones')).toContainText('3 ejercicios, casa');
+      await expect(page.locator('.mis-sesiones-hoy')).toContainText('Abdominales y flexiones');
+      await expect(page.locator('.mis-sesiones-hoy')).toContainText('3 ejercicios, casa');
       const [mia] = (await datos(page)).misSesiones;
       expect(mia).toEqual(expect.objectContaining({ nombre: 'Abdominales y flexiones', lugar: 'casa' }));
       expect(mia.ejercicios.map(x => x.id)).toEqual(['crunch', 'flexiones', 'plancha']);
       ids.mia = mia.id;
 
-      // Hacerla: Hoy › Entrenar igualmente › «Antes de empezar» con la mía elegida (sin IA).
-      await page.click('#nav a[href="#hoy"]');
-      await abrirCheckin(page);
-      await page.click(`.hoja [data-act="entrenador.ciMia"][data-v="${mia.id}"]`);
+      // Hacerla: Hoy › Mis sesiones › tocarla → «Antes de empezar» con la mía elegida (sin IA).
+      await page.click(`.mis-sesiones-hoy [data-act="entrenador.prepararMia"][data-v="${mia.id}"]`);
+      await expect(page.locator('.hoja.checkin-pantalla h2')).toHaveText('Antes de empezar');
+      if (await page.locator('.hoja.checkin-toque').count()) await page.click('.hoja [data-act="entrenador.ciCompleto"]');
+      await expect(page.locator(`.hoja [data-act="entrenador.ciMia"][data-v="${mia.id}"]`)).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.hoja .ci-intro')).toContainText('Haces Abdominales y flexiones');
       await expect(page.locator('.hoja [data-act="entrenador.ci"][data-k="lugar"][data-v="casa"]')).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('#ci-peticion')).toHaveCount(0);
