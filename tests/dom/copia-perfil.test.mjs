@@ -37,8 +37,8 @@ test('quien migró con el fallo y tiene «m» ve la pregunta del sexo; al respon
   assert.equal(a.doc.querySelector('.revisar-sexo'), null);
 });
 
-test('Ajustes avisa de que la copia lleva datos de salud y ofrece enviarla a otra app', async () => {
-  a.clic('[data-act="perfil.grupo"][data-v="ajustes"]'); await a.tic();
+test('Copias avisa de que la copia lleva datos de salud y ofrece enviarla a otra app', async () => {
+  a.clic('[data-act="perfil.grupo"][data-v="copias"]'); await a.tic();
   assert.match(a.doc.querySelector('.aviso-salud').textContent, /datos de salud/);
   assert.ok(a.doc.querySelector('[data-act="perfil.compartir"]'));
 });

@@ -4,7 +4,7 @@
 // mismos datos. El gráfico entero es una sola parada de Tab: las flechas, Inicio y Fin recorren los puntos y el
 // lector anuncia cada uno.
 
-import { h, es, ICONOS } from '../../nucleo/ui.js';
+import { h, es, ICONOS, plural } from '../../nucleo/ui.js';
 
 const num = n => es(n, 1);
 let uid = 0;
@@ -86,10 +86,10 @@ export function vasos({ titulo, semanas }) {
   const completas = semanas.filter(s => s.n >= s.meta).length;
   return `<div class="grafico">
     <p class="grafico-titulo">${h(titulo)}</p>
-    <p class="grafico-cifra"><b>${completas}</b><span>de ${semanas.length} semanas completas</span></p>
+    <p class="grafico-cifra"><b>${completas}</b><span>de ${plural(semanas.length, 'semana completa', 'semanas completas')}</span></p>
     <ol class="vasos">${semanas.map(s => {
     const lleno = s.n >= s.meta;
-    return `<li><span class="vaso${lleno ? ' vaso--lleno' : ''}" role="img" aria-label="${h(`Semana del ${s.etiqueta}${s.actual ? ' (esta)' : ''}: ${s.n} de ${s.meta} sesiones${lleno ? ', completa' : ''}`)}"><i data-v="${Math.min(1, s.meta ? s.n / s.meta : 0).toFixed(3)}"></i>${lleno ? ICONOS.check : ''}</span><span class="cifra" aria-hidden="true">${h(s.etiqueta).replace(' ', '<br>')}</span></li>`;
+    return `<li><span class="vaso${lleno ? ' vaso--lleno' : ''}" role="img" aria-label="${h(`Semana del ${s.etiqueta}${s.actual ? ' (esta)' : ''}: ${plural(s.n, 'sesión', 'sesiones', s.meta)}${lleno ? ', completa' : ''}`)}"><i data-v="${Math.min(1, s.meta ? s.n / s.meta : 0).toFixed(3)}"></i>${lleno ? ICONOS.check : ''}</span><span class="cifra" aria-hidden="true">${h(s.etiqueta).replace(' ', '<br>')}</span></li>`;
   }).join('')}</ol>
     <details class="ver-tabla"><summary>Ver como tabla</summary><table class="tabla-datos"><thead><tr><th scope="col">Semana del</th><th scope="col">Hechas</th><th scope="col">Previstas</th></tr></thead>
     <tbody>${semanas.map(s => `<tr><td>${h(s.etiqueta)}${s.actual ? ' (esta)' : ''}</td><td>${+s.n}</td><td>${+s.meta}</td></tr>`).join('')}</tbody></table></details>

@@ -1,4 +1,4 @@
-// Perfil → Ajustes: uso del almacenamiento y última copia; recordatorio de copia cada 10 sesiones (PR 3).
+// Perfil → Copias: uso del almacenamiento y última copia; recordatorio de copia cada 10 sesiones (PR 3).
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { estadoBase, sesionDemo } from '../ayuda/comun.mjs';
@@ -11,7 +11,7 @@ after(() => a.cerrar());
 
 async function ajustes() {
   await a.ir('perfil');
-  a.clic('[data-act="perfil.grupo"][data-v="ajustes"]');
+  a.clic('[data-act="perfil.grupo"][data-v="copias"]'); // la copia a archivo está en Copias (M19)
   await a.tic();
 }
 
@@ -21,7 +21,7 @@ test('sin navigator.storage (jsdom no lo tiene) la app arranca igual', () => {
   assert.deepEqual(a.errores, []);
 });
 
-test('Perfil → Ajustes muestra lo que ocupan los datos y que aún no hay copia', async () => {
+test('Perfil → Copias muestra lo que ocupan los datos y que aún no hay copia', async () => {
   await ajustes();
   assert.match(a.doc.querySelector('.uso-almacen').textContent, /ocupan [\d,.]+ (B|KB|MB), (menos del 1 %|\d+ %) de unos 5 MB/);
   assert.match(a.doc.querySelector('.ultima-copia').textContent, /Aún no has guardado ninguna copia/);

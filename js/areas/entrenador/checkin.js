@@ -265,11 +265,23 @@ export function motivoCheckinCompleto(S, ci) {
 }
 // Lo que se usará si se empieza con un toque, en una frase: el día (o la sesión de las reglas), dónde, cuánto y
 // con qué dolor, para que se vea qué se da por bueno.
+// Dolor de una zona en un check-in de hace 3 días o menos (C-DOLOR-0): el más reciente, o null si no hay.
+export function dolorReciente(S, zona, ahora = Date.now()) {
+  const limite = ahora - 3 * 864e5;
+  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[zona] != null && new Date(s.creada || s.fecha) >= limite)
+    .sort((a, b) => String(b.creada).localeCompare(String(a.creada)))[0];
+  return ult ? +ult.checkin.dolor[zona] : null;
+}
 export function resumenUnToque(S, ci) {
   const pv = previaCheckin(ci);
-  const dolor = Object.entries(ci.dolorHoy || {}).filter(([z]) => ZONAS[z]).map(([z, v]) => `${nombreZona(z)} ${+v}/10`);
+  // «De siempre» solo si sale de la ficha de la lesión; si sale de un check-in de estos días (C-DOLOR-0), «de estos días».
+  const zonas = Object.entries(ci.dolorHoy || {}).filter(([z]) => ZONAS[z]);
+  const deFicha = ([z, v]) => dolorReciente(S, z) == null && S.perfil.lesiones.some(l => l.activa && l.zona === z && Math.min(6, +l.dolor || 0) === +v);
+  const txt = l => lista(l.map(([z, v]) => `${nombreZona(z)} ${+v}/10`));
+  const siempre = zonas.filter(deFicha), recientes = zonas.filter(x => !deFicha(x));
+  const dolor = [recientes.length && frase(`Con tu dolor de estos días: ${txt(recientes)}`), siempre.length && frase(`Con tu dolor de siempre: ${txt(siempre)}`)].filter(Boolean).join(' ');
   const que = pv.dia ? `Toca ${pv.dia.nombre}` : 'Hoy no hay día en tu plan: te preparo una sesión con lo que te falta esta semana';
-  return { pv, texto: frase(`${que}, en ${minus(LUGARES[ci.lugar] || ci.lugar)}, unos ${+pv.minutos} min`), dolor: dolor.length ? frase(`Con tu dolor de siempre: ${lista(dolor)}`) : '' };
+  return { pv, texto: frase(`${que}, en ${minus(LUGARES[ci.lugar] || ci.lugar)}, unos ${+pv.minutos} min`), dolor };
 }
 
 // Vista previa del check-in (para enseñar qué cambia antes de crear la sesión).

@@ -41,7 +41,7 @@ test('tras una copia mala sigue a mano el botón «Cargar copia»', async () => 
   await reiniciar();
   try { a.estado.importar(JSON.stringify({ version: 4, perfil: {}, sesiones: null })); } catch { /* rechazada: vale */ }
   await a.ir('perfil');
-  const aj = a.doc.querySelector('[data-act="perfil.grupo"][data-v="ajustes"]');
+  const aj = a.doc.querySelector('[data-act="perfil.grupo"][data-v="copias"]');
   if (aj) { a.clic(aj); await a.tic(); }
   assert.ok(a.doc.querySelector('[data-act="perfil.importar"]'));
 });

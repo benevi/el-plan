@@ -3,10 +3,10 @@
 // datos personales, notas para el entrenador y ajustes del móvil (código de acceso, vibración, copia).
 
 import { rutas, acciones, pestaña, pintar, ir } from '../../nucleo/router.js';
-import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, infoCopia, usoAlmacen, ErrorCopia,
+import { estado, cambiar, uid, hoyISO, exportar, importar, marcarCopiaExportada, quitarMarcaDeCarga, infoCopia, usoAlmacen, ErrorCopia,
   infoAntesDeImportar, deshacerImportar, descartarAntesDeImportar, infoApartado, recuperarApartado, descartarApartado, avisoSustituyeApartado, soltarDueño, confirmarSexo, migracionDeOtro, migrarDeViejo, resultadoMigracion } from '../../nucleo/estado.js';
 import { esViejo } from '../../nucleo/migracion.js';
-import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta } from '../../nucleo/ui.js';
+import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, num, es, fechaCorta, plural } from '../../nucleo/ui.js';
 import { OBJETIVOS, NIVELES, LUGARES, MATERIAL, MATERIAL_CASA, PERSONAS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { ZONAS, ex } from '../../reglas/catalogo.js';
 import { medidorNivel } from '../../reglas/contexto.js';
@@ -27,6 +27,9 @@ const USO_IA = {
   ahorro: ['Ahorro', 'La IA solo cuando la pidas para la semana. El día lo ajusta la app.'],
 };
 const minus = t => String(t || '').toLowerCase();
+// En la lista de lesiones, la nota se recorta (M9): entera está en su ficha.
+const NOTA_EN_LISTA = 90;
+const recortar = (t, n) => { const x = String(t || ''); return x.length > n ? x.slice(0, n - 1).trimEnd() + '…' : x; };
 // «Ganar músculo, Salud, movilidad y espalda sana · intermedio · 1 lesión activa»
 function resumenPerfil(p) {
   const obj = p.objetivos.length ? p.objetivos.map(o => OBJETIVOS[o].nombre).join(', ') : 'Sin objetivos';
@@ -42,7 +45,7 @@ function vista() {
   ${avisosMigracion(S)}
   ${g !== 'copias' ? avisoNube() : ''}
   <nav class="grupos-perfil" aria-label="Partes del perfil"><ul>${GRUPOS.map(([k, n]) => `<li><button type="button" class="chip" data-act="perfil.grupo" data-v="${k}"${g === k ? ' aria-current="true"' : ''}>${h(n)}</button></li>`).join('')}</ul></nav>
-  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopias, ajustes: grupoAjustes }[g] || grupoObjetivos)(S)}`;
+  ${({ objetivos: grupoObjetivos, lesiones: grupoLesiones, salud: grupoSalud, entreno: grupoEntreno, datos: grupoDatos, copias: grupoCopiasYArchivo, ajustes: grupoAjustes }[g] || grupoObjetivos)(S)}`;
 }
 
 const nombre = d => (PERSONAS[d] ? PERSONAS[d].nombre : '—');
@@ -85,7 +88,11 @@ function medidor(S) {
 
 function grupoObjetivos(S) {
   const p = S.perfil;
-  return `${tarjeta('Objetivos', `<div class="chips" role="group" aria-label="Objetivos (puedes marcar varios)">${Object.entries(OBJETIVOS).map(([k, o]) => chip('perfil.objetivo', k, p.objetivos.includes(k), o.nombre)).join('')}</div>`, { sub: 'puedes marcar varios' })}
+  // Con varios, manda el primero (C-OBJ-1): se dice cuál y se puede poner otro en su lugar (M12).
+  const [manda, ...otros] = p.objetivos.filter(k => OBJETIVOS[k]);
+  const orden = otros.length ? `<div class="objetivo-manda"><p class="ayuda" tabindex="-1">Manda <b>${h(OBJETIVOS[manda].nombre)}</b>: marca las series, el volumen y el cardio. ${otros.length === 1 ? 'El otro suma' : 'Los otros suman'} lo suyo.</p>
+    <div class="fila-botones">${otros.map(k => `<button type="button" class="boton boton--secundario" data-act="perfil.objetivoPrincipal" data-v="${h(k)}">Que mande ${h(minus(OBJETIVOS[k].nombre))}</button>`).join('')}</div></div>` : '';
+  return `${tarjeta('Objetivos', `<div class="chips" role="group" aria-label="Objetivos (puedes marcar varios)">${Object.entries(OBJETIVOS).map(([k, o]) => chip('perfil.objetivo', k, p.objetivos.includes(k), o.nombre)).join('')}</div>${orden}`, { sub: 'puedes marcar varios' })}
   ${tarjeta('Nivel', `${segmento('Nivel', 'perfil.nivel', Object.entries(NIVELES), p.nivel, { ancho: true })}
     ${interruptor('perfil.nivelAuto', p.nivelAuto, 'Que mi progreso me cambie de nivel')}
     ${medidor(S)}`)}
@@ -100,7 +107,7 @@ function grupoLesiones(S) {
     ${lesiones.some(l => l.activa && l.dolorRevisar) ? `<div class="aviso aviso-linea aviso--aviso" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>El dolor de las lesiones traídas de la app anterior es una estimación. Toca cada una y pon cuánto te duele ahora.</p></div></div>` : ''}
     ${lesiones.length ? `<ul class="lista">${lesiones.map(l => `<li class="${l.activa ? '' : 'apagada'}">
       <button type="button" class="fila" data-act="perfil.lesion" data-id="${h(l.id)}">
-        <span class="crece"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span>${[l.activa ? `Dolor ${+l.dolor} de 10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada', l.tipo ? minus(TIPOS_LESION[l.tipo]) : '', detalle(l), l.desde ? 'desde ' + fechaCorta(l.desde) : '', l.nota].filter(Boolean).map(h).join(', ')}</span></span>
+        <span class="crece"><b>${h(ZONAS[l.zona] ? ZONAS[l.zona].nombre : l.zona)}</b><span>${[l.activa ? `Dolor ${+l.dolor} de 10${l.dolorRevisar ? ' (estimado: revísalo)' : ''}` : 'Curada', l.tipo ? minus(TIPOS_LESION[l.tipo]) : '', detalle(l), l.desde ? 'desde ' + fechaCorta(l.desde) : '', recortar(l.nota, NOTA_EN_LISTA)].filter(Boolean).map(h).join(', ')}</span></span>
         ${ICONOS.editar}<span class="solo-lector">Editar</span></button></li>`).join('')}</ul>` : '<p class="texto-2">Sin lesiones apuntadas.</p>'}
     <button type="button" class="boton boton--secundario" data-act="perfil.lesion">${ICONOS.mas}<span>Añadir lesión o dolor</span></button>`);
 }
@@ -148,18 +155,23 @@ function grupoDatos(S) {
     <p class="ayuda">Lo lee el entrenador IA como información, no como órdenes.</p></div>`)}`;
 }
 
-function grupoAjustes(S) {
-  return `${tarjeta('Ajustes del móvil', `<div class="campo"><label for="a-codigo">Código de acceso a la IA</label><input id="a-codigo" type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" aria-describedby="a-codigo-ayuda">
-      <p class="ayuda" id="a-codigo-ayuda">El mismo que te ha dado Víctor para usar el entrenador IA. Sin él, la app monta tus sesiones con sus reglas.</p></div>
-    <div class="bloque-mini">${interruptor('perfil.ajuste', S.ajustes.vibrar, 'Vibrar al acabar el descanso', 'data-k="vibrar"')}
-    ${interruptor('perfil.ajuste', S.ajustes.sonido, 'Pitido al acabar el descanso', 'data-k="sonido"')}</div>`)}
+// Perfil › Copias: la de la nube y, debajo, la copia en un archivo, con lo de antes de cargar una copia y lo
+// apartado (decisión de Víctor sobre M19: las copias, en un solo sitio).
+function grupoCopiasYArchivo(S) {
+  return `${grupoCopias(S)}
   ${tarjeta('Copia en un archivo', `<div class="aviso aviso-linea aviso--aviso aviso-salud" role="note">${ICONOS.alerta}<div class="aviso-texto"><b>Lleva tus datos de salud</b><p>Lesiones, dolor, medidas y entrenos (sin el código de acceso). Guárdala en un sitio privado.</p></div></div>
     <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="perfil.exportar">Guardar copia</button><button type="button" class="boton boton--secundario" data-act="perfil.importar">Cargar copia</button></div>
     ${puedeCompartirArchivos() ? '<button type="button" class="boton boton--texto" data-act="perfil.compartir">Enviar la copia a otra app (Archivos, Drive…)</button>' : ''}
     ${bloqueCopia()}
     ${bloqueDeshacer()}
-    ${bloqueApartado()}
-    <p class="ayuda">Las copias automáticas están en Perfil › Copias.</p>`)}
+    ${bloqueApartado()}`)}`;
+}
+
+function grupoAjustes(S) {
+  return `${tarjeta('Ajustes del móvil', `<div class="campo"><label for="a-codigo">Código de acceso a la IA</label><input id="a-codigo" type="password" autocomplete="off" data-cambio="perfil.codigo" value="${h(S.ajustes.codigo)}" aria-describedby="a-codigo-ayuda">
+      <p class="ayuda" id="a-codigo-ayuda">El mismo que te ha dado Víctor para usar el entrenador IA. Sin él, la app monta tus sesiones con sus reglas.</p></div>
+    <div class="bloque-mini">${interruptor('perfil.ajuste', S.ajustes.vibrar, 'Vibrar al acabar el descanso', 'data-k="vibrar"')}
+    ${interruptor('perfil.ajuste', S.ajustes.sonido, 'Pitido al acabar el descanso', 'data-k="sonido"')}</div>`)}
   ${tarjeta('Este móvil', `<p>Móvil de ${h(nombre(S.dueño))}.</p>
     <button type="button" class="boton boton--texto" data-act="perfil.cambiarDueño">Cambiar de quién es</button>
     <p class="meta version-app">Versión de la app: <span class="cifra" data-version-app>${h(versionApp() || '—')}</span></p>
@@ -177,10 +189,11 @@ alCambiarModo(() => { if (/^#perfil/.test(location.hash) && grupoPerfil() === 'a
 
 // Uso del almacenamiento y última copia exportada (los datos solo viven en este móvil).
 const tamaño = b => b < 1024 ? b + ' B' : b < 1024 * 1024 ? es(b / 1024, 0) + ' KB' : es(b / 1024 / 1024, 1) + ' MB';
-export function recordatorioCopia() {
-  const c = infoCopia();
-  if (!c.toca) return avisoNube();
-  return avisoNube() + `<div class="aviso aviso-linea aviso--aviso recordatorio-copia" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>Llevas ${+c.sesionesDesde} sesiones sin guardar una copia. Tus datos solo están en este móvil.</p>
+// Hoy enseña también el aviso de la nube; en Perfil ya va arriba (salvo en Copias, que tiene el suyo) (M19).
+export function recordatorioCopia({ conNube = true } = {}) {
+  const c = infoCopia(), nube = conNube ? avisoNube() : '';
+  if (!c.toca) return nube;
+  return nube + `<div class="aviso aviso-linea aviso--aviso recordatorio-copia" role="note">${ICONOS.alerta}<div class="aviso-texto"><p>Llevas ${plural(+c.sesionesDesde, 'sesión', 'sesiones')} sin guardar una copia. Tus datos solo están en este móvil.</p>
     <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.exportar">Guardar copia</button></div></div></div>`;
 }
 function bloqueCopia() {
@@ -188,7 +201,7 @@ function bloqueCopia() {
   const pct = u.porcentaje < 1 ? 'menos del 1 %' : `${es(u.porcentaje, 0)} %`;
   return `<p class="ayuda uso-almacen">Tus datos ocupan ${tamaño(u.bytes)}, ${pct} de unos 5 MB que deja el navegador.</p>
     <p class="ayuda ultima-copia">${c.fecha ? `Última copia guardada: ${h(fechaCorta(c.fecha))}.` : 'Aún no has guardado ninguna copia.'}</p>
-    ${recordatorioCopia()}`;
+    ${recordatorioCopia({ conNube: false })}`;
 }
 
 function bloqueDeshacer() {
@@ -203,7 +216,7 @@ function bloqueApartado() {
   const a = infoApartado();
   if (!a) return '';
   const de = a.dueño && a.dueño !== estado().dueño ? ` de ${h(nombre(a.dueño))}` : '';
-  return `<div class="aviso aviso-linea aviso--info apartado" role="note">${ICONOS.info}<div class="aviso-texto"><p>Hay unos datos apartados${de}${a.fecha ? ` del ${h(fechaCorta(a.fecha))}` : ''} (${+a.sesiones} sesiones hechas): cambios de otra ventana que no se pudieron juntar, o lo que tenías al cargar otra copia.</p>
+  return `<div class="aviso aviso-linea aviso--info apartado" role="note">${ICONOS.info}<div class="aviso-texto"><p>Hay unos datos apartados${de}${a.fecha ? ` del ${h(fechaCorta(a.fecha))}` : ''} (${plural(+a.sesiones, 'sesión hecha', 'sesiones hechas')}): cambios de otra ventana que no se pudieron juntar, o lo que tenías al cargar otra copia.</p>
     <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="perfil.recuperarApartado">Recuperarlos</button><button type="button" class="boton boton--texto" data-act="perfil.descartarApartado">Descartar</button></div></div></div>`;
 }
 
@@ -261,12 +274,23 @@ async function exportarCopia(opciones) {
 
 function avisoCargada(r) {
   const base = r.tipo === 'anterior'
-    ? (r.sesiones ? `He traído ${r.sesiones} sesiones de la copia de la app anterior` : 'La copia de la app anterior no traía nada nuevo')
+    ? (r.sesiones ? `He traído ${plural(r.sesiones, 'sesión', 'sesiones')} de la copia de la app anterior` : 'La copia de la app anterior no traía nada nuevo')
     : 'Copia cargada';
   aviso(r.avisos && r.avisos.length ? `${base}. ${r.avisos.join('. ')}.` : base, r.avisos && r.avisos.length ? 'info' : '');
 }
 async function cargarCopia(txt, opciones = {}) {
-  try { avisoCargada(importar(txt, opciones)); } catch (e) {
+  try {
+    const r = importar(txt, opciones);
+    // Lo que hay ahora en el móvil está entero en el archivo que se acaba de cargar: cuenta como copia guardada
+    // y no se pide guardar otra por esas sesiones (M17). La de la app anterior se suma a lo que había: esa no.
+    // Con la fecha de la última sesión hecha que trae (no «hoy»: la copia puede ser vieja).
+    if (r.tipo !== 'anterior') {
+      const ultima = Object.values(estado().sesiones).filter(x => x.estado === 'hecha').map(x => String(x.terminada || x.fecha || '')).sort().pop();
+      const d = ultima && new Date(ultima.length === 10 ? ultima + 'T23:59:59' : ultima);
+      if (d && !isNaN(d)) { marcarCopiaExportada(d, { porCarga: true }); pintar(); }
+    }
+    avisoCargada(r);
+  } catch (e) {
     if (e instanceof ErrorCopia && e.codigo === 'otra-persona') {
       if (await confirmar(`${e.message} ¿Seguro que quieres cargarla?`, { si: `Sí, el móvil es de ${nombre(e.info.dueño)}`, peligro: true })) return cargarCopia(txt, { ...opciones, otraPersona: true });
       return;
@@ -320,6 +344,12 @@ acciones({
   'perfil.usoIA': el => cambiar(S => { S.perfil.usoIA = el.dataset.v; }, 'perfil'),
   'perfil.quitarGusto': el => cambiar(S => { delete S.perfil.gustos[el.dataset.id]; }, 'perfil'),
   'perfil.objetivo': el => cambiar(S => alternar(S.perfil.objetivos, el.dataset.v), 'perfil'),
+  // El botón desaparece al repintar: el foco va al texto «Manda …», que dice el cambio (M12).
+  'perfil.objetivoPrincipal': el => {
+    cambiar(S => { const o = S.perfil.objetivos, i = o.indexOf(el.dataset.v); if (i > 0) o.unshift(...o.splice(i, 1)); }, 'perfil');
+    pintar();
+    const t = $('#vista .objetivo-manda .ayuda'); try { t && t.focus({ preventScroll: true }); } catch { /* nada */ }
+  },
   // El cambio a mano queda apuntado: la bajada de C-NIVEL-3 no lo pisa (revisión del PR #45, G2).
   'perfil.nivel': el => cambiar(S => {
     const de = +S.perfil.nivel || 1, a = +el.dataset.v; S.perfil.nivel = a;
@@ -382,12 +412,12 @@ acciones({
   'perfil.deshacerImportar': async () => {
     const a = infoAntesDeImportar(); if (!a) return;
     if (!await confirmar(`¿Volver a los datos que había antes de cargar la última copia (${fechaCorta(a.fecha)})? Lo de ahora queda apartado en su lugar.`, { si: 'Volver a ellos' })) return;
-    try { deshacerImportar(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
+    try { deshacerImportar(); quitarMarcaDeCarga(); aviso('Has vuelto a los datos de antes'); } catch (e) { aviso(e.message, 'error'); }
   },
   'perfil.recuperarApartado': async () => {
     const a = infoApartado(); if (!a) return;
-    if (!await confirmar(`¿Cambiar los datos de ahora por los apartados (${+a.sesiones} sesiones hechas)? Lo de ahora queda apartado en su lugar y puedes volver a ello.`, { si: 'Recuperarlos' })) return;
-    try { await recuperarApartado(); aviso('Has recuperado los datos apartados'); } catch (e) { aviso(e.message, 'error'); }
+    if (!await confirmar(`¿Cambiar los datos de ahora por los apartados (${plural(+a.sesiones, 'sesión hecha', 'sesiones hechas')})? Lo de ahora queda apartado en su lugar y puedes volver a ello.`, { si: 'Recuperarlos' })) return;
+    try { await recuperarApartado(); quitarMarcaDeCarga(); aviso('Has recuperado los datos apartados'); } catch (e) { aviso(e.message, 'error'); }
     pintar();
   },
   'perfil.descartarApartado': async () => {
@@ -408,7 +438,7 @@ acciones({
     if (!await confirmar(`Se quitará lo traído de la app anterior de ${nombre(S.migracion.dueño)} y se traerá lo de ${nombre(S.dueño)}. ${QUEDA}`, { si: 'Seguir' })) return;
     cambiar(X => { migrarDeViejo(X.dueño); }, 'perfil');
     const r = resultadoMigracion();
-    aviso(`He traído ${r ? r.sesiones : 0} sesiones de la app anterior`);
+    aviso(`He traído ${plural(r ? r.sesiones : 0, 'sesión', 'sesiones')} de la app anterior`);
   },
 });
 

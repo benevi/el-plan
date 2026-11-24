@@ -16,7 +16,7 @@
 //   objetivo como tope de partida.
 // - Se guarda en su propia clave: si la app se recarga a mitad de un descanso, sigue contando.
 
-import { estado } from '../../nucleo/estado.js';
+import { estado, escuchar } from '../../nucleo/estado.js';
 import { h, mmss, ICONOS, movimientoReducido, ponerEntradaCapa, quitarEntradaCapa, hayEntradaCapa } from '../../nucleo/ui.js';
 import { agenda, wav, fasesCuenta, CORTO, ALARMA, ARRANCA, DOBLE } from './pitidos.js';
 
@@ -511,6 +511,13 @@ window.addEventListener('popstate', e => {
   if (location.href !== urlCuenta) return;
   if (t && t.tipo === 'tiempo') salirConAtras();
 });
+// Si la sesión del temporizador ya no existe (se cargó una copia aquí o en otra pestaña, se descartó), el
+// descanso y su alarma se quitan: si no, la barra seguiría contando para nada (verificación de la re-auditoría).
+const sinSesion = meta => !!(meta && meta.sesion && !(estado().sesiones || {})[meta.sesion]);
+escuchar(() => {
+  if (t && sinSesion(t.meta)) parar();
+  if (alarmaViva && sinSesion(alarmaViva.meta)) cerrarAlarma({ foco: false });
+});
 // Al cambiar de pantalla, la barra se enseña o se esconde (no va encima de otra sesión).
 window.addEventListener('hashchange', () => { if (t || alarmaViva) pintarCaja(); });
 
@@ -524,7 +531,7 @@ setTimeout(() => {
     // Tope: un descanso que acabó hace más de 10 min o un ejercicio por tiempo pasado su máximo + 2 min (lo que
     // quedaba de previas y lados incluido) ya no se recupera. Uno que espera confirmación (en pausa) sí.
     const resto = g.fases.slice(g.i).reduce((a, x) => a + (x.f === 'previa' ? x.dur : x.f === 'trabajo' ? x.hi : 0), 0);
-    if ((F.f === 'descanso' && s - F.dur > 10 * 60) || (g.tipo === 'tiempo' && g.pausa == null && s > resto + EXTRA_MAX)) { localStorage.removeItem(CLAVE); return; }
+    if (sinSesion(g.meta) || (F.f === 'descanso' && s - F.dur > 10 * 60) || (g.tipo === 'tiempo' && g.pausa == null && s > resto + EXTRA_MAX)) { localStorage.removeItem(CLAVE); return; }
     t = g; manejadoresMedia(); mediaSession();
     bucle(false); // lo que pasó mientras la app estaba cerrada se trata como con el móvil bloqueado
     if (t) programarSonido();

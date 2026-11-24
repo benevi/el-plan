@@ -87,3 +87,14 @@ test('S1 (revisión #46): tras el tope diario de la IA no se ofrece «Reintentar
   assert.match(a.doc.querySelector('.nota-fallo').textContent, /tope diario/);
   assert.equal(boton(), null);
 });
+
+test('M20: tras «Reintentar con IA» con éxito el aviso dice el resultado, no «Se lo pides al entrenador IA.»', async () => {
+  await conSesionDeLaApp();
+  a.clic(boton());
+  await a.esperar(() => Object.values(a.estado.estado().sesiones).some(s => s.fuente === 'ia'), { max: 4000 });
+  await a.esperar(() => !a.doc.querySelector('.hoja.espera'), { max: 4000 });
+  await a.tic();
+  const txt = (a.doc.querySelector('#aviso') || {}).textContent || '';
+  assert.doesNotMatch(txt, /Se lo pides al entrenador IA/);
+  assert.match(txt, /El entrenador IA ha rehecho tu sesión/);
+});

@@ -2,6 +2,7 @@
 // Funciones puras: las usa la pestaña Progreso, la pantalla Hoy (constancia) y el entrenador IA (analisisParaEntrenador).
 // Nada de puntos ni logros inventados: cada número sale de un dato guardado y se explica cómo se calcula.
 
+import { plural } from '../../nucleo/ui.js';
 import { sesionesHechas, registros, rango, valor, tendenciaDolor } from '../../reglas/progresion.js';
 import { semanasCalendario, cumplimiento, objetivoSemanal, tendenciaPeso, tendenciaCintura } from '../../reglas/contexto.js';
 import { ex, ZONAS } from '../../reglas/catalogo.js';
@@ -34,7 +35,7 @@ export function constancia(S, semanasAtras = 8) {
 // Frase corta para la pantalla Hoy (o para el entrenador).
 export function textoConstancia(c) {
   if (!c.total) return 'Tu primera sesión empieza la cuenta.';
-  const sem = c.estaSemana >= c.objetivo ? `Semana cumplida: ${c.estaSemana} de ${c.objetivo}` : `${c.estaSemana} de ${c.objetivo} sesiones esta semana`;
+  const sem = c.estaSemana >= c.objetivo ? `Semana cumplida: ${c.estaSemana} de ${c.objetivo}` : `${plural(c.estaSemana, 'sesión', 'sesiones', c.objetivo)} esta semana`;
   const racha = c.racha > 1 ? ` · ${c.racha} semanas seguidas cumpliendo` : '';
   return sem + racha;
 }

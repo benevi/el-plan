@@ -17,7 +17,7 @@ import { sesionesHechas } from '../../reglas/progresion.js';
 import {
   crearSesionHoy, crearPlanSemana, planDeLaSemana, planDeHoy, estadoDias, siguientePendiente, reorganizar, noPuedoHoy,
   previaCheckin, diasPorDefecto, tiempoSesion, diaElegido, preguntaAntes, sinEntrenarHoy, SEÑALES, SEÑALES_CORTAS, T2, DESDE, misSesiones, miaDe,
-  motivoCheckinCompleto, resumenUnToque,
+  motivoCheckinCompleto, resumenUnToque, dolorReciente,
 } from './entrenador.js';
 
 export { planDeLaSemana, planDeHoy, estadoDias };
@@ -176,10 +176,8 @@ function hojaAlarma() {
 // Dolor con que se rellena el check-in (C-DOLOR-0): el último de un check-in de hace ≤ 3 días; si no, el de
 // la ficha con tope 6 (así una ficha a 9 no lleva sola al día de dolor alto).
 function dolorInicial(S, l) {
-  const limite = Date.now() - 3 * 864e5;
-  const ult = Object.values(S.sesiones).filter(s => s.checkin && s.checkin.dolor && s.checkin.dolor[l.zona] != null && new Date(s.creada || s.fecha) >= limite)
-    .sort((a, b) => String(b.creada).localeCompare(String(a.creada)))[0];
-  return ult ? +ult.checkin.dolor[l.zona] : Math.min(6, +l.dolor || 0);
+  const r = dolorReciente(S, l.zona);
+  return r != null ? r : Math.min(6, +l.dolor || 0);
 }
 
 // op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy sin plan).
@@ -299,7 +297,11 @@ async function prepararSesion(datos, op = {}) {
   if (r.pregunta) { ci = { ...datos, ...(op.reintento ? { reintento: op.reintento } : {}) }; hojaPregunta(r.pregunta); return; }
   if ($('.hoja.checkin')) cerrarHoja();
   if (r.descartada) { aviso(op.reintento ? 'Ya has empezado a apuntar en esta sesión: la dejo como está.' : 'Mientras tanto ya tenías otra sesión de hoy: la dejo como está.', 'info'); return; }
-  if (r.aviso) aviso(r.aviso, 'info'); else if (r.motivo) aviso(r.motivo, 'info');
+  // Si la hizo la IA, el motivo («Se lo pides al entrenador IA.») ya lo dijo la previa: se dice el resultado (M20).
+  const deIA = r.sesion && r.sesion.fuente === 'ia';
+  if (r.aviso) aviso(r.aviso, 'info');
+  else if (deIA && op.reintento) aviso('El entrenador IA ha rehecho tu sesión.', 'info');
+  else if (r.motivo && !deIA) aviso(r.motivo, 'info');
   if (r.sesion && (mismaPantalla(hash) || !usaIA)) ir('sesion/' + r.sesion.id);
   else if (r.sesion) aviso('Tu sesión está lista en Hoy.', 'info');
 }
@@ -424,7 +426,7 @@ export function tarjetaAnalisis(S) {
     <h2>Lo que ve tu entrenador</h2>
     <ul class="analisis">
       ${grupo('progresa', 'Progresan')}${grupo('estancado', 'Estancados')}${grupo('molesta', 'Te molestan')}
-      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} sesiones por semana (${t.constancia == null ? 'aún sin semanas completas' : +t.constancia + ' % de lo previsto'})${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
+      <li><b>Constancia:</b> ${es(t.sesionesPorSemana)} ${+t.sesionesPorSemana === 1 ? 'sesión' : 'sesiones'} por semana (${t.constancia == null ? 'aún sin semanas completas' : +t.constancia + ' % de lo previsto'})${t.esfuerzoMedio ? `, esfuerzo medio ${es(t.esfuerzoMedio)}/5` : ''}.</li>
       ${t.cambioPeso4sem != null ? `<li><b>Peso:</b> ${t.cambioPeso4sem > 0 ? '+' : ''}${es(t.cambioPeso4sem)} kg en 4 semanas.</li>` : ''}
       ${t.dolor.map(d => `<li><b>Dolor de ${h(minus(d.nombre))}:</b> ${es(d.media14)}/10 de media${d.tendencia === 'sube' ? ' (sube: más rehabilitación)' : d.tendencia === 'baja' ? ' (baja)' : ''}.</li>`).join('')}
     </ul></section>`;

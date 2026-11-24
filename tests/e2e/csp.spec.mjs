@@ -105,7 +105,7 @@ for (const persona of ['victor', 'virginia']) {
     await expect(page.locator('.final')).toHaveCount(0);
     // Guardar copia (descarga por blob:)
     await page.goto('/#perfil');
-    await page.click('[data-act="perfil.grupo"][data-v="ajustes"]');
+    await page.click('[data-act="perfil.grupo"][data-v="copias"]');
     const [descarga] = await Promise.all([page.waitForEvent('download'), page.locator('[data-act="perfil.exportar"]').first().click()]);
     expect(descarga.suggestedFilename()).toMatch(/\.json$/);
     expect(await violaciones(page)).toEqual([]);

@@ -67,18 +67,23 @@ test('Perfil: nivel, minutos y uso de la IA son grupos de radio; objetivos y lug
   assert.equal($('#p-dias').closest('[data-selector]').querySelector('[data-paso="1"]').getAttribute('aria-disabled'), 'true');
 });
 
-test('Ajustes: ayuda del código sin jerga, aviso de datos de salud en la copia y versión visible', async () => {
+test('Ajustes: ayuda del código sin jerga y versión visible; el aviso de datos de salud de la copia, en Copias', async () => {
   await reiniciar(estadoBase());
   await grupo('ajustes');
   const v = a.vista().textContent;
   assert.match(v, /El mismo que te ha dado Víctor para usar el entrenador IA/);
   assert.doesNotMatch(v, /APP_CODE|Vercel/);
-  assert.match($('.aviso-salud').textContent, /Lleva tus datos de salud/);
+  assert.equal($('.aviso-salud'), null, 'la copia a archivo ya no está en Ajustes (M19)');
   assert.ok($('[data-version-app]'));
   // Cada campo con su etiqueta
   assert.equal($('label[for="a-codigo"]').textContent, 'Código de acceso a la IA');
   await grupo('datos');
   for (const id of ['d-sexo', 'd-altura', 'd-nac', 'd-notas']) assert.ok($(`label[for="${id}"]`), id);
+  // Las copias, en un solo sitio (decisión de Víctor sobre M19): la de la nube y la del archivo, en Copias.
+  await grupo('copias');
+  assert.ok($('.copias-nube'));
+  assert.match($('.aviso-salud').textContent, /Lleva tus datos de salud/);
+  assert.ok($('[data-act="perfil.exportar"]') && $('[data-act="perfil.importar"]'));
 });
 
 test('editor de Mis sesiones: crear, errores junto al campo, añadir, subir, bajar, quitar y guardar', async () => {

@@ -1,4 +1,4 @@
-// D5 (re-auditoría): «ha quedado apartado» tiene que poder recuperarse desde la app. Perfil › Ajustes enseña
+// D5 (re-auditoría): «ha quedado apartado» tiene que poder recuperarse desde la app. Perfil › Copias enseña
 // lo apartado (pipos4-conflicto o el registro 'conflicto' del espejo) con «Recuperarlos» y «Descartar».
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,13 +9,13 @@ const apartado = estadoBase({ perfil: { ...estadoBase().perfil, notas: 'lo de la
 const a = await montar({ ls: { pipos4: estadoBase(), 'pipos4-conflicto': JSON.stringify({ fecha: '2026-11-21T10:00:00.000Z', txt: JSON.stringify(apartado) }) }, hash: 'perfil' });
 after(() => a.cerrar());
 
-async function ajustes() {
+async function ajustes() { // las copias (archivo, lo apartado) están en Perfil › Copias (M19)
   await a.ir('perfil');
-  a.clic('[data-act="perfil.grupo"][data-v="ajustes"]'); await a.tic();
+  a.clic('[data-act="perfil.grupo"][data-v="copias"]'); await a.tic();
 }
 const responder = async si => { await a.esperar(() => a.doc.querySelector('.hoja [data-r]')); a.clic(`.hoja [data-r="${si ? 1 : 0}"]`); await a.tic(); };
 
-test('D5: Perfil › Ajustes enseña lo apartado y «Recuperarlos» lo carga (y lo de ahora queda para volver)', async () => {
+test('D5: Perfil › Copias enseña lo apartado y «Recuperarlos» lo carga (y lo de ahora queda para volver)', async () => {
   await ajustes();
   const bloque = await a.esperar(() => a.vista().querySelector('.apartado'));
   assert.match(bloque.textContent, /datos apartados/);

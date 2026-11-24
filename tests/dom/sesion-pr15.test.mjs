@@ -197,6 +197,7 @@ test('dos pestañas: si la otra empieza un descanso, aquí se adopta', async () 
 test('cerrar la sesión de ayer no corta el descanso de otra y apunta el dolor en su día', async () => {
   const b = lista();
   Object.assign(b.sesiones.s1, { fecha: '2026-11-01', checkin: { energia: 3, dolor: { rodilla: 2 } } });
+  b.sesiones.otra = sesionDemo('otra'); // la de hoy, que existe (un descanso de una sesión que ya no está se quita)
   b.perfil.lesiones.push({ id: 'l1', zona: 'rodilla', dolor: 2, desde: '2026-01-01', nota: '', activa: true });
   await reiniciar(b);
   await a.ir('sesion/s1');

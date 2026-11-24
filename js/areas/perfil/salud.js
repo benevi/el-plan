@@ -17,14 +17,16 @@ export function grupoSalud(S) {
   const vistoBueno = k => (activo(k) && CON_VISTO_BUENO.includes(k) ? `<p class="ayuda">${h(AVISO_VISTO_BUENO)}</p>${casilla(k, vb[k], 'Mi médico me ha dado el visto bueno', 'perfil.saludVB')}` : '');
   const fila = (k, extra = '') => `<div class="salud-fila${activo(k) ? ' salud-fila--activa' : ''}">${casilla(k, activo(k), CAMPOS_SALUD[k])}${activo(k) ? `<div class="salud-extra">${extra}${vistoBueno(k)}</div>` : ''}</div>`;
   const opciones = (k, ops) => segmento(CAMPOS_SALUD[k], 'perfil.saludValor', ops, s[k], { ancho: true, grupo: 'salud-' + k, extra: `data-k="${k}"` });
+  // Embarazo y parto no se ofrecen a un hombre (M18); si ya estuvieran marcados, se ven para poder quitarlos.
+  const embarazo = (S.perfil.datos || {}).sexo !== 'h' || activo('embarazo') || activo('posparto') || !!s.cesarea;
   const semanas = k => `<div class="campo"><label for="s-${k}">Semanas${k === 'embarazo' ? ' de embarazo' : ' desde el parto'}</label><input id="s-${k}" type="number" inputmode="numeric" min="1" max="${k === 'posparto' ? 104 : 45}" data-cambio="perfil.saludNum" data-k="${k}" value="${+s[k] || ''}"></div>`;
   return `<section class="tarjeta perfil-sec" aria-labelledby="p-salud">
     <h2 id="p-salud">Salud</h2>
     ${T1.map(t => `<p>${h(t)}</p>`).join('')}
     <div class="aviso aviso-linea aviso--info" role="note">${ICONOS.info}<div class="aviso-texto"><b>Es opcional</b><p>Se guarda en este móvil y en tu copia privada. Al entrenador IA solo le llegan como etiquetas (por ejemplo «tensión alta controlada»), nunca lo que escribas.</p></div></div>
     ${fila('hipertension', opciones('hipertension', [['controlada', 'Controlada'], ['sin_controlar', 'Sin controlar o no lo sé']]))}
-    ${fila('embarazo', semanas('embarazo'))}
-    ${fila('posparto', semanas('posparto') + casilla('cesarea', s.cesarea, 'Fue por cesárea'))}
+    ${embarazo ? `${fila('embarazo', semanas('embarazo'))}
+    ${fila('posparto', semanas('posparto') + casilla('cesarea', s.cesarea, 'Fue por cesárea'))}` : ''}
     <fieldset class="salud-med"><legend class="grupo-et">${h(CAMPOS_SALUD.medicacion)}</legend>${Object.entries(MEDICACION).map(([k, n]) => `<label class="interruptor"><input type="checkbox" data-cambio="perfil.saludMed" data-k="${k}" ${(s.medicacion || []).includes(k) ? 'checked' : ''}><span>${h(n)}</span></label>`).join('')}</fieldset>
     ${fila('cardiopatia')}
     ${fila('diabetes', casilla('diabetesVista', s.diabetesVista, 'Problemas de vista por la diabetes') + casilla('diabetesPies', s.diabetesPies, 'Poca sensibilidad en los pies'))}

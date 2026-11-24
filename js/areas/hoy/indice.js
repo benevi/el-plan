@@ -17,6 +17,7 @@ import { tarjetaPlan, planDeHoy, planDeLaSemana, estadoDias, notaFallo, minutosD
 import { siguientePendiente, sinEntrenarHoy, T2, misSesiones } from '../entrenador/entrenador.js';
 import { info as cronometro, parar as pararCronometro } from '../sesion/temporizador.js';
 import * as progreso from '../progreso/indice.js';
+import { minusNombre } from '../entrenador/dia.js';
 import { recordatorioCopia } from '../perfil/indice.js';
 
 const minus = t => String(t || '').toLowerCase();
@@ -24,7 +25,8 @@ const series = s => s.ejercicios.reduce((a, x) => a + x.sets.length, 0);
 const seriesHechas = s => s.ejercicios.reduce((a, x) => a + x.sets.filter(z => z.hecha).length, 0);
 // El porqué en una frase, siempre a la vista: lo primero de la explicación del entrenador.
 const porque = d => d && d.explicacion && d.explicacion[0] ? `<p class="porque porque-linea">${ICONOS.ia}<span>${h(d.explicacion[0])}</span></p>` : '';
-const loSiguiente = sig => sig ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minus(sig.nombre))}.` : '';
+// A mitad de frase el nombre del día va en minúscula, salvo la letra final: «cuerpo completo B» (M15).
+const loSiguiente = sig => sig ? `Lo siguiente: ${h(minus(DIAS[sig.diaSemana]))}, ${h(minusNombre(sig.nombre))}.` : '';
 const fuente = s => s.origen ? 'tu sesión, ajustada por la app' : s.fuente === 'ia' ? 'entrenador IA' : 'ajustada por la app';
 // «lunes, miércoles y viernes»
 const listaDias = l => { const n = l.map(i => minus(DIAS[i])).filter(Boolean); return n.length > 1 ? `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}` : n.join(''); };
@@ -116,7 +118,7 @@ function deHoy(S) {
     return {
       tarjeta: tarjeta(`${enMarcha ? 'En marcha' : 'Lista'}: ${fuente(s)}`, h(s.nombre),
         `<p class="datos">${s.foco ? h(focoTexto(s.foco)) + ', ' : ''}${plural(s.ejercicios.length, 'ejercicio', 'ejercicios')}${LUGARES[s.lugar] ? `, ${h(minus(LUGARES[s.lugar]))}` : ''}, unos ${minutosDe(s)} min.</p>
-        ${hechas && total ? `<div class="avance" role="img" aria-label="${+hechas} de ${+total} series hechas"><i data-var="--v:${(hechas / total).toFixed(3)}"></i></div><p class="meta">${+hechas} de ${+total} series</p>` : ''}
+        ${hechas && total ? `<div class="avance" role="img" aria-label="${plural(+hechas, 'serie hecha', 'series hechas', +total)}"><i data-var="--v:${(hechas / total).toFixed(3)}"></i></div><p class="meta">${plural(+hechas, 'serie', 'series', +total)}</p>` : ''}
         ${porque(s)}${notaFallo(s)}
         ${s.estado === 'pendiente' ? '<button type="button" class="boton boton--texto" data-act="entrenador.prepararHoy">Volver a ajustarla</button>' : ''}`),
       accion: `<a class="boton boton--ancho" href="#sesion/${h(s.id)}">${enMarcha ? 'Seguir con la sesión' : 'Empezar'}</a>`,
