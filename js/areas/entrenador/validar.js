@@ -194,6 +194,9 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   if (cardio.length && minHecho < minCardio) out.push(`cardio de ${minHecho} min (mínimo ${regla.minutos})`);
   const cal = sesion.calentamiento || [], vue = sesion.vuelta || [];
   if (cal.length < 2 || cal.some(t => !t.nombre)) out.push('calentamiento incompleto');
+  // Los mínimos de los datos de salud no se recortan nunca, tampoco por tiempo (C-SALUD-0, C-TIEMPO-2 paso 5).
+  if (!alto && !suave && !ctxIn.mia && ctx.salud.calentamientoMin && (minutosTareas(cal) ?? 8) < ctx.salud.calentamientoMin) out.push(`calentamiento de ${minutosTareas(cal)} min (mínimo ${ctx.salud.calentamientoMin} por salud)`);
+  if (!alto && !suave && !ctxIn.mia && ctx.salud.vueltaMin && (minutosTareas(vue) ?? 5) < ctx.salud.vueltaMin) out.push(`vuelta a la calma de ${minutosTareas(vue)} min (mínimo ${ctx.salud.vueltaMin} por salud)`);
   if (vue.length < 2 || !vue.some(esEstiramiento)) out.push('vuelta sin estiramientos');
   [...cal, ...vue].forEach(t => {
     if (t.id && ex(t.id)) { if (!tareaOk(S, t.id, ctx)) out.push(`tarea ${t.id} no vale hoy`); }
@@ -616,6 +619,10 @@ export function validarSesion(S, sesion, ctxIn = {}) {
 // También después de rehacer el calentamiento para cuadrar el tiempo (S4).
 const EQ = 'equilibrio-una-pierna';
 const necesitaEquilibrio = (S, ctx) => (ctx.salud.equilibrio || (ctx.edad != null && ctx.edad >= 60)) && !!ex(EQ) && tareaOk(S, EQ, ctx);
+// Calentamiento y vuelta más cortos del ajuste de tiempo (C-TIEMPO-2 paso 5): 4 y 3 min, nunca por debajo de los
+// mínimos de los datos de salud (C-SALUD-0: 10 y 10 con cardiopatía). El equilibrio (C-EDAD-1) va dentro (M2).
+const calCorto = (S, ctx) => Math.max(4, ctx.salud.calentamientoMin || 0) - (necesitaEquilibrio(S, ctx) ? 1 : 0);
+const vueltaCorta = ctx => Math.max(3, ctx.salud.vueltaMin || 0);
 function ponerEquilibrio(S, s, ctx, ejs = s.ejercicios || []) {
   if (!necesitaEquilibrio(S, ctx)) return;
   if (s.calentamiento.some(t => t.id === EQ) || ejs.some(x => x.id === EQ)) return;
@@ -690,9 +697,9 @@ function unPrincipal(S, s, ctx, limite, { tipo, k = 0, usados = {}, originales =
     // Antes del cardio (o al final): tras él no se descansa y ese descanso no cuenta (C-TIEMPO-1).
     s.ejercicios.splice(antes >= 0 ? antes : s.ejercicios.length, 0, x);
     // Calentamiento (4 min, con el equilibrio dentro si toca) y vuelta (3) para este principal (C-CAL-2, C-EST-1).
-    s.calentamiento = calentamientoDe(S, ctx, [e], { total: necesitaEquilibrio(S, ctx) ? 3 : 4 });
+    s.calentamiento = calentamientoDe(S, ctx, [e], { total: calCorto(S, ctx) });
     ponerEquilibrio(S, s, ctx);
-    s.vuelta = vueltaDe(S, ctx, [e], { total: 3 });
+    s.vuelta = vueltaDe(S, ctx, [e], { total: vueltaCorta(ctx) });
     while (T() > limite && x.series > 2) x.series--;
     if (T() > limite) x.descanso = pausaPrincipal(x, ctx);
     if (T() <= limite) return { x, ini };
@@ -763,12 +770,15 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
     conPrecaucion(S, x, ctx);
     if (T() + tiempoEj(x) <= limite) s.ejercicios.unshift(x);
   });
-  // 5. Calentamiento a 4 min y vuelta a 3. El equilibrio (C-EDAD-1) va dentro de esos 4 min (M2).
+  // 5. Calentamiento a 4 min y vuelta a 3, nunca por debajo de los mínimos de salud (10 y 10 con cardiopatía,
+  // C-SALUD-0). El equilibrio (C-EDAD-1) va dentro de esos minutos (M2).
   if (T() > limite) {
-    s.calentamiento = calentamientoDe(S, ctx, prin().map(x => ex(x.id)), { total: necesitaEquilibrio(S, ctx) ? 3 : 4 });
+    const antes = [minutosTareas(s.calentamiento), minutosTareas(s.vuelta)];
+    s.calentamiento = calentamientoDe(S, ctx, prin().map(x => ex(x.id)), { total: calCorto(S, ctx) });
     ponerEquilibrio(S, s, ctx);
-    s.vuelta = vueltaDe(S, ctx, prin().map(x => ex(x.id)), { total: 3 });
-    cambios.push('calentamiento de 4 minutos y vuelta a la calma de 3');
+    s.vuelta = vueltaDe(S, ctx, prin().map(x => ex(x.id)), { total: vueltaCorta(ctx) });
+    const ahora = [minutosTareas(s.calentamiento), minutosTareas(s.vuelta)];
+    if (ahora[0] !== antes[0] || ahora[1] !== antes[1]) cambios.push(`calentamiento de ${ahora[0]} minutos y vuelta a la calma de ${ahora[1]}`);
   }
   if (T() <= limite) { reponer(); return null; }
   // 6. Último recurso: 2 principales en superserie de 2 series (decisión 8, C-TIEMPO-3).

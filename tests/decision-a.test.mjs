@@ -224,3 +224,40 @@ test('C-TIEMPO-5, C-IA-3 (revisión del PR #54): «Ajustado por la app» dice qu
   assert.deepEqual(prin(w.sesion).map(x => [x.id, x.series]), [['extension-cuadriceps', 2]]);
   assert.ok(w.cambios.some(t => /^dejo .+ a 2 series con \d+ s de descanso: es lo que cabe en 30 minutos sin cargar tu hombro$/.test(t)), w.cambios.join(' | '));
 });
+
+// ── Segunda revisión del PR #54 ──
+test('C-SALUD-0, C-TIEMPO-2 paso 5, C-TIEMPO-5: con cardiopatía el ajuste de tiempo no recorta calentamiento ni vuelta por debajo de 10 y 10', () => {
+  const card = { cardiopatia: true, vistoBueno: { cardiopatia: true } };
+  for (const lugar of ['gym', 'casa', 'calle', 'piscina']) {
+    for (const obj of ['perder', 'salud', 'musculo']) {
+      for (const z of ['rodilla', 'hombro', 'lumbar']) {
+        for (const minutos of [30, 45]) {
+          const { S, s, c } = sesion({ objetivos: [obj], lugares: [lugar], nivel: 2, materialCasa: ['mancuernas', 'banda'], nadar25: true, lesiones: [L(z, 3)], salud: card }, { lugar, minutos, dolorHoy: { [z]: 5 } });
+          const n0 = `${lugar}/${obj}/${z}/${minutos}`;
+          const cal = s.calentamiento.reduce((t, x) => t + parseFloat(x.duracion), 0), vue = s.vuelta.reduce((t, x) => t + parseFloat(x.duracion), 0);
+          assert.ok(cal >= 10 && vue >= 10, `${n0}: calentamiento ${cal}, vuelta ${vue}`);
+          assert.deepEqual(ent.problemasSesion(S, s, c), [], n0);
+          // Con el principal de C-TIEMPO-5, cabe en lo pedido.
+          if (s.explicacion.some(t => TXT_A.test(t))) assert.ok(dia.tiempoSesionExacto(s) <= minutos + 0.01, n0);
+        }
+      }
+    }
+  }
+});
+
+test('C-SALUD-0 (segunda revisión del PR #54): problemasSesion avisa de un calentamiento o una vuelta por debajo del mínimo de salud', () => {
+  const S = nuevoS({ objetivos: ['salud'], nivel: 2, salud: { cardiopatia: true, vistoBueno: { cardiopatia: true } } });
+  const s = { lugar: 'gym', minutos: 45, explicacion: [], ejercicios: [P('press-pecho-maquina', { reps: '10-12' }), P('jalon-pecho', { reps: '10-12' }), P('prensa-piernas', { reps: '10-12' }), { ...CARDIO15, reps: '10 min' }],
+    calentamiento: [{ id: 'bici-estatica', nombre: 'Bici estática', detalle: '', duracion: '3 min' }, { id: 'circulos-brazos', nombre: 'Círculos de brazos', detalle: '', duracion: '1 min' }],
+    vuelta: [{ id: 'estiramiento-pectoral-marco', nombre: 'Estiramiento de pectoral', detalle: '', duracion: '2 min' }, { nombre: 'Respiración', detalle: '', duracion: '1 min' }] };
+  const p = ent.problemasSesion(S, s, { lugar: 'gym', minutos: 45 });
+  assert.ok(p.some(t => /^calentamiento de 4 min \(mínimo 10 por salud\)$/.test(t)), p.join(' | '));
+  assert.ok(p.some(t => /^vuelta a la calma de 3 min \(mínimo 10 por salud\)$/.test(t)), p.join(' | '));
+});
+
+test('C-DOLOR-1, §12.5 (segunda revisión del PR #54): las flexiones inclinadas y con rodillas llevan r=1 en hombro, como las flexiones', () => {
+  for (const id of ['flexiones-inclinadas', 'flexiones-rodillas', 'flexiones']) assert.equal((cat.ex(id).r || {}).hombro, 1, id);
+  // En casa con el hombro a 5 no salen como «la que no carga tu hombro».
+  const { s } = sesion({ objetivos: ['perder'], lugares: ['casa'], nivel: 2, materialCasa: ['mancuernas', 'banda'], lesiones: [L('hombro', 3)] }, { lugar: 'casa', dolorHoy: { hombro: 5 } });
+  assert.ok(!prin(s).some(x => /^flexiones/.test(x.id)), prin(s).map(x => x.id).join(', '));
+});

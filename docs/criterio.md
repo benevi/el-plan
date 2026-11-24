@@ -988,6 +988,7 @@ Rehabilitación añadida a ejercicios que ya existían: `separacion-banda`, `fac
 | `plancha` | quitar lumbar |
 | `press-hombro-botellas`, `press-hombro-banda`, `fondos-asistidos-maquina`, `extension-triceps-cabeza`, `dislocaciones-banda`, `elevacion-rodillas-barra`, `dominadas-escapulares` | hombro → 2 |
 | `patada-crol-tabla`, `ytw-tumbado` | hombro +1 |
+| `flexiones-inclinadas`, `flexiones-rodillas` | hombro +1 (son press de pecho, como `flexiones` y `press-pecho-maquina`; revisión del PR #54) |
 | `curl-mancuernas`, `curl-martillo`, `curl-polea`, `curl-maquina`, `curl-botellas`, `curl-australiano` | codo → 2 |
 | `remo-australiano`, `remo-barra` | codo +1 |
 | `fondos-banco`, `fondos-paralelas` | muñeca → 2 |
@@ -1101,7 +1102,7 @@ Ejemplos:
 2. Quitar 1 serie a los accesorios (mínimo 2) y luego a los compuestos (mínimo 2).
 3. Quitar accesorios del final, hasta 3 principales.
 4. Rehabilitación: de 2 ejercicios por zona a 1; si no basta, quitar la de las zonas en B0-B1 (nunca la última de una zona en B2).
-5. Calentamiento a 4 min y vuelta a 3.
+5. Calentamiento a 4 min y vuelta a 3, **nunca por debajo de los mínimos de los datos de salud** (C-SALUD-0: 10 y 10 con cardiopatía; revisión del PR #54). Si con ellos no cabe, se sigue con los pasos 6 y 7, y si ni así cabe, la sesión pasa de lo pedido con el aviso del paso 7: la seguridad va antes que C-TIEMPO-1.
 
 **Último recurso** [Decisión 8]:
 
@@ -1118,11 +1119,11 @@ Ejemplos:
 - **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza ni queda hueco para C-TIEMPO-5. Paso 7: cardio y rehabilitación, con aviso.
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 13,3 (límite 45). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9) dan ≈ 48,6: pasos 1-3 (descansos y series de los accesorios, y quitar el último accesorio si hace falta) hasta caber en 45.
 
-**C-TIEMPO-5 [Objetivo] [decisión A de Víctor del 24-11-2026; revisión del PR #54]** **1 principal en el hueco que deja el paso 7.** Si tras quitar la fuerza (C-TIEMPO-2 paso 7) quedan **4 minutos o más** hasta lo pedido (con el calentamiento de 4, la vuelta de 3, el cardio mínimo y la rehabilitación de las zonas en B2 ya contados), entra **1 ejercicio principal**:
+**C-TIEMPO-5 [Objetivo] [decisión A de Víctor del 24-11-2026; revisión del PR #54]** **1 principal en el hueco que deja el paso 7.** Si tras quitar la fuerza (C-TIEMPO-2 paso 7) quedan **4 minutos o más** hasta lo pedido (con el calentamiento de 4 y la vuelta de 3, o los mínimos de salud si son más, el cardio mínimo y la rehabilitación de las zonas en B2 ya contados), entra **1 ejercicio principal**:
 - **Seguro**: sin r en ninguna zona activa, de su nivel (C-DOSIS-10), que valga como principal en ese lugar y que pase las barandillas de siempre: catálogo, bandas de dolor (C-DOLOR-1), lugar y material (C-EST-4), «No lo quiero» y datos de salud (C-SALUD-0).
 - **Cuál**: primero los principales que traía la sesión, en su orden (los que propone la IA van primero); si ninguno es seguro o cabe, el de la app según la plantilla del día y las preferencias, sin repetir lo ya elegido esa semana en el plan.
 - **Dosis**: la suya, bajando series hasta 2 y, si aún no cabe, el descanso hasta el mínimo de C-PAUSA-1, **nunca por debajo de los 60 s de la hipertensión** (descanso mínimo de C-SALUD-0); un isométrico, dentro de los segundos que dejan los datos de salud. (El paso 1 de C-TIEMPO-2 respeta el mismo mínimo.) Si no cabe, se prueba el siguiente (p. ej. un aislamiento en lugar de un compuesto).
-- **Calentamiento y vuelta** se rehacen para ese principal (4 y 3 min, con el equilibrio de C-EDAD-1 si toca): movilidad de lo que se usa (C-CAL-2) y estiramientos de lo trabajado (C-EST-1), siempre que la zona los permita. Con 30 minutos no hay aproximación (C-CAL-1).
+- **Calentamiento y vuelta** se rehacen para ese principal (4 y 3 min, o los mínimos de salud si son más; con el equilibrio de C-EDAD-1 si toca): movilidad de lo que se usa (C-CAL-2) y estiramientos de lo trabajado (C-EST-1), siempre que la zona los permita. Con 30 minutos no hay aproximación (C-CAL-1).
 - **Nunca pasa de los minutos pedidos** (C-TIEMPO-1). Va antes que la rehabilitación de las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza). Si no cabe ninguno o no hay ninguno seguro, la sesión se queda como en el paso 7, con su aviso.
 - **Lo que se dice**: «Por tiempo (último recurso): con [m] minutos caben tu cardio, lo de tu [zona] y 1 ejercicio principal que no carga tu [zona]. Si quieres más fuerza, elige [m + 15] minutos». Y en «Ajustado por la app»: «añado [ejercicio] ([s] series, descanso [d] s): es lo que cabe en [m] minutos sin cargar tu [zona]» si lo pone la app, o «dejo [ejercicio] a [s] series con [d] s de descanso: …» si era de la sesión y se ha recortado.
 
