@@ -1077,7 +1077,7 @@ Con 30 min se quitan técnica y series, nunca el bloque continuo.
 
 ## 15. Tiempo de la sesión
 
-**C-TIEMPO-1 [Objetivo] [PR 8]** Tiempo total ≤ pedido. **Nunca más de lo pedido** [decisión de Víctor del 23-11-2026, M1b del informe del 21-11]: (única excepción, pendiente de su decisión: la rehabilitación obligatoria de las zonas en B2, C-TIEMPO-2 paso 8) antes se admitía hasta un 10 % más; ahora ni lo que se monta ni lo que se promete («unos N min») pasa de los minutos pedidos. Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa si dura más.
+**C-TIEMPO-1 [Objetivo] [PR 8]** Tiempo total ≤ pedido. **Nunca más de lo pedido** [decisión de Víctor del 23-11-2026, M1b del informe del 21-11]: (única excepción, aprobada por Víctor el 24-11-2026: la rehabilitación obligatoria de las zonas en B2, C-TIEMPO-2 paso 8) antes se admitía hasta un 10 % más; ahora ni lo que se monta ni lo que se promete («unos N min») pasa de los minutos pedidos. Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa si dura más.
 
 Modelo de tiempo (minutos):
 
@@ -1109,7 +1109,7 @@ Ejemplos:
 
 6. **2 ejercicios principales** en superserie de 2 series, antagonistas si los hay (empuje-tirón o rodilla-cadera, C-TIEMPO-3): una serie de cada uno seguidas, sin descanso entre los dos, y **90-120 s entre parejas**, nunca por debajo de C-PAUSA-1 de ninguno de los dos [aprobado por Víctor el 23-11-2026] (S18).
 7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos». Sin zonas activas el aviso no habla de lesión ni de rehabilitación («… no caben tu cardio de [c] minutos y fuerza. Hoy: cardio. …»), y con el cardio suave del paso 5b dice «tu cardio ([c] minutos más el suave del calentamiento y la vuelta)». Salvo C-TIEMPO-5: si quedan 4 minutos o más, entra 1 principal que no cargue la zona.
-8. **Excepción a C-TIEMPO-1, pendiente de decisión de Víctor** [24-11-2026, cuarta revisión del PR #54]: la rehabilitación de una zona en B2 **no se quita nunca** (C-DOLOR-3, C-TIEMPO-2 paso 4), ni el calentamiento, la vuelta y el cardio bajan de sus mínimos. Si con todo eso ya no cabe (sin fuerza), la sesión pasa de lo pedido, como antes de este PR, y el aviso lo dice con los minutos: «… Hoy: cardio y rehabilitación. Hoy dura unos [n] minutos, más de los [m] que pides, porque el trabajo de tu [zona] no se puede quitar: si puedes, elige [m + 15] minutos». Es el único caso en que el validador acepta pasar de lo pedido.
+8. **Excepción a C-TIEMPO-1, aprobada por Víctor el 24-11-2026** [cuarta revisión del PR #54]: la rehabilitación de una zona en B2 **no se quita nunca** (C-DOLOR-3, C-TIEMPO-2 paso 4), ni el calentamiento, la vuelta y el cardio bajan de sus mínimos. Si con todo eso ya no cabe (sin fuerza), la sesión pasa de lo pedido, como antes de este PR, y el aviso lo dice con los minutos: «… Hoy: cardio y rehabilitación. Hoy dura unos [n] minutos, más de los [m] que pides, porque el trabajo de tu [zona] no se puede quitar: si puedes, elige [m + 15] minutos». Es el único caso en que el validador acepta pasar de lo pedido.
 
 El aviso del último recurso va una sola vez: validar otra vez la sesión no lo repite. Si la app ha cambiado el día (último recurso o «Ajustado por la app»), la explicación no dice «Tu check-in no cambia nada».
 
@@ -1120,7 +1120,7 @@ El aviso del último recurso va una sola vez: validar otra vez la sesión no lo 
 **C-TIEMPO-4 [Criterio] [PR 8]** Cálculos de comprobación:
 - **Perder grasa, 30 min, sin zonas.** Calentamiento 4 + vuelta 3 + cardio 15 = 22; quedan 8 (límite 30). Paso 6: superserie de 2 principales antagonistas × 2 series con 90 s entre parejas (S18) ≈ 5,3 (sin el descanso tras la última pareja, C-TIEMPO-1). Total ≈ 27: cabe con 2 principales.
 - **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5. Paso 5: calentamiento 4 (26,5). Paso 6: la superserie (≈ 5,3) da 31,8 y no cabe en 30 (C-TIEMPO-1, «nunca más de lo pedido», 23-11-2026). Paso 7: sin fuerza quedan 26 (sin el descanso tras la última serie del isométrico), así que hay 4 libres y entra 1 principal que no carga la zona (C-TIEMPO-5, decisión A del 24-11-2026): un compuesto a 2 × 8-12 con 90 s (3,9 más el descanso del isométrico, que vuelve a contar) no cabe; un aislamiento a 2 × 12-15 con 45 s (≈ 3,2) sí: total ≈ 29,7. Con una rehabilitación más corta (p. ej. 2 × 15 con banda en el hombro, ≈ 2,9) quedan ≈ 5 y cabe un compuesto a 2 series. (Con el +10 % de antes, el límite era 33 y cabía con 2 principales; con 60 s entre parejas, antes de S18, se incumplía C-PAUSA-1.)
-- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso (con 31 > 30, la excepción del paso 8, pendiente de decisión de Víctor).
+- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso (con 31 > 30, la excepción del paso 8, aprobada por Víctor el 24-11-2026).
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 13,3 (límite 45). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9) dan ≈ 48,6: pasos 1-3 (descansos y series de los accesorios, y quitar el último accesorio si hace falta) hasta caber en 45.
 
 **C-TIEMPO-5 [Objetivo] [decisión A de Víctor del 24-11-2026; revisión del PR #54]** **1 principal en el hueco que deja el paso 7.** Si tras quitar la fuerza (C-TIEMPO-2 paso 7) quedan **4 minutos o más** hasta lo pedido (con el calentamiento de 4 y la vuelta de 3, o los mínimos de salud si son más, el cardio mínimo (con el crédito del paso 5b si hay mínimos de salud) y la rehabilitación de las zonas en B2 ya contados), entra **1 ejercicio principal**:
@@ -1339,13 +1339,10 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 19. **S8 · Palabras de alarma**: la lista de C-ALAR-4 es la del código, con «se me nubló la vista» y «calambre en el brazo izquierdo»: **aprobada**.
 20. **S4 · Equilibrio con 60 años o más**: queda siempre, también si el ajuste de tiempo quita la rehabilitación de tobillo que lo traía (C-EDAD-1): **aprobada**.
 
-**Pendiente de decisión de Víctor (24-11-2026):**
-
-- **Sesión corta con rehabilitación obligatoria de zonas en B2 que no cabe** (C-TIEMPO-2 paso 8): hoy la sesión pasa de lo pedido y el aviso dice cuánto dura y sugiere 15 minutos más. La alternativa sería quitar la rehabilitación de alguna zona, que contradice C-DOLOR-3. Con 30 minutos y 2-3 zonas a 5/10 pasa en 398 de 864 combinaciones del barrido de la revisión (849 de 864 con cardiopatía, que además exige 10 + 10 de calentamiento y vuelta).
-
 **Decidida por Víctor el 24-11-2026:**
 
 21. **A · 1 principal en las sesiones cortas con una zona dolorida** (C-TIEMPO-5, C-TIEMPO-2 paso 7 y el ejemplo de C-TIEMPO-4): si tras el calentamiento, el cardio, la rehabilitación y la vuelta a la calma quedan 4 minutos o más, 1 ejercicio principal que no cargue la zona, con todas las barandillas y sin pasar nunca de los minutos pedidos; si no cabe o no hay ninguno seguro, la sesión se queda como estaba: **aprobada (opción A)**.
+22. **Sesión corta con rehabilitación obligatoria de zonas en B2 que no cabe** (C-TIEMPO-2 paso 8): la rehabilitación de las zonas en B2 no se quita nunca; si con ella y los mínimos no cabe, la sesión pasa de lo pedido y el aviso dice cuánto dura y sugiere 15 minutos más. Con 30 minutos y 2-3 zonas a 5/10 pasa en 398 de 864 combinaciones del barrido de la revisión (849 de 864 con cardiopatía, que además exige 10 + 10 de calentamiento y vuelta; como mucho unos 3,5 min de más). Alternativas descartadas: recortar el cardio por debajo de su mínimo o rotar las zonas entre sesiones: **aprobada (pasar de lo pedido con aviso)**.
 
 ---
 

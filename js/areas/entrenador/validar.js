@@ -226,8 +226,8 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
     });
     // Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa al prepararla, pero no es un fallo.
     const mia = !!(sesion.origen && sesion.origen.tipo === 'mia');
-    // Nunca más de lo pedido (C-TIEMPO-1, decisión de Víctor del 23-11-2026). Única excepción (pendiente de decisión
-    // de Víctor): el último recurso sin fuerza en el que lo que sobra es la rehabilitación obligatoria de las zonas B2.
+    // Nunca más de lo pedido (C-TIEMPO-1, decisión de Víctor del 23-11-2026). Única excepción (aprobada por
+    // Víctor el 24-11-2026): el último recurso sin fuerza en el que lo que sobra es la rehabilitación obligatoria de las zonas B2.
     const sinRehab = tiempoSesionExacto({ ...sesion, ejercicios: ejs.filter(x => x.rol !== 'rehab') });
     const porRehabB2 = ultimo && prin === 0 && sinRehab <= topeMinutos(ctx.minutos) + 0.01;
     if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ctxIn.mia && !mia && !porRehabB2) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
@@ -856,7 +856,7 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
   const credito = cardioEnTareas(ctx, s.calentamiento, s.vuelta);
   const cardioTxt = !c ? 'tu cardio' : credito ? `tu cardio (${minDe(c.reps)} minutos más el suave del calentamiento y la vuelta)` : `tu cardio de ${minDe(c.reps)} minutos`;
   // La rehabilitación de una zona en B2 no se quita nunca (C-DOLOR-3): si con ella y los mínimos no cabe, la sesión
-  // pasa de lo pedido y el aviso dice cuánto dura (excepción a C-TIEMPO-1 pendiente de decisión de Víctor).
+  // pasa de lo pedido y el aviso dice cuánto dura (excepción a C-TIEMPO-1 aprobada por Víctor el 24-11-2026).
   const dura = Math.ceil(T() - 0.01);
   const pasa = T() > limite + 0.01 ? ` Hoy dura unos ${dura} minutos, más de los ${ctx.minutos} que pides, porque el trabajo de tu ${lista(zs.map(nombreZona)) || 'lesión'} no se puede quitar: si puedes, elige ${ctx.minutos + 15} minutos.` : ` Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
   return `Con ${ctx.minutos} minutos no caben ${cardioTxt}${zs.length ? `, el trabajo de tu ${lista(zs.map(nombreZona))}` : ''} y fuerza. Hoy: ${zs.length ? 'cardio y rehabilitación' : 'cardio'}.${pasa}`;
