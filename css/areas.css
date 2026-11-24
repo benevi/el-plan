@@ -1,0 +1,39 @@
+/* Estilos propios de cada pantalla aún no rediseñada, con los tokens del sistema (PR 13).
+   Los PR 14-16 pasan cada pantalla a su propio archivo (css/<area>.css) con el diseño aprobado
+   (la sesión y el descanso ya están en css/sesion.css, PR 15). */
+
+/* ── Bienvenida, Progreso, Perfil y Ejercicios: en css/perfil.css, css/progreso.css y css/ejercicios.css (PR 16) ── */
+
+/* ── Hoy: en css/hoy.css (PR 14) ── */
+
+/* ── Ficha y gustos (los usan Ejercicios y la sesión; la sesión está en css/sesion.css desde el PR 15) ── */
+.gustos { display: flex; gap: var(--e-2); flex-wrap: wrap; margin-top: var(--e-2); }
+.gustos button { flex: 1; min-height: var(--toque-sesion); border: 0; border-radius: var(--r-pildora); background: transparent; box-shadow: inset 0 0 0 1px var(--borde-control); cursor: pointer; font-size: var(--t-secundario); white-space: nowrap; color: var(--texto-2); }
+.gustos button.on { box-shadow: inset 0 0 0 1.5px var(--acento); background: var(--acento-tinte); color: var(--texto-1); font-weight: var(--f-peso-fuerte); }
+.gustos button.g-rechazo.on { box-shadow: inset 0 0 0 1.5px var(--estado-error); background: var(--sup-control); }
+.pasos, .errores { padding-left: var(--e-5); font-size: 15px; }
+.pasos li, .errores li { margin: var(--e-1) 0; }
+.pasos li::marker { color: var(--texto-2); font-weight: var(--f-peso-fuerte); }
+.errores { color: var(--texto-2); }
+.errores li::marker { color: var(--estado-error); }
+
+/* ── Constancia en Hoy (progreso/indice.js · tarjetaConstancia; hoy.css la ajusta) ── */
+.fila-dato { display: flex; align-items: center; gap: var(--e-3); }
+.fila-dato h2 { margin-bottom: 2px; }
+.fila-dato p { margin: 0; }
+.racha { text-align: center; line-height: 1; padding: var(--e-2) var(--e-3); border-radius: var(--r-pequeno); box-shadow: inset 0 0 0 1px var(--borde-control); }
+.racha b { display: block; font-size: var(--t-cifra-s); font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; }
+.racha small { font-size: var(--t-meta); color: var(--texto-2); }
+.puntos-semana { display: flex; gap: var(--e-2); margin: var(--e-3) 0 var(--e-1); }
+.puntos-semana i { flex: 1; height: 8px; border-radius: var(--r-pildora); box-shadow: inset 0 0 0 1px var(--borde-control); }
+.puntos-semana i.on { background: var(--acento); box-shadow: none; }
+.constancia-hoy .enlace { display: inline-flex; align-items: center; gap: var(--e-1); margin-top: var(--e-2); }
+.constancia-hoy .enlace svg { width: 16px; height: 16px; }
+
+/* ── Vídeo de la ficha (lo usan la ficha de Ejercicios y la sesión) ── */
+.video-ficha { position: relative; display: block; margin: var(--e-4) 0; border-radius: var(--r-pequeno); overflow: hidden; aspect-ratio: 16 / 9; background: var(--sup-control); color: var(--texto-1); text-decoration: none; }
+.video-ficha img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.video-ficha span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: var(--e-2); padding: var(--e-3) var(--e-4); border-radius: var(--r-pildora); background: var(--sup-velo); font-weight: var(--f-peso-fuerte); white-space: nowrap; }
+.video-ficha svg { width: 18px; height: 18px; }
+
+/* ── Entrenador (check-in, semana y espera): en css/hoy.css (PR 14) ── */

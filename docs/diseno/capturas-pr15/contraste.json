@@ -1,0 +1,694 @@
+{
+ "victor": {
+  "sesion-uno-a-uno-victor": {
+   "pares": 46,
+   "cumplen": 46,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-actual-victor": {
+   "pares": 75,
+   "cumplen": 75,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-barra-victor": {
+   "pares": 86,
+   "cumplen": 86,
+   "minimo": 4.08,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-alarma-victor": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-vuelta-tras-bloquear-victor": {
+   "pares": 86,
+   "cumplen": 86,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-toda-la-sesion-victor": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-como-se-hace-victor": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-menu-del-ejercicio-victor": {
+   "pares": 218,
+   "cumplen": 218,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-ejercicio-victor": {
+   "pares": 208,
+   "cumplen": 208,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-confirmar-victor": {
+   "pares": 202,
+   "cumplen": 202,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-por-tiempo-victor": {
+   "pares": 66,
+   "cumplen": 66,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-ejercicio-por-tiempo-victor": {
+   "pares": 78,
+   "cumplen": 78,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-tiempo-con-el-movil-bloqueado-victor": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cardio-victor": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-guardar-como-mia-victor": {
+   "pares": 54,
+   "cumplen": 54,
+   "minimo": 4.99,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-terminar-con-series-pendientes-victor": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cierre-victor": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-final-victor": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 6.82,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-hecha-lectura-victor": {
+   "pares": 129,
+   "cumplen": 129,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  }
+ },
+ "virginia": {
+  "sesion-uno-a-uno-virginia": {
+   "pares": 46,
+   "cumplen": 46,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-actual-virginia": {
+   "pares": 72,
+   "cumplen": 72,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-barra-virginia": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.08,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-alarma-virginia": {
+   "pares": 80,
+   "cumplen": 80,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-vuelta-tras-bloquear-virginia": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-toda-la-sesion-virginia": {
+   "pares": 190,
+   "cumplen": 190,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-como-se-hace-virginia": {
+   "pares": 190,
+   "cumplen": 190,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-menu-del-ejercicio-virginia": {
+   "pares": 212,
+   "cumplen": 212,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-ejercicio-virginia": {
+   "pares": 211,
+   "cumplen": 211,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-confirmar-virginia": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-por-tiempo-virginia": {
+   "pares": 63,
+   "cumplen": 63,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-ejercicio-por-tiempo-virginia": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-tiempo-con-el-movil-bloqueado-virginia": {
+   "pares": 80,
+   "cumplen": 80,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cardio-virginia": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-guardar-como-mia-virginia": {
+   "pares": 54,
+   "cumplen": 54,
+   "minimo": 4.99,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-terminar-con-series-pendientes-virginia": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cierre-virginia": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-final-virginia": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 6.82,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-hecha-lectura-virginia": {
+   "pares": 123,
+   "cumplen": 123,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  }
+ },
+ "victor-360": {
+  "sesion-uno-a-uno-victor-360": {
+   "pares": 46,
+   "cumplen": 46,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-actual-victor-360": {
+   "pares": 75,
+   "cumplen": 75,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-barra-victor-360": {
+   "pares": 86,
+   "cumplen": 86,
+   "minimo": 4.08,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-alarma-victor-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-vuelta-tras-bloquear-victor-360": {
+   "pares": 86,
+   "cumplen": 86,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-toda-la-sesion-victor-360": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-como-se-hace-victor-360": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-menu-del-ejercicio-victor-360": {
+   "pares": 218,
+   "cumplen": 218,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-ejercicio-victor-360": {
+   "pares": 208,
+   "cumplen": 208,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-confirmar-victor-360": {
+   "pares": 202,
+   "cumplen": 202,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-por-tiempo-victor-360": {
+   "pares": 66,
+   "cumplen": 66,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-ejercicio-por-tiempo-victor-360": {
+   "pares": 78,
+   "cumplen": 78,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-tiempo-con-el-movil-bloqueado-victor-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cardio-victor-360": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-guardar-como-mia-victor-360": {
+   "pares": 54,
+   "cumplen": 54,
+   "minimo": 4.99,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-terminar-con-series-pendientes-victor-360": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cierre-victor-360": {
+   "pares": 67,
+   "cumplen": 67,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-final-victor-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 6.82,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-hecha-lectura-victor-360": {
+   "pares": 129,
+   "cumplen": 129,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  }
+ },
+ "virginia-360": {
+  "sesion-uno-a-uno-virginia-360": {
+   "pares": 46,
+   "cumplen": 46,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-actual-virginia-360": {
+   "pares": 72,
+   "cumplen": 72,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-barra-virginia-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.08,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-alarma-virginia-360": {
+   "pares": 80,
+   "cumplen": 80,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "descanso-vuelta-tras-bloquear-virginia-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-toda-la-sesion-virginia-360": {
+   "pares": 190,
+   "cumplen": 190,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-como-se-hace-virginia-360": {
+   "pares": 190,
+   "cumplen": 190,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-menu-del-ejercicio-virginia-360": {
+   "pares": 212,
+   "cumplen": 212,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-ejercicio-virginia-360": {
+   "pares": 211,
+   "cumplen": 211,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cambiar-confirmar-virginia-360": {
+   "pares": 196,
+   "cumplen": 196,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-serie-por-tiempo-virginia-360": {
+   "pares": 63,
+   "cumplen": 63,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-ejercicio-por-tiempo-virginia-360": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-tiempo-con-el-movil-bloqueado-virginia-360": {
+   "pares": 80,
+   "cumplen": 80,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cardio-virginia-360": {
+   "pares": 70,
+   "cumplen": 70,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-guardar-como-mia-virginia-360": {
+   "pares": 54,
+   "cumplen": 54,
+   "minimo": 4.99,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-terminar-con-series-pendientes-virginia-360": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-cierre-virginia-360": {
+   "pares": 74,
+   "cumplen": 74,
+   "minimo": 3.56,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-final-virginia-360": {
+   "pares": 83,
+   "cumplen": 83,
+   "minimo": 6.82,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  },
+  "sesion-hecha-lectura-virginia-360": {
+   "pares": 123,
+   "cumplen": 123,
+   "minimo": 4.61,
+   "malos": [],
+   "pequenos": [],
+   "cifras": [],
+   "desborde": 0
+  }
+ }
+}

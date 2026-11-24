@@ -1,0 +1,44 @@
+/* Pipos Fitness · PROGRESO (PR 16): constancia, nivel, fuerza, salud, dolor y últimas sesiones, con los
+   gráficos del sistema (componentes.css · Gráficos). Solo tokens; aquí solo se coloca. */
+
+.prog-sec { margin: 0; }
+.prog-sec.tarjeta { padding: var(--e-5); }
+.prog-sec + .prog-sec { margin-top: var(--e-4); }
+.prog-sec > h2.bloque-titulo { font-size: var(--t-subtitulo); line-height: var(--t-subtitulo-alto); color: var(--texto-1); margin-bottom: var(--e-3); }
+.prog-sec > p { margin: 0 0 var(--e-2); }
+.prog-frase { font-size: var(--t-cuerpo); }
+.prog-sec .grafico + .grafico { margin-top: var(--e-6); }
+.prog-sec .grafico { margin-top: var(--e-4); }
+.prog-sec .multiples .grafico { margin-top: 0; }
+.prog-sec .multiples { margin-top: var(--e-2); }
+.prog-sec .lista { margin-top: var(--e-4); }
+.prog-sec > .boton { margin-top: var(--e-4); }
+.prog-sec h3.bloque-titulo { margin-top: var(--e-6); font-size: var(--t-cuerpo); color: var(--texto-1); }
+.ver-tabla { margin-top: var(--e-1); }
+.ver-tabla[open] summary { color: var(--texto-1); }
+.tabla-datos td:first-child { color: var(--texto-2); }
+.dato-grande { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--e-2); margin: 0; }
+.dato-grande b { font-size: 48px; line-height: 1; font-weight: var(--f-peso-normal); font-stretch: var(--f-cifra-ancho); font-variant-numeric: tabular-nums; color: var(--texto-1); }
+.dato-grande span { color: var(--texto-2); font-size: var(--t-secundario); flex: 1 1 160px; }
+.datos-lista { list-style: none; margin: var(--e-4) 0 0; padding: 0; border-top: 1px solid var(--borde-fino); }
+.datos-lista li { display: flex; justify-content: space-between; align-items: center; gap: var(--e-3); padding: var(--e-3) 0; border-bottom: 1px solid var(--borde-fino); font-size: var(--t-secundario); }
+.datos-lista li > span:first-child { color: var(--texto-2); }
+.datos-lista b { font-weight: var(--f-peso-medio); text-align: right; }
+.datos-lista .insignia { margin-left: var(--e-1); }
+.barra-cardio { height: 8px; border-radius: var(--r-pildora); background: var(--sup-control); box-shadow: inset 0 0 0 1px var(--borde-control); margin-top: var(--e-1); overflow: hidden; }
+.barra-cardio i { display: block; height: 100%; background: var(--acento); transform-origin: left; transform: scaleX(var(--v, 0)); transition: transform var(--m-largo) var(--c-sale); }
+.prog-lectura { margin-top: var(--e-3); font-size: var(--t-secundario); color: var(--texto-1); padding-left: var(--e-3); box-shadow: inset 3px 0 0 var(--acento); }
+.dolor-zona + .dolor-zona { margin-top: var(--e-6); padding-top: var(--e-4); border-top: 1px solid var(--borde-fino); }
+.prog-vacio { text-align: left; padding: var(--e-5); }
+.prog-vacio p { color: var(--texto-2); margin: var(--e-2) 0 0; font-size: var(--t-secundario); }
+.lista-compacta { list-style: none; margin: var(--e-2) 0 0; padding: 0; }
+.lista-compacta li { display: flex; gap: var(--e-3); align-items: baseline; padding: var(--e-2) 0; border-bottom: 1px solid var(--borde-fino); font-size: var(--t-secundario); }
+.lista-compacta li .crece { flex: 1; min-width: 0; }
+.hoja-pf h3 { font-size: var(--t-cuerpo); font-weight: var(--f-peso-fuerte); margin: var(--e-5) 0 var(--e-2); }
+.hoja-pf .rejilla-campos + details { margin-top: var(--e-4); }
+.hoja-pf details.tecnica { margin-top: var(--e-4); padding: 0 var(--e-3); border-radius: var(--r-pequeno); background: var(--sup-control); }
+.hoja-pf details.tecnica > summary { min-height: var(--toque-min); }
+.hoja-pf details.tecnica[open] { padding-bottom: var(--e-3); }
+.hoja-pf details.tecnica + .boton { margin-top: var(--e-5); }
+/* La burbuja del gráfico, encima del texto y dentro de la tarjeta */
+.grafico .burbuja { max-width: calc(100vw - 2 * var(--e-margen)); }

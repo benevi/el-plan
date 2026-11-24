@@ -1,0 +1,103 @@
+/* Pipos Fitness · MARCO de la app (PR 13): cabecera, pestañas, cambio de pantalla, hojas y avisos.
+   Como en los prototipos aprobados (DIS 4). Solo tokens: los colores salen de css/tokens.css.
+   Orden de carga: tokens.css → componentes.css → marco.css → legado.css → areas.css. */
+
+html { background: var(--sup-fondo); }
+body {
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--e-8));
+}
+body.sin-nav { padding-bottom: calc(env(safe-area-inset-bottom) + var(--e-6)); }
+body.con-hoja { overflow: hidden; }
+::selection { background: var(--acento-tinte); color: var(--texto-1); }
+
+/* ---- Contenido de la pantalla ---- */
+main#vista { max-width: 560px; margin: 0 auto; padding: 0 var(--e-margen) var(--e-4); outline: none; overflow-x: clip; } /* lo que entra de lado no ensancha la página */
+/* El h1 recibe el foco al cambiar de pantalla para que el lector y el teclado empiecen por arriba; no es un
+   control, así que no lleva anillo (como en los prototipos). */
+main#vista h1:focus { outline: none; }
+
+/* ---- Cabecera: el logo (Trenza + nombre) y el aviso «Sin conexión» ---- */
+.cab {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--e-3);
+  max-width: 560px; margin: 0 auto; min-height: calc(var(--cab-alto) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--e-margen) 0;
+}
+.cab .logo { display: flex; align-items: center; min-height: var(--toque-min); border-radius: var(--r-pequeno); }
+.cab .logo img { display: block; height: 28px; width: auto; }
+.red { display: inline-flex; align-items: center; gap: var(--e-1); font-size: var(--t-secundario); color: var(--estado-aviso); }
+.red .icono { width: 16px; height: 16px; }
+body.sin-nav .cab { display: none; }
+
+/* ---- Pestañas (componente .pestanas del sistema) ---- */
+#nav { z-index: var(--z-pestanas); }
+body.sin-nav #nav { display: none; }
+
+/* ---- Cambio de pantalla: eje horizontal (sale 150 ms, entra 300 ms con cascada; ≤ 600 ms) ---- */
+.saliente { position: fixed; inset: 0; z-index: var(--z-saliente); pointer-events: none; overflow: hidden; animation: pantalla-sale 150ms var(--c-entra) both; }
+.saliente-dentro { max-width: 560px; margin: 0 auto; padding: 0 var(--e-margen); }
+[data-dir="atras"] .saliente { animation-name: pantalla-sale-atras; }
+@keyframes pantalla-sale { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes pantalla-sale-atras { to { opacity: 0; transform: translateX(24px); } }
+main#vista.entra > * { animation: pantalla-entra var(--m-medio) var(--c-sale) 90ms both; }
+main#vista.entra > :nth-child(2) { animation-delay: calc(90ms + var(--m-escalon)); }
+main#vista.entra > :nth-child(3) { animation-delay: calc(90ms + 2 * var(--m-escalon)); }
+main#vista.entra > :nth-child(4) { animation-delay: calc(90ms + 3 * var(--m-escalon)); }
+main#vista.entra > :nth-child(n+5) { animation-delay: calc(90ms + 4 * var(--m-escalon)); }
+[data-dir="atras"] main#vista.entra > * { animation-name: pantalla-entra-atras; }
+@keyframes pantalla-entra { from { opacity: 0; transform: translateX(40px); } }
+@keyframes pantalla-entra-atras { from { opacity: 0; transform: translateX(-40px); } }
+
+/* ---- Hoja inferior (ui.js · abrirHoja): velo, cabecera con título y ✕ ---- */
+.hoja-velo { z-index: var(--z-hoja); }
+.hoja { overscroll-behavior: contain; }
+.hoja-cab > :first-child { flex: 1; min-width: 0; }
+.hoja-cab h2:focus, .hoja-cab .hoja-texto:focus { outline: none; }
+.hoja-cab h2:focus-visible, .hoja-cab .hoja-texto:focus-visible { outline: 2px solid var(--borde-foco); outline-offset: 2px; border-radius: var(--r-pequeno); }
+.hoja-cab .boton-icono { flex: none; align-self: flex-start; }
+/* La hoja que se va (copia sin datos ni botones): solo se ve 200 ms */
+.hoja-velo.sale { pointer-events: none; }
+
+/* ---- Avisos (ui.js · aviso): componente .aviso del sistema, abajo y encima de las pestañas ---- */
+#aviso {
+  position: fixed; z-index: var(--z-aviso); left: var(--e-4); right: var(--e-4); max-width: 520px; margin: 0 auto;
+  bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--e-3));
+}
+body.sin-nav #aviso { bottom: calc(env(safe-area-inset-bottom) + var(--e-4)); }
+body.con-temporizador #aviso { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 104px); }
+body.sin-nav.con-temporizador #aviso { bottom: calc(env(safe-area-inset-bottom) + 104px); }
+.aviso .aviso-texto { min-width: 0; overflow-wrap: anywhere; }
+.aviso .aviso-texto p { margin: 0; }
+.aviso .aviso-texto p + p, .aviso .aviso-texto p + .btn, .aviso .aviso-texto p + .boton { margin-top: var(--e-2); }
+.aviso--solo { grid-template-columns: auto 1fr; padding-right: var(--e-4); }
+
+/* Aviso fijo de versión nueva (js/nucleo/version.js): no se va solo, se toca «Actualizar». */
+.aviso-version {
+  position: fixed; z-index: calc(var(--z-aviso) - 1); left: var(--e-4); right: var(--e-4); max-width: 520px; margin: 0 auto;
+  bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + var(--e-3));
+  display: flex; align-items: center; justify-content: space-between; gap: var(--e-3);
+  padding: var(--e-2) var(--e-2) var(--e-2) var(--e-4); border-radius: var(--r-medio);
+  background: var(--sup-capa); box-shadow: var(--prof-2), inset 3px 0 0 var(--estado-info);
+}
+.aviso-version .btn { flex-shrink: 0; min-height: var(--toque-min); margin-top: 0; }
+body.sin-nav .aviso-version { bottom: calc(env(safe-area-inset-bottom) + var(--e-3)); }
+body.con-temporizador .aviso-version { bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 96px); }
+body.sin-nav.con-temporizador .aviso-version { bottom: calc(env(safe-area-inset-bottom) + 96px); }
+body.con-hoja .aviso-version { display: none; } /* con una hoja abierta, sus botones mandan */
+body.con-aviso-version { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 96px); }
+body.sin-nav.con-aviso-version { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
+body.con-temporizador { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 112px); }
+body.sin-nav.con-temporizador { padding-bottom: calc(env(safe-area-inset-bottom) + 112px); }
+body.con-temporizador.con-aviso-version { padding-bottom: calc(var(--nav-alto) + env(safe-area-inset-bottom) + 176px); }
+
+/* ---- Espera del sistema (ui.js · esqueleto, ocupado) ---- */
+.espera-bloque { padding: var(--e-4) 0; }
+.espera-bloque .esqueleto { height: 16px; }
+.espera-bloque .esqueleto--titulo { height: 26px; width: 60%; }
+.espera-bloque .esqueleto--corta { width: 40%; }
+
+/* ---- Celebración al guardar la sesión (js/aspecto/vida.js) ---- */
+.confeti { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: var(--z-confeti); pointer-events: none; }
+
+/* Con una hoja abierta, el aviso va arriba para no tapar sus campos ni sus botones. */
+body.con-hoja #aviso { top: calc(env(safe-area-inset-top) + var(--e-3)); bottom: auto; }

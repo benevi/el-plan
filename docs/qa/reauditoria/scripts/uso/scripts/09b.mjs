@@ -1,0 +1,10 @@
+import { abrir, BASE } from './h.mjs';
+import { sembrar } from './sembrar.mjs';
+const { browser, page } = await abrir({ w: 180, hgt: 320, reducir: true });
+const id = await sembrar(page, 'virginia', { modo: 'foco' });
+await page.goto(BASE + '/#sesion/' + id); await page.waitForTimeout(300);
+await page.click('[data-act="sesion.ir"][data-v="2"]'); await page.click('[data-act="sesion.cuenta"]'); await page.clock.runFor(7000);
+console.log(await page.evaluate(() => { const t = document.getElementById('temporizador'), cs = getComputedStyle(t); return { pos: cs.position, ov: cs.overflowY, sh: t.scrollHeight, ch: t.clientHeight }; }));
+await page.mouse.move(90, 200); await page.mouse.wheel(0, 400); await page.waitForTimeout(200);
+console.log(await page.evaluate(() => [...document.querySelectorAll('#temporizador button')].map(b => `${b.textContent.trim()} ${Math.round(b.getBoundingClientRect().top)}`)));
+await browser.close();

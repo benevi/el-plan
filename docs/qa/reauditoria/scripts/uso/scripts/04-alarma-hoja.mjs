@@ -1,0 +1,22 @@
+import { abrir, foto, BASE } from './h.mjs';
+import { sembrar, tTxt, sets } from './sembrar.mjs';
+const { browser, page } = await abrir({ w: 360, hgt: 640 });
+const id = await sembrar(page, 'victor', { modo: 'foco' });
+await page.goto(BASE + '/#sesion/' + id); await page.waitForSelector('.vista-sesion');
+const L = (...a) => console.log(...a);
+await page.click('[data-act="sesion.ir"][data-v="1"]');
+await page.click('[data-act="sesion.serie"][data-principal]');
+await page.clock.runFor(500);
+L('descanso', await tTxt(page));
+await foto(page, '04-descanso-uno-a-uno');
+// abre «Más opciones» durante el descanso
+await page.click('[data-act="sesion.menu"]'); await page.clock.runFor(300);
+await page.clock.runFor(91000);
+L('tras fin con hoja abierta:', await tTxt(page), 'vibra', JSON.stringify(await page.evaluate(() => window.__vibra)));
+const vis = await page.evaluate(() => { const t = document.getElementById('temporizador'); const f = document.querySelector('.hoja-fondo'); if (!t) return null; const r = t.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + 10); return { tz: getComputedStyle(t).zIndex, fz: f && getComputedStyle(f).zIndex, encima: top && (top.closest('#temporizador') ? 'alarma' : top.className), inert: t.closest('[inert]') ? 'inerte' : 'no' }; });
+L('alarma visible?', JSON.stringify(vis));
+await foto(page, '04-alarma-con-hoja');
+await page.clock.runFor(9000);
+L('8 s después', await tTxt(page));
+L('ERR', page.errores);
+await browser.close();

@@ -1,17 +1,35 @@
 {
-  "name": "El Plan",
-  "short_name": "El Plan",
-  "description": "Plan de entrenamiento de Víctor y Virginia",
+  "name": "Pipos Fitness",
+  "short_name": "Pipos",
+  "description": "Pipos Fitness: tu entrenador personal",
   "lang": "es",
   "start_url": "./#hoy",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#06070D",
-  "theme_color": "#06070D",
+  "background_color": "#081723",
+  "theme_color": "#081723",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

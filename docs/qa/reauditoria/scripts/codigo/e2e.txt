@@ -1,0 +1,108 @@
+
+Running 54 tests using 2 workers
+
+  ✓   1 [movil-chromium] › tests/e2e/csp.spec.mjs:28:1 › index.html llega con la CSP, HSTS, Permissions-Policy, COOP y sin marcos (1.1s)
+{"entrenador":{"modo":"sesion","esfuerzo":"medium","ids":128,"catalogoDescartados":0,"enVivo":true,"id":"msg_prueba","modelo":"claude-opus-5-5","stop_reason":"end_turn","entrada":1234,"salida":567,"descartados":0,"resultado":"ok","ms":3495}}
+  ✓   3 [movil-chromium] › tests/e2e/csp.spec.mjs:42:3 › sin violaciones de CSP en toda la app (victor) (4.0s)
+  ✓   2 [movil-chromium] › tests/e2e/espera.spec.mjs:75:1 › servidor lento: progreso visible, tocar fuera no cierra y llega la sesión de la IA (5.5s)
+{"entrenador":{"modo":"sesion","esfuerzo":"medium","ids":128,"catalogoDescartados":0,"enVivo":true,"resultado":"cancelada","ms":145}}
+entrenador: error de la IA {"categoria":"cancelada","tipo":"APIUserAbortError"} Request was aborted.
+  ✓   5 [movil-chromium] › tests/e2e/espera.spec.mjs:94:1 › cancelar: la hace la app al momento, guarda la petición y la respuesta tardía no pisa nada (2.1s)
+  ✓   4 [movil-chromium] › tests/e2e/csp.spec.mjs:42:3 › sin violaciones de CSP en toda la app (virginia) (3.7s)
+  ✓   7 [movil-chromium] › tests/e2e/guardado.spec.mjs:20:1 › el espejo de IndexedDB sigue a localStorage y rescata unos datos ilegibles (1.4s)
+{"entrenador":{"modo":"sesion","esfuerzo":"medium","ids":128,"catalogoDescartados":0,"enVivo":true,"id":"msg_prueba","modelo":"claude-opus-5-5","stop_reason":"end_turn","entrada":1234,"salida":567,"descartados":0,"resultado":"ok","ms":3499}}
+  ✓   6 [movil-chromium] › tests/e2e/espera.spec.mjs:124:1 › servidor caído a mitad: nota clara y «Reintentar con IA» funciona de verdad (5.8s)
+  ✓   9 [movil-chromium] › tests/e2e/espera.spec.mjs:149:1 › 401: lo dice en claro y lleva a Perfil › Ajustes para cambiar el código (1.5s)
+  ✓   8 [movil-chromium] › tests/e2e/guardado.spec.mjs:51:1 › dos pestañas: lo que guarda una aparece en la otra y la vieja no lo pisa (6.8s)
+  ✓  10 [movil-chromium] › tests/e2e/hoy.spec.mjs:142:3 › Hoy: cada estado aprobado de Víctor, con contraste AA (3.4s)
+  ✓  11 [movil-chromium] › tests/e2e/humo.spec.mjs:26:1 › arranca, elige dueño y recorre las 4 pestañas sin errores (1.9s)
+  ✓  12 [movil-chromium] › tests/e2e/hoy.spec.mjs:182:3 › check-in de Víctor: en su sitio, selector ±, mis sesiones, alarma, espera de la IA y fallo (3.4s)
+  ✓  13 [movil-chromium] › tests/e2e/humo.spec.mjs:44:1 › con el service worker instalado, recarga sin red y sigue pintando (2.8s)
+  ✓  14 [movil-chromium] › tests/e2e/hoy.spec.mjs:142:3 › Hoy: cada estado aprobado de Virginia, con contraste AA (3.4s)
+  ✓  15 [movil-chromium] › tests/e2e/mis-sesiones.spec.mjs:12:1 › guardar una sesión de abdominales y flexiones y repetirla otro día (5.5s)
+  ✓  16 [movil-chromium] › tests/e2e/hoy.spec.mjs:182:3 › check-in de Virginia: en su sitio, selector ±, mis sesiones, alarma, espera de la IA y fallo (2.9s)
+{"copia":{"accion":"listar","n":0,"resultado":200,"ms":5}}
+{"copia":{"accion":"subir","bytes":702,"borradas":0,"resultado":200,"ms":2}}
+  ✓  18 [movil-chromium] › tests/e2e/hoy.spec.mjs:263:1 › la tira de la semana se lee sin color y el botón de abajo no la tapa (390 × 844, 360 × 640 y 320 × 568) (2.1s)
+{"copia":{"accion":"subir","bytes":718,"borradas":0,"resultado":200,"ms":1}}
+  ✓  19 [movil-chromium] › tests/e2e/hoy.spec.mjs:327:1 › sesión de ayer sin cerrar: «Cerrar la de ayer» abre su cierre y «Descartarla» la borra tras confirmarlo (1.7s)
+{"copia":{"accion":"listar","n":2,"resultado":200,"ms":0}}
+{"copia":{"accion":"listar","n":2,"resultado":200,"ms":0}}
+{"copia":{"accion":"bajar","bytes":718,"resultado":200,"ms":2}}
+  ✓  17 [movil-chromium] › tests/e2e/nube.spec.mjs:31:1 › terminar sesión → copia en la nube → navegador limpio → restaurar con la frase → mismos datos (6.1s)
+copia: faltan las credenciales del Blob
+{"copia":{"accion":"listar","resultado":503,"ms":3}}
+copia: faltan las credenciales del Blob
+{"copia":{"accion":"subir","resultado":503,"ms":0}}
+  ✓  21 [movil-chromium] › tests/e2e/nube.spec.mjs:121:1 › sin almacén Blob: la app lo dice y sigue funcionando (1.5s)
+  ✓  22 [movil-chromium] › tests/e2e/rediseno.spec.mjs:85:1 › atrás con el check-in abierto lo cierra y se queda en Hoy; en la sesión, cierra «Más opciones» sin romper nada (2.1s)
+  ✓  20 [movil-chromium] › tests/e2e/pr16.spec.mjs:87:1 › editor de Mis sesiones: crear una de abdominales y flexiones, editarla, reordenar, añadir desde la ficha y hacerla (5.8s)
+  ✓  23 [movil-chromium] › tests/e2e/rediseno.spec.mjs:134:1 › con «reducir movimiento», la alarma sigue parpadeando despacio (1 Hz) y «→» sale con la letra de la app (770ms)
+  ✓  25 [movil-chromium] › tests/e2e/rediseno.spec.mjs:151:1 › solo con el teclado: pestañas, foco al h1, hoja con foco al título, Tab dentro y Escape devuelve el foco (1.6s)
+  ✓  24 [movil-chromium] › tests/e2e/pr16.spec.mjs:233:1 › Perfil: las siete partes caben sin salirse, con el teclado se cambia de parte y el foco no se pierde (2.2s)
+  ✓  27 [movil-chromium] › tests/e2e/pr16.spec.mjs:274:1 › zonas táctiles de 44 px o más en Perfil, Ejercicios, Progreso y el editor, también a 320 × 568 (2.7s)
+Arranque con SW, 400 ms de latencia y CPU ×4: 625, 626, 674, 884, 887 ms (mediana 674 ms)
+  ✘  26 [movil-chromium] › tests/e2e/rediseno.spec.mjs:204:1 › arranque con el service worker en mala cobertura y la CPU ×4: ≤ 0,6 s hasta la app pintada (5.8s)
+  ✓  28 [movil-chromium] › tests/e2e/pr16.spec.mjs:306:3 › contraste AA y capturas del PR 16 de Víctor (5.6s)
+  ✓  29 [movil-chromium] › tests/e2e/rediseno.spec.mjs:238:3 › contraste AA en todas las pantallas de Víctor (5.6s)
+  ✓  30 [movil-chromium] › tests/e2e/pr16.spec.mjs:306:3 › contraste AA y capturas del PR 16 de Virginia (5.6s)
+  ✓  31 [movil-chromium] › tests/e2e/rediseno.spec.mjs:238:3 › contraste AA en todas las pantallas de Virginia (5.1s)
+  ✓  32 [movil-chromium] › tests/e2e/sesion.spec.mjs:117:3 › recorrido de la sesión de Víctor en 390 × 844: diseño aprobado, contraste AA, toques de 48 px y alarma (4.5s)
+  ✓  33 [movil-chromium] › tests/e2e/sw.spec.mjs:109:1 › se instala, arranca sin red con sus fuentes y no pide nada fuera del sitio (1.6s)
+  ✓  34 [movil-chromium] › tests/e2e/sesion.spec.mjs:117:3 › recorrido de la sesión de Virginia en 390 × 844: diseño aprobado, contraste AA, toques de 48 px y alarma (5.1s)
+  ✓  35 [movil-chromium] › tests/e2e/sw.spec.mjs:136:1 › actualización con un archivo que falla a medias: sigue la versión vieja entera; luego entra la nueva entera (6.3s)
+  ✓  36 [movil-chromium] › tests/e2e/sesion.spec.mjs:117:3 › recorrido de la sesión de Víctor en 360 × 640: diseño aprobado, contraste AA, toques de 48 px y alarma (4.1s)
+  ✓  38 [movil-chromium] › tests/e2e/sesion.spec.mjs:117:3 › recorrido de la sesión de Virginia en 360 × 640: diseño aprobado, contraste AA, toques de 48 px y alarma (4.2s)
+  ✓  37 [movil-chromium] › tests/e2e/sw.spec.mjs:177:1 › despliegue a mitad de la instalación (sw.js de B, ui.js de A): no se instala la mezcla y sigue A entera (6.7s)
+T9 360×640 victor: margen de la serie actual sobre el borde 19 px
+T9 360×640 victor: margen de la serie actual sobre el descanso 12 px
+  ✓  39 [movil-chromium] › tests/e2e/sesion.spec.mjs:274:3 › T9 en 360 × 640 (victor): la serie actual se ve sin desplazarse, no la tapa el descanso y todo mide ≥ 48 px (1.1s)
+T9 360×640 virginia: margen de la serie actual sobre el borde 44 px
+T9 360×640 virginia: margen de la serie actual sobre el descanso 12 px
+  ✓  41 [movil-chromium] › tests/e2e/sesion.spec.mjs:274:3 › T9 en 360 × 640 (virginia): la serie actual se ve sin desplazarse, no la tapa el descanso y todo mide ≥ 48 px (918ms)
+T9 320×568 victor: margen de la serie actual sobre el borde -97 px
+T9 320×568 victor: margen de la serie actual sobre el descanso 91 px
+  ✓  42 [movil-chromium] › tests/e2e/sesion.spec.mjs:274:3 › T9 en 320 × 568 (victor): la serie actual se ve sin desplazarse, no la tapa el descanso y todo mide ≥ 48 px (899ms)
+T9 320×568 virginia: margen de la serie actual sobre el borde -97 px
+T9 320×568 virginia: margen de la serie actual sobre el descanso 91 px
+  ✓  43 [movil-chromium] › tests/e2e/sesion.spec.mjs:274:3 › T9 en 320 × 568 (virginia): la serie actual se ve sin desplazarse, no la tapa el descanso y todo mide ≥ 48 px (833ms)
+  ✓  44 [movil-chromium] › tests/e2e/sesion.spec.mjs:296:1 › doble toque en «Serie 1 hecha»: cuenta como uno (973ms)
+  ✓  45 [movil-chromium] › tests/e2e/sesion.spec.mjs:306:1 › ejercicio por tiempo: si el máximo se avisó con la pantalla a la vista, ocultar la app un momento no pregunta y apunta los segundos reales (944ms)
+  ✓  40 [movil-chromium] › tests/e2e/sw.spec.mjs:212:1 › caché estropeada: con red, el vigilante la tira y recarga desde la red; sin red, lo dice (13.9s)
+  ✓  46 [movil-chromium] › tests/e2e/sw.spec.mjs:235:1 › «red que miente» (onLine sin respuesta) y la app no arranca por otra causa: no tira la caché (11.8s)
+  ✓  47 [movil-chromium] › tests/e2e/sw.spec.mjs:260:1 › Instrument Sans (variable) se carga y dibuja cada peso y las cifras estrechas donde el CSS los pide (1.1s)
+  ✓  48 [movil-chromium] › tests/e2e/sw.spec.mjs:296:1 › al volver a primer plano avisa de la versión nueva; con una sesión en curso, no (3.0s)
+  ✓  49 [movil-chromium] › tests/e2e/sw.spec.mjs:325:1 › dos pestañas: al actualizar en una, la otra (sin sesión) se recarga con la versión nueva (6.7s)
+  ✓  50 [movil-chromium] › tests/e2e/sw.spec.mjs:342:1 › dos pestañas con una sesión en curso: la otra avisa, no se recarga y se recarga al terminar la sesión (4.6s)
+  ✓  51 [movil-chromium] › tests/e2e/sw.spec.mjs:375:1 › navegar a /LEEME.md u otra URL no pisa index.html (1.3s)
+  ✓  52 [movil-chromium] › tests/e2e/sw.spec.mjs:391:1 › vigilante de arranque: si un módulo no llega, lo dice y deja recargar (7.5s)
+  ✓  53 [movil-chromium] › tests/e2e/sw.spec.mjs:404:1 › vigilante en la primera instalación con red lenta: «Sigue cargando…» sin error, y arranca (10.8s)
+  ✓  54 [movil-chromium] › tests/e2e/sw.spec.mjs:414:1 › paso desde main (SW viejo) con red a medias, luego sin red, y marcha atrás (5.9s)
+
+
+  1) [movil-chromium] › tests/e2e/rediseno.spec.mjs:204:1 › arranque con el service worker en mala cobertura y la CPU ×4: ≤ 0,6 s hasta la app pintada 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 600
+    Received:    674
+
+      231 |   // Presupuesto: 0,6 s. Las máquinas de CI son más lentas y comparten CPU con otra prueba en paralelo: allí,
+      232 |   // margen de un 50 % (sigue cazando regresiones serias, como los 2,5 s de antes del PR 13).
+    > 233 |   expect(mediana).toBeLessThanOrEqual(process.env.CI ? 900 : 600);
+          |                   ^
+      234 | });
+      235 |
+      236 | // ── Contraste AA en cada pantalla, Víctor y Virginia (y capturas con CAPTURAS=1) ──
+        at /home/user/wt/auditoria/tests/e2e/rediseno.spec.mjs:233:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../tmp/claude-0/-home-user-el-plan/1a092d6b-4887-5556-b1cc-1429962da25e/scratchpad/reauditoria/codigo/pw-out/rediseno-arranque-con-el-s-d7722--0-6-s-hasta-la-app-pintada-movil-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../tmp/claude-0/-home-user-el-plan/1a092d6b-4887-5556-b1cc-1429962da25e/scratchpad/reauditoria/codigo/pw-out/rediseno-arranque-con-el-s-d7722--0-6-s-hasta-la-app-pintada-movil-chromium/error-context.md
+
+  1 failed
+    [movil-chromium] › tests/e2e/rediseno.spec.mjs:204:1 › arranque con el service worker en mala cobertura y la CPU ×4: ≤ 0,6 s hasta la app pintada 
+  53 passed (2.4m)
+rc=1

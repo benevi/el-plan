@@ -1,0 +1,18 @@
+rodilla/gym: Sesión suave | c:bici-estatica | 60 min
+   IA llamada: 0, principales: -
+rodilla/piscina: Sesión suave | c:aquajogging | 60 min
+   IA llamada: 0, principales: -
+rodilla/casa: Sesión suave | c:marcha-estatica | 60 min
+   IA llamada: 0, principales: -
+lumbar/gym: Sesión suave | c:cinta-inclinada | 60 min
+   IA llamada: 0, principales: -
+lumbar/piscina: Sesión suave | c:aquajogging | 60 min
+   IA llamada: 0, principales: -
+lumbar/casa: Sesión suave | c:marcha-estatica | 60 min
+   IA llamada: 0, principales: -
+hombro/gym: Sesión suave | c:bici-estatica | 60 min
+   IA llamada: 0, principales: -
+hombro/piscina: Sesión suave | c:aquajogging | 60 min
+   IA llamada: 0, principales: -
+hombro/casa: Sesión suave | c:marcha-estatica | 60 min
+   IA llamada: 0, principales: -
