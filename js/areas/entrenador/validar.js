@@ -30,7 +30,7 @@ import {
   contextoDia, riesgoHoy, maxDolorHoy, esCardioValido, reglaCardio, cardioDelDia, opcionesCardio, valePrincipal, elegirPrincipales, permitidoBase,
   rehabValida, candidatosRehab, fasesRehab, ejercicioRehab, faseDeBanda, zonasRehab, dosis, tipoEj, pausaMinima, AISLA_HOMBRO, esEstiramiento, tareaOk,
   calentamientoDe, vueltaDe, tiempoSesionExacto, tareaSinIdOk, porNombre, tareaLibreDeApp, tareasDelDia, respiracionDe, RE_APROXIMACION, aproximacionDe, tiempoEj, notaCardio, tiempoEjercicios, minutosTareas, minutosCalentamiento, minutosVuelta, minDe, minus, lista, nombreZona, PLANTILLAS, tipoParaLugar, porQueEjercicio, minutosSesion,
-  sincronizarDosis, techoDolor, noSabeNadar, CARDIO_ULTIMO,
+  sincronizarDosis, techoDolor, noSabeNadar, CARDIO_ULTIMO, minCardioBloque, cardioEnTareas, conMinimosSalud,
 } from './dia.js';
 import { diaDolorAlto, tablaDolorAlto } from './dolor-alto.js';
 
@@ -189,9 +189,10 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
   if (!cardio.length && opcionesCardio(S, ctx, { sinRiesgo: alto || suave }).length) out.push('sin cardio');
   const regla = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, dolorAlto: alto, bandas: ctx.bandas });
   // En el día de dolor alto el bloque cuenta con su inicio suave (decisión 6): la tabla siempre supera el mínimo.
-  const minCardio = alto || suave ? Math.min(regla.minutos, tablaDolorAlto(ctx.minutos).cardio - 8) : regla.minutos;
+  // Con calentamiento y vuelta largos por salud, su cardio suave cuenta (C-SALUD-0, 24-11-2026).
+  const minCardio = alto || suave ? Math.min(regla.minutos, tablaDolorAlto(ctx.minutos).cardio - 8) : minCardioBloque(ctx, regla, sesion.calentamiento, sesion.vuelta);
   const minHecho = cardio.reduce((t, x) => t + minDe(x.reps), 0);
-  if (cardio.length && minHecho < minCardio) out.push(`cardio de ${minHecho} min (mínimo ${regla.minutos})`);
+  if (cardio.length && minHecho < minCardio) out.push(`cardio de ${minHecho} min (mínimo ${minCardio})`);
   const cal = sesion.calentamiento || [], vue = sesion.vuelta || [];
   if (cal.length < 2 || cal.some(t => !t.nombre)) out.push('calentamiento incompleto');
   // Los mínimos de los datos de salud no se recortan nunca, tampoco por tiempo (C-SALUD-0, C-TIEMPO-2 paso 5).
@@ -221,11 +222,13 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
       if (!todos.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
       const c = todos.filter(e => !ejs.some(y => y.id === e.id) && !(sesion.calentamiento || []).some(t => t.id === e.id));
       const cabe = !!c.length && tEntero + tiempoEj(ejercicioRehab(S, c[0], z, ctx)) <= topeMinutos(ctx.minutos);
-      if (ctx.bandas[z].banda >= 2 || cabe) out.push(`sin rehabilitación de ${z}`);
+      // Una zona en B2 solo se queda sin ella por tiempo, en el último recurso y si no cabe (C-TIEMPO-2 paso 8).
+      if ((ctx.bandas[z].banda >= 2 && !(ultimo && !cabe)) || cabe) out.push(`sin rehabilitación de ${z}`);
     });
     // Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa al prepararla, pero no es un fallo.
     const mia = !!(sesion.origen && sesion.origen.tipo === 'mia');
-    if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ultimo && !mia) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
+    // Nunca más de lo pedido, tampoco en el último recurso (C-TIEMPO-1, decisión de Víctor del 23-11-2026).
+    if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ctxIn.mia && !mia) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
   }
   return out;
 }
@@ -381,7 +384,9 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     const txt = String(cardio.reps == null ? '' : cardio.reps).trim();
     const min = Math.round(/^\d+(?:[.,]\d+)?$/.test(txt) ? +txt.replace(',', '.') : minDe(normalizarReps(ex(cardio.id), txt) || ''));
     const tope = (ctxIn.tipo || s.tipo) === 'suave' ? minutos : Math.max(regla.minutos, Math.min(regla.max, Math.floor(minutos / 2)));
-    if (min < regla.minutos) { cardio.reps = `${regla.minutos} min`; if (min > 0) cambios.push(`el cardio sube de ${min} a ${regla.minutos} min: es el mínimo para tu objetivo`); }
+    // Con calentamiento y vuelta largos por salud, su cardio suave cuenta (C-SALUD-0, 24-11-2026).
+    const minimo = minCardioBloque(ctx, regla, s.calentamiento, s.vuelta);
+    if (min < minimo) { cardio.reps = `${regla.minutos} min`; if (min > 0) cambios.push(`el cardio sube de ${min} a ${regla.minutos} min: es el mínimo para tu objetivo`); }
     else if (min > tope) { cardio.reps = `${tope} min`; cambios.push(`el cardio baja de ${min} a ${tope} min`); }
     else cardio.reps = `${min} min`;
     cardio.series = 1; cardio.descanso = 0;
@@ -586,6 +591,7 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   let notas = notasSalud(s, ctx);
 
   // 8. Tiempo ≤ pedido (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
+  const cardioAntes = (s.ejercicios.find(x => x.rol === 'cardio') || {}).reps;
   const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios, { tipo: ctxIn.tipo || s.tipo, k: ctxIn.k || 0, usados: ctxIn.usados || {}, deLaApp: añadidos ? añadidos.ids : [] });
   // Lo que el ajuste de tiempo deshace no se cuenta como hecho (ronda del 23-11, CR-26): si los principales que
   // se añadieron ya no están, fuera el «añado …»; sin ningún principal, fuera también las «series menos».
@@ -602,11 +608,20 @@ export function validarSesion(S, sesion, ctxIn = {}) {
       const zs = zonasRehab(ctx).filter(z => s.ejercicios.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx)));
       const c = s.ejercicios.find(x => x.rol === 'cardio');
       const p = s.ejercicios.find(x => x.rol === 'principal');
-      const partes = [`cardio${c ? ` (${c.reps})` : ''}`, ...(zs.length ? [`ejercicios para ${lista(zs.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}`] : []), ...(p ? [`1 ejercicio de fuerza (${nombre(ex(p.id))})`] : [])];
+      const credito = cardioEnTareas(ctx, s.calentamiento, s.vuelta);
+      const partes = [`cardio${c ? ` (${c.reps}${credito ? ' más el suave del calentamiento y la vuelta' : ''})` : ''}`, ...(zs.length ? [`ejercicios para ${lista(zs.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}`] : []), ...(p ? [`1 ejercicio de fuerza (${nombre(ex(p.id))})`] : [])];
       s.explicacion = [`Hoy ${lista(partes)}: con ${ctx.minutos} minutos no cabe ${p ? 'más' : 'también la'} fuerza.`,
         ...s.explicacion.slice(1).filter(t => !/ejercicios principales|el primer básico va a|^Dosis para/.test(String(t)))];
     } else s.explicacion = s.explicacion.map(t => String(t).replace(/\b\d+ ejercicios principales/, `${n} ejercicios principales`));
+    // Un aviso de último recurso solo (validar otra vez no lo repite).
+    s.explicacion = s.explicacion.filter(t => !esUltimoRecurso(t));
     s.explicacion.splice(1, 0, ultimo);
+  }
+  // Si el ajuste de tiempo ha bajado el bloque de cardio (C-SALUD-0, paso 5b), la explicación dice los minutos que quedan.
+  const cardioDespues = s.ejercicios.find(x => x.rol === 'cardio');
+  if (cardioDespues && cardioAntes && cardioDespues.reps !== cardioAntes) {
+    const m = minDe(cardioDespues.reps);
+    s.explicacion = s.explicacion.map(t => String(t).replace(/^Cardio de \d+ min:/, `Cardio de ${m} min más el suave del calentamiento y la vuelta:`).replace(/\b\d+ min de cardio\b/, `${m} min de cardio`));
   }
   sincronizarDosis(s);
   // El margen depende de que queden principales (el último recurso sin fuerza los quita).
@@ -780,6 +795,19 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
     const ahora = [minutosTareas(s.calentamiento), minutosTareas(s.vuelta)];
     if (ahora[0] !== antes[0] || ahora[1] !== antes[1]) cambios.push(`calentamiento de ${ahora[0]} minutos y vuelta a la calma de ${ahora[1]}`);
   }
+  // 5b. Con calentamiento y vuelta largos por salud (cardiopatía: 10 y 10), su cardio suave cuenta como cardio del
+  // día y el bloque de cardio baja lo que haga falta, hasta su mínimo con ese crédito (C-SALUD-0, 24-11-2026).
+  const bloque = s.ejercicios.find(x => x.rol === 'cardio');
+  if (T() > limite && bloque && conMinimosSalud(ctx)) {
+    const regla = reglaCardio(S, ctx.lugar, { minutos: ctx.minutos, energia: ctx.energia, bandas: ctx.bandas });
+    const de = minDe(bloque.reps), a = Math.max(minCardioBloque(ctx, regla, s.calentamiento, s.vuelta), Math.floor(de - (T() - limite)));
+    if (a < de) {
+      bloque.reps = `${a} min`;
+      bloque.nota = notaCardio(S, ctx, ex(bloque.id), a, regla, 0, opcionesCardio(S, ctx));
+      const cal = minutosTareas(s.calentamiento), vue = minutosTareas(s.vuelta);
+      cambios.push(`con tu corazón, el calentamiento y la vuelta a la calma son de ${cal === vue ? cal : `${cal} y ${vue}`} minutos, con cardio suave dentro: cuentan como parte de tu cardio de hoy, así que el bloque de cardio queda en ${a} minutos`);
+    }
+  }
   if (T() <= limite) { reponer(); return null; }
   // 6. Último recurso: 2 principales en superserie de 2 series (decisión 8, C-TIEMPO-3).
   // La pareja, de antagonistas si la hay: empuje-tirón o rodilla-cadera (C-TIEMPO-3, revisión del PR #48).
@@ -803,13 +831,23 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
     s.ejercicios.splice(s.ejercicios.indexOf(dos[0]) + 1, 0, dos[1]);
   }
   if (T() <= limite) reponer();
-  if (T() <= limite) return `Por tiempo (${ULTIMO_RECURSO}): con ${ctx.minutos} minutos caben tu cardio, lo de tu lesión y 2 ejercicios principales en superserie.`;
+  if (T() <= limite) return `Por tiempo (${ULTIMO_RECURSO}): con ${ctx.minutos} minutos caben tu cardio${zonas.some(z => deZona(z).length) ? ', lo de tu lesión' : ''} y 2 ejercicios principales en superserie.`;
   // 7. Sin fuerza ese día: cardio mínimo y rehabilitación, con el aviso.
   prin().forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
   // Salvo que quepa 1 principal que no cargue la zona (decisión A, C-TIEMPO-5): va antes que la rehabilitación de
   // las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza).
   const uno = unPrincipal(S, s, ctx, limite, { ...op, originales });
   reponer();
+  // 8. Nunca más de lo pedido (C-TIEMPO-1): si aún no cabe, fuera la rehabilitación de las zonas de menos dolor, una
+  // a una; esas zonas van en la próxima sesión (C-DOLOR-3, se rota). Calentamiento, vuelta y cardio no bajan de sus
+  // mínimos.
+  const fuera = [];
+  while (!uno && T() > limite) {
+    const z = zonas.filter(z2 => deZona(z2).length).sort((a, b) => (ctx.bandas[a].dolor || 0) - (ctx.bandas[b].dolor || 0))[0];
+    if (!z) break;
+    deZona(z).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
+    fuera.push(z);
+  }
   const c = s.ejercicios.find(x => x.rol === 'cardio');
   const zs = zonas.filter(z => deZona(z).length);
   if (uno) {
@@ -820,5 +858,8 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
     else if (recorte) cambios.push(`dejo ${nombre(ex(x.id))} a ${x.series} series con ${x.descanso} s de descanso: es lo que cabe en ${ctx.minutos} minutos${sin}`);
     return `Por tiempo (${ULTIMO_RECURSO}): con ${ctx.minutos} minutos caben tu cardio${zs.length ? `, lo de tu ${lista(zs.map(nombreZona))}` : ''} y 1 ejercicio principal${activas.length ? ` que no carga tu ${lista(activas.map(nombreZona))}` : ''}. Si quieres más fuerza, elige ${ctx.minutos + 15} minutos.`;
   }
-  return `Con ${ctx.minutos} minutos no caben tu cardio de ${c ? minDe(c.reps) : 0} minutos, el trabajo de tu ${lista(zs.map(nombreZona)) || 'lesión'} y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
+  // Lo que se dice es lo que hay: sin zonas, ni lesión ni rehabilitación; con cardio suave por salud, cómo cuenta.
+  const credito = cardioEnTareas(ctx, s.calentamiento, s.vuelta);
+  const cardioTxt = !c ? 'tu cardio' : credito ? `tu cardio (${minDe(c.reps)} minutos más el suave del calentamiento y la vuelta)` : `tu cardio de ${minDe(c.reps)} minutos`;
+  return `Con ${ctx.minutos} minutos no caben ${cardioTxt}${zs.length ? `, el trabajo de tu ${lista(zs.map(nombreZona))}` : ''} y fuerza. Hoy: ${zs.length ? 'cardio y rehabilitación' : 'cardio'}.${fuera.length ? ` El trabajo de tu ${lista(fuera.map(nombreZona))} no cabe hoy: va en la próxima sesión.` : ''} Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
 }

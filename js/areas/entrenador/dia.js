@@ -399,6 +399,23 @@ export function minutosVuelta(S, ctx) {
   const t = m < 45 ? 3 : m < 60 ? 5 : m < 75 ? 6 : m < 90 ? 8 : 9;
   return Math.max(t, ctx.salud.vueltaMin || 0);
 }
+// C-SALUD-0, C-TIEMPO-2 paso 5 (24-11-2026): con calentamiento o vuelta más largos por salud (cardiopatía: 10 y 10),
+// los dos llevan cardio muy suave progresivo (subida y bajada de pulsaciones) y esos minutos cuentan como parte del
+// cardio del día, como el inicio suave del día de dolor alto (decisión 6). El bloque de cardio puede bajar hasta lo que
+// falte para su mínimo, nunca por debajo de CARDIO_BLOQUE_MIN. Así 10 + 10 + el resto cabe en lo pedido (C-TIEMPO-1).
+export const CARDIO_BLOQUE_MIN = 5;
+export const conMinimosSalud = ctx => (ctx.salud.calentamientoMin || 0) > 4 || (ctx.salud.vueltaMin || 0) > 3;
+const esTareaCardio = t => { const e = t && t.id && ex(t.id); return !!e && ['cardio', 'natacion'].includes(e.m[0]); };
+// Minutos de cardio suave dentro del calentamiento y la vuelta que cuentan como cardio (0 sin mínimos de salud).
+export function cardioEnTareas(ctx, cal = [], vue = []) {
+  if (!conMinimosSalud(ctx)) return 0;
+  return [...(cal || []), ...(vue || [])].filter(esTareaCardio).reduce((t, x) => t + minDe(x.duracion), 0);
+}
+// Mínimo del bloque de cardio con ese crédito (regla.minutos sin él).
+export function minCardioBloque(ctx, regla, cal, vue) {
+  const c = cardioEnTareas(ctx, cal, vue);
+  return c ? Math.min(regla.minutos, Math.max(CARDIO_BLOQUE_MIN, regla.minutos - c)) : regla.minutos;
+}
 // Reparte `total` minutos enteros entre n partes (al menos 1 cada una si se puede).
 export const repartir = (total, n) => Array.from({ length: n }, (_, i) => Math.floor(total / n) + (i < total % n ? 1 : 0));
 const tareaDe = (e, detalle, min) => ({ id: e.id, nombre: e.n, detalle, duracion: `${min} min` });
@@ -499,7 +516,8 @@ export function calentamientoDe(S, ctx, elegidos = [], { total } = {}) {
   const sobra = T - (c + mv + x);
   if (sobra >= 0) c += sobra; else { x = 0; mv = Math.min(mv, Math.max(1, T - 2)); c = Math.max(1, T - mv); }
   const suave = opcionesCardio(S, ctx, { sinRiesgo: true })[0] || opcionesCardio(S, ctx)[0];
-  out.push(suave ? tareaDe(suave, 'Muy suave (2-3 de 10), hasta notar calor.', c) : { nombre: 'Cardio suave', detalle: 'Caminar o pedalear muy suave hasta notar calor.', duracion: `${c} min` });
+  const progresivo = conMinimosSalud(ctx) && c >= 5; // C-SALUD-0: subida de pulsaciones poco a poco
+  out.push(suave ? tareaDe(suave, progresivo ? 'Progresivo: empieza muy suave (2 de 10) y sube poco a poco hasta 3-4 de 10.' : 'Muy suave (2-3 de 10), hasta notar calor.', c) : { nombre: 'Cardio suave', detalle: 'Caminar o pedalear muy suave hasta notar calor.', duracion: `${c} min` });
   // Movilidad de lo que se va a usar (2-4 tareas).
   const usaSup = !elegidos.length || elegidos.some(e => SUPERIOR.includes(e.m[0])), usaInf = !elegidos.length || elegidos.some(e => !SUPERIOR.includes(e.m[0]) && e.m[0] !== 'core');
   const mov = [...(usaInf ? MOVILIDAD.inferior : []), ...(usaSup ? MOVILIDAD.superior : []), ...MOVILIDAD.core].filter(id => tareaOk(S, id, ctx));
@@ -525,6 +543,12 @@ export function vueltaDe(S, ctx, elegidos = [], { total } = {}) {
   const T = Math.max(2, Math.round(total || minutosVuelta(S, ctx)));
   const out = [];
   let queda = T;
+  // C-SALUD-0: con una vuelta larga por salud, primero cardio muy suave bajando (bajada de pulsaciones); lo demás,
+  // estiramientos y respiración (4 min).
+  if (ctx.lugar !== 'piscina' && (ctx.salud.vueltaMin || 0) > 3 && T > 4) {
+    const suave = opcionesCardio(S, ctx, { sinRiesgo: true })[0] || opcionesCardio(S, ctx)[0];
+    if (suave) { out.push(tareaDe(suave, 'Bajando poco a poco: de suave a muy suave (2 de 10), hasta que el pulso se calme.', T - 4)); queda = 4; }
+  }
   if (ctx.lugar === 'piscina' && T >= 3) { out.push(tareaOk(S, 'flotacion', ctx) ? tareaDe(ex('flotacion'), 'Suelta el cuerpo y respira lento.', 1) : { nombre: 'Nado muy suave', detalle: 'Espalda suave o caminar en el agua.', duracion: '1 min' }); queda -= 1; }
   const resp = queda >= 5 ? 2 : 1;
   const nEst = Math.max(1, queda - resp);

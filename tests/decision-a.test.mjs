@@ -237,8 +237,7 @@ test('C-SALUD-0, C-TIEMPO-2 paso 5, C-TIEMPO-5: con cardiopatía el ajuste de ti
           const cal = s.calentamiento.reduce((t, x) => t + parseFloat(x.duracion), 0), vue = s.vuelta.reduce((t, x) => t + parseFloat(x.duracion), 0);
           assert.ok(cal >= 10 && vue >= 10, `${n0}: calentamiento ${cal}, vuelta ${vue}`);
           assert.deepEqual(ent.problemasSesion(S, s, c), [], n0);
-          // Con el principal de C-TIEMPO-5, cabe en lo pedido.
-          if (s.explicacion.some(t => TXT_A.test(t))) assert.ok(dia.tiempoSesionExacto(s) <= minutos + 0.01, n0);
+          assert.ok(dia.tiempoSesionExacto(s) <= minutos + 0.01, `${n0}: ${dia.tiempoSesionExacto(s)} min`);
         }
       }
     }
@@ -260,4 +259,59 @@ test('C-DOLOR-1, §12.5 (segunda revisión del PR #54): las flexiones inclinadas
   // En casa con el hombro a 5 no salen como «la que no carga tu hombro».
   const { s } = sesion({ objetivos: ['perder'], lugares: ['casa'], nivel: 2, materialCasa: ['mancuernas', 'banda'], lesiones: [L('hombro', 3)] }, { lugar: 'casa', dolorHoy: { hombro: 5 } });
   assert.ok(!prin(s).some(x => /^flexiones/.test(x.id)), prin(s).map(x => x.id).join(', '));
+});
+
+// ── Tercera revisión del PR #54: cardiopatía, nunca más de lo pedido y avisos veraces ──
+const CARD = { cardiopatia: true, vistoBueno: { cardiopatia: true } };
+const minTareas = l => l.reduce((t, x) => t + parseFloat(x.duracion), 0);
+const huella = s => JSON.stringify({ e: s.ejercicios.map(x => [x.id, x.rol, x.series, x.reps, x.descanso]), c: s.calentamiento.map(t => [t.id, t.duracion]), v: s.vuelta.map(t => [t.id, t.duracion]), x: s.explicacion });
+
+test('C-SALUD-0, C-TIEMPO-1, C-TIEMPO-2 paso 5b: cardiopatía en lugares × objetivos × zonas × 30/45/60: ≤ lo pedido, calentamiento y vuelta ≥ 10, idempotente', () => {
+  const zonas = [null, ...Object.keys(lesiones.ZONAS).sort()];
+  const mal = [];
+  for (const lugar of ['gym', 'casa', 'calle', 'piscina']) {
+    for (const obj of ['perder', 'salud', 'musculo', 'resistencia']) {
+      for (const z of zonas) {
+        for (const minutos of [30, 45, 60]) {
+          const dolorHoy = z ? { [z]: 5 } : {};
+          const { S, s, c } = sesion({ objetivos: [obj], lugares: [lugar], nivel: 2, materialCasa: ['mancuernas', 'banda'], nadar25: true, lesiones: z ? [L(z, 3)] : [], salud: CARD }, { lugar, minutos, dolorHoy });
+          const n = `${lugar}/${obj}/${z}/${minutos}`;
+          const t = dia.tiempoSesionExacto(s);
+          if (t > minutos + 0.01) mal.push(`${n}: ${t.toFixed(1)} min`);
+          if (minTareas(s.calentamiento) < 10 || minTareas(s.vuelta) < 10) mal.push(`${n}: calentamiento ${minTareas(s.calentamiento)}, vuelta ${minTareas(s.vuelta)}`);
+          const p = ent.problemasSesion(S, s, c);
+          if (p.length) mal.push(`${n}: ${p.join('; ')}`);
+          if (s.explicacion.filter(x => /\(último recurso\)|no caben tu cardio/.test(x)).length > 1) mal.push(`${n}: aviso repetido`);
+          if (!z && s.explicacion.some(x => /lesión|rehabilitación/.test(x) && /último recurso|no caben/.test(x))) mal.push(`${n}: habla de lesión sin lesión`);
+          let w = s;
+          for (let i = 0; i < 5; i++) w = ent.validarSesion(S, w, { lugar, minutos, energia: 3, dolorHoy }).sesion;
+          if (huella(w) !== huella(s)) mal.push(`${n}: no es idempotente`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(mal.slice(0, 12), []);
+});
+
+test('C-SALUD-0 (24-11-2026): con cardiopatía y 30 min, el aviso dice el corazón, el cardio suave cuenta y no hay «Tu check-in no cambia nada»', () => {
+  const { S, s, c } = sesion({ objetivos: ['perder'], nivel: 2, salud: CARD }, {});
+  assert.ok(dia.tiempoSesionExacto(s) <= 30);
+  assert.ok(s.explicacion.some(t => /^Ajustado por la app: [Cc]on tu corazón, el calentamiento y la vuelta a la calma son de 10 minutos, con cardio suave dentro: cuentan como parte de tu cardio de hoy, así que el bloque de cardio queda en \d+ minutos\.?$/.test(t)), s.explicacion.join(' | '));
+  assert.ok(!s.explicacion.some(t => /Tu check-in no cambia nada/.test(t)), s.explicacion.join(' | '));
+  assert.ok(!s.explicacion.some(t => /lesión|rehabilitación/.test(t)), s.explicacion.join(' | '));
+  // El cardio suave está de verdad en el calentamiento y en la vuelta.
+  const cardioEn = l => l.filter(t => t.id && ['cardio', 'natacion'].includes(cat.ex(t.id).m[0])).reduce((a, t) => a + parseFloat(t.duracion), 0);
+  assert.ok(cardioEn(s.calentamiento) >= 5 && cardioEn(s.vuelta) >= 5, `${cardioEn(s.calentamiento)} + ${cardioEn(s.vuelta)}`);
+  const bloque = s.ejercicios.find(x => x.rol === 'cardio');
+  assert.ok(parseFloat(bloque.reps) >= 5);
+  assert.ok(parseFloat(bloque.reps) + cardioEn(s.calentamiento) + cardioEn(s.vuelta) >= 15, 'el cardio total no llega al mínimo de perder grasa');
+  assert.deepEqual(ent.problemasSesion(S, s, c), []);
+});
+
+test('C-TIEMPO-1 (tercera revisión del PR #54): problemasSesion avisa de una sesión más larga que lo pedido, también en el último recurso', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2 });
+  const s = { lugar: 'gym', minutos: 30, explicacion: ['Hoy cardio.', 'Con 30 minutos no caben tu cardio de 15 minutos y fuerza. Hoy: cardio. Si quieres fuerza, elige 45 minutos.'],
+    ejercicios: [{ ...CARDIO15, reps: '25 min' }], calentamiento: [Tl('Bici'), Tl('Movilidad')], vuelta: [{ ...Tl('Estiramiento de pecho'), duracion: '2 min' }, { ...Tl('Respiración'), duracion: '2 min' }] };
+  const p = ent.problemasSesion(S, s, { lugar: 'gym', minutos: 30 });
+  assert.ok(p.some(t => /^\d+ min para 30$/.test(t)), p.join(' | '));
 });
