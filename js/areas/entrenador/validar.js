@@ -22,6 +22,7 @@
 //  7. Calentamiento (≥ 2 tareas con nombre, C-CAL-2) y vuelta (≥ 2 tareas y un estiramiento, C-VUELTA-1),
 //     cada tarea con id válida para el lugar y el dolor (C-EST-4).
 //  8. Tiempo ≤ pedido (C-TIEMPO-1, decisión de Víctor del 23-11-2026) con el orden de C-TIEMPO-2, incluido el último recurso (decisión 8).
+//     Tras quitar la fuerza, 1 principal que no cargue la zona si quedan 4 min o más (C-TIEMPO-5, decisión A del 24-11-2026).
 
 import { ex, hayMaterial, puntosTipo } from '../../reglas/catalogo.js';
 import { rango, acotarKg, sesionesHechas, cargaMuscular, semanaDescarga, topeSeries } from '../../reglas/progresion.js';
@@ -46,6 +47,8 @@ export const topeMinutos = minutos => +minutos || 0;
 export const NOTA_SIN_NIVEL = 'Aquí no hay otro de tu nivel para este músculo: prioriza la técnica, sin llegar al fallo, y si no sale limpio usa una variante más fácil.';
 // La explicación lleva el último recurso (y así el validador acepta menos de 3 principales, C-TIEMPO-2).
 export const esUltimoRecurso = t => /\(último recurso\)|no caben tu cardio/.test(String(t));
+// Negación justo delante de «a tope», «sprint»… (C-CARDIO-4): «nunca », «sin », «nada de ir », «no vayas »; nada en medio.
+const NEGADO_JUSTO_ANTES = /\b(?:nunca|sin|nada de|no)\s+(?:(?:ir|vayas|hacer|hagas|llegar|llegues)\s+)?$/;
 const LUGAR_TXT = { gym: 'el gimnasio', casa: 'casa', calle: 'la calle', piscina: 'la piscina' };
 
 // Zonas en las que un ejercicio va «con precaución» hoy: r=1 en una zona en B0-B1 (C-DOSIS-4).
@@ -384,10 +387,11 @@ export function validarSesion(S, sesion, ctxIn = {}) {
     // Una nota sin la intensidad (C-CARDIO-4) también es la de la regla.
     const sinIntensidad = !/rpe|esfuerzo|de 10\b|hablar|frases/i.test(String(cardio.nota || ''));
     // Ni «a tope» ni «sprint»: lo fuerte de los intervalos es un 7 de 10 (C-CARDIO-4; verificación del 22-11).
-    // Lo negado («nunca a tope», «sin sprints», «nada de ir a tope») no cuenta (revisión del PR #53).
+    // Lo negado («nunca a tope», «sin sprints», «nada de ir a tope») no cuenta (revisión del PR #53), pero solo con
+    // la negación justo delante: «1 min sin parar a tope» o «no pares y sprint final» sí son a tope.
     const notaN = String(cardio.nota || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const maximo = [...notaN.matchAll(/a tope|sprint|al maximo|a muerte|todo lo que puedas|(?:9|10) de 10|rpe ?(?:9|10)\b/g)]
-      .some(m => !/\b(?:nunca|sin|nada de|no)\b[^.,;:]{0,12}$/.test(notaN.slice(0, m.index)));
+      .some(m => !NEGADO_JUSTO_ANTES.test(notaN.slice(0, m.index)));
     if (!cardio.nota || sinIntensidad || maximo || !regla.intervalos || ctx.salud.rpeMax || ctx.energia <= 2) cardio.nota = notaCardio(S, ctx, ex(cardio.id), minDe(cardio.reps), regla, 0, opcionesCardio(S, ctx));
     if (combinado) {
       const encadenado = lugar === 'casa' || lugar === 'calle';
@@ -579,19 +583,22 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   let notas = notasSalud(s, ctx);
 
   // 8. Tiempo ≤ pedido (C-TIEMPO-1, C-TIEMPO-2). Una de «Mis sesiones» no se recorta (C-MIA-1).
-  const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios);
+  const ultimo = ctxIn.mia ? null : ajustarTiempo(S, s, ctx, cambios, { tipo: ctxIn.tipo || s.tipo, k: ctxIn.k || 0 });
   // Lo que el ajuste de tiempo deshace no se cuenta como hecho (ronda del 23-11, CR-26): si los principales que
   // se añadieron ya no están, fuera el «añado …»; sin ningún principal, fuera también las «series menos».
   if (añadidos && !añadidos.ids.some(id => s.ejercicios.some(x => x.id === id))) cambios.splice(cambios.indexOf(añadidos.texto), 1);
-  if (ultimo && !s.ejercicios.some(x => x.rol === 'principal')) { const i = cambios.findIndex(c => /^para que quepa en \d+ minutos, \d+ series? menos/.test(c)); if (i >= 0) cambios.splice(i, 1); }
+  if (ultimo && s.ejercicios.filter(x => x.rol === 'principal').length <= 1) { const i = cambios.findIndex(c => /^para que quepa en \d+ minutos, \d+ series? menos/.test(c)); if (i >= 0) cambios.splice(i, 1); }
   if (ultimo) {
     // La explicación dice lo que de verdad queda (IA-5): sin fuerza, fuera los puntos de principales y de dosis
     // y un primer punto nuevo con el dolor de hoy; con 2 en superserie, el número que queda.
+    // Con 1 solo principal (decisión A, C-TIEMPO-5), el primer punto también se rehace: dice cuál es.
     const n = s.ejercicios.filter(x => x.rol === 'principal').length;
-    if (!n) {
+    if (n <= 1) {
       const zs = zonasRehab(ctx).filter(z => s.ejercicios.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx)));
       const c = s.ejercicios.find(x => x.rol === 'cardio');
-      s.explicacion = [`Hoy cardio${c ? ` (${c.reps})` : ''}${zs.length ? ` y ejercicios para ${lista(zs.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}` : ''}: con ${ctx.minutos} minutos no cabe también la fuerza.`,
+      const p = s.ejercicios.find(x => x.rol === 'principal');
+      const partes = [`cardio${c ? ` (${c.reps})` : ''}`, ...(zs.length ? [`ejercicios para ${lista(zs.map(z => `tu ${nombreZona(z)} (${ctx.bandas[z].dolor}/10)`))}`] : []), ...(p ? [`1 ejercicio de fuerza (${nombre(ex(p.id))})`] : [])];
+      s.explicacion = [`Hoy ${lista(partes)}: con ${ctx.minutos} minutos no cabe ${p ? 'más' : 'también la'} fuerza.`,
         ...s.explicacion.slice(1).filter(t => !/ejercicios principales|el primer básico va a|^Dosis para/.test(String(t)))];
     } else s.explicacion = s.explicacion.map(t => String(t).replace(/\b\d+ ejercicios principales/, `${n} ejercicios principales`));
     s.explicacion.splice(1, 0, ultimo);
@@ -642,8 +649,41 @@ const GRUPO = { pecho: 'empuje', hombro: 'empuje', triceps: 'empuje', espalda: '
 const CONTRARIO = { empuje: 'tiron', tiron: 'empuje', rodilla: 'cadera', cadera: 'rodilla' };
 const antagonistas = (a, b) => !!a && !!b && !!GRUPO[a.m[0]] && CONTRARIO[GRUPO[a.m[0]]] === GRUPO[b.m[0]];
 
+// Decisión A de Víctor (24-11-2026, C-TIEMPO-5): si tras quitar la fuerza (paso 7) quedan HUECO_PRINCIPAL minutos o
+// más hasta lo pedido, entra 1 principal que no cargue ninguna zona activa (sin r en ellas), con las barandillas
+// de siempre (el pool del día ya quita lugar, material, «No lo quiero», dolor y salud; su nivel, C-DOSIS-10), de 2
+// series como mínimo y con su descanso de C-PAUSA-1. Nunca pasa de lo pedido (C-TIEMPO-1): si no cabe, nada.
+export const HUECO_PRINCIPAL = 4;
+function unPrincipal(S, s, ctx, limite, { tipo, k = 0 } = {}) {
+  const T = () => tiempoSesionExacto(s);
+  if (limite - T() < HUECO_PRINCIPAL) return null;
+  const zonas = Object.keys(ctx.bandas);
+  const pool = ctx.pool.filter(e => zonas.every(z => !(e.r || {})[z]) && (e.niv <= ctx.nivel || ctx.lugar === 'piscina'));
+  const excluir = [...s.ejercicios.map(x => x.id), ...s.calentamiento.map(t => t.id), ...s.vuelta.map(t => t.id)].filter(Boolean);
+  const huecos = PLANTILLAS[tipoParaLugar(tipo, ctx.lugar)].huecos;
+  const antes = s.ejercicios.findIndex(x => x.rol === 'cardio');
+  // En el orden de la plantilla y de preferencia; si el primero no cabe (p. ej. un compuesto con 90 s), el siguiente.
+  for (let intento = 0; intento < pool.length; intento++) {
+    const [e] = elegirPrincipales(S, { ...ctx, pool }, { huecos, presupuesto: Infinity, k, excluir, maximo: 1 });
+    if (!e) return null;
+    excluir.push(e.id);
+    const d = dosis(S, e, 0, ctx.lugar);
+    const x = { id: e.id, rol: 'principal', ...d };
+    // Antes del cardio (o al final): tras él no se descansa y ese descanso no cuenta (C-TIEMPO-1).
+    s.ejercicios.splice(antes >= 0 ? antes : s.ejercicios.length, 0, x);
+    while (T() > limite && x.series > 2) x.series--;
+    if (T() > limite) { const pm = pausaMinima(tipoEj(e), (rango(x.reps) || {}).lo); if (pm) x.descanso = Math.min(x.descanso, pm); }
+    if (T() <= limite) {
+      x.nota = porQueEjercicio(S, e, { i: 0, d: x, an: ctx.an, carga: {}, niveles: ctx.niveles, dolorHoy: ctx.dolorHoy });
+      return x;
+    }
+    s.ejercicios.splice(s.ejercicios.indexOf(x), 1);
+  }
+  return null;
+}
+
 // Orden para cuadrar el tiempo (C-TIEMPO-2). Devuelve el texto del último recurso si se ha usado.
-function ajustarTiempo(S, s, ctx, cambios) {
+function ajustarTiempo(S, s, ctx, cambios, op = {}) {
   const limite = topeMinutos(ctx.minutos);
   const T = () => tiempoSesionExacto(s);
   if (T() <= limite) return null;
@@ -714,8 +754,15 @@ function ajustarTiempo(S, s, ctx, cambios) {
   if (T() <= limite) return `Por tiempo (${ULTIMO_RECURSO}): con ${ctx.minutos} minutos caben tu cardio, lo de tu lesión y 2 ejercicios principales en superserie.`;
   // 7. Sin fuerza ese día: cardio mínimo y rehabilitación, con el aviso.
   prin().forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
+  // Salvo que quepa 1 principal que no cargue la zona (decisión A, C-TIEMPO-5): va antes que la rehabilitación de
+  // las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza).
+  const uno = unPrincipal(S, s, ctx, limite, op);
   reponer();
   const c = s.ejercicios.find(x => x.rol === 'cardio');
   const zs = zonas.filter(z => deZona(z).length);
+  if (uno) {
+    const activas = Object.keys(ctx.bandas);
+    return `Por tiempo (${ULTIMO_RECURSO}): con ${ctx.minutos} minutos caben tu cardio${zs.length ? `, lo de tu ${lista(zs.map(nombreZona))}` : ''} y 1 ejercicio principal${activas.length ? ` que no carga tu ${lista(activas.map(nombreZona))}` : ''}. Si quieres más fuerza, elige ${ctx.minutos + 15} minutos.`;
+  }
   return `Con ${ctx.minutos} minutos no caben tu cardio de ${c ? minDe(c.reps) : 0} minutos, el trabajo de tu ${lista(zs.map(nombreZona)) || 'lesión'} y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
 }

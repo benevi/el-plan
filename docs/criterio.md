@@ -1106,16 +1106,18 @@ Ejemplos:
 **Último recurso** [Decisión 8]:
 
 6. **2 ejercicios principales** en superserie de 2 series, antagonistas si los hay (empuje-tirón o rodilla-cadera, C-TIEMPO-3): una serie de cada uno seguidas, sin descanso entre los dos, y **90-120 s entre parejas**, nunca por debajo de C-PAUSA-1 de ninguno de los dos [aprobado por Víctor el 23-11-2026] (S18).
-7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos».
+7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos». Salvo C-TIEMPO-5: si quedan 4 minutos o más, entra 1 principal que no cargue la zona.
 
 **Nunca** se quita el cardio mínimo ni el calentamiento y la vuelta enteros. El validador acepta menos de 3 principales **solo** con el motivo «último recurso» anotado.
+
+**C-TIEMPO-5 [Objetivo] [decisión A de Víctor del 24-11-2026]** **1 principal en el hueco que deja el paso 7.** Si tras quitar la fuerza (C-TIEMPO-2 paso 7) quedan **4 minutos o más** hasta lo pedido (con el calentamiento, la vuelta, el cardio mínimo y la rehabilitación de las zonas en B2 ya contados), entra **1 ejercicio principal que no cargue ninguna zona activa** (sin r en ellas), con todas las barandillas de siempre: catálogo, bandas de dolor (C-DOLOR-1), lugar y material (C-EST-4), «No lo quiero», datos de salud (C-SALUD-0) y su nivel (C-DOSIS-10). Va con su dosis, bajando series hasta 2 y el descanso hasta el mínimo de C-PAUSA-1 si hace falta; si ese no cabe, se prueba el siguiente (p. ej. un aislamiento en lugar de un compuesto). **Nunca pasa de los minutos pedidos** (C-TIEMPO-1). Va antes que la rehabilitación de las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza). Si no cabe ninguno o no hay ninguno seguro, la sesión se queda como en el paso 7, con su aviso. Con el principal, la explicación lo dice: «Por tiempo (último recurso): con [m] minutos caben tu cardio, lo de tu [zona] y 1 ejercicio principal que no carga tu [zona]. Si quieres más fuerza, elige [m + 15] minutos». Vale igual para las reglas, la IA (el validador lo aplica a todo) y los días del plan.
 
 **C-TIEMPO-3 [Criterio] [PR 8]** Con 30 minutos, el principal va en superseries de antagonistas (empuje-tirón, rodilla-cadera), con el descanso de C-PAUSA-1 entre parejas.
 
 **C-TIEMPO-4 [Criterio] [PR 8]** Cálculos de comprobación:
 - **Perder grasa, 30 min, sin zonas.** Calentamiento 4 + vuelta 3 + cardio 15 = 22; quedan 8 (límite 30). Paso 6: superserie de 2 principales antagonistas × 2 series con 90 s entre parejas (S18) ≈ 5,3 (sin el descanso tras la última pareja, C-TIEMPO-1). Total ≈ 27: cabe con 2 principales.
-- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5. Paso 5: calentamiento 4 (26,5). Paso 6: la superserie (≈ 5,3) da 31,8 y no cabe en 30 (C-TIEMPO-1, «nunca más de lo pedido», 23-11-2026). Paso 7: cardio y rehabilitación, con aviso. (Con el +10 % de antes, el límite era 33 y cabía con 2 principales; con 60 s entre parejas, antes de S18, se incumplía C-PAUSA-1.)
-- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso.
+- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5. Paso 5: calentamiento 4 (26,5). Paso 6: la superserie (≈ 5,3) da 31,8 y no cabe en 30 (C-TIEMPO-1, «nunca más de lo pedido», 23-11-2026). Paso 7: sin fuerza quedan 26 (sin el descanso tras la última serie del isométrico), así que hay 4 libres y entra 1 principal que no carga la zona (C-TIEMPO-5, decisión A del 24-11-2026): un compuesto a 2 × 8-12 con 90 s (3,9 más el descanso del isométrico, que vuelve a contar) no cabe; un aislamiento a 2 × 12-15 con 45 s (≈ 3,2) sí: total ≈ 29,7. Con una rehabilitación más corta (p. ej. 2 × 15 con banda en el hombro, ≈ 2,9) quedan ≈ 5 y cabe un compuesto a 2 series. (Con el +10 % de antes, el límite era 33 y cabía con 2 principales; con 60 s entre parejas, antes de S18, se incumplía C-PAUSA-1.)
+- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza ni queda hueco para C-TIEMPO-5. Paso 7: cardio y rehabilitación, con aviso.
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 13,3 (límite 45). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9) dan ≈ 48,6: pasos 1-3 (descansos y series de los accesorios, y quitar el último accesorio si hace falta) hasta caber en 45.
 
 ---
@@ -1270,7 +1272,7 @@ Sirven para las pruebas del validador (PR 8), los historiales sintéticos (PR 10
 | **CR-23** ⚑ | **D2 de 90 min en piscina con dos zonas**: hombro hoy 8, rodilla hoy 4 | Sin IA. 45 min de bloque con `aquajogging` o `caminar-agua`, 25 de movilidad en el agua sin hombro, 20 de estiramientos en el borde y `flotacion` | rol `principal`; `crol`, `espalda`, `nado-continuo`, `series-50-crol`, `patada-crol-tabla`, `rotacion-hombro-agua`; total ≠ 90 ± 2 |
 | **CR-24** | Salud, **63 años**, intermedio, gimnasio, 45 min, sin D4 | Margen ≥ 2, calentamiento 9 min, `equilibrio-una-pierna`, cardio continuo | Intervalos; `pike-pushup`; margen < 2 |
 | **CR-25** ⚑ | Perder grasa, intermedio, notas: «tengo la tensión alta», sin D4 | Margen ≥ 2, sin intervalos, nada cabeza abajo; la explicación invita a rellenar Salud | Intervalos; `pike-pushup` |
-| **CR-26** ⚑ | Perder grasa, 30 min, gimnasio. **Lumbar hoy 5 y rodilla hoy 5** | C-TIEMPO-4: cardio 15 + rehabilitación de 1 por zona, sin fuerza, con el aviso | Cardio < 15; zona B2 sin rehabilitación; tiempo > 30 sin aviso |
+| **CR-26** ⚑ | Perder grasa, 30 min, gimnasio. **Lumbar hoy 5 y rodilla hoy 5** | C-TIEMPO-4: cardio 15 + rehabilitación de 1 por zona, sin fuerza (no quedan 4 min para C-TIEMPO-5), con el aviso | Cardio < 15; zona B2 sin rehabilitación; tiempo > 30 sin aviso |
 | **CR-27** ⚑ | Lesión **migrada** con ficha 9, sin check-in hoy | La app pide el check-in y que se revise el dolor habitual; el plan trata la zona como B2 | Sesión del día empezada sin check-in; D2 sin dolor de hoy ≥ 7 |
 | **CR-28** | Lesión de hombro **sin `desde`** | Pregunta «¿Desde cuándo?» antes de generar; «no lo sé» → nueva | Sesión generada antes de la respuesta |
 | **CR-29** ⚑ | Salud, casa con banda, **tobillo (esguince) hoy 5**, 45 min | Cardio `cardio-sentado` 10-15; fuerza sin apoyo de pie cargado; rehabilitación de fase 1 | `marcha-estatica`, `jumping-jacks-sin-salto`, `step-bajo`, `comba`, `boxeo-sombra`, `zancadas`, `step-up` |
@@ -1323,6 +1325,10 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 18. **T3b · Texto de «Algo va mal» sin lesiones** (§ 2.5): **aprobado tal como está**.
 19. **S8 · Palabras de alarma**: la lista de C-ALAR-4 es la del código, con «se me nubló la vista» y «calambre en el brazo izquierdo»: **aprobada**.
 20. **S4 · Equilibrio con 60 años o más**: queda siempre, también si el ajuste de tiempo quita la rehabilitación de tobillo que lo traía (C-EDAD-1): **aprobada**.
+
+**Decidida por Víctor el 24-11-2026:**
+
+21. **A · 1 principal en las sesiones cortas con una zona dolorida** (C-TIEMPO-5, C-TIEMPO-2 paso 7 y el ejemplo de C-TIEMPO-4): si tras el calentamiento, el cardio, la rehabilitación y la vuelta a la calma quedan 4 minutos o más, 1 ejercicio principal que no cargue la zona, con todas las barandillas y sin pasar nunca de los minutos pedidos; si no cabe o no hay ninguno seguro, la sesión se queda como estaba: **aprobada (opción A)**.
 
 ---
 
