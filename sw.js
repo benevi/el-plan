@@ -9,11 +9,11 @@
 // - La versión nueva espera hasta que la persona toca «Actualizar» (js/nucleo/version.js), salvo que
 //   la versión activa sea de antes de este esquema (ver `install`).
 // VERSION y HUELLAS las escribe `npm run version` (scripts/version.mjs): no las cambies a mano.
-const VERSION = 'pipos-app-2945b4c8b897';
+const VERSION = 'pipos-app-4ecaf77689dc';
 const PREFIJO = 'pipos-app-';
 // Huella de cada archivo de APP (la escribe también `npm run version`): la instalación solo acepta estos.
 const HUELLAS = {
-  './': 'sha256-PFo02rRKLA37pdcZchgZIFwuffN2ChFppWXCt1q5oWs=',
+  './': 'sha256-ZOktT2SbE1S+V0eFNXXHOdRD/sA+WgJXOdfyKUcsTS8=',
   './css/areas.css': 'sha256-ZzfU6KU7w/c5tUfsaTBCfqAoUQ9P+jMbXw61jQdPLug=',
   './css/componentes.css': 'sha256-EUqHgW58BSffOwOeNUFtDXMe7cE2F/Yc2EQgRuWjOD8=',
   './css/ejercicios.css': 'sha256-pPqlssCGyUQDuLK11WM2dbUmpGleib9zW3MPjQ4MIcM=',
@@ -32,7 +32,7 @@ const HUELLAS = {
   './icons/icon.svg': 'sha256-sJzu6OtKFXuo/fIR4P5sSXUivY6OWsXJkeVRxMzZ8HM=',
   './icons/logo.svg': 'sha256-5zigwm3jcX26G6wTlAB+IViwYh0i6bnBGth9bvhdROE=',
   './icons/maskable-512.png': 'sha256-tdm98mEZRBgddtEiMnKlHmSGq8rylRfSma5jYNi27yE=',
-  './index.html': 'sha256-PFo02rRKLA37pdcZchgZIFwuffN2ChFppWXCt1q5oWs=',
+  './index.html': 'sha256-ZOktT2SbE1S+V0eFNXXHOdRD/sA+WgJXOdfyKUcsTS8=',
   './js/areas/ejercicios/buscador.js': 'sha256-dXJ7NSnIWHQf8Vm2yDQuDsr3K0u6F9WTDtPPoVTdy2w=',
   './js/areas/ejercicios/indice.js': 'sha256-R5Kr9OhCq3N8mpt+WJTg/uTqg3k9s3q63XAjzYwSNDI=',
   './js/areas/entrenador/alarma.js': 'sha256-d2If3mRw+E5z945eqNZMoyVIv0NXYsHjoEhsKcy3Lvo=',
@@ -41,9 +41,9 @@ const HUELLAS = {
   './js/areas/entrenador/dolor-alto.js': 'sha256-tEU1EMhgjerhZUOAYRAOyTWdSyBj5oWLAv+DfWsWnrA=',
   './js/areas/entrenador/entrenador.js': 'sha256-kJS0s2Oi25j0gL3obZ99PX+3lQS3Si2RIdQgRDFmeyA=',
   './js/areas/entrenador/ia.js': 'sha256-Hch9qwQS0qFGiB8PXlWcKKBGxj+CLfq+lTwEhFoXc1E=',
-  './js/areas/entrenador/indice.js': 'sha256-RAtnnEOXEBPtv88JpUZSxMWQv9G99D2fYA2WTNutx0I=',
+  './js/areas/entrenador/indice.js': 'sha256-By7J1kchoMToKwKydVPumqrDZS5KnQYWlR/VTCdwieM=',
   './js/areas/entrenador/mias.js': 'sha256-QsEEsDpf8iv5CZrJP8+vZ8YHt3Crj8VM6gBCSeL9JZ8=',
-  './js/areas/entrenador/suelto.js': 'sha256-OBtenGetfH2EdB+Op+a1Qd+b04gTWqPJP4E+bX+pEeQ=',
+  './js/areas/entrenador/suelto.js': 'sha256-kjGyPk3xq7zoIIJzgZh0Jeb7jHjwJVQ1e/YsgH5V2FA=',
   './js/areas/entrenador/plan.js': 'sha256-bxkwuO0YDG9Ruc9YfCSM/G5LuS3Qa+D40s/eYDp6Y7k=',
   './js/areas/entrenador/salud.js': 'sha256-prvtoFdH1Oxh39/L37kPzgvRGy2JL68swdd9iX30Rjo=',
   './js/areas/entrenador/validar.js': 'sha256-BpNMbD2fgJHwq0cXeQDG83xI6VsomWJGHDRDrMu1Adk=',

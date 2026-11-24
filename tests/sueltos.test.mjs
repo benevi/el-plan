@@ -296,3 +296,19 @@ test('H2 · al confirmar una alarma los sueltos abiertos se cierran: lo hecho, �
   assert.equal(ent.evaluarSuelto(S1, 'plancha').bloqueo.motivo, 'alarma');
   assert.ok(S);
 });
+
+test('N1b · en una misma sesión el dolor del cierre manda sobre su «Algo va mal»; el ejercicio parado sigue sin repetirse hoy', () => {
+  const S = S0();
+  S.perfil.lesiones.push(lesion('rodilla', 2));
+  const ahora = new Date().toISOString();
+  S.sesiones.h1 = { id: 'h1', fecha: hoy(), creada: ahora, fuente: 'reglas', nombre: 'Pierna', lugar: 'gym', estado: 'hecha', empezada: ahora, terminada: ahora,
+    checkin: { energia: 3, dolor: { rodilla: 2 } }, calentamiento: [], vuelta: [], explicacion: [], cierre: { esfuerzo: 3, dolor: { rodilla: 2 }, comentario: '' },
+    ejercicios: [{ id: 'prensa-piernas', rol: 'principal', series: 2, reps: '8-12', descanso: 90, kg: 40, sets: [{ kg: 40, valor: '10', hecha: true }, { kg: 40, valor: '', hecha: false }], dolorDurante: { zona: 'rodilla', dolor: 8, antes: 2, techo: 3 }, comentario: '', gusto: null }] };
+  S.dolor.push({ fecha: hoy(), zona: 'rodilla', dolor: 2, momento: 'despues', sesion: 'h1' }, { fecha: hoy(), zona: 'rodilla', dolor: 2, momento: 'antes', sesion: 'h1' });
+  assert.equal(ent.dolorParaSuelto(est.estado()).rodilla.dolor, 2);
+  assert.equal(ent.evaluarSuelto(est.estado(), 'plancha').bloqueo, null);
+  assert.equal(ent.evaluarSuelto(est.estado(), 'prensa-piernas').bloqueo.motivo, 'parado');
+  // Entre sesiones distintas del mismo día, el más alto sigue valiendo
+  S.sesiones.h2 = { ...S.sesiones.h1, id: 'h2', cierre: null, estado: 'en_curso', ejercicios: [{ ...S.sesiones.h1.ejercicios[0], id: 'sentadilla-goblet' }] };
+  assert.equal(ent.dolorParaSuelto(est.estado()).rodilla.dolor, 8);
+});

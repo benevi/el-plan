@@ -214,7 +214,8 @@ function elegirMia(S, id) {
   const m = miaDe(S, id);
   if (!m) {
     if (ci.antesMia) Object.assign(ci, ci.antesMia);
-    ci.mia = null; ci.ocuparDia = false; delete ci.antesMia;
+    // Vuelve a «La de mi plan»: ya no se sustituye la sesión preparada (la sustitución era por la mía).
+    ci.mia = null; ci.ocuparDia = false; delete ci.antesMia; delete ci.sustituir;
     return;
   }
   if (!ci.antesMia) ci.antesMia = { lugar: ci.lugar, minutos: ci.minutos, peticion: ci.peticion, forzarIA: ci.forzarIA };

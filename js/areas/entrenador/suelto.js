@@ -27,7 +27,8 @@ const DIA = 864e5;
 const CON_PESO = ['mancuernas', 'barra', 'maquina', 'polea', 'botellas'];
 
 // Dolor de cada zona para hoy, sin check-in: lo apuntado en los 3 últimos días (check-ins, cierres y el «dolor
-// durante» de «Algo va mal» de cualquier sesión o suelto, aunque siga abierta; si el mismo día hay varios, el más alto) y, si no hay nada, el de la ficha de la lesión activa (una
+// durante» de «Algo va mal» de cualquier sesión o suelto, aunque siga abierta, salvo que esa misma sesión se cerrara
+// con un dolor de esa zona, que manda por ser posterior; entre sesiones del mismo día, el más alto) y, si no hay nada, el de la ficha de la lesión activa (una
 // lesión traída de la app anterior, con el dolor por revisar, como mucho 6: decisión 11). Devuelve
 // { zona: { dolor, de: 'reciente'|'ficha' } }.
 export function dolorParaSuelto(S, ahora = Date.now()) {
@@ -43,7 +44,9 @@ export function dolorParaSuelto(S, ahora = Date.now()) {
     if (!s) return;
     const f = String(s.fecha || s.creada || '').slice(0, 10);
     // «Algo va mal» (C-DOLOR-6): el dolor que paró un ejercicio, también en una sesión aún abierta.
-    (s.ejercicios || []).forEach(x => { if (x && x.dolorDurante) apuntar(x.dolorDurante.zona, f, x.dolorDurante.dolor); });
+    // Dentro de una misma sesión, el dolor del cierre (posterior) manda sobre el «Algo va mal» de esa zona.
+    const cierre = (s.cierre && s.cierre.dolor) || {};
+    (s.ejercicios || []).forEach(x => { if (x && x.dolorDurante && cierre[x.dolorDurante.zona] == null) apuntar(x.dolorDurante.zona, f, x.dolorDurante.dolor); });
     if (esSuelta(s) || !s.checkin || !s.checkin.dolor) return;
     Object.entries(s.checkin.dolor).forEach(([z, v]) => apuntar(z, String(s.creada || s.fecha || '').slice(0, 10), v));
   });

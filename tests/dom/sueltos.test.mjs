@@ -254,6 +254,26 @@ test('H3 · «Hacerla» con la sesión de hoy preparada pide confirmar y la sust
   sinHojas();
 });
 
+test('H3b · tras confirmar la sustitución, volver a «La de mi plan» no borra la sesión preparada', async () => {
+  const b = conPlan(estadoBase({ sesiones: { s1: sesionDemo('s1', { fuente: 'ia', nombre: 'Torso IA' }) } }));
+  b.plan.hechos = { [hoyDS]: 's1' };
+  b.misSesiones = [mia('m1', 'Pecho')];
+  await reiniciar(b);
+  a.clic('.mis-sesiones-hoy [data-act="entrenador.prepararMia"][data-v="m1"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => $('.hoja.checkin'));
+  const cmp = $('[data-act="entrenador.ciCompleto"]'); if (cmp) { a.clic(cmp); await a.tic(); }
+  await a.esperar(() => $('.hoja [data-act="entrenador.ciMia"][data-v="m1"][aria-pressed="true"]'));
+  a.clic('.hoja [data-act="entrenador.ciMia"][data-v=""]');
+  await a.tic();
+  // Sin la mía, vuelve el check-in de un toque de la sesión de hoy: «Algo ha cambiado» enseña que ya no hay mía elegida.
+  const cmp2 = $('[data-act="entrenador.ciCompleto"]'); if (cmp2) { a.clic(cmp2); await a.tic(); }
+  await a.esperar(() => $('.hoja [data-act="entrenador.ciMia"][data-v=""][aria-pressed="true"]'));
+  a.clic('[data-act="entrenador.crearHoy"]');
+  await a.esperar(() => /^#sesion\//.test(a.w.location.hash), { max: 4000 });
+  assert.ok(a.estado.estado().sesiones.s1, 'la de la IA sigue ahí');
+  sinHojas();
+});
+
 test('H4 · «Ver las N»: editar y hacerla desde la hoja', async () => {
   const b = conPlan(estadoBase()); b.misSesiones = ['1', '2', '3', '4'].map(k => mia('m' + k, 'S' + k));
   await reiniciar(b);

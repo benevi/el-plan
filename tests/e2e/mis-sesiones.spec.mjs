@@ -215,7 +215,10 @@ test('ejercicio suelto: «Hacerlo ahora», un descanso con su alarma, terminarlo
   await page.fill('#ej-buscar', 'press de pecho');
   await page.locator('[data-act="ejercicios.ficha"][data-id="press-pecho-maquina"]').click();
   await expect(page.locator('.hoja .ultimas')).toContainText('20 kg');
+  // Cerrar la hoja vuelve atrás en el historial: se espera a que acabe antes de cambiar de pantalla.
   await page.keyboard.press('Escape');
+  await expect(page.locator('.hoja')).toHaveCount(0);
+  await page.waitForFunction(() => !(history.state && history.state.piposHoja));
   await page.goto('/#progreso');
   await expect(page.locator('#vista')).toContainText('ejercicio suelto');
   await expect(page.locator('[data-act="progreso.ejercicio"][data-id="press-pecho-maquina"]')).toBeVisible();
@@ -233,6 +236,8 @@ test('ejercicio suelto: con el hombro a 5 la ficha dice por qué no y no deja em
   await expect(page.locator('.hoja .ficha-suelto-no')).toContainText('Carga tu hombro');
   await expect(page.locator('.hoja [data-act="ejercicios.suelto"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
+  await expect(page.locator('.hoja')).toHaveCount(0);
+  await page.waitForFunction(() => !(history.state && history.state.piposHoja));
   // Uno que no carga el hombro, sí
   await page.fill('#ej-buscar', 'curl femoral sentado');
   await page.locator('[data-act="ejercicios.ficha"][data-id="curl-femoral-sentado"]').click();

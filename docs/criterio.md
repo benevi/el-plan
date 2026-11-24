@@ -1378,13 +1378,13 @@ Decisión de Víctor del 24-11-2026 (sección 20, decisión 24). Desde la ficha 
 - **No es una sesión**: no es la sesión de hoy, no ocupa ni marca días del plan, no cuenta para la constancia (semanal ni general), ni para el nivel (C-NIVEL-1/2), ni para la descarga (C-DESCARGA-1). Uno a medias no estorba a la sesión de hoy (ni la para ni se borra al prepararla) y se puede seguir desde la ficha o desde «A medias» en Ejercicios.
 - En los datos es una sesión con `origen: { tipo: 'suelto' }` y un solo ejercicio (`js/nucleo/modelo.js`, `esSuelta`), así la leen igual las copias, el normalizador y el progreso.
 
-**C-SUELTO-2 [Objetivo] [aprobada por Víctor el 24-11-2026]** **Cuándo no se puede** (la ficha dice por qué y no ofrece el botón). Sin check-in, el dolor de cada zona es el último apuntado en los 3 últimos días (check-ins, cierres y el «dolor durante» de «Algo va mal», también en una sesión aún abierta; el mismo día, el más alto) y, si no hay, el de la ficha de la lesión activa (una lesión traída de la app anterior, como mucho 6: decisión 11). Con eso se calculan las bandas de siempre (C-DOLOR-1, C-LES-2, C-LES-3):
+**C-SUELTO-2 [Objetivo] [aprobada por Víctor el 24-11-2026]** **Cuándo no se puede** (la ficha dice por qué y no ofrece el botón). Sin check-in, el dolor de cada zona es el último apuntado en los 3 últimos días (check-ins, cierres y el «dolor durante» de «Algo va mal», también en una sesión aún abierta; dentro de una misma sesión, el dolor del cierre manda sobre su «Algo va mal» en esa zona, por ser posterior; entre sesiones del mismo día, el más alto) y, si no hay, el de la ficha de la lesión activa (una lesión traída de la app anterior, como mucho 6: decisión 11). Con eso se calculan las bandas de siempre (C-DOLOR-1, C-LES-2, C-LES-3):
 1. **Señal de alarma** confirmada hoy (C-ALAR-1).
 2. **Dolor ≥ 7** en cualquier zona (C-DOLOR-4): ese día solo la sesión suave del check-in. Si sale de la ficha, se dice que se puede cambiar en Perfil › Lesiones.
 3. **Datos de salud**: «solo suave» (salvo movilidad) o un ejercicio que excluyen (C-SALUD-0).
 4. El ejercicio **carga una zona en B2 o más** (r=1 con dolor 4-6, o con una lesión reciente que duele, C-LES-2), o es de los que la ficha dice **evitar** (r=2) con esa zona activa (C-DOLOR-1: r=2 fuera en todas las bandas).
 5. **Natación por distancia sin saber nadar 2 × 25 m** (C-PISC-2).
-6. Un ejercicio **parado hoy por dolor** con «Algo va mal» (C-DOLOR-6: hoy no se repite).
+6. Un ejercicio **parado hoy por dolor** con «Algo va mal» (C-DOLOR-6: hoy no se repite), aunque la sesión se cerrara después con menos dolor.
 
 Un suelto a medias sigue estas reglas: con una señal de alarma o dolor ≥ 7 no se continúa (solo terminar con lo hecho o descartarlo), y al confirmar una alarma los sueltos abiertos se cierran como con «Algo va mal» (lo hecho se guarda marcado como parada por alarma; sin nada hecho, se borran).
 
