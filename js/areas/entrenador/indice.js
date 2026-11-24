@@ -180,7 +180,7 @@ function dolorInicial(S, l) {
   return r != null ? r : Math.min(6, +l.dolor || 0);
 }
 
-// op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy sin plan).
+// op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy › Mis sesiones).
 export function abrirCheckin(diaPlan = null, op = {}) {
   revisarBajadaNivel();
   const S = estado();
@@ -533,7 +533,8 @@ acciones({
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
   'entrenador.ciMia': el => { elegirMia(estado(), el.dataset.v); hojaCheckin(); },
   'entrenador.ciOcupar': el => { ci.ocuparDia = el.checked; hojaCheckin(); },
-  'entrenador.prepararMia': () => abrirCheckin(null, { mia: (misSesiones(estado())[0] || {}).id }),
+  // Desde Hoy › Mis sesiones: la elegida (data-v); sin ella, la primera.
+  'entrenador.prepararMia': el => abrirCheckin(null, { mia: (el && el.dataset && el.dataset.v) || (misSesiones(estado())[0] || {}).id }),
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };
     if (datos.alarma) { crearConAlarma(); return; }

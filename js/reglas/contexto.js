@@ -3,7 +3,7 @@
 // (nada peligroso llega al catálogo) y corrigen después (kilos acotados, ver progresion.acotarKg).
 
 import { ex, disponibles, zonasRiesgo, ZONAS, rehabPorFase, techoDolor, bandasZonas, nivelesDe } from './catalogo.js';
-import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
+import { registros, resumen, sugerir, cargaMuscular, sesionesHechas, hechasConSueltos, hace, dolorSubio, subidasDolor, estaEstancado, medidaSesion, tendenciaDolor, semanaDescarga } from './progresion.js';
 import { es } from '../nucleo/ui.js';
 import { semanaISO } from '../nucleo/modelo.js';
 import { OBJETIVOS, NIVELES, MUSCULOS, LUGARES } from '../datos/constantes.js';
@@ -236,7 +236,7 @@ export function mejoraPct(regs, e) {
 // Por ejercicio: cómo va (progresa, estancado, molesta), si gusta y lo que se ha comentado.
 export function analizarEjercicios(S) {
   const porId = {};
-  const hechas = sesionesHechas(S);
+  const hechas = hechasConSueltos(S); // con los sueltos: sus comentarios y su progreso también cuentan (C-SUELTO-4)
   hechas.forEach(s => (s.ejercicios || []).forEach(x => {
     if (!x.id || !x.comentario) return;
     (porId[x.id] = porId[x.id] || { comentarios: [] }).comentarios.push({ fecha: s.fecha, texto: x.comentario });

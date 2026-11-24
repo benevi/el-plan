@@ -3,11 +3,13 @@
 // en la barra de abajo, ejercicios por tiempo y cardio con el contador a pantalla completa, cambiar un ejercicio,
 // opinar de él, comentar al entrenador, «Algo va mal» y cerrar con esfuerzo y dolor. Diseño aprobado en DIS 4
 // (prototipos/app, rama diseno-prototipos) con las decisiones del 21-11-2026. PR 15.
+// Un ejercicio suelto (C-SUELTO-1, origen 'suelto') usa esta misma pantalla con un solo ejercicio: sin «Uno a uno»,
+// sin «Cambiar por otro» ni «Guardar como mía», con la técnica abierta, y al terminar vuelve a Ejercicios.
 
 import { rutas, acciones, pintar, ir } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, aviso, confirmar, $, $$, num, es, mmss, movimientoReducido, plural } from '../../nucleo/ui.js';
-import { crearEjercicio, trabajoHecho } from '../../nucleo/modelo.js';
+import { crearEjercicio, trabajoHecho, esSuelta } from '../../nucleo/modelo.js';
 import { ex, ZONAS } from '../../reglas/catalogo.js';
 import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '../../reglas/progresion.js';
 import { LUGARES, MUSCULOS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
@@ -181,7 +183,8 @@ document.addEventListener('toggle', e => { const d = e.target; if (d.matches && 
 function tecnica(s, x) {
   const e = ex(x.id); if (!e || !(e.p && e.p.length)) return '';
   const nuevo = !registros(estado(), x.id).length;
-  const abierto = x.id in tecnicaAbierta ? tecnicaAbierta[x.id] : nuevo && s.estado !== 'hecha';
+  // En un ejercicio suelto, la ficha técnica a mano (abierta) mientras se hace.
+  const abierto = x.id in tecnicaAbierta ? tecnicaAbierta[x.id] : (nuevo || esSuelta(s)) && s.estado !== 'hecha';
   return `<details class="tecnica" data-id="${h(x.id)}" ${abierto ? 'open' : ''}>
     <summary>Cómo se hace${nuevo ? ' <span class="insignia">Nuevo para ti</span>' : ''}</summary>
     <div class="tecnica-texto">
@@ -239,6 +242,7 @@ function tarjetaPlegada(s, x, i) {
 
 // «Guardar como mía» (o de cuál de tus sesiones sale).
 function pieMia(S, s) {
+  if (esSuelta(s)) return '';
   const m = s.origen && miaDe(S, s.origen.id);
   if (m) return `<p class="meta centro mia-origen">De tus sesiones: «${h(m.nombre)}»</p>`;
   if (s.tipo === 'dolorAlto' || !s.ejercicios.some(x => ex(x.id))) return '';
@@ -260,15 +264,16 @@ function vista([id]) {
   if (!s) return `<section class="vacio"><h1>No encuentro esa sesión</h1><p>Puede que se descartara. Prepara la de hoy desde Hoy.</p><a class="boton" href="#hoy">Volver a Hoy</a></section>`;
   const { total, hechas } = totales(s);
   const abierta = s.estado !== 'hecha';
-  const modoFoco = modoFocoActivo(S) && abierta;
+  const suelta = esSuelta(s);
+  const modoFoco = modoFocoActivo(S) && abierta && !suelta;
   if (foco.id !== id) foco = { id, i: primerPendiente(s) };
   const cab = `<header class="cab-sesion">
-      <a href="#hoy" class="boton-icono" aria-label="Volver a Hoy">${ICONOS.atras}</a>
-      <div><h1>${h(s.nombre)}</h1><p>${h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> ${total === 1 ? 'serie' : 'series'}${abierta ? '' : ', hecha'}</p></div>
+      <a href="${suelta ? '#ejercicios' : '#hoy'}" class="boton-icono" aria-label="Volver a ${suelta ? 'Ejercicios' : 'Hoy'}">${ICONOS.atras}</a>
+      <div><h1>${h(s.nombre)}</h1><p>${suelta ? 'Ejercicio suelto' : h(LUGARES[s.lugar] || '')}, <span class="cifra">${hechas} de ${total}</span> ${total === 1 ? 'serie' : 'series'}${abierta ? '' : suelta ? ', hecho' : ', hecha'}</p></div>
       ${abierta ? '<button type="button" class="boton boton--secundario" data-act="sesion.terminar">Terminar</button>' : ''}
     </header>
     <div class="avance" role="img" aria-label="${plural(hechas, 'serie', 'series', total)}"><i data-var="--v:${total ? (hechas / total).toFixed(3) : 0}"></i></div>
-    ${abierta ? `<div class="segmento segmento--ancho modo-sesion" role="radiogroup" aria-label="Cómo ver la sesión">
+    ${abierta && !suelta ? `<div class="segmento segmento--ancho modo-sesion" role="radiogroup" aria-label="Cómo ver la sesión">
       <button type="button" role="radio" data-act="sesion.modo" data-v="foco" aria-checked="${modoFoco}" tabindex="${modoFoco ? 0 : -1}">Uno a uno</button>
       <button type="button" role="radio" data-act="sesion.modo" data-v="lista" aria-checked="${!modoFoco}" tabindex="${modoFoco ? -1 : 0}">Toda la sesión</button></div>` : ''}`;
   // Por qué: la primera frase (resumen del día) siempre a la vista; el resto, plegado.
@@ -305,9 +310,9 @@ function vista([id]) {
     ${tareas(s, 'vuelta', 'Vuelta a la calma', abierta)}
     ${!abierta
       ? `<section class="tarjeta cierre-resumen" aria-labelledby="t-cierre"><h2 class="tarjeta-nombre" id="t-cierre">Cierre</h2><p>Esfuerzo ${s.cierre && s.cierre.esfuerzo ? `<span class="cifra">${+s.cierre.esfuerzo} de 5</span>` : '—'}</p>${s.cierre && s.cierre.comentario ? `<p class="comentario">«${h(s.cierre.comentario)}»</p>` : ''}</section>${pieMia(S, s)}`
-      : `${pieMia(S, s)}<button type="button" class="boton boton--ancho" data-act="sesion.terminar">Terminar sesión</button>
+      : `${pieMia(S, s)}<button type="button" class="boton boton--ancho" data-act="sesion.terminar">${suelta ? 'Terminar' : 'Terminar sesión'}</button>
          ${algoVaMal}
-         <button type="button" class="boton boton--texto centro descartar" data-act="sesion.descartar">Descartar esta sesión</button>`}
+         <button type="button" class="boton boton--texto centro descartar" data-act="sesion.descartar">${suelta ? 'Descartar este ejercicio' : 'Descartar esta sesión'}</button>`}
   </div></div>`;
 }
 
@@ -348,10 +353,11 @@ function pendientes(s) {
 function hojaCierre() {
   const S = estado(), s = sesion(idActual()); if (!s || s.estado === 'hecha') return;
   // Sin ninguna serie no hay sesión que guardar: no cuenta como entrenada ni para la constancia (E7).
+  const suelta = esSuelta(s);
   if (!trabajoHecho(s)) {
     abrirHoja(`<h2>No has marcado nada</h2>
-      <p class="hoja-texto">Una sesión sin ninguna serie ni tarea marcada no cuenta como entrenada. Si las has hecho, márcalas y vuelve a «Terminar».</p>
-      <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">Volver a la sesión</button><button type="button" class="boton boton--peligro" data-act="sesion.descartar">Descartar la sesión</button></div>`, { clase: 'hoja-sesion' });
+      <p class="hoja-texto">${suelta ? 'Sin ninguna serie marcada no hay nada que guardar.' : 'Una sesión sin ninguna serie ni tarea marcada no cuenta como entrenada.'} Si las has hecho, márcalas y vuelve a «Terminar».</p>
+      <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">${suelta ? 'Volver al ejercicio' : 'Volver a la sesión'}</button><button type="button" class="boton boton--peligro" data-act="sesion.descartar">${suelta ? 'Descartarlo' : 'Descartar la sesión'}</button></div>`, { clase: 'hoja-sesion' });
     return;
   }
   // «Terminar» dice cuántas quedan (R17), en la misma hoja que el cierre: seguir o guardar igual.
@@ -362,11 +368,11 @@ function hojaCierre() {
   const quedan = lista.length ? `<div class="aviso aviso--aviso aviso-hoja" role="note">${ICONOS.alerta}<div class="aviso-texto">
       <b>Te ${p.series + p.vuelta === 1 ? 'queda' : 'quedan'} ${titulo}</b>
       <p>Si terminas ahora, quedan sin hacer: ${h(lista.join(', '))}. Lo hecho se guarda igual.</p>
-      <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">Seguir con la sesión</button></div></div></div>` : '';
+      <div class="aviso-acciones"><button type="button" class="boton boton--secundario" data-act="sesion.seguir">${suelta ? 'Seguir con el ejercicio' : 'Seguir con la sesión'}</button></div></div></div>` : '';
   // Solo zonas del catálogo: su clave va dentro de un id.
   const zonas = [...new Set([...Object.keys((s.checkin && s.checkin.dolor) || {}), ...S.perfil.lesiones.filter(l => l.activa).map(l => l.zona)])].filter(z => tiene(ZONAS, z));
   // Un dolor del check-in que no está en el perfil se puede guardar como molestia puntual (M11, C-LES-3).
-  const nuevas = new Set(dolorNuevoSinLesion(S, s).map(d => d.zona));
+  const nuevas = new Set(suelta ? [] : dolorNuevoSinLesion(S, s).map(d => d.zona));
   abrirHoja(`<h2>¿Qué tal ha ido?</h2>
     ${quedan}
     <div class="grupo"><p class="grupo-et" id="c-esf-et">Esfuerzo</p>
@@ -374,7 +380,7 @@ function hojaCierre() {
       <p class="ayuda" id="c-esf-txt">${ESFUERZO[3]}</p></div>
     ${zonas.map(z => `<div class="grupo">${selector({ id: `c-dolor-${z}`, et: `Dolor ahora en ${minus(ZONAS[z].corta)}`, valor: Math.max(0, Math.min(10, ultimoDolor(S, s, z))), min: 0, max: 10, paso: 1, unidad: 'de 10', nombre: 'de 10', entrada: `data-zona="${h(z)}"` })}${nuevas.has(z) ? molestiaNueva(z) : ''}</div>`).join('')}
     <div class="campo"><label for="c-com">Para tu entrenador <small>molestias, qué cambiarías…</small></label><textarea id="c-com" rows="3" maxlength="${+LARGO_TEXTO.comentarioCierre}"></textarea></div>
-    <button type="button" class="boton boton--ancho" data-act="sesion.cerrar">Guardar sesión</button>`, { clase: 'hoja-sesion' });
+    <button type="button" class="boton boton--ancho" data-act="sesion.cerrar">${suelta ? 'Guardar ejercicio' : 'Guardar sesión'}</button>`, { clase: 'hoja-sesion' });
 }
 const molestiaNueva = z => `<div class="molestia-nueva" data-molestia="${h(z)}"><p class="ayuda">No la tienes en tu perfil: guárdala para que el entrenador la tenga en cuenta los próximos días.</p>
   <button type="button" class="boton boton--secundario" data-act="sesion.guardarMolestia" data-z="${h(z)}" aria-label="Guardar ${h(minus(ZONAS[z].corta))} como molestia puntual">Guardar como molestia puntual</button></div>`;
@@ -433,7 +439,7 @@ function menuEjercicio(i) {
   abrirHoja(`<h2>${h(e ? e.n : x.id)}</h2>
     <ul class="menu-hoja">
       <li><button type="button" data-act="sesion.ficha" data-id="${h(x.id)}">${ICONOS.info}Cómo se hace</button></li>
-      ${abierta ? `<li><button type="button" data-act="sesion.cambiar" data-e="${i}">${ICONOS.editar}Cambiar por otro</button></li>
+      ${abierta ? `${esSuelta(s) ? '' : `<li><button type="button" data-act="sesion.cambiar" data-e="${i}">${ICONOS.editar}Cambiar por otro</button></li>`}
       ${x.dolorDurante ? '' : `<li><button type="button" data-act="sesion.serieMas" data-e="${i}" data-v="1">${ICONOS.mas}Añadir una serie</button></li>
       ${x.sets.length > 1 && !x.sets[x.sets.length - 1].hecha ? `<li><button type="button" data-act="sesion.serieMas" data-e="${i}" data-v="-1">${ICONOS.menos}Quitar una serie</button></li>` : ''}
       <li><button type="button" data-act="sesion.algoVaMal" data-e="${i}">${ICONOS.alerta}Me duele al hacerlo</button></li>`}` : ''}
@@ -535,7 +541,7 @@ function datosFinal(S, s) {
   if (min && (min > 240 || new Date(s.empezada).toDateString() !== new Date(s.terminada).toDateString())) min = +s.minutos || null;
   let semana = '';
   try {
-    const d = estadoDias(S);
+    const d = esSuelta(s) ? [] : estadoDias(S); // un ejercicio suelto no es un día del plan (C-SUELTO-1)
     if (d.length) semana = `${plural(d.filter(x => x.estado === 'hecho').length, 'día del plan', 'días del plan', d.length)} esta semana`;
   } catch { /* sin plan */ }
   return { series, kilos: Math.round(kilos), aprox, mejor, min, semana };
@@ -551,7 +557,7 @@ function quitarFinal() {
 function mostrarFinal(idSesion) {
   quitarFinal();
   const S = estado(), s = S.sesiones[idSesion]; if (!s) return;
-  const d = datosFinal(S, s), quieto = movimientoReducido();
+  const d = datosFinal(S, s), quieto = movimientoReducido(), suelta = esSuelta(s);
   // Cifras en rodillo: cada dígito sube hasta su valor (con movimiento reducido, ya en su sitio).
   let n = 0;
   const rd = v => `<span class="solo-lector">${h(v)}</span><span class="rodillo" aria-hidden="true">${[...String(v)].map(c => /\d/.test(c) ? `<span class="rd" data-var="--i:${n++}"><span class="rd-tira" data-fin="${c}">${[...'0123456789'].map(k => `<span>${k}</span>`).join('')}</span></span>` : `<span>${h(c)}</span>`).join('')}</span>`;
@@ -561,15 +567,15 @@ function mostrarFinal(idSesion) {
   el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'fin-t');
   el.innerHTML = `<div class="final-agua" aria-hidden="true"></div><div class="final-dentro">
     <div class="sello" aria-hidden="true"><i></i><i></i><i></i><span>${ICONOS.check}</span></div>
-    <h2 id="fin-t" tabindex="-1">Sesión guardada</h2>${d.semana ? `<p class="semana-txt">${h(d.semana)}</p>` : ''}
+    <h2 id="fin-t" tabindex="-1">${suelta ? 'Ejercicio guardado' : 'Sesión guardada'}</h2>${d.semana ? `<p class="semana-txt">${h(d.semana)}</p>` : ''}${suelta ? '<p class="semana-txt">Cuenta para tu progreso en este ejercicio.</p>' : ''}
     <dl>${cifras.map(([t, v]) => `<div><dt>${t}</dt><dd>${rd(v)}</dd></div>`).join('')}</dl>
     ${d.mejor ? `<p class="marca">${h(d.mejor.n)}: <span class="cifra">${h(es(d.mejor.kg, 2))} kg × ${d.mejor.reps}</span>, tu mejor serie de hoy.</p>` : '<p class="marca">Hecha. Lo que te hace progresar es la constancia.</p>'}
-    <button type="button" class="boton boton--ancho" data-fin-hoy>Volver a Hoy</button></div>`;
+    <button type="button" class="boton boton--ancho" data-fin-hoy>${suelta ? 'Volver a Ejercicios' : 'Volver a Hoy'}</button></div>`;
   const inertes = [...document.body.children].filter(c => c !== el && !c.hasAttribute('inert') && !c.matches('script, #aviso'));
   inertes.forEach(c => c.setAttribute('inert', ''));
   document.body.appendChild(el);
   document.body.classList.add('con-final');
-  finalViva = { el, inertes };
+  finalViva = { el, inertes, destino: suelta ? '#ejercicios' : '#hoy' };
   const tiras = $$('.rd-tira', el);
   const poner = () => tiras.forEach(t => t.style.setProperty('--d', t.dataset.fin));
   if (quieto) poner(); else requestAnimationFrame(() => requestAnimationFrame(poner));
@@ -578,7 +584,7 @@ function mostrarFinal(idSesion) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && finalViva) { e.preventDefault(); quitarFinal(); } });
 // Cambiar de pantalla (o el botón atrás) quita la pantalla final.
-window.addEventListener('hashchange', () => { if (finalViva && location.hash !== '#hoy') quitarFinal(); });
+window.addEventListener('hashchange', () => { if (finalViva && location.hash !== finalViva.destino) quitarFinal(); });
 
 // Para el temporizador y la alarma solo si son de esta sesión (cerrar la de ayer no corta el descanso de hoy).
 function pararSiEsDe(id) {
@@ -746,7 +752,7 @@ acciones({
   'sesion.guardarMia': () => {
     const s = sesion(idActual()); if (!s) return;
     abrirHoja(`<h2>Guardar como mía</h2>
-      <p class="hoja-texto">Guardo sus ejercicios con sus series, repeticiones y descansos, y el lugar. Los kilos no: se calculan cada vez con tu progreso. Para repetirla, elígela en «Antes de empezar»: se ajusta al dolor, lugar y material de ese día, y siempre lleva calentamiento, cardio y estiramientos.</p>
+      <p class="hoja-texto">Guardo sus ejercicios con sus series, repeticiones y descansos, y el lugar. Los kilos no: se calculan cada vez con tu progreso. Para repetirla, elígela en Hoy, en «Mis sesiones» (o en «Antes de empezar»): se ajusta al dolor, lugar y material de ese día, y siempre lleva calentamiento, cardio y estiramientos.</p>
       <div class="campo"><label for="mia-nombre">Nombre</label><input id="mia-nombre" maxlength="${+LARGO_NOMBRE_MIA}" value="${h(String(s.nombre || '').slice(0, LARGO_NOMBRE_MIA))}" placeholder="abdominales y flexiones"></div>
       <button type="button" class="boton boton--ancho" data-act="sesion.guardarMiaOk">Guardar en mis sesiones</button>`, { clase: 'hoja-sesion' });
   },
@@ -766,6 +772,7 @@ acciones({
     const esf = sel ? +sel.dataset.v : 3;
     const dolor = {}; document.querySelectorAll('.hoja [data-zona]').forEach(r => { dolor[r.dataset.zona] = +r.value; });
     const comentario = (($('#c-com') || {}).value || '').trim();
+    const suelta = esSuelta(s0);
     cerrando = true;
     try {
       conSesion((s, S) => {
@@ -774,20 +781,23 @@ acciones({
         // Una sesión de otro día («Cerrar la de ayer» desde Hoy) apunta el dolor en su día, no en el de hoy.
         const fecha = s.fecha && s.fecha < hoyISO() ? s.fecha : hoyISO();
         Object.entries(dolor).forEach(([zona, v]) => S.dolor.push({ fecha, zona, dolor: v, momento: 'despues', sesion: s.id }));
-        Object.entries((s.checkin && s.checkin.dolor) || {}).forEach(([zona, v]) => S.dolor.push({ fecha, zona, dolor: v, momento: 'antes', sesion: s.id }));
+        // En un ejercicio suelto el dolor de partida no lo dijo la persona (sale de lo apuntado o de la ficha):
+        // no se apunta otra vez como dato nuevo (C-SUELTO-1).
+        if (!suelta) Object.entries((s.checkin && s.checkin.dolor) || {}).forEach(([zona, v]) => S.dolor.push({ fecha, zona, dolor: v, momento: 'antes', sesion: s.id }));
       });
-      pararSiEsDe(id); cerrarHoja(); ir('hoy');
+      pararSiEsDe(id); cerrarHoja(); ir(suelta ? 'ejercicios' : 'hoy');
       mostrarFinal(id);
     } finally { cerrando = false; }
   },
   'sesion.descartar': async () => {
     const s = sesion(idActual()); if (!s) return;
-    const { hechas } = totales(s);
-    if (!await confirmar(`¿Descartar «${s.nombre}»? Se borra lo apuntado en ella${hechas ? `: ${hechas} serie${hechas === 1 ? '' : 's'} hecha${hechas === 1 ? '' : 's'}` : ''}.`, { si: 'Descartar sesión', no: 'Seguir con la sesión', peligro: true })) return;
+    const { hechas } = totales(s), suelta = esSuelta(s);
+    const lo = hechas ? `: ${hechas} serie${hechas === 1 ? '' : 's'} hecha${hechas === 1 ? '' : 's'}` : '';
+    if (!await confirmar(suelta ? `¿Descartar «${s.nombre}»? Se borra lo apuntado${lo}.` : `¿Descartar «${s.nombre}»? Se borra lo apuntado en ella${lo}.`, { si: suelta ? 'Descartar' : 'Descartar sesión', no: suelta ? 'Seguir con el ejercicio' : 'Seguir con la sesión', peligro: true })) return;
     const id = idActual();
     cambiar(S => { delete S.sesiones[id]; }, 'sesion');
-    pararSiEsDe(id); ir('hoy');
-    aviso('Sesión descartada', 'info');
+    pararSiEsDe(id); ir(suelta ? 'ejercicios' : 'hoy');
+    aviso(suelta ? 'Ejercicio descartado' : 'Sesión descartada', 'info');
   },
 });
 // Fin de un ejercicio por tiempo: se apunta lo que se aguantó de verdad (con dos lados, el lado más flojo,

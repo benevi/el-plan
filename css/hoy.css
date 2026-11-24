@@ -201,3 +201,16 @@ body.con-hoja:has(.accion-hoy) #aviso, body.con-hoja.con-temporizador:has(.accio
   .saludo h1 { font-size: var(--t-titulo); }
   .hoy-tarjeta > h2 { font-size: var(--t-subtitulo); }
 }
+
+/* ---------- Mis sesiones (decisión de Víctor del 24-11-2026) ---------- */
+.hoy-cuerpo .mis-sesiones-hoy { padding: var(--e-5); }
+.mis-sesiones-hoy h2 { margin: 0; font-size: var(--t-cuerpo); font-weight: var(--f-peso-medio); }
+.mis-sesiones-hoy .datos { margin: var(--e-1) 0 0; color: var(--texto-2); font-size: var(--t-secundario); }
+.mis-sesiones-hoy > .boton { margin-top: var(--e-4); }
+.lista-mias-hoy { margin: var(--e-2) 0 0; }
+.lista-mias-hoy .fila-mia { display: flex; align-items: center; gap: var(--e-2); }
+.lista-mias-hoy .fila-mia .fila { flex: 1; min-width: 0; }
+.mias-pie { display: flex; justify-content: space-between; align-items: center; gap: var(--e-3); margin-top: var(--e-2); }
+.mias-pie:empty { display: none; }
+.mias-pie .boton--texto { padding: 0; min-height: var(--toque-min); }
+.mias-pie .boton--texto:only-child { margin-left: auto; }

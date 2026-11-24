@@ -1,5 +1,6 @@
-// Área PERFIL · editor de «Mis sesiones» (PR 16, pedido por Víctor). Sin IA en ningún paso.
-// Perfil › Mi entreno › Mis sesiones → «Crear sesión» (#mia/nueva) o «Editar» en una guardada (#mia/<id>).
+// Editor de «Mis sesiones» (PR 16, pedido por Víctor). Sin IA en ningún paso.
+// Hoy › Mis sesiones → «Crear una sesión» / «Crear otra» (#mia/nueva) o «Editar» en una guardada (#mia/<id>).
+// Desde el 24-11-2026 (decisión de Víctor) «Mis sesiones» está solo en Hoy: el editor vuelve allí.
 // Se elige nombre y lugar, se añaden ejercicios del catálogo (buscador y filtros por músculo, lugar y
 // material, los mismos de la pantalla Ejercicios), se quitan y se ordenan (Subir y Bajar, con el teclado y el
 // lector), y en cada uno se fijan series, repeticiones o tiempo y descanso, con lo que propone la app según tu
@@ -8,7 +9,7 @@
 // con el dolor, las lesiones, el lugar, el material o los rechazos de ese día (C-MIA-1, C-MIA-2).
 //
 // Lo que se está editando vive aquí (borrador) hasta guardarlo. Al salir del editor se descarta: con «‹ Mis
-// sesiones» o las pestañas, si hay cambios, se pregunta antes; con el botón atrás, se avisa de que no se guardaron.
+// Hoy» o las pestañas, si hay cambios, se pregunta antes; con el botón atrás, se avisa de que no se guardaron.
 // Si la guardada cambia por otro lado (añadir desde la ficha, cargar una copia), el borrador se rehace.
 
 import { rutas, acciones, pintar, ir, antesDeCadaRuta, rutaActual } from '../../nucleo/router.js';
@@ -20,7 +21,6 @@ import { LUGARES } from '../../datos/constantes.js';
 import { miaDe, ejerciciosMia, propuestaMia, topeSeriesMia, guardarEdicionMia, borrarMia, LARGO_NOMBRE_MIA, MAX_EJERCICIOS_MIA, DESCANSO_MAX_MIA } from '../entrenador/entrenador.js';
 import { segmento, selector, alCambiarSelector, devolverFoco, valorSelector, ICONOS16 } from './controles.js';
 import { filtroVacio, filtrarEjercicios, filaFiltro, datosEjercicio, marcarEnFila } from '../ejercicios/buscador.js';
-import { ponerGrupo } from './grupo.js';
 
 let borrador = null; // { id (null si es nueva), nombre, lugar, ejercicios: [{ id, rol, series, reps, descanso }], error, huella, inicial }
 const buscador = filtroVacio();
@@ -115,14 +115,14 @@ function vista(params) {
   if (!borrador || borrador.id !== idRuta || (idRuta && borrador.huella !== huellaDe(miaDe(S, idRuta)))) { if (idRuta) empezarEdicion(idRuta); else empezarNueva(); }
   if (!borrador) {
     return `<h1 class="titulo-pantalla">Esa sesión ya no está</h1>
-      <p class="texto-2">Puede que la borraras. Tus sesiones están en Perfil › Mi entreno.</p>
-      <button type="button" class="boton boton--secundario" data-act="mia.volver">Ir a Mis sesiones</button>`;
+      <p class="texto-2">Puede que la borraras. Tus sesiones están en Hoy, en «Mis sesiones».</p>
+      <button type="button" class="boton boton--secundario" data-act="mia.volver">Volver a Hoy</button>`;
   }
   const b = borrador, n = b.ejercicios.length;
   const niveles = nivelesZona(S.perfil);
   const err = b.error || {};
   const fuera = b.ejercicios.filter(x => !ex(x.id).l.includes(b.lugar)).length;
-  return `<button type="button" class="boton boton--texto volver" data-act="mia.volver">${ICONOS.atras}<span>Mis sesiones</span></button>
+  return `<button type="button" class="boton boton--texto volver" data-act="mia.volver">${ICONOS.atras}<span>Hoy</span></button>
     <h1 class="titulo-pantalla">${b.id ? 'Editar sesión' : 'Nueva sesión'}</h1>
     <p class="ayuda mia-ayuda">Al hacerla, la app le añade calentamiento, cardio y estiramientos, y cambia lo que ese día no valga por tu dolor, el lugar o el material. Sin IA.</p>
     <section class="tarjeta mia-sec" aria-labelledby="mia-t-datos">
@@ -217,7 +217,7 @@ acciones({
   'mia.volver': async () => {
     leerNombre();
     if (hayCambiosMia() && !await confirmar('¿Salir sin guardar los cambios de esta sesión?', { si: 'Salir sin guardar', no: 'Seguir editando', peligro: true })) return;
-    borrador = null; ponerGrupo('entreno'); ir('perfil');
+    borrador = null; ir('hoy');
   },
   'mia.lugar': el => { leerNombre(); borrador.lugar = el.dataset.v; pintar(); },
   'mia.subir': el => { if (el.getAttribute('aria-disabled') !== 'true') { leerNombre(); mover(el.dataset.id, -1); } },
@@ -269,9 +269,8 @@ acciones({
       return;
     }
     borrador = null;
-    ponerGrupo('entreno');
-    ir('perfil');
-    aviso(nueva ? `Guardada en tus sesiones: «${r.mia.nombre}». Elígela en «Antes de empezar».` : `Cambios guardados en «${r.mia.nombre}»`);
+    ir('hoy');
+    aviso(nueva ? `Guardada en tus sesiones: «${r.mia.nombre}». Hazla desde Hoy, en «Mis sesiones».` : `Cambios guardados en «${r.mia.nombre}»`);
   },
   'mia.borrar': async () => {
     leerNombre();
@@ -279,8 +278,7 @@ acciones({
     if (!await confirmar(`¿Borrar «${m.nombre}» de tus sesiones? Las sesiones que ya hiciste con ella se quedan.`, { si: `Borrar «${m.nombre}»`, peligro: true })) return;
     borrarMia(m.id);
     borrador = null;
-    ponerGrupo('entreno');
-    ir('perfil');
+    ir('hoy');
     aviso(`Borrada: «${m.nombre}»`);
   },
 });
@@ -314,7 +312,7 @@ if (typeof document !== 'undefined') {
 
 rutas({
   mia: {
-    titulo: 'Mis sesiones', pestaña: 'perfil', vista, probar,
+    titulo: 'Mis sesiones', pestaña: 'hoy', vista, probar,
     montar: raiz => {
       const i = $('#mia-nombre', raiz);
       if (i) i.addEventListener('input', () => { borrador.nombre = i.value; if (borrador.error && borrador.error.campo === 'nombre') { borrador.error = null; const m = $('#mia-nombre-error'); if (m) m.remove(); i.removeAttribute('aria-invalid'); } });

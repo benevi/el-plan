@@ -6,7 +6,8 @@
 import { rutas, pestaña, acciones } from '../../nucleo/router.js';
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { h, ICONOS, abrirHoja, cerrarHoja, $, num, es, fechaCorta, plural } from '../../nucleo/ui.js';
-import { sesionesHechas, resumen, registros } from '../../reglas/progresion.js';
+import { sesionesHechas, hechasConSueltos, resumen, registros } from '../../reglas/progresion.js';
+import { esSuelta } from '../../nucleo/modelo.js';
 import { ex } from '../../reglas/catalogo.js';
 import { LUGARES, NIVELES } from '../../datos/constantes.js';
 import { medidorNivel } from '../../reglas/contexto.js';
@@ -146,16 +147,17 @@ function seccionDolor(S) {
     <p class="meta">De 0 a 10: media de cada mes de lo que apuntas al terminar las sesiones y en tu perfil.</p></section>`;
 }
 
+// Lo último hecho, con los ejercicios sueltos (C-SUELTO-4) marcados como tales: no son sesiones, pero se ven.
 function historial(S) {
-  const s = sesionesHechas(S).reverse().slice(0, 6);
+  const s = hechasConSueltos(S).reverse().slice(0, 6);
   if (!s.length) return '';
-  return `<section class="bloque prog-sec" aria-labelledby="t-u"><h2 class="bloque-titulo" id="t-u">Últimas sesiones</h2><ul class="lista">${s.map(x => `<li><a class="fila" href="#sesion/${h(x.id)}"><span class="crece"><b>${h(x.nombre)}</b><span>${h([fechaCorta(x.fecha), minus(LUGARES[x.lugar] || ''), x.cierre && x.cierre.esfuerzo ? `esfuerzo ${+x.cierre.esfuerzo} de 5` : ''].filter(Boolean).join(', '))}</span></span>${ICONOS.sig}</a></li>`).join('')}</ul></section>`;
+  return `<section class="bloque prog-sec" aria-labelledby="t-u"><h2 class="bloque-titulo" id="t-u">Lo último que has hecho</h2><ul class="lista">${s.map(x => `<li><a class="fila" href="#sesion/${h(x.id)}"><span class="crece"><b>${h(x.nombre)}</b><span>${h([esSuelta(x) ? 'ejercicio suelto' : '', fechaCorta(x.fecha), esSuelta(x) ? '' : minus(LUGARES[x.lugar] || ''), x.cierre && x.cierre.esfuerzo ? `esfuerzo ${+x.cierre.esfuerzo} de 5` : ''].filter(Boolean).join(', '))}</span></span>${ICONOS.sig}</a></li>`).join('')}</ul></section>`;
 }
 
 function vista() {
   const S = estado();
   const hay = sesionesHechas(S).length;
-  if (!hay && !S.medidas.length) {
+  if (!hay && !S.medidas.length && !hechasConSueltos(S).length) {
     return `<h1 class="titulo-pantalla">Progreso</h1>
       <section class="tarjeta vacio prog-vacio"><h2 class="tarjeta-nombre">Tu progreso empieza con tu primera sesión</h2>
         <p>Aquí verás tu constancia semana a semana, cómo sube tu fuerza en cada ejercicio, tus medidas y cómo evoluciona el dolor.</p>

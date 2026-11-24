@@ -19,6 +19,8 @@
 //   estado: 'pendiente' | 'en_curso' | 'hecha', empezada, terminada,
 //   cierre: { esfuerzo 1-5, dolor: { zona: 0-10 }, comentario } | null,
 //   origen?: { tipo: 'mia', id }               // hecha a partir de una de «Mis sesiones» (S.misSesiones)
+//          | { tipo: 'suelto' }                // ejercicio suelto (C-SUELTO-1): un solo ejercicio, sin calentamiento ni
+//                                              // vuelta; cuenta para el progreso de ese ejercicio, no como sesión (esSuelta)
 //   parada?: 'alarma'                          // terminada con «Algo va mal» por una señal de alarma (C-ALAR-1)
 //   iaFallo?: { motivo, peticion?, atendido?, diaPlan 1-7|null, reintentable, huella }  (huella: huellaSesion al crearla)  // la hizo la app sin la IA (PR 12):
 //            motivo completa «La ha hecho la app porque…»; peticion = lo pedido en el check-in sin atender;
@@ -112,10 +114,15 @@ export function iaFalloSesion(f) {
     ...(typeof f.huella === 'string' && /^[a-z0-9]{1,16}$/.test(f.huella) ? { huella: f.huella } : {}) };
 }
 export const TIPOS_SESION = ['suave', 'dolorAlto'];
-// Marca de origen (opcional): de qué sesión guardada sale. La usan crearSesion y el normalizador de copias.
+// Marca de origen (opcional): de qué sesión guardada sale, o que es un ejercicio suelto. La usan crearSesion y el
+// normalizador de copias.
 export function origenSesion(o) {
+  if (o && typeof o === 'object' && o.tipo === 'suelto') return { origen: { tipo: 'suelto' } };
   return o && typeof o === 'object' && o.tipo === 'mia' && typeof o.id === 'string' && /^[\w-]{1,80}$/.test(o.id) ? { origen: { tipo: 'mia', id: o.id } } : {};
 }
+// Ejercicio suelto (C-SUELTO-1): se hizo fuera de cualquier sesión. No es «la sesión de hoy», no ocupa días del
+// plan ni cuenta como sesión para la constancia; sus series sí cuentan para el progreso de ese ejercicio.
+export const esSuelta = s => !!(s && s.origen && s.origen.tipo === 'suelto');
 
 // Semana ISO: '2026-W47'
 export function semanaISO(d = new Date()) {
@@ -127,8 +134,8 @@ export function semanaISO(d = new Date()) {
 }
 export const diaSemana = (d = new Date()) => d.getDay() || 7;
 
-// Sesión de hoy (la última creada con fecha de hoy).
+// Sesión de hoy (la última creada con fecha de hoy). Un ejercicio suelto no lo es (C-SUELTO-1).
 export function sesionDeHoy(S) {
   const hoy = hoyISO();
-  return Object.values(S.sesiones).filter(s => s.fecha === hoy && s.fuente !== 'anterior').sort((a, b) => b.creada.localeCompare(a.creada))[0] || null;
+  return Object.values(S.sesiones).filter(s => s.fecha === hoy && s.fuente !== 'anterior' && !esSuelta(s)).sort((a, b) => b.creada.localeCompare(a.creada))[0] || null;
 }

@@ -9,7 +9,7 @@
 import { ex } from './catalogo.js';
 import { MUSCULOS } from '../datos/constantes.js';
 import { num, es } from '../nucleo/ui.js';
-import { semanaISO } from '../nucleo/modelo.js';
+import { semanaISO, esSuelta } from '../nucleo/modelo.js';
 
 const DIA = 864e5;
 
@@ -70,21 +70,25 @@ function bajarParon(e, kg, p, pct) {
   return v > 0 ? Math.min(v, kg) : null;
 }
 
-export const sesionesHechas = S => Object.values(S.sesiones || {}).filter(s => s.estado === 'hecha')
-  .sort((a, b) => new Date(a.terminada || a.fecha) - new Date(b.terminada || b.fecha));
+// Sesiones terminadas, de la más antigua a la más reciente. Sin los ejercicios sueltos (C-SUELTO-1): no son
+// sesiones, así que no cuentan para la constancia, el nivel, la descarga ni el plan. Lo que sí los incluye
+// (el progreso de cada ejercicio, los kilos apuntados y la recuperación de cada músculo) usa hechasConSueltos.
+const porFecha = (a, b) => new Date(a.terminada || a.fecha) - new Date(b.terminada || b.fecha);
+export const hechasConSueltos = S => Object.values(S.sesiones || {}).filter(s => s.estado === 'hecha').sort(porFecha);
+export const sesionesHechas = S => hechasConSueltos(S).filter(s => !esSuelta(s));
 const fechaSesion = s => new Date(s.terminada || (s.fecha + 'T12:00'));
 
 // «Dolor durante» un ejercicio (C-DOLOR-6). Lo apuntará la sesión (PR 8); hasta entonces no hay ninguno.
 export const dolorDurante = x => !!(x && x.dolorDurante);
 
-// Todas las veces que hizo un ejercicio, de la más antigua a la más reciente. `descarga` marca las sesiones de
+// Todas las veces que hizo un ejercicio, de la más antigua a la más reciente (también las sueltas, C-SUELTO-4). `descarga` marca las sesiones de
 // una semana de descarga (C-DESCARGA-1), que no cuentan para «estancado».
 export function registros(S, id) {
   const desc = semanasDescarga(S).semanas;
   return registrosCrudos(S, id).map(r => ({ ...r, descarga: desc.has(semanaISO(new Date(r.fecha))) }));
 }
 function registrosCrudos(S, id) {
-  return sesionesHechas(S).map(s => {
+  return hechasConSueltos(S).map(s => {
     const x = (s.ejercicios || []).find(x => x.id === id);
     if (!x) return null;
     const sets = (x.sets || []).filter(z => z.hecha && (String(z.valor || '').trim() || +z.kg > 0))
@@ -219,7 +223,7 @@ export const lesionesSinFecha = S => (S.perfil.lesiones || []).filter(l => l.act
 export const RECUPERA = { pecho: 48, espalda: 48, cuadriceps: 48, gluteo: 48, isquios: 48, hombro: 48, biceps: 36, triceps: 36, gemelo: 36, core: 24 };
 export function cargaMuscular(S) {
   const ahora = Date.now(), c = {};
-  const hechas = sesionesHechas(S);
+  const hechas = hechasConSueltos(S); // un ejercicio suelto también carga el músculo (C-SUELTO-4)
   const primera = hechas.length ? fechaSesion(hechas[0]).getTime() : 0;
   const principiante = (+S.perfil.nivel || 1) === 1;
   hechas.forEach(s => {
@@ -266,7 +270,7 @@ export function semanasDescarga(S, ahora = new Date()) {
   const objetivo = Math.max(1, +(S.perfil.disponibilidad && S.perfil.disponibilidad.dias) || 3);
   const actual = semanaISO(ahora), fin = lunesDe(ahora).getTime();
   const u = hechas[hechas.length - 1];
-  const clave = [hechas.length, hechas[0].id, u.id, u.terminada, actual, umbral, objetivo, (S.dolor || []).length].join('|');
+  const clave = [hechas.length, hechasConSueltos(S).length, hechas[0].id, u.id, u.terminada, actual, umbral, objetivo, (S.dolor || []).length].join('|');
   const guardado = S.sesiones && cacheDescarga.get(S.sesiones);
   if (guardado && guardado.clave === clave) return guardado.r;
   const porSemana = {};

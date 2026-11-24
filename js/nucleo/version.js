@@ -44,10 +44,12 @@ function ponerModo(m, { fallo = false } = {}) {
 }
 
 // Hay sesión en curso: la de hoy está empezada, o alguna se empezó hace menos de 6 horas (pasada la medianoche).
+// Un ejercicio suelto a medias (C-SUELTO-1) solo cuenta las 6 horas: olvidado, no retiene la versión nueva todo el día.
 export function haySesionEnCurso(S = estado()) {
   const sesiones = Object.values((S && S.sesiones) || {});
   const reciente = Date.now() - 6 * 3600e3;
-  return sesiones.some(s => s && s.estado === 'en_curso' && (s.fecha === hoyISO() || (s.empezada && Date.parse(s.empezada) > reciente)));
+  const suelta = s => !!(s.origen && s.origen.tipo === 'suelto');
+  return sesiones.some(s => s && s.estado === 'en_curso' && ((s.fecha === hoyISO() && !suelta(s)) || (s.empezada && Date.parse(s.empezada) > reciente)));
 }
 
 function recargar() {

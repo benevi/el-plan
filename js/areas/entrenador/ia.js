@@ -6,7 +6,7 @@
 
 import { estado, cambiar, hoyISO } from '../../nucleo/estado.js';
 import { llamarEnVivo, enLinea, textoError } from '../../nucleo/api.js';
-import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada, trabajoHecho } from '../../nucleo/modelo.js';
+import { crearSesion, semanaISO, diaSemana, huellaSesion, sesionTocada, trabajoHecho, esSuelta } from '../../nucleo/modelo.js';
 import { perfilParaIA, lesionesParaIA, catalogoParaIA, historialParaIA, analizarEjercicios, analisisParaIA, recortarIA, LARGO_IA } from '../../reglas/contexto.js';
 import { cargaMuscular, lesionesSinFecha } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
@@ -203,7 +203,7 @@ export async function crearSesionHoy(ci, op = {}) {
   if (ci.mia) {
     const m = miaDe(S, ci.mia);
     if (!m) return { sesion: null, aviso: 'Esa sesión guardada ya no está: elige otra.', motivo: '' };
-    if (!ejerciciosMia(m).length) return { sesion: null, aviso: `«${m.nombre}» no tiene ningún ejercicio que exista en la app, así que no la puedo preparar. Bórrala en Perfil › Mi entreno.`, motivo: '' };
+    if (!ejerciciosMia(m).length) return { sesion: null, aviso: `«${m.nombre}» no tiene ningún ejercicio que exista en la app, así que no la puedo preparar. Bórrala en Hoy › Mis sesiones (Editar).`, motivo: '' };
     ci = { ...ci, peticion: '', forzarIA: false };
   }
 
@@ -285,7 +285,8 @@ export async function crearSesionHoy(ci, op = {}) {
   } : null;
   const S1 = estado();
   // Nada pisa una sesión de hoy que se haya creado, empezado o terminado mientras se esperaba.
-  const otra = Object.values(S1.sesiones).find(x => x.fecha === hoyISO() && x.id !== op.reintento && ((x.creada || '') > inicio || (x.empezada || '') > inicio || (x.terminada || '') > inicio));
+  // Un ejercicio suelto no es otra sesión de hoy (C-SUELTO-1): ni la para ni se borra.
+  const otra = Object.values(S1.sesiones).find(x => x.fecha === hoyISO() && x.id !== op.reintento && !esSuelta(x) && ((x.creada || '') > inicio || (x.empezada || '') > inicio || (x.terminada || '') > inicio));
   const vieja = op.reintento ? S1.sesiones[op.reintento] : null;
   if (otra || (op.reintento && (!vieja || vieja.estado !== 'pendiente' || huellaSesion(vieja) !== huellaAntes))) return { sesion: otra || vieja || null, descartada: true, aviso: '', motivo: '' };
   // Reintento que vuelve a fallar: se queda la sesión de la app que ya había, con el motivo nuevo.
@@ -298,7 +299,7 @@ export async function crearSesionHoy(ci, op = {}) {
     // «Volver a ajustarla» (M2 del informe del 21-11): la sesión de hoy que sigue pendiente y sin tocar se
     // sustituye; si no, se quedaba en los datos y en las copias sin verse. Lo que tenga algo hecho no se borra.
     const sobran = Object.values(S2.sesiones).filter(x => x.id === (vieja && vieja.id) ||
-      (x.fecha === hoyISO() && x.fuente !== 'anterior' && x.estado === 'pendiente' && !sesionTocada(x)));
+      (x.fecha === hoyISO() && x.fuente !== 'anterior' && !esSuelta(x) && x.estado === 'pendiente' && !sesionTocada(x)));
     for (const v of sobran) {
       delete S2.sesiones[v.id];
       if (S2.plan && S2.plan.hechos) Object.keys(S2.plan.hechos).forEach(d => { if (S2.plan.hechos[d] === v.id) delete S2.plan.hechos[d]; });
