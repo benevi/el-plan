@@ -314,13 +314,15 @@ test('C-TIEMPO-4: perder grasa, 30 min, sin zonas → cabe con 2 principales en 
   assert.equal(prin(s).length, 2);
   sinProblemas(S, s, c);
 });
-test('C-TIEMPO-4: perder grasa, 30 min, una zona B2 → cardio y rehabilitación, sin fuerza y con aviso', () => {
+test('C-TIEMPO-4, C-TIEMPO-5: perder grasa, 30 min, una zona B2 → cardio, rehabilitación y 1 principal que no la carga (decisión A)', () => {
+  // Principiante: el isométrico de rodilla (3 series) deja 4 min o más libres tras quitar la fuerza (24-11-2026).
   const { S, s, c } = sesionReglas({ objetivos: ['perder'], lesiones: [L('rodilla', 3)] }, { minutos: 30, dolorHoy: { rodilla: 5 } });
   assert.ok(cardioMin(s) >= 15);
   assert.ok(s.ejercicios.some(x => x.rol === 'rehab'));
   assert.ok(ent.tiempoSesion(s) <= 30, `${ent.tiempoSesion(s)} min`);
-  assert.equal(prin(s).length, 0);
-  assert.ok(s.explicacion.some(t => /^Con 30 minutos no caben tu cardio de 15 minutos/.test(t)), s.explicacion.join(' | '));
+  assert.equal(prin(s).length, 1);
+  assert.ok(!(cat.ex(prin(s)[0].id).r || {}).rodilla, prin(s)[0].id);
+  assert.ok(s.explicacion.some(t => /^Por tiempo \(último recurso\): con 30 minutos caben tu cardio, lo de tu rodilla y 1 ejercicio principal que no carga tu rodilla\./.test(t)), s.explicacion.join(' | '));
   sinProblemas(S, s, c);
 });
 

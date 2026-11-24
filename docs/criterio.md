@@ -988,6 +988,7 @@ Rehabilitación añadida a ejercicios que ya existían: `separacion-banda`, `fac
 | `plancha` | quitar lumbar |
 | `press-hombro-botellas`, `press-hombro-banda`, `fondos-asistidos-maquina`, `extension-triceps-cabeza`, `dislocaciones-banda`, `elevacion-rodillas-barra`, `dominadas-escapulares` | hombro → 2 |
 | `patada-crol-tabla`, `ytw-tumbado` | hombro +1 |
+| `flexiones-inclinadas`, `flexiones-rodillas` | hombro +1 (son press de pecho, como `flexiones` y `press-pecho-maquina`; revisión del PR #54) |
 | `curl-mancuernas`, `curl-martillo`, `curl-polea`, `curl-maquina`, `curl-botellas`, `curl-australiano` | codo → 2 |
 | `remo-australiano`, `remo-barra` | codo +1 |
 | `fondos-banco`, `fondos-paralelas` | muñeca → 2 |
@@ -1076,7 +1077,7 @@ Con 30 min se quitan técnica y series, nunca el bloque continuo.
 
 ## 15. Tiempo de la sesión
 
-**C-TIEMPO-1 [Objetivo] [PR 8]** Tiempo total ≤ pedido. **Nunca más de lo pedido** [decisión de Víctor del 23-11-2026, M1b del informe del 21-11]: antes se admitía hasta un 10 % más; ahora ni lo que se monta ni lo que se promete («unos N min») pasa de los minutos pedidos. Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa si dura más.
+**C-TIEMPO-1 [Objetivo] [PR 8]** Tiempo total ≤ pedido. **Nunca más de lo pedido** [decisión de Víctor del 23-11-2026, M1b del informe del 21-11]: (única excepción, aprobada por Víctor el 24-11-2026: la rehabilitación obligatoria de las zonas en B2, C-TIEMPO-2 paso 8) antes se admitía hasta un 10 % más; ahora ni lo que se monta ni lo que se promete («unos N min») pasa de los minutos pedidos. Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa si dura más.
 
 Modelo de tiempo (minutos):
 
@@ -1101,12 +1102,16 @@ Ejemplos:
 2. Quitar 1 serie a los accesorios (mínimo 2) y luego a los compuestos (mínimo 2).
 3. Quitar accesorios del final, hasta 3 principales.
 4. Rehabilitación: de 2 ejercicios por zona a 1; si no basta, quitar la de las zonas en B0-B1 (nunca la última de una zona en B2).
-5. Calentamiento a 4 min y vuelta a 3.
+5. Calentamiento a 4 min y vuelta a 3, **nunca por debajo de los mínimos de los datos de salud** (C-SALUD-0: 10 y 10 con cardiopatía; revisión del PR #54).
+   - **5b. Cardio suave dentro** [24-11-2026, tercera revisión del PR #54]: con esos mínimos, el calentamiento empieza con cardio muy suave progresivo (de 2 a 3-4 de 10, subida de pulsaciones) y la vuelta con cardio muy suave bajando (bajada de pulsaciones) antes de los estiramientos. Esos minutos **cuentan como parte del cardio del día**, como el inicio suave del día de dolor alto (decisión 6): el bloque de cardio baja lo que haga falta hasta lo que le falte a su mínimo, **nunca por debajo de 5 min**. Así 10 + 10 + el resto cabe en lo pedido, salvo la excepción del paso 8. La explicación lo dice: «Con tu corazón, el calentamiento y la vuelta a la calma son de 10 minutos, con cardio suave dentro: cuentan como parte de tu cardio de hoy, así que el bloque de cardio queda en [n] minutos».
 
 **Último recurso** [Decisión 8]:
 
 6. **2 ejercicios principales** en superserie de 2 series, antagonistas si los hay (empuje-tirón o rodilla-cadera, C-TIEMPO-3): una serie de cada uno seguidas, sin descanso entre los dos, y **90-120 s entre parejas**, nunca por debajo de C-PAUSA-1 de ninguno de los dos [aprobado por Víctor el 23-11-2026] (S18).
-7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos».
+7. Si aún no cabe: **sin fuerza** ese día (sesión de cardio mínimo + rehabilitación), con el aviso: «Con [m] minutos no caben tu cardio de [c] minutos, el trabajo de tu [zona] y fuerza. Hoy: cardio y rehabilitación. Si quieres fuerza, elige [m + 15] minutos». Sin zonas activas el aviso no habla de lesión ni de rehabilitación («… no caben tu cardio de [c] minutos y fuerza. Hoy: cardio. …»), y con el cardio suave del paso 5b dice «tu cardio ([c] minutos más el suave del calentamiento y la vuelta)». Salvo C-TIEMPO-5: si quedan 4 minutos o más, entra 1 principal que no cargue la zona.
+8. **Excepción a C-TIEMPO-1, aprobada por Víctor el 24-11-2026** [cuarta revisión del PR #54]: la rehabilitación de una zona en B2 **no se quita nunca** (C-DOLOR-3, C-TIEMPO-2 paso 4), ni el calentamiento, la vuelta y el cardio bajan de sus mínimos. Si con todo eso ya no cabe (sin fuerza), la sesión pasa de lo pedido, como antes de este PR, y el aviso lo dice con los minutos: «… Hoy: cardio y rehabilitación. Hoy dura unos [n] minutos, más de los [m] que pides, porque el trabajo de tu [zona] no se puede quitar: si puedes, elige [m + 15] minutos». Es el único caso en que el validador acepta pasar de lo pedido.
+
+El aviso del último recurso va una sola vez: validar otra vez la sesión no lo repite. Si la app ha cambiado el día (último recurso o «Ajustado por la app»), la explicación no dice «Tu check-in no cambia nada».
 
 **Nunca** se quita el cardio mínimo ni el calentamiento y la vuelta enteros. El validador acepta menos de 3 principales **solo** con el motivo «último recurso» anotado.
 
@@ -1114,9 +1119,19 @@ Ejemplos:
 
 **C-TIEMPO-4 [Criterio] [PR 8]** Cálculos de comprobación:
 - **Perder grasa, 30 min, sin zonas.** Calentamiento 4 + vuelta 3 + cardio 15 = 22; quedan 8 (límite 30). Paso 6: superserie de 2 principales antagonistas × 2 series con 90 s entre parejas (S18) ≈ 5,3 (sin el descanso tras la última pareja, C-TIEMPO-1). Total ≈ 27: cabe con 2 principales.
-- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5. Paso 5: calentamiento 4 (26,5). Paso 6: la superserie (≈ 5,3) da 31,8 y no cabe en 30 (C-TIEMPO-1, «nunca más de lo pedido», 23-11-2026). Paso 7: cardio y rehabilitación, con aviso. (Con el +10 % de antes, el límite era 33 y cabía con 2 principales; con 60 s entre parejas, antes de S18, se incumplía C-PAUSA-1.)
-- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso.
+- **Perder grasa, 30 min, una zona B2.** Calentamiento 5 + vuelta 3 + cardio 15 + 1 isométrico 4,5 = 27,5. Paso 5: calentamiento 4 (26,5). Paso 6: la superserie (≈ 5,3) da 31,8 y no cabe en 30 (C-TIEMPO-1, «nunca más de lo pedido», 23-11-2026). Paso 7: sin fuerza quedan 26 (sin el descanso tras la última serie del isométrico), así que hay 4 libres y entra 1 principal que no carga la zona (C-TIEMPO-5, decisión A del 24-11-2026): un compuesto a 2 × 8-12 con 90 s (3,9 más el descanso del isométrico, que vuelve a contar) no cabe; un aislamiento a 2 × 12-15 con 45 s (≈ 3,2) sí: total ≈ 29,7. Con una rehabilitación más corta (p. ej. 2 × 15 con banda en el hombro, ≈ 2,9) quedan ≈ 5 y cabe un compuesto a 2 series. (Con el +10 % de antes, el límite era 33 y cabía con 2 principales; con 60 s entre parejas, antes de S18, se incumplía C-PAUSA-1.)
+- **Lo mismo con dos zonas B2.** 4 + 3 + 15 + 9 = 31: no cabe fuerza. Paso 7: cardio y rehabilitación, con aviso (con 31 > 30, la excepción del paso 8, aprobada por Víctor el 24-11-2026).
 - **CR-05** (salud, intermedio, 45 min, rodilla B2 y hombro B1). 7 + 5 + 10 + rehabilitación de 1 por zona (4,5 + 5,2) = 31,7; quedan 13,3 (límite 45). Principal: compuesto 3 × 10-12 con 90 s (7,6), compuesto 2 series (5,4) y aislamiento 2 × 12-15 con 45 s (3,9) dan ≈ 48,6: pasos 1-3 (descansos y series de los accesorios, y quitar el último accesorio si hace falta) hasta caber en 45.
+
+**C-TIEMPO-5 [Objetivo] [decisión A de Víctor del 24-11-2026; revisión del PR #54]** **1 principal en el hueco que deja el paso 7.** Si tras quitar la fuerza (C-TIEMPO-2 paso 7) quedan **4 minutos o más** hasta lo pedido (con el calentamiento de 4 y la vuelta de 3, o los mínimos de salud si son más, el cardio mínimo (con el crédito del paso 5b si hay mínimos de salud) y la rehabilitación de las zonas en B2 ya contados), entra **1 ejercicio principal**:
+- **Seguro**: sin r en ninguna zona activa, de su nivel (C-DOSIS-10), que valga como principal en ese lugar y que pase las barandillas de siempre: catálogo, bandas de dolor (C-DOLOR-1), lugar y material (C-EST-4), «No lo quiero» y datos de salud (C-SALUD-0).
+- **Cuál**: primero los principales que traía la sesión, en su orden (los que propone la IA van primero); si ninguno es seguro o cabe, el de la app según la plantilla del día y las preferencias, sin repetir lo ya elegido esa semana en el plan.
+- **Dosis**: la suya, bajando series hasta 2 y, si aún no cabe, el descanso hasta el mínimo de C-PAUSA-1, **nunca por debajo de los 60 s de la hipertensión** (descanso mínimo de C-SALUD-0); un isométrico, dentro de los segundos que dejan los datos de salud. (El paso 1 de C-TIEMPO-2 respeta el mismo mínimo.) Si no cabe, se prueba el siguiente (p. ej. un aislamiento en lugar de un compuesto).
+- **Calentamiento y vuelta** se rehacen para ese principal (4 y 3 min, o los mínimos de salud si son más; con el equilibrio de C-EDAD-1 si toca): movilidad de lo que se usa (C-CAL-2) y estiramientos de lo trabajado (C-EST-1), siempre que la zona los permita. Con 30 minutos no hay aproximación (C-CAL-1).
+- **Nunca pasa de los minutos pedidos** (C-TIEMPO-1). Va antes que la rehabilitación de las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza). Si no cabe ninguno o no hay ninguno seguro, la sesión se queda como en el paso 7, con su aviso.
+- **Lo que se dice**: «Por tiempo (último recurso): con [m] minutos caben tu cardio, lo de tu [zona] y 1 ejercicio principal que no carga tu [zona]. Si quieres más fuerza, elige [m + 15] minutos». Y en «Ajustado por la app»: «añado [ejercicio] ([s] series, descanso [d] s): es lo que cabe en [m] minutos sin cargar tu [zona]» si lo pone la app, o «dejo [ejercicio] a [s] series con [d] s de descanso: …» si era de la sesión y se ha recortado.
+
+Vale igual para las reglas, la IA (el validador lo aplica a todo) y los días del plan.
 
 ---
 
@@ -1134,7 +1149,7 @@ Ejemplos:
 | **Embarazo** (semanas) | Caminar suave, movilidad y fuerza ligera hasta el visto bueno de matrona o ginecología | RPE ≤ 6 («puedes hablar»). Desde la semana 16: nada boca arriba > 2 min seguidos y nada boca abajo (`superman`, `curl-femoral-tumbado`, `ytw-tumbado`). Sin abdominales en flexión (`crunch`, `crunch-maquina`, `elevacion-piernas`, `rueda-abdominal`, `mountain-climbers`). Sin impacto ni riesgo de caída (`comba`, `carrera-suave`, `boxeo-sombra`). Sin apnea; piscina preferente. Alarmas propias: sangrado, pérdida de líquido, contracciones, mareo, dolor de cabeza, dolor o hinchazón de pantorrilla, falta de aire antes del esfuerzo |
 | **Posparto** (semanas; parto o cesárea) | Hasta 6 semanas (8 tras cesárea): caminar, respiración, suelo pélvico y movilidad | Sin impacto hasta las 12 semanas y la valoración del suelo pélvico; sin abdominales en flexión hasta descartar diástasis; vuelta como parón > 84 días |
 | **Medicación**: betabloqueantes, anticoagulantes, insulina u otros para el azúcar, corticoides largos | — | Betabloqueantes: el pulso no vale, solo RPE. Anticoagulantes: sin riesgo de golpe o caída (`comba`, `boxeo-sombra`, barra libre pesada). Corticoides largos: como osteoporosis |
-| **Cardiopatía** | Caminar o bici suave (RPE ≤ 3) y movilidad | RPE ≤ 5, sin intervalos ni apnea; calentamiento y vuelta ≥ 10 min; casilla de alarma destacada |
+| **Cardiopatía** | Caminar o bici suave (RPE ≤ 3) y movilidad | RPE ≤ 5, sin intervalos ni apnea; calentamiento y vuelta ≥ 10 min, con cardio muy suave dentro (subida y bajada de pulsaciones) que cuenta como parte del cardio del día y nunca se recortan por tiempo (C-TIEMPO-2 paso 5b, 24-11-2026); casilla de alarma destacada |
 | **Diabetes** | Igual que con visto bueno y RPE ≤ 5 | «**Sigue la pauta de tu médico para medirte antes y después de entrenar y lleva azúcar encima.**» Sin cifras en la app. Si la persona marca problemas de vista por la diabetes: sin apnea, sin cabeza abajo, sin intervalos. Si marca falta de sensibilidad en los pies: sin impacto y revisarse los pies tras la piscina |
 | **Osteoporosis** (con / sin fracturas) | Sin fracturas: fuerza ligera y caminar. Con fracturas: solo movilidad y caminar | Sin flexión de columna con carga ni rotación forzada (`crunch`, `crunch-maquina`, `rueda-abdominal`, `elevacion-piernas`, `lenador-polea`, `estiramiento-gluteo-rodilla-pecho`); fuerza progresiva 2-3 días (es terapéutica); equilibrio en cada sesión; impacto moderado solo sin fracturas |
 | **Prótesis de cadera o rodilla** | Movilidad, bici suave y piscina | «Sigue las precauciones de tu cirujano.» Por defecto: sin cruzar las piernas, sin flexión profunda de cadera ni de rodilla, sin impacto ni carrera |
@@ -1323,6 +1338,11 @@ Historiales sintéticos para el PR 10 (además de los vectores de C-PROG-8 y C-A
 18. **T3b · Texto de «Algo va mal» sin lesiones** (§ 2.5): **aprobado tal como está**.
 19. **S8 · Palabras de alarma**: la lista de C-ALAR-4 es la del código, con «se me nubló la vista» y «calambre en el brazo izquierdo»: **aprobada**.
 20. **S4 · Equilibrio con 60 años o más**: queda siempre, también si el ajuste de tiempo quita la rehabilitación de tobillo que lo traía (C-EDAD-1): **aprobada**.
+
+**Decidida por Víctor el 24-11-2026:**
+
+21. **A · 1 principal en las sesiones cortas con una zona dolorida** (C-TIEMPO-5, C-TIEMPO-2 paso 7 y el ejemplo de C-TIEMPO-4): si tras el calentamiento, el cardio, la rehabilitación y la vuelta a la calma quedan 4 minutos o más, 1 ejercicio principal que no cargue la zona, con todas las barandillas y sin pasar nunca de los minutos pedidos; si no cabe o no hay ninguno seguro, la sesión se queda como estaba: **aprobada (opción A)**.
+22. **Sesión corta con rehabilitación obligatoria de zonas en B2 que no cabe** (C-TIEMPO-2 paso 8): la rehabilitación de las zonas en B2 no se quita nunca; si con ella y los mínimos no cabe, la sesión pasa de lo pedido y el aviso dice cuánto dura y sugiere 15 minutos más. Con 30 minutos y 2-3 zonas a 5/10 pasa en 398 de 864 combinaciones del barrido de la revisión (849 de 864 con cardiopatía, que además exige 10 + 10 de calentamiento y vuelta; como mucho unos 3,5 min de más). Alternativas descartadas: recortar el cardio por debajo de su mínimo o rotar las zonas entre sesiones: **aprobada (pasar de lo pedido con aviso)**.
 
 ---
 

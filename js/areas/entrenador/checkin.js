@@ -195,10 +195,12 @@ export function ajustarAlCheckin(S, dia, ci) {
   const dura = mia ? tiempoSesion(v.sesion) : 0;
   if (mia && dura > topeMinutos(minutos)) cambios.push(`Tu sesión dura unos ${dura} minutos, más de los ${minutos} que marcas: la dejo entera.`);
   const todos = [...cambios, ...ajustes];
+  // Si la app ya ha cambiado el día (último recurso de tiempo o «Ajustado por la app»), no se dice que nada cambia.
+  const appCambio = (v.sesion.explicacion || []).some(t => esUltimoRecurso(t) || /^Ajustado por la app/.test(String(t)));
   const datos = {
     ...v.sesion, fuente: mia ? 'reglas' : base.fuente === 'ia' ? 'ia' : dia ? 'plan' : 'reglas',
     lugar: ci.lugar, minutos,
-    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(v.sesion.explicacion || []).slice(1).filter(esUltimoRecurso), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : [mia ? 'Nada que ajustar: haces tu sesión tal como la guardaste.' : 'Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
+    explicacion: [...(v.sesion.explicacion || []).slice(0, 1), ...(v.sesion.explicacion || []).slice(1).filter(esUltimoRecurso), ...(todos.length ? [...cambios.map(c => 'Por tu check-in: ' + c), ...ajustes.map(c => 'Ajustado por la app: ' + c)] : mia ? ['Nada que ajustar: haces tu sesión tal como la guardaste.'] : appCambio ? [] : ['Tu check-in no cambia nada: haces el día tal como estaba planificado.']), ...(v.sesion.explicacion || []).slice(1).filter(t => !esUltimoRecurso(t))].slice(0, 8),
     checkin,
     ...(mia ? { origen: { tipo: 'mia', id: mia.id } } : {}),
   };
