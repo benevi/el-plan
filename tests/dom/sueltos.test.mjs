@@ -179,3 +179,91 @@ test('C-SUELTO-1 · a medias: se ve en Ejercicios para seguir; desde una sesión
   assert.equal($('.hoja .ficha-suelto-no'), null);
   sinHojas();
 });
+
+// ── Revisión del PR #56 ──
+async function hacerSuelto(id) {
+  await a.ir('ejercicios');
+  a.clic(`[data-act="ejercicios.ficha"][data-id="${id}"]`); await a.esperar(() => $('.hoja .ficha'));
+  a.clic('.hoja [data-act="ejercicios.suelto"]'); await a.esperar(() => /^#sesion\//.test(a.w.location.hash)); await a.tic();
+  return a.w.location.hash.split('/')[1];
+}
+const quitarFinal = () => { for (const f of $$('.final')) f.parentNode.removeChild(f); a.doc.body.classList.remove('con-final'); for (const n of $$('[inert]')) n.removeAttribute('inert'); };
+
+test('H1 · «Algo va mal» en un suelto no ofrece «Cambiar por otro» ni «Seguir con el siguiente», sino «Terminar»; sigue con un ejercicio', async () => {
+  const b = estadoBase(); b.perfil.lesiones = [{ id: 'l1', zona: 'rodilla', dolor: 2, activa: true, desde: '2026-01-01', tipo: 'lesion' }];
+  await reiniciar(b);
+  const id = await hacerSuelto('prensa-piernas');
+  a.clic('[data-act="sesion.menu"][data-e="0"]'); await a.esperar(() => $('.hoja .menu-hoja'));
+  a.clic('.hoja [data-act="sesion.algoVaMal"]'); await a.esperar(() => $('#avm-dolor'));
+  $('#avm-dolor').value = '6';
+  a.clic('[data-act="sesion.dolorDurante"]'); await a.esperar(() => /Salta/.test(($('.hoja h2') || {}).textContent || ''));
+  assert.equal($('.hoja [data-act="sesion.cambiar"]'), null);
+  assert.doesNotMatch($('.hoja').textContent, /Seguir con el siguiente/);
+  assert.equal($('.hoja [data-act="sesion.terminar"]').textContent, 'Terminar');
+  // Aunque llegue la acción por otro lado, no se cambia
+  const bt = a.doc.createElement('button'); bt.dataset.act = 'sesion.cambiarPor'; bt.dataset.e = '0'; bt.dataset.id = 'sentadilla-isometrica'; a.vista().append(bt);
+  a.clic(bt); await a.espera(30);
+  assert.equal(a.estado.estado().sesiones[id].ejercicios.length, 1);
+  assert.ok(a.estado.estado().sesiones[id].ejercicios[0].dolorDurante);
+  sinHojas();
+});
+
+test('H2 · a medias con dolor 8 hoy: «A medias» dice que hoy no se sigue y la pantalla solo deja terminar con lo hecho o descartar', async () => {
+  await reiniciar(conPlan(estadoBase()));
+  const id = await hacerSuelto('plancha');
+  a.estado.cambiar(S => { const s = S.sesiones[id]; s.estado = 'en_curso'; s.empezada = new Date().toISOString(); s.ejercicios[0].sets[0].hecha = true; s.ejercicios[0].sets[0].valor = '30'; }, 'sesion');
+  a.estado.cambiar(S => { S.dolor.push({ fecha: a.estado.hoyISO(), zona: 'lumbar', dolor: 8, momento: 'despues' }); }, 'sesion');
+  await a.ir('ejercicios');
+  assert.match($('.sueltos-medias').textContent, /Hoy no sigas: tienes dolor de 7 o más/);
+  assert.match($('.sueltos-medias .fila-accion').textContent, /Cerrar/);
+  a.clic('.sueltos-medias a'); await a.esperar(() => a.w.location.hash === '#sesion/' + id); await a.tic();
+  assert.match($('.suelto-parado').textContent, /lumbar está a 8\/10/);
+  assert.equal($('[data-act="sesion.serie"]'), null, 'no se pueden marcar más series');
+  assert.equal($('[data-act="sesion.cuenta"]'), null);
+  assert.ok($('[data-act="sesion.terminar"]') && $('[data-act="sesion.descartar"]'));
+  // Ni forzando la acción
+  const bt = a.doc.createElement('button'); bt.dataset.act = 'sesion.serie'; bt.dataset.e = '0'; bt.dataset.s = '1'; a.vista().append(bt);
+  a.clic(bt); await a.tic();
+  assert.equal(a.estado.estado().sesiones[id].ejercicios[0].sets[1].hecha, false);
+  // Terminar con lo hecho lo guarda
+  a.clic('.sesion-lista > [data-act="sesion.terminar"]'); await a.esperar(() => $('#c-com'));
+  a.clic('[data-act="sesion.cerrar"]'); await a.esperar(() => a.w.location.hash === '#ejercicios');
+  assert.equal(a.estado.estado().sesiones[id].estado, 'hecha');
+  quitarFinal();
+});
+
+test('H3 · «Hacerla» con la sesión de hoy preparada pide confirmar y la sustituye, sin dejar dos ni el día del plan apuntando a ella', async () => {
+  const b = conPlan(estadoBase({ sesiones: { s1: sesionDemo('s1', { fuente: 'ia', nombre: 'Torso IA' }) } }));
+  b.plan.hechos = { [hoyDS]: 's1' };
+  b.misSesiones = [mia('m1', 'Pecho')];
+  await reiniciar(b);
+  a.clic('.mis-sesiones-hoy [data-act="entrenador.prepararMia"][data-v="m1"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  assert.match($('.hoja').textContent, /«Torso IA»\. Si haces «Pecho», la sustituye/);
+  // Cancelar: no pasa nada
+  a.clic('.hoja [data-r="0"]'); await a.espera(60);
+  assert.equal($('.hoja.checkin'), null);
+  a.clic('.mis-sesiones-hoy [data-act="entrenador.prepararMia"][data-v="m1"]'); await a.esperar(() => $('.hoja [data-r="1"]'));
+  a.clic('.hoja [data-r="1"]'); await a.esperar(() => $('.hoja.checkin'));
+  const cmp = $('[data-act="entrenador.ciCompleto"]'); if (cmp) { a.clic(cmp); await a.tic(); }
+  a.clic('[data-act="entrenador.crearHoy"]');
+  await a.esperar(() => /^#sesion\//.test(a.w.location.hash), { max: 4000 });
+  const S = a.estado.estado(), nueva = a.w.location.hash.split('/')[1];
+  assert.equal(S.sesiones.s1, undefined, 'la de hoy (tocada) se ha sustituido');
+  assert.deepEqual(Object.keys(S.sesiones), [nueva]);
+  assert.deepEqual(S.plan.hechos, {}, 'sin «Cuenta como el día», el día del plan queda libre');
+  sinHojas();
+});
+
+test('H4 · «Ver las N»: editar y hacerla desde la hoja', async () => {
+  const b = conPlan(estadoBase()); b.misSesiones = ['1', '2', '3', '4'].map(k => mia('m' + k, 'S' + k));
+  await reiniciar(b);
+  a.clic('[data-act="hoy.todasMias"]'); await a.esperar(() => $('.hoja .lista-mias-hoy'));
+  a.clic('.hoja [data-act="hoy.editarMia"][data-v="m4"]'); await a.esperar(() => a.w.location.hash === '#mia/m4'); await a.tic();
+  assert.equal($('.hoja .lista-mias-hoy'), null, 'la hoja se cierra al ir al editor');
+  a.clic('[data-act="mia.volver"]'); await a.esperar(() => a.w.location.hash === '#hoy'); await a.tic();
+  a.clic('[data-act="hoy.todasMias"]'); await a.esperar(() => $('.hoja .lista-mias-hoy'));
+  a.clic('.hoja [data-act="entrenador.prepararMia"][data-v="m4"]'); await a.esperar(() => $('.hoja.checkin'));
+  const cmp = $('[data-act="entrenador.ciCompleto"]'); if (cmp) { a.clic(cmp); await a.tic(); }
+  assert.equal($('[data-act="entrenador.ciMia"][aria-pressed="true"]').dataset.v, 'm4');
+  sinHojas();
+});

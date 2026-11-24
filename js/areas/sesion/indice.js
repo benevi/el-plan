@@ -15,7 +15,7 @@ import { rango, registros, paso as pasoKg, valor as valorApuntado, e1rm } from '
 import { LUGARES, MUSCULOS, GUSTOS, LARGO_TEXTO } from '../../datos/constantes.js';
 import { abrirFicha, botonesGusto, miniatura } from '../ejercicios/indice.js';
 import { notaFallo } from '../entrenador/indice.js';
-import { guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, T3b, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia, dolorNuevoSinLesion, guardarDolorComoLesion } from '../entrenador/entrenador.js';
+import { evaluarSuelto, guardarMia, miaDe, LARGO_NOMBRE_MIA, pararPorAlarma, limiteDolor, T3, T3b, estadoDias, alternativasHoy, ejercicioCambiado, contextoDia, dolorNuevoSinLesion, guardarDolorComoLesion } from '../entrenador/entrenador.js';
 import { descanso, cuenta, parar, registrarFin, mantenerPantalla, soltarPantalla, info, cerrarAlarma, alarmaDe } from './temporizador.js';
 
 // «Cambiar por otro»: el dolor de hoy con el «dolor durante» del ejercicio (C-DOLOR-6) y las alternativas que
@@ -38,6 +38,13 @@ let foco = { id: null, i: 0 };
 let recien = ''; // la serie que se acaba de marcar (su ✓ entra con un pequeño gesto)
 
 const sesion = id => estado().sesiones[id];
+// Un ejercicio suelto abierto que hoy ya no se puede seguir (señal de alarma o dolor ≥ 7, C-SUELTO-2): se ve lo
+// hecho y solo se puede terminar con ello o descartarlo. Devuelve el bloqueo o null.
+function sueltoParado(S, s) {
+  if (!esSuelta(s) || s.estado === 'hecha' || !s.ejercicios[0]) return null;
+  const b = evaluarSuelto(S, s.ejercicios[0].id).bloqueo;
+  return b && ['alarma', 'dolorAlto'].includes(b.motivo) ? b : null;
+}
 // Segundos del rango («30-45s» → 30 y 45; «2 min» → 120). Nada si no es por tiempo.
 const objetivoSeg = x => { const r = rango(x.reps); if (!r || (r.u !== 's' && r.u !== 'min')) return null; const k = r.u === 'min' ? 60 : 1; return { lo: Math.round(r.lo * k), hi: Math.round(r.hi * k), lados: /c\/\s*lado|por lado|cada lado/i.test(r.resto) ? 2 : 1, u: r.u }; };
 const textoSeg = (seg, u) => u === 'min' ? (seg % 60 ? Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0') : String(seg / 60)) : String(seg);
@@ -303,6 +310,17 @@ function vista([id]) {
     </div>`;
   }
 
+  // Un suelto que hoy ya no se puede seguir: lo hecho, en lectura, y terminar con ello o descartarlo (C-SUELTO-2).
+  const parado = sueltoParado(S, s);
+  if (parado) {
+    const lectura = { ...s, estado: 'hecha' };
+    return `<div class="vista-sesion">${cab}<div class="sesion-lista">
+      <div class="aviso aviso--error suelto-parado" role="note">${ICONOS.error}<div class="aviso-texto"><b>Hoy no sigas con él</b><p>${h(parado.texto)}</p></div><span></span></div>
+      ${s.ejercicios.map((x, i) => tarjetaEjercicio(lectura, x, i)).join('')}
+      ${trabajoHecho(s) ? '<button type="button" class="boton boton--ancho" data-act="sesion.terminar">Terminar con lo hecho</button>' : ''}
+      <button type="button" class="boton boton--texto centro descartar" data-act="sesion.descartar">Descartar este ejercicio</button>
+    </div></div>`;
+  }
   // Toda la sesión (o la sesión ya hecha, en modo lectura): lo hecho se pliega para que la página no sea eterna.
   return `<div class="vista-sesion">${cab}<div class="sesion-lista">${porque}
     ${tareas(s, 'calentamiento', 'Calentamiento', abierta)}
@@ -467,6 +485,8 @@ function marcarSerie(i, j, valorPorDefecto, idSesion = idActual()) {
   let descansar = 0, etiqueta = '', siguiente = '', avanza = false, desmarcada = false;
   const s0 = sesion(idSesion);
   if (!s0 || s0.estado === 'hecha') return; // una sesión hecha se ve en modo lectura
+  const bq = sueltoParado(estado(), s0);
+  if (bq) { aviso(bq.texto, 'error'); pintar(); return; } // C-SUELTO-2
   cambiar(S => { const s = S.sesiones[idSesion]; if (!s) return;
     const x = s.ejercicios[i], z = x && x.sets[j]; if (!z) return;
     if (x.dolorDurante && !z.hecha) return; // parado por dolor: no se repite (C-DOLOR-6)
@@ -631,6 +651,8 @@ acciones({
     if (dobleToque(`c/${id}/${i}/${j}`)) return;
     const x = s.ejercicios[i], o = objetivoSeg(x);
     if (!o) return;
+    const bq = sueltoParado(estado(), s);
+    if (bq) { aviso(bq.texto, 'error'); pintar(); return; } // C-SUELTO-2
     cerrarAlarma();
     // Con una cuenta en marcha la sesión ya está empezada: no se puede rehacer (IA o «Volver a ajustarla») debajo.
     cambiar(S => { const s2 = S.sesiones[id]; if (s2) empezarSiHaceFalta(S, s2); }, 'sesion');
@@ -678,9 +700,10 @@ acciones({
     const cr = info();
     if (cr && cr.meta && cr.meta.sesion === s.id && cr.meta.e === i) parar();
     conSesion((s2, S2) => { empezarSiHaceFalta(S2, s2); s2.ejercicios[i].dolorDurante = { zona: z, dolor, antes, techo }; });
+    // En un ejercicio suelto no hay otro ni siguiente: se termina con lo hecho (C-SUELTO-1).
     abrirHoja(`<h2>Salta ${h(minus(nombreEj))}</h2>
       <p class="hoja-texto">Tu ${h(zona)} está a ${dolor}/10 y el límite era ${limite}/10: este ejercicio se para y queda apuntado para tu entrenador. Hoy no se repite.</p>
-      <div class="fila-botones"><button type="button" class="boton boton--secundario" data-act="sesion.cambiar" data-e="${i}">Cambiar por otro</button><button type="button" class="boton" data-act="sesion.seguir">Seguir con el siguiente</button></div>`, { clase: 'hoja-sesion' });
+      <div class="fila-botones">${esSuelta(s) ? '<button type="button" class="boton" data-act="sesion.terminar">Terminar</button>' : `<button type="button" class="boton boton--secundario" data-act="sesion.cambiar" data-e="${i}">Cambiar por otro</button><button type="button" class="boton" data-act="sesion.seguir">Seguir con el siguiente</button>`}</div>`, { clase: 'hoja-sesion' });
   },
   'sesion.serieMas': el => {
     conSesion(s => {
@@ -705,7 +728,9 @@ acciones({
   'sesion.comentar': el => { const t = $('#m-com').value.trim(); conSesion(s => { s.ejercicios[+el.dataset.e].comentario = t; }); cerrarHoja(); aviso('Lo leerá tu entrenador en la próxima sesión'); },
   'sesion.cambiar': el => {
     // (las alternativas salen de alternativasDe, con las reglas del validador)
-    const S = estado(), s = sesion(idActual()), i = +el.dataset.e, x = s.ejercicios[i], e = ex(x.id);
+    const S = estado(), s = sesion(idActual()), i = +el.dataset.e;
+    if (!s || esSuelta(s)) return; // un ejercicio suelto es ese ejercicio: no se cambia por otro (C-SUELTO-1)
+    const x = s.ejercicios[i], e = ex(x.id);
     // Un principal, de su nivel (C-DOSIS-10), salvo en una de «Mis sesiones» (C-MIA-2). Si el ejercicio se paró
     // por dolor, tampoco nada que cargue esa zona a ese dolor (C-DOLOR-6).
     const dd = x.dolorDurante;
@@ -718,7 +743,7 @@ acciones({
   },
   'sesion.cambiarPor': async el => {
     const i = +el.dataset.e, nuevoId = el.dataset.id;
-    const s0 = sesion(idActual()), v0 = s0 && s0.ejercicios[i], n0 = ex(nuevoId); if (!v0 || !n0) return;
+    const s0 = sesion(idActual()), v0 = s0 && s0.ejercicios[i], n0 = ex(nuevoId); if (!v0 || !n0 || esSuelta(s0)) return;
     // Solo lo que acepta el validador para ese rol y esta sesión (revisión del PR #45, G1).
     if (!alternativasDe(estado(), s0, i).some(a => a.id === nuevoId)) { aviso('Ese cambio ya no vale con tu sesión de hoy: elige otro.', 'error'); cerrarHoja(); return; }
     const hechas = v0.dolorDurante ? 0 : v0.sets.filter(z => z.hecha).length;

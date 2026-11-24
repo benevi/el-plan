@@ -81,6 +81,13 @@ function apuntarAlarma(a) {
       delete S.sesiones[s.id];
       if (S.plan && S.plan.hechos) Object.keys(S.plan.hechos).forEach(d => { if (S.plan.hechos[d] === s.id) delete S.plan.hechos[d]; });
     });
+    // Un ejercicio suelto abierto (C-SUELTO-2) se cierra como con «Algo va mal»: lo hecho se guarda, marcado
+    // `parada: 'alarma'`; sin nada hecho, se borra. Así no se puede seguir con él hoy.
+    const ahora = new Date().toISOString();
+    Object.values(S.sesiones).filter(s => esSuelta(s) && s.estado !== 'hecha').forEach(s => {
+      if (trabajoHecho(s)) Object.assign(s, { estado: 'hecha', empezada: s.empezada || ahora, terminada: ahora, cierre: { esfuerzo: null, dolor: {}, comentario: '' }, parada: 'alarma' });
+      else delete S.sesiones[s.id];
+    });
   }, 'alarma');
 }
 // «Algo va mal» con una señal de alarma durante la sesión (T3, C-ALAR-1): se para la sesión en curso. Lo hecho
@@ -298,7 +305,8 @@ export async function crearSesionHoy(ci, op = {}) {
   cambiar(S2 => {
     // «Volver a ajustarla» (M2 del informe del 21-11): la sesión de hoy que sigue pendiente y sin tocar se
     // sustituye; si no, se quedaba en los datos y en las copias sin verse. Lo que tenga algo hecho no se borra.
-    const sobran = Object.values(S2.sesiones).filter(x => x.id === (vieja && vieja.id) ||
+    // ci.sustituir: la de hoy que la persona aceptó sustituir (Hoy › Mis sesiones), si sigue sin empezar.
+    const sobran = Object.values(S2.sesiones).filter(x => x.id === (vieja && vieja.id) || (ci.sustituir && x.id === ci.sustituir && x.estado === 'pendiente') ||
       (x.fecha === hoyISO() && x.fuente !== 'anterior' && !esSuelta(x) && x.estado === 'pendiente' && !sesionTocada(x)));
     for (const v of sobran) {
       delete S2.sesiones[v.id];

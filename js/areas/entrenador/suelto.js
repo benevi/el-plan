@@ -26,8 +26,8 @@ import { rolMia, topeSeriesMia } from './mias.js';
 const DIA = 864e5;
 const CON_PESO = ['mancuernas', 'barra', 'maquina', 'polea', 'botellas'];
 
-// Dolor de cada zona para hoy, sin check-in: lo apuntado en los 3 últimos días (check-ins, cierres y «Algo va
-// mal»; si el mismo día hay varios, el más alto) y, si no hay nada, el de la ficha de la lesión activa (una
+// Dolor de cada zona para hoy, sin check-in: lo apuntado en los 3 últimos días (check-ins, cierres y el «dolor
+// durante» de «Algo va mal» de cualquier sesión o suelto, aunque siga abierta; si el mismo día hay varios, el más alto) y, si no hay nada, el de la ficha de la lesión activa (una
 // lesión traída de la app anterior, con el dolor por revisar, como mucho 6: decisión 11). Devuelve
 // { zona: { dolor, de: 'reciente'|'ficha' } }.
 export function dolorParaSuelto(S, ahora = Date.now()) {
@@ -40,9 +40,12 @@ export function dolorParaSuelto(S, ahora = Date.now()) {
   };
   (S.dolor || []).forEach(d => d && apuntar(d.zona, String(d.fecha || '').slice(0, 10), d.dolor));
   Object.values(S.sesiones || {}).forEach(s => {
-    if (!s || esSuelta(s) || !s.checkin || !s.checkin.dolor) return;
-    const f = String(s.creada || s.fecha || '').slice(0, 10);
-    Object.entries(s.checkin.dolor).forEach(([z, v]) => apuntar(z, f, v));
+    if (!s) return;
+    const f = String(s.fecha || s.creada || '').slice(0, 10);
+    // «Algo va mal» (C-DOLOR-6): el dolor que paró un ejercicio, también en una sesión aún abierta.
+    (s.ejercicios || []).forEach(x => { if (x && x.dolorDurante) apuntar(x.dolorDurante.zona, f, x.dolorDurante.dolor); });
+    if (esSuelta(s) || !s.checkin || !s.checkin.dolor) return;
+    Object.entries(s.checkin.dolor).forEach(([z, v]) => apuntar(z, String(s.creada || s.fecha || '').slice(0, 10), v));
   });
   const out = {};
   Object.entries(porZona).forEach(([z, a]) => { out[z] = { dolor: a.dolor, de: 'reciente' }; });
@@ -55,7 +58,7 @@ export function dolorParaSuelto(S, ahora = Date.now()) {
 const soloValores = d => Object.fromEntries(Object.entries(d).map(([z, x]) => [z, x.dolor]));
 
 // ¿Se puede hacer `id` suelto ahora? Devuelve { e, bloqueo: null | { motivo, texto }, avisos: [texto], dolor, ctx }.
-// motivo: 'alarma' · 'dolorAlto' · 'zona' · 'salud' · 'nadar'.
+// motivo: 'alarma' · 'dolorAlto' · 'parado' · 'zona' · 'salud' · 'nadar'.
 export function evaluarSuelto(S, id) {
   const e = ex(id);
   if (!e) return { e: null, bloqueo: { motivo: 'catalogo', texto: 'Ese ejercicio no está en la app.' }, avisos: [], dolor: {}, ctx: null };
@@ -71,6 +74,13 @@ export function evaluarSuelto(S, id) {
   if (alto) {
     const [z, x] = alto;
     return bloquear('dolorAlto', `Tu ${nombreZona(z)} está a ${x.dolor}/10. Con dolor de 7 o más no se hacen ejercicios sueltos: prepara la sesión de hoy desde Hoy y la app te monta un día suave, sin fuerza.${x.de === 'ficha' ? ' Es el dolor de tu ficha: si hoy te duele menos, cámbialo en Perfil › Lesiones.' : ''}`);
+  }
+  // C-SUELTO-2 · Parado hoy por dolor con «Algo va mal» (C-DOLOR-6): hoy no se repite, tampoco suelto.
+  const hoy = hoyISO();
+  const parado = Object.values(S.sesiones || {}).find(s => s && s.fecha === hoy && (s.ejercicios || []).some(x => x && x.id === e.id && x.dolorDurante));
+  if (parado) {
+    const dd = parado.ejercicios.find(x => x.id === e.id && x.dolorDurante).dolorDurante;
+    return bloquear('parado', `Hoy lo paraste por dolor (tu ${nombreZona(dd.zona)} a ${+dd.dolor}/10): hoy no se repite. Mañana la app lo vuelve a mirar con tu dolor de ese día.`);
   }
   // C-SUELTO-2 · Datos de salud (C-SALUD-0): lo que excluyen y, con «solo suave», nada de fuerza.
   const salud = ctx.salud;

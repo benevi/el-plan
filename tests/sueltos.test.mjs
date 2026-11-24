@@ -232,3 +232,67 @@ test('C-SUELTO-1 · el dolor de partida va en checkin.dolor y no cuenta como che
   assert.deepEqual(sesion.checkin.dolor, { hombro: 2 });
   assert.equal(ent.dolorReciente(est.estado(), 'hombro'), null, 'el check-in sigue partiendo de la ficha');
 });
+
+// ── Revisión del PR #56 ──
+test('N1 · el «dolor durante» de «Algo va mal» (rodilla 8 en una sesión aún abierta) bloquea el suelto', () => {
+  const S = S0();
+  S.perfil.lesiones.push(lesion('rodilla', 2));
+  const set = () => ({ kg: 40, valor: '10', hecha: true });
+  S.sesiones.h1 = { id: 'h1', fecha: hoy(), creada: new Date(Date.now() - 3600e3).toISOString(), fuente: 'reglas', nombre: 'Pierna', lugar: 'gym', estado: 'en_curso', empezada: new Date(Date.now() - 1800e3).toISOString(),
+    checkin: { energia: 3, dolor: { rodilla: 2 } }, calentamiento: [], vuelta: [], explicacion: [], cierre: null,
+    ejercicios: [{ id: 'prensa-piernas', rol: 'principal', series: 3, reps: '8-12', descanso: 90, kg: 40, sets: [set(), { kg: 40, valor: '', hecha: false }], dolorDurante: { zona: 'rodilla', dolor: 8, antes: 2, techo: 3 }, comentario: '', gusto: null }] };
+  assert.equal(ent.dolorParaSuelto(est.estado()).rodilla.dolor, 8);
+  const r = ent.empezarSuelto('prensa-piernas');
+  assert.equal(r.bloqueo && r.bloqueo.motivo, 'dolorAlto');
+  assert.equal(ent.evaluarSuelto(est.estado(), 'curl-femoral-sentado').bloqueo.motivo, 'dolorAlto');
+});
+
+test('N1 · un ejercicio parado hoy por dolor no se puede hacer suelto ese día (C-DOLOR-6), aunque el dolor sea bajo', () => {
+  const S = S0();
+  S.sesiones.h1 = { id: 'h1', fecha: hoy(), creada: new Date().toISOString(), fuente: 'reglas', nombre: 'Torso', lugar: 'gym', estado: 'en_curso', empezada: new Date().toISOString(),
+    checkin: { energia: 3, dolor: {} }, calentamiento: [], vuelta: [], explicacion: [], cierre: null,
+    ejercicios: [{ id: 'remo-maquina', rol: 'principal', series: 3, reps: '8-12', descanso: 90, kg: 40, sets: [{ kg: 40, valor: '', hecha: false }], dolorDurante: { zona: 'lumbar', dolor: 3, antes: 0, techo: 3 }, comentario: '', gusto: null }] };
+  const b = ent.evaluarSuelto(est.estado(), 'remo-maquina').bloqueo;
+  assert.equal(b.motivo, 'parado');
+  assert.match(b.texto, /hoy no se repite/);
+});
+
+test('N2 · las mejoras de los sueltos no cuentan para subir de nivel (C-NIVEL-1)', () => {
+  const S = S0({ nivel: 1 });
+  for (const id of ['press-pecho-maquina', 'remo-maquina', 'prensa-piernas', 'jalon-pecho']) {
+    [20, 13, 6].forEach((dias, k) => { const sid = hecha(S, dias, [{ id, sets: [[40 + k * 3, 10], [40 + k * 3, 10]] }]); S.sesiones[sid].origen = { tipo: 'suelto' }; });
+  }
+  const crit = ctx.medidorNivel(est.estado()).criterios.find(c => /mejorados/.test(c.que));
+  assert.equal(crit.ok, false);
+  assert.equal(crit.valor, '0');
+});
+
+test('N3 · un comentario en un suelto cuenta como «comentarios tuyos que leer» igual que en una sesión', () => {
+  ponerRed(true);
+  try {
+    const S = S0();
+    const sid = hecha(S, 1, [{ id: 'press-pecho-maquina', sets: [[40, 10]], comentario: 'me duele el hombro al bajar' }]);
+    S.sesiones[sid].origen = { tipo: 'suelto' };
+    const m1 = ent.motivoIA(est.estado(), { lugar: 'gym', dolorHoy: {}, peticion: '' });
+    delete S.sesiones[sid].origen;
+    const m2 = ent.motivoIA(est.estado(), { lugar: 'gym', dolorHoy: {}, peticion: '' });
+    assert.match(m1.motivo, /comentarios/);
+    assert.equal(m1.motivo, m2.motivo);
+  } finally { ponerRed(false); }
+});
+
+test('H2 · al confirmar una alarma los sueltos abiertos se cierran: lo hecho, «parada: alarma»; sin nada, se borran', async () => {
+  const S = S0();
+  const a1 = ent.empezarSuelto('plancha').sesion;
+  const a2 = ent.empezarSuelto('press-pecho-maquina').sesion;
+  est.cambiar(X => { const s = X.sesiones[a1.id]; s.estado = 'en_curso'; s.empezada = new Date().toISOString(); s.ejercicios[0].sets[0].hecha = true; s.ejercicios[0].sets[0].valor = '30';
+    X.sesiones[a2.id].estado = 'en_curso'; }, 'sesion');
+  const r = await ent.crearSesionHoy({ lugar: 'gym', minutos: 45, energia: 3, dolorHoy: {}, peticion: '', alarma: true });
+  assert.ok(r.alarma);
+  const S1 = est.estado();
+  assert.equal(S1.sesiones[a1.id].estado, 'hecha');
+  assert.equal(S1.sesiones[a1.id].parada, 'alarma');
+  assert.equal(S1.sesiones[a2.id], undefined);
+  assert.equal(ent.evaluarSuelto(S1, 'plancha').bloqueo.motivo, 'alarma');
+  assert.ok(S);
+});

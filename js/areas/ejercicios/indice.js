@@ -106,7 +106,9 @@ function aMedias(S) {
   if (!l.length) return '';
   return `<section class="tarjeta sueltos-medias" aria-labelledby="t-medias"><h2 class="tarjeta-nombre" id="t-medias">A medias</h2>
     <ul class="lista">${l.map(s => { const x = s.ejercicios[0] || { sets: [] }; const n = x.sets.filter(z => z.hecha).length;
-    return `<li><a class="fila" href="#sesion/${h(s.id)}"><span class="crece"><b>${h(s.nombre)}</b><span>${h(fechaCorta(s.fecha))}, ${n} de ${x.sets.length} ${x.sets.length === 1 ? 'serie' : 'series'}</span></span><span class="fila-accion">Seguir${ICONOS.sig}</span></a></li>`; }).join('')}</ul></section>`;
+    // Con una señal de alarma o dolor ≥ 7 hoy no se sigue (C-SUELTO-2): se dice por qué y solo se puede cerrar.
+    const b = x.id ? evaluarSuelto(S, x.id).bloqueo : null, parado = !!b && ['alarma', 'dolorAlto'].includes(b.motivo);
+    return `<li><a class="fila" href="#sesion/${h(s.id)}"><span class="crece"><b>${h(s.nombre)}</b><span>${h(fechaCorta(s.fecha))}, ${n} de ${x.sets.length} ${x.sets.length === 1 ? 'serie' : 'series'}${parado ? `. Hoy no sigas: ${h(b.motivo === 'alarma' ? 'has marcado una señal de alarma' : 'tienes dolor de 7 o más')}` : ''}</span></span><span class="fila-accion">${parado ? 'Cerrar' : 'Seguir'}${ICONOS.sig}</span></a></li>`; }).join('')}</ul></section>`;
 }
 
 function vista() {

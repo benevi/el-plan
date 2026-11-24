@@ -8,7 +8,7 @@ import { enLinea } from '../../nucleo/api.js';
 import { es } from '../../nucleo/ui.js';
 import { diaSemana, esSuelta } from '../../nucleo/modelo.js';
 import { analizarEjercicios, leerComentario } from '../../reglas/contexto.js';
-import { sugerir, cargaMuscular, sesionesHechas, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
+import { sugerir, cargaMuscular, hechasConSueltos, ajusteCargado, semanaDescarga, seriesDescarga, topeSeries } from '../../reglas/progresion.js';
 import { nivelesZona, ex, ZONAS } from '../../reglas/catalogo.js';
 import { LUGARES, MUSCULOS } from '../../datos/constantes.js';
 import { riesgoHoy, montarDia, tiempoSesion, lista, minus, frase, dosis, tipoParaLugar, bandasHoy, maxDolorHoy, nombreZona, contextoDia, valePrincipal, permitidoBase, minutosSesion, calentamientoDe, vueltaDe } from './dia.js';
@@ -244,7 +244,8 @@ export function motivoIA(S, ci, dia) {
   if (!dia) r.push('hoy no hay día planificado');
   const p = planDeLaSemana(S);
   const desde = p ? p.creado : '';
-  const nuevos = sesionesHechas(S).filter(s => (s.terminada || '') > desde).some(s => (s.cierre && s.cierre.comentario) || (s.ejercicios || []).some(x => x.comentario && leerComentario(x.comentario).length));
+  // También los comentarios de un ejercicio suelto (C-SUELTO-4).
+  const nuevos = hechasConSueltos(S).filter(s => (s.terminada || '') > desde).some(s => (s.cierre && s.cierre.comentario) || (s.ejercicios || []).some(x => x.comentario && leerComentario(x.comentario).length));
   if (nuevos) r.push('hay comentarios tuyos que leer');
   return r.length ? { usar: true, motivo: `El entrenador IA la revisa porque ${lista(r)}.` } : { usar: false, motivo: 'Ajustada por la app con tu check-in (sin gastar IA).' };
 }

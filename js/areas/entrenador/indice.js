@@ -180,7 +180,8 @@ function dolorInicial(S, l) {
   return r != null ? r : Math.min(6, +l.dolor || 0);
 }
 
-// op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy › Mis sesiones).
+// op.mia: id de una de «Mis sesiones» ya elegida (desde Hoy › Mis sesiones). op.sustituir: la sesión de hoy pendiente
+// que se quita al preparar la nueva (aunque ya se hubiera tocado), con lo que tenga en el plan.
 export function abrirCheckin(diaPlan = null, op = {}) {
   revisarBajadaNivel();
   const S = estado();
@@ -201,6 +202,7 @@ export function abrirCheckin(diaPlan = null, op = {}) {
   const mia = op.mia || (deMia && deMia.origen.id);
   if (mia) elegirMia(S, mia);
   if (enlazado) { ci.diaPlan = +enlazado[0]; ci.ocuparDia = true; ci.diaPorDefecto = false; }
+  if (op.sustituir) ci.sustituir = op.sustituir;
   hojaCheckin({ arriba: true });
 }
 // Lugares del check-in: los del perfil y, con una de «Mis sesiones», también el suyo (PR 16).
@@ -533,8 +535,15 @@ acciones({
   'entrenador.ciIA': el => { ci.forzarIA = el.checked; hojaCheckin(); },
   'entrenador.ciMia': el => { elegirMia(estado(), el.dataset.v); hojaCheckin(); },
   'entrenador.ciOcupar': el => { ci.ocuparDia = el.checked; hojaCheckin(); },
-  // Desde Hoy › Mis sesiones: la elegida (data-v); sin ella, la primera.
-  'entrenador.prepararMia': el => abrirCheckin(null, { mia: (el && el.dataset && el.dataset.v) || (misSesiones(estado())[0] || {}).id }),
+  // Desde Hoy › Mis sesiones: la elegida (data-v); sin ella, la primera. Si ya hay una sesión de hoy preparada sin
+  // empezar, se dice que la sustituye y se pide confirmarlo; al prepararla se quita (ci.sustituir), sin dejar dos.
+  'entrenador.prepararMia': async el => {
+    const S = estado(), id = (el && el.dataset && el.dataset.v) || (misSesiones(S)[0] || {}).id;
+    const hoy = sesionDeHoy(S), m = miaDe(S, id);
+    const otra = hoy && hoy.estado === 'pendiente' && !(hoy.origen && hoy.origen.tipo === 'mia' && hoy.origen.id === id) ? hoy : null;
+    if (otra && m && !await confirmar(`Ya tienes preparada la sesión de hoy, «${otra.nombre}». Si haces «${m.nombre}», la sustituye. ¿Seguir?`, { si: 'Sustituirla', no: 'Cancelar' })) return;
+    abrirCheckin(null, { mia: id, ...(hoy && hoy.estado === 'pendiente' ? { sustituir: hoy.id } : {}) });
+  },
   'entrenador.crearHoy': async () => {
     const datos = { ...ci, peticion: ($('#ci-peticion') || {}).value || ci.peticion };
     if (datos.alarma) { crearConAlarma(); return; }
