@@ -315,3 +315,50 @@ test('C-TIEMPO-1 (tercera revisión del PR #54): problemasSesion avisa de una se
   const p = ent.problemasSesion(S, s, { lugar: 'gym', minutos: 30 });
   assert.ok(p.some(t => /^\d+ min para 30$/.test(t)), p.join(' | '));
 });
+
+// ── Cuarta revisión del PR #54: nunca se quita la rehabilitación de una zona en B2 (C-DOLOR-3) ──
+test('C-DOLOR-3, C-TIEMPO-2 paso 8: 2-3 zonas a 5 en 30 min (lugares × objetivos, con y sin cardiopatía): toda zona B2 con rehabilitación, idempotente y sin problemas', () => {
+  const zs = Object.keys(lesiones.ZONAS).sort();
+  const mal = [];
+  let pasan = 0;
+  for (const salud of [{}, CARD]) {
+    for (const lugar of ['gym', 'casa', 'calle', 'piscina']) {
+      for (const obj of ['perder', 'salud', 'resistencia']) {
+        for (let i = 0; i < zs.length; i += 2) {
+          for (const z3 of [[zs[i], zs[(i + 3) % zs.length]], [zs[i], zs[(i + 3) % zs.length], zs[(i + 5) % zs.length]]]) {
+            const dolorHoy = Object.fromEntries(z3.map(z => [z, 5]));
+            const { S, s, c } = sesion({ objetivos: [obj], lugares: [lugar], nivel: 2, materialCasa: ['banda'], nadar25: true, lesiones: z3.map(z => L(z, 3)), salud }, { lugar, dolorHoy });
+            const n = `${salud.cardiopatia ? 'card/' : ''}${lugar}/${obj}/${z3}`;
+            const ctx = dia.contextoDia(S, c);
+            const falta = z3.filter(z => ctx.bandas[z] && ctx.bandas[z].banda >= 2 && dia.candidatosRehab(S, z, ctx).length && !s.ejercicios.some(x => x.rol === 'rehab' && dia.rehabValida(S, cat.ex(x.id), z, ctx)));
+            if (falta.length) mal.push(`${n}: sin rehabilitación de ${falta}`);
+            const p = ent.problemasSesion(S, s, c);
+            if (p.length) mal.push(`${n}: ${p.join('; ')}`);
+            const t = dia.tiempoSesionExacto(s);
+            if (t > 30.01) {
+              pasan++;
+              // Solo por la rehabilitación obligatoria, y el aviso dice cuánto dura y sugiere 45.
+              if (s.ejercicios.some(x => x.rol === 'principal')) mal.push(`${n}: pasa de lo pedido con fuerza`);
+              if (!s.explicacion.some(x => /no caben tu cardio.*Hoy dura unos \d+ minutos, más de los 30 que pides, porque el trabajo de tu .+ no se puede quitar: si puedes, elige 45 minutos\.$/.test(x))) mal.push(`${n}: aviso sin la duración (${s.explicacion.join(' | ')})`);
+            }
+            if (s.explicacion.filter(x => /\(último recurso\)|no caben tu cardio/.test(x)).length > 1) mal.push(`${n}: aviso repetido`);
+            let w = s;
+            for (let k = 0; k < 5; k++) w = ent.validarSesion(S, w, { lugar, minutos: 30, energia: 3, dolorHoy }).sesion;
+            if (huella(w) !== huella(s)) mal.push(`${n}: no es idempotente`);
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(mal.slice(0, 12), []);
+  assert.ok(pasan > 0, 'el barrido no pasa por la excepción del paso 8');
+});
+
+test('C-TIEMPO-1 (cuarta revisión del PR #54): pasar de lo pedido con fuerza sigue siendo un problema aunque lleve el aviso', () => {
+  const S = nuevoS({ objetivos: ['perder'], nivel: 2, lesiones: [L('rodilla', 3)] });
+  const s = { lugar: 'gym', minutos: 30, explicacion: ['Hoy.', 'Con 30 minutos no caben tu cardio de 15 minutos y fuerza. Hoy: cardio.'],
+    ejercicios: [P('press-pecho-maquina'), { id: 'sentadilla-isometrica', rol: 'rehab', series: 4, reps: '30-45s', descanso: 30 }, CARDIO15],
+    calentamiento: [{ ...Tl('Bici'), duracion: '4 min' }, { ...Tl('Movilidad'), duracion: '1 min' }], vuelta: [{ ...Tl('Estiramiento de pecho'), duracion: '2 min' }, { ...Tl('Respiración'), duracion: '1 min' }] };
+  const p = ent.problemasSesion(S, s, { lugar: 'gym', minutos: 30, dolorHoy: { rodilla: 5 } });
+  assert.ok(p.some(t => /^\d+ min para 30$/.test(t)), p.join(' | '));
+});

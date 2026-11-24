@@ -222,13 +222,15 @@ export function problemasSesion(S, sesion, ctxIn = {}) {
       if (!todos.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
       const c = todos.filter(e => !ejs.some(y => y.id === e.id) && !(sesion.calentamiento || []).some(t => t.id === e.id));
       const cabe = !!c.length && tEntero + tiempoEj(ejercicioRehab(S, c[0], z, ctx)) <= topeMinutos(ctx.minutos);
-      // Una zona en B2 solo se queda sin ella por tiempo, en el último recurso y si no cabe (C-TIEMPO-2 paso 8).
-      if ((ctx.bandas[z].banda >= 2 && !(ultimo && !cabe)) || cabe) out.push(`sin rehabilitación de ${z}`);
+      if (ctx.bandas[z].banda >= 2 || cabe) out.push(`sin rehabilitación de ${z}`);
     });
     // Una de «Mis sesiones» no se recorta (C-MIA-1): se avisa al prepararla, pero no es un fallo.
     const mia = !!(sesion.origen && sesion.origen.tipo === 'mia');
-    // Nunca más de lo pedido, tampoco en el último recurso (C-TIEMPO-1, decisión de Víctor del 23-11-2026).
-    if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ctxIn.mia && !mia) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
+    // Nunca más de lo pedido (C-TIEMPO-1, decisión de Víctor del 23-11-2026). Única excepción (pendiente de decisión
+    // de Víctor): el último recurso sin fuerza en el que lo que sobra es la rehabilitación obligatoria de las zonas B2.
+    const sinRehab = tiempoSesionExacto({ ...sesion, ejercicios: ejs.filter(x => x.rol !== 'rehab') });
+    const porRehabB2 = ultimo && prin === 0 && sinRehab <= topeMinutos(ctx.minutos) + 0.01;
+    if (tiempoSesionExacto(sesion) > topeMinutos(ctx.minutos) + 0.01 && !ctxIn.mia && !mia && !porRehabB2) out.push(`${Math.round(tiempoSesionExacto(sesion))} min para ${ctx.minutos}`);
   }
   return out;
 }
@@ -331,7 +333,9 @@ export function validarSesion(S, sesion, ctxIn = {}) {
   zonasRehab(ctx).forEach(z => {
     const deZona = rehab.filter(x => x.zona === z);
     deZona.slice(2).forEach(x => { ejs.splice(ejs.indexOf(x), 1); cambios.push(`quito ${nombre(ex(x.id))}: basta con 2 ejercicios para tu ${nombreZona(z)}`); });
-    if (deZona.length) return;
+    // Un ejercicio que vale para varias zonas (la prensión, de codo y de muñeca) cuenta para todas, como en el ajuste
+    // de tiempo (C-TIEMPO-2 paso 4): si no, validar otra vez la sesión lo cambiaba de un lado a otro.
+    if (deZona.length || ejs.some(x => x.rol === 'rehab' && rehabValida(S, ex(x.id), z, ctx))) return;
     const c = candidatosRehab(S, z, ctx).filter(e => !ejs.some(y => y.id === e.id) && !quitados.has(e.id));
     if (!c.length) {
       // Cada zona lleva su rehabilitación (C-DOLOR-3). Si el único que vale ya está en la sesión con otro
@@ -838,16 +842,6 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
   // las zonas en B0-B1 que se repone (el paso 4 la quita antes que la fuerza).
   const uno = unPrincipal(S, s, ctx, limite, { ...op, originales });
   reponer();
-  // 8. Nunca más de lo pedido (C-TIEMPO-1): si aún no cabe, fuera la rehabilitación de las zonas de menos dolor, una
-  // a una; esas zonas van en la próxima sesión (C-DOLOR-3, se rota). Calentamiento, vuelta y cardio no bajan de sus
-  // mínimos.
-  const fuera = [];
-  while (!uno && T() > limite) {
-    const z = zonas.filter(z2 => deZona(z2).length).sort((a, b) => (ctx.bandas[a].dolor || 0) - (ctx.bandas[b].dolor || 0))[0];
-    if (!z) break;
-    deZona(z).forEach(x => s.ejercicios.splice(s.ejercicios.indexOf(x), 1));
-    fuera.push(z);
-  }
   const c = s.ejercicios.find(x => x.rol === 'cardio');
   const zs = zonas.filter(z => deZona(z).length);
   if (uno) {
@@ -861,5 +855,9 @@ function ajustarTiempo(S, s, ctx, cambios, op = {}) {
   // Lo que se dice es lo que hay: sin zonas, ni lesión ni rehabilitación; con cardio suave por salud, cómo cuenta.
   const credito = cardioEnTareas(ctx, s.calentamiento, s.vuelta);
   const cardioTxt = !c ? 'tu cardio' : credito ? `tu cardio (${minDe(c.reps)} minutos más el suave del calentamiento y la vuelta)` : `tu cardio de ${minDe(c.reps)} minutos`;
-  return `Con ${ctx.minutos} minutos no caben ${cardioTxt}${zs.length ? `, el trabajo de tu ${lista(zs.map(nombreZona))}` : ''} y fuerza. Hoy: ${zs.length ? 'cardio y rehabilitación' : 'cardio'}.${fuera.length ? ` El trabajo de tu ${lista(fuera.map(nombreZona))} no cabe hoy: va en la próxima sesión.` : ''} Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
+  // La rehabilitación de una zona en B2 no se quita nunca (C-DOLOR-3): si con ella y los mínimos no cabe, la sesión
+  // pasa de lo pedido y el aviso dice cuánto dura (excepción a C-TIEMPO-1 pendiente de decisión de Víctor).
+  const dura = Math.ceil(T() - 0.01);
+  const pasa = T() > limite + 0.01 ? ` Hoy dura unos ${dura} minutos, más de los ${ctx.minutos} que pides, porque el trabajo de tu ${lista(zs.map(nombreZona)) || 'lesión'} no se puede quitar: si puedes, elige ${ctx.minutos + 15} minutos.` : ` Si quieres fuerza, elige ${ctx.minutos + 15} minutos.`;
+  return `Con ${ctx.minutos} minutos no caben ${cardioTxt}${zs.length ? `, el trabajo de tu ${lista(zs.map(nombreZona))}` : ''} y fuerza. Hoy: ${zs.length ? 'cardio y rehabilitación' : 'cardio'}.${pasa}`;
 }
